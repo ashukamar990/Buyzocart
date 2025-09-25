@@ -253,11 +253,11 @@
       border-color: var(--border);
     }
 
-    /* Grid */
+    /* Grid - ALWAYS 2 columns */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
     }
 
     .card {
@@ -856,6 +856,13 @@
       box-shadow: var(--shadow);
       margin-bottom: 20px;
       border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .order-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
     }
     
     .order-header {
@@ -953,8 +960,8 @@
       gap: 10px;
     }
 
-    /* Order Details Page Enhancements */
-    .order-details-page {
+    /* Order Detail Page */
+    .order-detail-page {
       background: var(--card);
       border-radius: var(--radius);
       padding: 24px;
@@ -962,28 +969,48 @@
       margin-bottom: 24px;
     }
     
-    .order-details-section {
+    .order-detail-section {
       margin-bottom: 20px;
       padding-bottom: 20px;
       border-bottom: 1px solid var(--border);
     }
     
-    .order-details-section:last-child {
+    .order-detail-section:last-child {
       border-bottom: none;
       margin-bottom: 0;
       padding-bottom: 0;
     }
     
-    .order-details-label {
+    .order-detail-label {
       font-weight: 600;
       color: var(--muted);
       margin-bottom: 6px;
       font-size: 14px;
     }
     
-    .order-details-value {
+    .order-detail-value {
       font-size: 16px;
       color: var(--ink);
+    }
+    
+    .order-detail-image {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+      background-size: cover;
+      background-position: center;
+      border: 1px solid var(--border);
+      margin-right: 16px;
+    }
+    
+    .order-detail-product {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .order-detail-product-info {
+      flex: 1;
     }
 
     /* Horizontal Product Slider */
@@ -1201,7 +1228,7 @@
       justify-content: flex-end;
     }
 
-    /* Alert Modal */
+    /* Alert Modal - Updated with Cancel and Yes buttons */
     .alert-modal {
       background: var(--card);
       border-radius: var(--radius);
@@ -1519,8 +1546,10 @@
         flex-direction: column;
       }
       
+      /* Keep 2 columns on mobile */
       .grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
       }
       
       .steps {
@@ -1623,6 +1652,12 @@
         width: 60px;
         height: 60px;
       }
+      
+      /* Adjust grid for very small screens */
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
     }
 
     /* Copyright Section */
@@ -1634,7 +1669,88 @@
       font-size: 14px;
       border-top: 1px solid var(--border);
     }
-  </style>
+  
+/* === Clean Animated Banners CSS === */
+.hero-messages {
+  margin-top: 10px;
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  overflow: hidden;
+  position: relative;
+}
+.hero-messages span {
+  opacity: 0;
+  position: absolute;
+  transition: opacity 0.6s ease;
+}
+.hero-messages span.active {
+  opacity: 1;
+  position: relative;
+}
+
+.highlight-strip {
+  margin-top: 16px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,#2563eb,#1d4ed8);
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  animation: pulseStrip 4s infinite;
+  cursor: pointer;
+}
+@keyframes pulseStrip {
+  0%,100% { box-shadow: 0 0 0 rgba(37,99,235,0); }
+  50% { box-shadow: 0 0 16px rgba(37,99,235,0.35); }
+}
+
+/* Search Results Grid */
+#homeSearchResults {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+/* Trending Now Section */
+.trending-section {
+  margin: 30px 0;
+}
+
+.trending-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.trending-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+
+#productGrid, #homeSearchResults {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+</style>
+
+<style>
+/* Highlighted product on products page */
+.product-highlight {
+  border: 2px solid #f97316 !important;
+  box-shadow: 0 8px 24px rgba(249,115,22,0.12) !important;
+  transform: translateY(-6px) !important;
+}
+</style>
+
 </head>
 <body>
   <!-- Mobile Menu Overlay -->
@@ -1650,7 +1766,7 @@
       <div class="menu-close" id="menuClose">×</div>
     </div>
     <div class="menu-items">
-      <div class="menu-item" onclick="showPage('productsPage'); closeMenu();">
+      <div class="menu-item" onclick="showPage('homePage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
@@ -1729,7 +1845,7 @@
         <span></span>
         <span></span>
       </div>
-      <div class="brand" aria-label="Buyzo Cart brand" onclick="showPage('productsPage')">
+      <div class="brand" aria-label="Buyzo Cart brand" onclick="showPage('homePage')">
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
@@ -1746,12 +1862,43 @@
   </header>
 
   <main class="container">
-    <!-- Products Page -->
-    <section class="page active" id="productsPage">
+    <!-- Home Page -->
+    <section class="page active" id="homePage">
+      
       <section class="hero">
         <h1>Welcome to <span style="color:var(--accent)">Buyzo Cart</span></h1>
         <p>Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
+
+        <!-- Rotating subtle messages -->
+        <div class="hero-messages" id="heroMessages">
+          <span class="active">🔥 Big Sale Today</span>
+          <span>🚚 Free Shipping over ₹999</span>
+          <span>✨ New Arrivals Just Dropped</span>
+        </div>
+
+        <!-- Highlight CTA strip -->
+        <div class="highlight-strip" onclick="showPage('productsPage')">
+          Limited Time Offer: Flat 40% OFF on all Fashion Items — <u>Shop Now →</u>
+        </div>
       </section>
+
+      <!-- TRENDING NOW SECTION (moved to top) -->
+      <div class="trending-section">
+        <div class="trending-header">
+          <h2 class="trending-title">Trending Now</h2>
+        </div>
+        <div class="slider-container">
+          <div class="slider-track" id="productSlider"></div>
+        </div>
+      </div>
+
+      <!-- SEARCH BAR (added below Trending Now) -->
+      <div class="search-wrap">
+        <input id="homeSearchInput" placeholder="Search products (e.g. 'Sneakers', 'T-shirt', 'Earbuds')" />
+      </div>
+
+      <!-- Search Results Grid -->
+      <div id="homeSearchResults" style="display:none;"></div>
 
       <div class="steps center">
         <div class="step-pill" id="pill-products">1 • Products</div>
@@ -1764,33 +1911,31 @@
         <h2 style="margin:0">Featured Products</h2>
       </div>
 
-      <!-- Horizontal Product Slider -->
-      <div class="product-slider">
-        <div class="slider-header">
-          <h2 class="slider-title">Trending Now</h2>
-          <!-- Removed slider controls as requested -->
-        </div>
-        <div class="slider-container">
-          <div class="slider-track" id="productSlider"></div>
-        </div>
+      <!-- Featured Products Grid -->
+      <div class="grid" id="homeProductGrid">
+        <!-- Product cards will be loaded here -->
+      </div>
+    </section>
+
+    <!-- Products Page -->
+    <section class="page" id="productsPage">
+      <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">All Products</h2>
       </div>
 
-      <!-- Moved search bar here as requested -->
+      <!-- Search bar -->
       <div class="search-wrap">
         <input id="searchInput" placeholder="Search products (e.g. 'Sneakers', 'T-shirt', 'Earbuds')" />
       </div>
 
-      <!-- Category Navigation - Removed default categories as requested -->
+      <!-- Category Navigation -->
       <div class="categories" id="categoriesContainer">
         <!-- Categories will be loaded from Firebase by admin -->
       </div>
 
-      <div class="grid" id="productGrid"><!-- ADDED: Product list from Realtime Database -->
-      <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap; margin-top: 30px;">
-        <h2 style="margin:0">Realtime Database Products</h2>
+      <div class="grid" id="productGrid">
+        <!-- Product cards will be loaded here -->
       </div>
-      <div id="product-list" class="grid"></div>
-<!-- product cards here --></div>
     </section>
 
     <!-- Product Detail Page -->
@@ -1917,6 +2062,7 @@
           <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
             <button id="toPayment" class="btn" style="flex:1">Continue to Payment</button>
             <button id="editOrder" class="btn secondary" style="flex:1">Edit Order Details</button>
+            <button id="saveUserInfo" class="btn secondary" style="flex:1">Save Information</button>
           </div>
           <div style="margin-top:16px;color:var(--muted);font-size:14px">
             <strong>Note:</strong> If you prefer to change products, click "Edit Order Details" or use "Products" to go back.
@@ -1964,7 +2110,7 @@
         <div style="font-size:24px;font-weight:700;color:var(--success);margin-bottom:8px">Thank You for Your Order!</div>
         <div style="margin-top:10px;color:var(--muted)">Your order has been placed successfully! We will confirm and process your order. Tracking will be shared once supplier ships it.</div>
         <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-          <button id="goHome" class="btn">Back to Products</button>
+          <button id="goHome" class="btn">Back to Home</button>
           <button id="viewOrders" class="btn secondary">View My Orders</button>
         </div>
       </div>
@@ -1973,11 +2119,11 @@
     <!-- My Orders Page -->
     <section class="page" id="myOrdersPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to Home
         </div>
         
         <div class="orders-container">
@@ -2002,14 +2148,34 @@
       </div>
     </section>
 
-    <!-- Wishlist Page -->
-    <section class="page" id="wishlistPage">
+    <!-- Order Detail Page -->
+    <section class="page" id="orderDetailPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showMyOrders(); showPage('myOrdersPage');">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to My Orders
+        </div>
+        
+        <div class="orders-container">
+          <h2>Order Details</h2>
+          
+          <div class="order-detail-page" id="orderDetailContent">
+            <!-- Order details will be dynamically inserted here -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Wishlist Page -->
+    <section class="page" id="wishlistPage">
+      <div class="policy-page">
+        <div class="back-button" onclick="showPage('homePage')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
         </div>
         
         <div class="orders-container">
@@ -2035,11 +2201,11 @@
     <!-- Policy Pages -->
     <section class="page" id="contactPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to Home
         </div>
         <div class="policy-content">
           <h2>Contact Us</h2>
@@ -2069,11 +2235,11 @@
 
     <section class="page" id="cancellationPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin" round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to Home
         </div>
         <div class="policy-content">
           <h2>Refund & Cancellation Policy</h2>
@@ -2086,7 +2252,7 @@
           <p>If you cancel your order within the allowed time, the amount will be refunded to your original payment method within <strong>5–7 working days</strong>.</p>
 
           <h3>Payment Gateway Charges</h3>
-          <p>Please note that payment gateway charges (approx <strong>2–3% of the order value</strong>) are non-refundable. For example, if you placed an order of ₹100 and cancelled it, the refund amount will be ₹97–₹98. This deduction is due to Razorpay’s non-refundable transaction fee.</p>
+          <p>Please note that payment gateway charges (approx <strong>2–3% of the order value</strong>) are non-refundable. For example, if you placed an order of ₹100 and cancelled it, the refund amount will be ₹97–₹98. This deduction is due to Razorpay's non-refundable transaction fee.</p>
 
           <h3>Contact Us</h3>
   <p>
@@ -2100,11 +2266,11 @@
 
     <section class="page" id="termsPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to Home
         </div>
         <div class="policy-content">
           <h2>Terms & Conditions</h2>
@@ -2136,11 +2302,11 @@
 
     <section class="page" id="shippingPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height:20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to Home
         </div>
         <div class="policy-content">
           <h2>Shipping Policy</h2>
@@ -2174,11 +2340,11 @@
 
     <section class="page" id="privacyPage">
       <div class="policy-page">
-        <div class="back-button" onclick="showPage('productsPage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          Back to Products
+          Back to Home
         </div>
         <div class="policy-content">
           <h2>Privacy Policy</h2>
@@ -2244,7 +2410,13 @@
           <a href="https://www.instagram.com/buyzo.cart?igsh=MW5lMmpqcnYwOXduaA==" target="_blank" class="social-icon" title="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2ZM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm5.25-.75a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"/></svg></a>
           <a href="https://www.facebook.com/share/1ErTUZySbt/" target="_blank" class="social-icon" title="Facebook"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.5 9.9v-7h-2v-3h2v-2.3c0-2 1.2-3.2 3-3.2.9 0 1.8.1 1.8.1v2h-1c-1 0-1.3.6-1.3 1.2V12h2.6l-.4 3h-2.2v7A10 10 0 0 0 22 12"/></svg></a>
           <a href="https://t.me/buyzocartshop" target="_blank" class="social-icon" title="Telegram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M9.999 15.17 9.95 20c.64 0 .92-.27 1.26-.59l3.02-2.88 6.25 4.55c1.15.63 1.97.3 2.26-1.06L23.95 3.47c.37-1.48-.54-2.06-1.65-1.7L1.62 9.63c-1.45.57-1.43 1.36-.25 1.72l5.91 1.84 13.69-8.65c.65-.4 1.25-.18.76.25"/></svg></a>
-          <a href="https://www.youtube.com/@BuyzoCard" target="_blank" class="social-icon" title="YouTube"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M21.8 8s-.2-1.4-.8-2c-.7-.8-1.5-.8-1.9-.9C16.4 5 12 5 12 5h0s-4.4 0-7.1.1c-.5 0-1.2 0-1.9.9-.6.6-.8 2-.8 2S2 9.7 2 11.4v1.3c0 1.7.2 3.4.2 3.4s.2 1.4.8 2c.7.8 1.7.8 2.1.9 1.6.2 6.9.2 6.9.2s4.4 0 7.1-.1c.5 0 1.2 0 1.9-.9.6-.6.8-2 .8-2s.2-1.7.2-3.4v-1.3c0-1.7-.2-3.4-.2-3.4ZM10 14.7V9.3l5.7 2.7L10 14.7Z"/></svg></a>
+          
+<a href="https://www.youtube.com/@BuyzoCard" target="_blank" class="social-icon" title="YouTube">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M23.5 6.2a2.9 2.9 0 0 0-2-2C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.7a2.9 2.9 0 0 0-2 2A30 30 0 0 0 0 12a30 30 0 0 0 .5 5.8 2.9 2.9 0 0 0 2 2c1.9.7 9.5.7 9.5.7s7.6 0 9.5-.7a2.9 2.9 0 0 0 2-2A30 30 0 0 0 24 12a30 30 0 0 0-.5-5.8zM10 15.5V8.5l6 3.5-6 3.5z"/>
+  </svg>
+</a>
+
         </div>
         
         <div style="margin-top:16px;font-size:14px">
@@ -2305,7 +2477,7 @@
     <div class="alert-modal">
       <div class="alert-icon">⚠️</div>
       <h3>Payment Gateway Charges</h3>
-      <p id="alertMessage">Please note that payment gateway charges (approx 2–3% of the order value) are non-refundable. This deduction is due to Razorpay's non-refundable transaction fee.</p>
+      <p id="alertMessage">Please note that payment gateway charges (approx ₹8) are non-refundable if you cancel this order. Do you want to proceed?</p>
       <div class="alert-modal-buttons">
         <button class="btn secondary" id="alertModalCancel">Cancel</button>
         <button class="btn" id="alertModalConfirm">Yes</button>
@@ -2360,16 +2532,6 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     
-    // Initialize Firestore with offline persistence
-    const db = firebase.firestore();
-    db.enablePersistence()
-      .then(() => {
-        console.log("Offline persistence enabled");
-      })
-      .catch((err) => {
-        console.error("Error enabling offline persistence:", err);
-      });
-    
     // Initialize Realtime Database
     const realtimeDB = firebase.database();
 
@@ -2379,14 +2541,14 @@
     let PRODUCTS = [];
     let productsLoaded = false;
 
-    // Function to load products from Firestore with offline support
-    function loadProductsFromFirestore() {
+    // Function to load products from Realtime Database with offline support
+    function loadProductsFromRealtimeDB() {
       // First try to load from localStorage
       const cachedProducts = localStorage.getItem('cached_products');
       if (cachedProducts) {
         try {
           PRODUCTS = JSON.parse(cachedProducts);
-          renderProducts();
+          renderHomePreview();
           renderProductSlider();
           productsLoaded = true;
         } catch (e) {
@@ -2394,11 +2556,23 @@
         }
       }
 
-      // Then try to load from Firestore
-      db.collection("products").onSnapshot((snapshot) => {
+      // Then try to load from Realtime Database
+      const productsRef = realtimeDB.ref('products');
+      productsRef.on('value', (snapshot) => {
         const products = [];
-        snapshot.forEach((doc) => {
-          products.push({ id: doc.id, ...doc.data() });
+        snapshot.forEach((childSnapshot) => {
+          const productData = childSnapshot.val();
+          // Map the product data to the expected structure
+          products.push({
+            id: childSnapshot.key,
+            title: productData.name || 'No Name',
+            price: productData.price || 0,
+            desc: productData.description || '',
+            fullDesc: productData.fullDesc || productData.description || '',
+            images: productData.images ? productData.images : (productData.image ? [productData.image] : []),
+            sizes: productData.sizes || ['S', 'M', 'L'],
+            category: productData.category || 'Uncategorized'
+          });
         });
         
         // Update the PRODUCTS array
@@ -2409,75 +2583,45 @@
         
         // Update UI if not already loaded
         if (!productsLoaded) {
-          renderProducts();
+          renderHomePreview();
           renderProductSlider();
           productsLoaded = true;
+        } else {
+          // Update the home preview if products are updated
+          renderHomePreview();
         }
         
-        console.log("Products loaded from Firestore");
+        console.log("Products loaded from Realtime Database");
       }, (error) => {
-        console.error("Error loading products from Firestore:", error);
-        // If Firestore fails and we don't have cached products, use the demo data
+        console.error("Error loading products from Realtime Database:", error);
+        // If Realtime Database fails and we don't have cached products, use the demo data
         if (!cachedProducts) {
           PRODUCTS = getDemoProducts();
-          renderProducts();
+          renderHomePreview();
           renderProductSlider();
           productsLoaded = true;
         }
       });
     }
 
-    // Fallback demo products in case Firestore is not available
+    // Fallback demo products in case Realtime Database is not available
     function getDemoProducts() {
       return [
-        {id:1,title:"Wireless Earbuds Pro",price:1299,desc:"ENC mic, 24h battery",fullDesc:"High-quality wireless earbuds with environmental noise cancellation microphone and 24 hours of battery life. Perfect for calls, music, and podcasts.",images:[
+        {id:"1",title:"Wireless Earbuds Pro",price:1299,desc:"ENC mic, 24h battery",fullDesc:"High-quality wireless earbuds with environmental noise cancellation microphone and 24 hours of battery life. Perfect for calls, music, and podcasts.",images:[
           "https://images.unsplash.com/photo-1598335622921-7c1b84a3c2bf?auto=format&fit=crop&w=1000&q=60",
           "https://images.unsplash.com/photo-1518445691220-6b95fcd0a2df?auto=format&fit=crop&w=1000&q=60",
           "https://images.unsplash.com/photo-1518441902113-c1d0d0f70ed2?auto=format&fit=crop&w=1000&q=60"
         ],sizes:["—","—"], category:"Men's Acc"},
-        {id:2,title:"Classic Cotton T‑Shirt",price:499,desc:"100% cotton, regular fit",fullDesc:"Comfortable 100% cotton t-shirt with regular fit. Available in multiple colors. Perfect for everyday wear.",images:[
+        {id:"2",title:"Classic Cotton T‑Shirt",price:499,desc:"100% cotton, regular fit",fullDesc:"Comfortable 100% cotton t-shirt with regular fit. Available in multiple colors. Perfect for everyday wear.",images:[
           "https://images.unsplash.com/photo-1520971282009-2c7e9f7d8dbe?auto=format&fit=crop&w=1000&q=60",
           "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1000&q=60"
         ],sizes:["S","M","L","XL"], category:"Topwear"},
-        {id:3,title:"High‑Waist Denim Jeans",price:999,desc:"Stretch denim, comfy",fullDesc:"Stylish high-waist denim jeans made with stretchable material for maximum comfort. Perfect for casual outings.",images:[
-          "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=1000&q=60",
-          "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["26","28","30"], category:"Bottomwear"},
-        {id:4,title:"Mesh Sneakers",price:1499,desc:"Breathable, light",fullDesc:"Lightweight mesh sneakers with breathable fabric. Perfect for running, gym, or casual wear. Available in multiple sizes.",images:[
-          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=60",
-          "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["6","7","8","9","10"], category:"Casual shoes"},
-        {id:5,title:"Leather Crossbody Bag",price:1999,desc:"Genuine leather, multiple pockets",fullDesc:"Elegant crossbody bag made from genuine leather with multiple compartments for organized storage. Perfect for everyday use.",images:[
-          "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1000&q=60",
-          "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["—"], category:"Backt"},
-        {id:6,title:"Smart Fitness Band",price:2499,desc:"Heart rate monitor, waterproof",fullDesc:"Advanced fitness band with heart rate monitoring, sleep tracking, and waterproof design. Tracks your activity throughout the day.",images:[
-          "https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?auto=format&fit=crop&w=1000&q=60",
-          "https://images.unsplash.com/photo-158612225000-92e24acc1c32?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["S","M","L"], category:"Watches"},
-        {id:7,title:"Stainless Steel Water Bottle",price:799,desc:"Insulated, 1L capacity",fullDesc:"Premium stainless steel water bottle that keeps your drinks hot for 12 hours or cold for 24 hours. Leak-proof design.",images:[
-          "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1000&q=60",
-          "https://images.unsplash.com/photo-1603400521630-9f2de124b33b?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["—"], category:"Men's Acc"},
-        {id:8,title:"Wireless Charging Pad",price:1299,desc:"Fast charging, compatible with all devices",fullDesc:"Universal wireless charging pad that supports fast charging for all Qi-enabled devices. Sleek design with non-slip surface.",images:[
-          "https://images.unsplash.com/photo-1609091839311-d5365f2e0c5a?auto=format&fit=crop&w=1000&q=60",
-          "https://images.unsplash.com-1610945415295-d9bbf067e59c?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["—"], category:"Men's Acc"},
-        {id:9,title:"Silk Saree",price:2999,desc:"Pure silk, elegant design",fullDesc:"Beautiful pure silk saree with elegant design. Perfect for weddings and special occasions.",images:[
-          "https://images.unsplash.com/photo-1585487000160-6ebcfcec0b71?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["Free Size"], category:"Sarees"},
-        {id:10,title:"Designer Kurta Set",price:1999,desc:"3-piece set, embroidered",fullDesc:"Elegant 3-piece kurta set with intricate embroidery. Includes kurta, dupatta, and bottoms.",images:[
-          "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["S", "M", "L"], category:"Kurta Sets"},
-        {id:11,title:"Winter Jacket",price:3499,desc:"Warm, insulated, waterproof",fullDesc:"High-quality winter jacket with insulation and waterproof exterior. Keeps you warm in extreme conditions.",images:[
-          "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["S", "M", "L", "XL"], category:"Winter Wear"},
-        {id:12,title:"Hardcase Trolley Bag",price:4999,desc:"Durable, 4 wheels, 68L",fullDesc:"Durable hardcase trolley bag with 4 spinner wheels and 68L capacity. Perfect for travel.",images:[
-          "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["—"], category:"Trolley Bags"},
-        {id:13,title:"Denim Shorts",price:899,desc:"Comfortable, casual",fullDesc:"Comfortable denim shorts for casual wear.",images:[
-          "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=1000&q=60"
-        ],sizes:["28", "30", "32"], category:"Bottor"}
+        {id:"3",title:"Running Sneakers",price:1999,desc:"Comfortable running shoes",fullDesc:"High-quality running sneakers with cushioned soles for maximum comfort during workouts or casual wear.",images:[
+          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=60"
+        ],sizes:["7","8","9","10"], category:"Footwear"},
+        {id:"4",title:"Smart Watch",price:3499,desc:"Fitness tracker with heart rate monitor",fullDesc:"Advanced smartwatch with fitness tracking, heart rate monitoring, and smartphone connectivity features.",images:[
+          "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1000&q=60"
+        ],sizes:["—","—"], category:"Men's Acc"}
       ];
     }
 
@@ -2492,10 +2636,15 @@
     let ordersViewed = false;
     let selectedRefundOrderIndex = null;
     let wishlist = [];
+    let savedUserInfo = {};
+    let selectedOrderIndex = null;
 
     // elements
     const productGrid = document.getElementById('productGrid');
+    const homeProductGrid = document.getElementById('homeProductGrid');
     const searchInput = document.getElementById('searchInput');
+    const homeSearchInput = document.getElementById('homeSearchInput');
+    const homeSearchResults = document.getElementById('homeSearchResults');
     const productSlider = document.getElementById('productSlider');
     const ordersNotification = document.getElementById('ordersNotification');
     const wishlistNotification = document.getElementById('wishlistNotification');
@@ -2517,6 +2666,52 @@
     function saveWishlist() {
       localStorage.setItem('wishlist', JSON.stringify(wishlist));
       updateWishlistNotification();
+    }
+
+    // Load user info from localStorage
+    function loadUserInfo() {
+      const savedInfo = localStorage.getItem('userInfo');
+      if (savedInfo) {
+        savedUserInfo = JSON.parse(savedInfo);
+      }
+    }
+
+    // Save user info to localStorage
+    function saveUserInfoToStorage() {
+      const userInfo = {
+        fullname: document.getElementById('fullname').value,
+        mobile: document.getElementById('mobile').value,
+        pincode: document.getElementById('pincode').value,
+        city: document.getElementById('city').value,
+        state: document.getElementById('state').value,
+        house: document.getElementById('house').value
+      };
+      
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      savedUserInfo = userInfo;
+      showToast('User information saved successfully!', 'success');
+    }
+
+    // Pre-fill user info form
+    function prefillUserInfo() {
+      if (savedUserInfo.fullname) {
+        document.getElementById('fullname').value = savedUserInfo.fullname;
+      }
+      if (savedUserInfo.mobile) {
+        document.getElementById('mobile').value = savedUserInfo.mobile;
+      }
+      if (savedUserInfo.pincode) {
+        document.getElementById('pincode').value = savedUserInfo.pincode;
+      }
+      if (savedUserInfo.city) {
+        document.getElementById('city').value = savedUserInfo.city;
+      }
+      if (savedUserInfo.state) {
+        document.getElementById('state').value = savedUserInfo.state;
+      }
+      if (savedUserInfo.house) {
+        document.getElementById('house').value = savedUserInfo.house;
+      }
     }
 
     // Update wishlist notification badge
@@ -2591,7 +2786,7 @@
       // Add click events to order buttons
       document.querySelectorAll('.orderBtn').forEach(btn => {
         btn.addEventListener('click', function() {
-          const productId = parseInt(this.getAttribute('data-id'));
+          const productId = this.getAttribute('data-id');
           startOrder(productId);
         });
       });
@@ -2599,7 +2794,7 @@
       // Add click events to remove buttons
       document.querySelectorAll('.removeWishlistBtn').forEach(btn => {
         btn.addEventListener('click', function() {
-          const productId = parseInt(this.getAttribute('data-id'));
+          const productId = this.getAttribute('data-id');
           if (removeFromWishlist(productId)) {
             renderWishlist();
           }
@@ -2729,30 +2924,98 @@
         });
     }
 
-    // render product cards with auto slider
-    function renderProducts(list=PRODUCTS){
+    // Render home preview
+    function renderHomePreview() {
+      if (!homeProductGrid) return;
+      homeProductGrid.innerHTML = '';
+      
+      // Take the first 4 products
+      const productsToShow = PRODUCTS.slice(0, 4);
+      
+      productsToShow.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const imgUrl = p.images && p.images.length ? p.images[0] : '';
+        card.innerHTML = `
+          <div class="product-img-slider" data-id="${p.id}" data-images='${JSON.stringify(p.images)}' data-idx="0" style="background-image:url('${imgUrl}')"></div>
+          <div class="card-body">
+            <div class="title">${p.title}</div>
+            <div class="price">₹${p.price}</div>
+            <div style="margin-top:auto;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn orderBtn" data-id="${p.id}">Order Now</button>
+              <button class="btn secondary viewBtn" data-id="${p.id}">View Details</button>
+            </div>
+          </div>
+        `;
+        
+        // Add click events to buttons
+        card.querySelector('.orderBtn').addEventListener('click', function(e) {
+          e.stopPropagation();
+          startOrder(p.id);
+        });
+        
+        card.querySelector('.viewBtn').addEventListener('click', function(e) {
+          e.stopPropagation();
+          showProductDetail(p.id);
+        });
+        
+        card.addEventListener('click', () => {
+          showProductDetail(p.id);
+        });
+        
+        homeProductGrid.appendChild(card);
+      });
+    }
+
+    // Render product slider
+    function renderProductSlider() {
+      if (!productSlider) return;
+      productSlider.innerHTML = '';
+      
+      // Use all products for the slider
+      PRODUCTS.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'slider-item';
+        const imgUrl = p.images && p.images.length ? p.images[0] : '';
+        item.innerHTML = `
+          <div class="slider-item-img" style="background-image:url('${imgUrl}')"></div>
+          <div class="slider-item-body">
+            <div class="slider-item-title">${p.title}</div>
+            <div class="slider-item-price">₹${p.price}</div>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => {
+          showProductDetail(p.id);
+        });
+        
+        productSlider.appendChild(item);
+      });
+    }
+
+    // Render products grid with search and category filtering
+    function renderProducts() {
+      if (!productGrid) return;
       productGrid.innerHTML = '';
-      if(list.length===0){
-        productGrid.innerHTML = '<div class="card-panel" style="text-align:center">No products found</div>';
+      
+      // Filter products based on search and category
+      const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+      const filteredProducts = PRODUCTS.filter(p => {
+        const matchesSearch = p.title.toLowerCase().includes(searchTerm) || 
+                             p.desc.toLowerCase().includes(searchTerm);
+        const matchesCategory = currentCategory === 'all' || p.category === currentCategory;
+        return matchesSearch && matchesCategory;
+      });
+      
+      if (filteredProducts.length === 0) {
+        productGrid.innerHTML = '<div class="card-panel center"><p>No products found. Try a different search term.</p></div>';
         return;
       }
       
-      // Filter by category if not 'all'
-      let filteredList = list;
-      if (currentCategory !== 'all') {
-        filteredList = list.filter(p => p.category === currentCategory);
-      }
-      
-      if(filteredList.length===0){
-        productGrid.innerHTML = '<div class="card-panel" style="text-align:center">No products found in this category</div>';
-        return;
-      }
-      
-      filteredList.forEach(p=>{
-        const card = document.createElement('div'); 
-        card.className='card';
-        const imgUrl = p.images && p.images.length? p.images[0] : '';
-        const isInWishlist = wishlist.includes(p.id);
+      filteredProducts.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const imgUrl = p.images && p.images.length ? p.images[0] : '';
         card.innerHTML = `
           <div class="product-img-slider" data-id="${p.id}" data-images='${JSON.stringify(p.images)}' data-idx="0" style="background-image:url('${imgUrl}')"></div>
           <div class="card-body">
@@ -2762,93 +3025,99 @@
             <div style="margin-top:auto;display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn orderBtn" data-id="${p.id}">Order Now</button>
               <button class="btn secondary viewBtn" data-id="${p.id}">View Details</button>
-              <button class="btn ${isInWishlist ? 'error' : 'secondary'} wishlistBtn" data-id="${p.id}">
-                ${isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              </button>
             </div>
           </div>
         `;
         productGrid.appendChild(card);
       });
-      startCardSliders();
-      
-      // Add click events to product cards
-      document.querySelectorAll('.card').forEach(card => {
-        card.addEventListener('click', function(e) {
-          // Don't trigger if clicking on buttons inside the card
-          if (!e.target.classList.contains('btn')) {
-            const productId = this.querySelector('.product-img-slider').getAttribute('data-id');
-            showProductDetail(productId);
-          }
-        });
-      });
       
       // Add click events to order buttons
       document.querySelectorAll('.orderBtn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation(); // Prevent card click event
-          const productId = parseInt(this.getAttribute('data-id'));
+        btn.addEventListener('click', function() {
+          const productId = this.getAttribute('data-id');
           startOrder(productId);
         });
       });
       
       // Add click events to view buttons
       document.querySelectorAll('.viewBtn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation(); // Prevent card click event
-          const productId = parseInt(this.getAttribute('data-id'));
+        btn.addEventListener('click', function() {
+          const productId = this.getAttribute('data-id');
           showProductDetail(productId);
         });
       });
       
-      // Add click events to wishlist buttons
-      document.querySelectorAll('.wishlistBtn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation(); // Prevent card click event
-          const productId = parseInt(this.getAttribute('data-id'));
-          
-          if (wishlist.includes(productId)) {
-            removeFromWishlist(productId);
-            this.textContent = 'Add to Wishlist';
-            this.classList.remove('error');
-            this.classList.add('secondary');
-          } else {
-            addToWishlist(productId);
-            this.textContent = 'Remove from Wishlist';
-            this.classList.remove('secondary');
-            this.classList.add('error');
+      // Add click events to product cards
+      document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', function(e) {
+          // Only trigger if the click wasn't on a button
+          if (!e.target.closest('button')) {
+            const productId = this.querySelector('.product-img-slider').getAttribute('data-id');
+            showProductDetail(productId);
           }
         });
       });
     }
 
-    // Render product slider
-    function renderProductSlider() {
-      productSlider.innerHTML = '';
+    // Render home search results
+    function renderHomeSearchResults() {
+      if (!homeSearchResults) return;
       
-      // Show first 8 products in the slider
-      const productsToShow = PRODUCTS.slice(0, 8);
+      const searchTerm = homeSearchInput ? homeSearchInput.value.toLowerCase() : '';
+      if (searchTerm.trim() === '') {
+        homeSearchResults.style.display = 'none';
+        homeProductGrid.style.display = 'grid';
+        return;
+      }
       
-      productsToShow.forEach(p => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
+      homeSearchResults.style.display = 'grid';
+      homeProductGrid.style.display = 'none';
+      homeSearchResults.innerHTML = '';
+      
+      const filteredProducts = PRODUCTS.filter(p => {
+        return p.title.toLowerCase().includes(searchTerm) || 
+               p.desc.toLowerCase().includes(searchTerm);
+      });
+      
+      if (filteredProducts.length === 0) {
+        homeSearchResults.innerHTML = '<div class="card-panel center"><p>No products found. Try a different search term.</p></div>';
+        return;
+      }
+      
+      filteredProducts.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'card';
         const imgUrl = p.images && p.images.length ? p.images[0] : '';
-        sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image:url('${imgUrl}')"></div>
-          <div class="slider-item-body">
-            <div class="slider-item-title">${p.title}</div>
-            <div class="slider-item-price">₹${p.price}</div>
+        card.innerHTML = `
+          <div class="product-img-slider" data-id="${p.id}" data-images='${JSON.stringify(p.images)}' data-idx="0" style="background-image:url('${imgUrl}')"></div>
+          <div class="card-body">
+            <div class="title">${p.title}</div>
+            <div class="price">₹${p.price} <span style="font-weight:500;color:var(--muted-light);font-size:14px;margin-left:6px;text-decoration:line-through">₹${Math.round(p.price*1.5)}</span></div>
+            <div class="badge">${p.desc}</div>
+            <div style="margin-top:auto;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn orderBtn" data-id="${p.id}">Order Now</button>
+              <button class="btn secondary viewBtn" data-id="${p.id}">View Details</button>
+            </div>
           </div>
         `;
         
-        sliderItem.addEventListener('click', () => {
+        // Add click events to buttons
+        card.querySelector('.orderBtn').addEventListener('click', function(e) {
+          e.stopPropagation();
+          startOrder(p.id);
+        });
+        
+        card.querySelector('.viewBtn').addEventListener('click', function(e) {
+          e.stopPropagation();
           showProductDetail(p.id);
         });
         
-        productSlider.appendChild(sliderItem);
+        card.addEventListener('click', () => {
+          showProductDetail(p.id);
+        });
+        
+        homeSearchResults.appendChild(card);
       });
-      
-      // Removed slider navigation as requested
     }
 
     // Show product detail page
@@ -2857,6 +3126,7 @@
       if (!product) return;
       
       selectedProduct = product;
+      detailImageIndex = 0;
       
       // Update product detail page
       document.getElementById('detailTitle').textContent = product.title;
@@ -2864,475 +3134,188 @@
       document.getElementById('detailDesc').textContent = product.desc;
       document.getElementById('detailFullDesc').textContent = product.fullDesc;
       
-      // Set up product meta info
-      const metaInfo = `
-        <p><strong>Category:</strong> ${product.category}</p>
+      // Update product details meta
+      const detailMeta = document.getElementById('detailMeta');
+      detailMeta.innerHTML = `
+        <p><strong>Category:</strong> ${product.category || 'Uncategorized'}</p>
         <p><strong>Available Sizes:</strong> ${product.sizes.join(', ')}</p>
-        <p><strong>Material:</strong> High-quality materials for durability and comfort</p>
-        <p><strong>Warranty:</strong> 6 months manufacturer warranty</p>
-        <p><strong>Delivery:</strong> Usually delivered in 5-7 business days</p>
+        <p><strong>Material:</strong> High-quality materials for comfort and durability</p>
       `;
-      document.getElementById('detailMeta').innerHTML = metaInfo;
       
-      // Set up product images with carousel
-      setupDetailCarousel(product.images);
+      // Update product images
+      const detailMainImage = document.getElementById('detailMainImage');
+      const detailThumbnails = document.getElementById('detailThumbnails');
       
-      // Set up order button
-      document.getElementById('detailOrderBtn').onclick = function() {
-        startOrder(productId);
-      };
+      if (product.images && product.images.length > 0) {
+        detailMainImage.style.backgroundImage = `url('${product.images[0]}')`;
+        detailThumbnails.innerHTML = '';
+        
+        product.images.forEach((img, index) => {
+          const thumb = document.createElement('div');
+          thumb.className = `product-detail-thumbnail ${index === 0 ? 'active' : ''}`;
+          thumb.style.backgroundImage = `url('${img}')`;
+          thumb.addEventListener('click', () => {
+            detailImageIndex = index;
+            detailMainImage.style.backgroundImage = `url('${img}')`;
+            document.querySelectorAll('.product-detail-thumbnail').forEach(t => t.classList.remove('active'));
+            thumb.classList.add('active');
+            updateCarouselDots();
+          });
+          detailThumbnails.appendChild(thumb);
+        });
+        
+        // Update carousel dots
+        updateCarouselDots();
+      }
       
-      // Set up wishlist button
-      const isInWishlist = wishlist.includes(productId);
-      const wishlistBtn = document.getElementById('detailWishlistBtn');
-      wishlistBtn.textContent = isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist';
-      wishlistBtn.className = isInWishlist ? 'btn error' : 'btn secondary';
-      wishlistBtn.onclick = function() {
-        if (isInWishlist) {
-          removeFromWishlist(productId);
-          wishlistBtn.textContent = 'Add to Wishlist';
-          wishlistBtn.className = 'btn secondary';
-        } else {
-          addToWishlist(productId);
-          wishlistBtn.textContent = 'Remove from Wishlist';
-          wishlistBtn.className = 'btn error';
-        }
-      };
+      // Update similar products
+      renderSimilarProducts(productId);
       
-      // Render similar products
-      renderSimilarProducts(product);
+      // Add event listeners to buttons
+      document.getElementById('detailOrderBtn').onclick = () => startOrder(productId);
+      document.getElementById('detailWishlistBtn').onclick = () => addToWishlist(productId);
       
-      // Show product detail page
       showPage('productDetailPage');
     }
 
+    // Update carousel dots for product detail
+    function updateCarouselDots() {
+      const product = selectedProduct;
+      if (!product || !product.images) return;
+      
+      const dotsContainer = document.getElementById('detailCarouselDots');
+      dotsContainer.innerHTML = '';
+      
+      product.images.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = `detail-carousel-dot ${index === detailImageIndex ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          detailImageIndex = index;
+          const detailMainImage = document.getElementById('detailMainImage');
+          detailMainImage.style.backgroundImage = `url('${product.images[index]}')`;
+          document.querySelectorAll('.product-detail-thumbnail').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.product-detail-thumbnail')[index].classList.add('active');
+          updateCarouselDots();
+        });
+        dotsContainer.appendChild(dot);
+      });
+    }
+
     // Render similar products
-    function renderSimilarProducts(currentProduct) {
+    function renderSimilarProducts(currentProductId) {
       const similarSlider = document.getElementById('similarProductsSlider');
       similarSlider.innerHTML = '';
       
-      // Find products in the same category (excluding the current product)
+      // Get products from the same category (excluding current product)
+      const currentProduct = PRODUCTS.find(p => p.id === currentProductId);
       const similarProducts = PRODUCTS.filter(p => 
-        p.category === currentProduct.category && p.id !== currentProduct.id
-      ).slice(0, 6); // Show up to 6 similar products
+        p.id !== currentProductId && 
+        p.category === currentProduct.category
+      ).slice(0, 6); // Limit to 6 products
       
       if (similarProducts.length === 0) {
-        // If no similar products, hide the section
-        document.querySelector('.similar-products').style.display = 'none';
-        return;
+        // If no similar products, show any other products
+        similarProducts.push(...PRODUCTS.filter(p => p.id !== currentProductId).slice(0, 6));
       }
       
-      // Show the section
-      document.querySelector('.similar-products').style.display = 'block';
-      
       similarProducts.forEach(p => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
+        const item = document.createElement('div');
+        item.className = 'slider-item';
         const imgUrl = p.images && p.images.length ? p.images[0] : '';
-        sliderItem.innerHTML = `
+        item.innerHTML = `
           <div class="slider-item-img" style="background-image:url('${imgUrl}')"></div>
-          <div class slider-item-body">
+          <div class="slider-item-body">
             <div class="slider-item-title">${p.title}</div>
             <div class="slider-item-price">₹${p.price}</div>
           </div>
         `;
         
-        sliderItem.addEventListener('click', () => {
+        item.addEventListener('click', () => {
           showProductDetail(p.id);
         });
         
-        similarSlider.appendChild(sliderItem);
+        similarSlider.appendChild(item);
       });
-    }
-
-    // Setup carousel for product detail page
-    function setupDetailCarousel(images) {
-      const mainImage = document.getElementById('detailMainImage');
-      const dotsContainer = document.getElementById('detailCarouselDots');
-      const prevBtn = mainImage.querySelector('.prev');
-      const nextBtn = mainImage.querySelector('.next');
-      
-      // Clear existing dots
-      dotsContainer.innerHTML = '';
-      
-      // Create dots
-      images.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = 'detail-carousel-dot' + (index === 0 ? ' active' : '');
-        dot.addEventListener('click', () => {
-          detailImageIndex = index;
-          updateDetailCarousel(images);
-        });
-        dotsContainer.appendChild(dot);
-      });
-      
-      // Previous button event
-      prevBtn.onclick = () => {
-        detailImageIndex = (detailImageIndex - 1 + images.length) % images.length;
-        updateDetailCarousel(images);
-      };
-      
-      // Next button event
-      nextBtn.onclick = () => {
-        detailImageIndex = (detailImageIndex + 1) % images.length;
-        updateDetailCarousel(images);
-      };
-      
-      // Initialize carousel
-      detailImageIndex = 0;
-      updateDetailCarousel(images);
-    }
-    
-    function updateDetailCarousel(images) {
-      const mainImage = document.getElementById('detailMainImage');
-      const dotsContainer = document.getElementById('detailCarouselDots');
-      
-      // Update main image
-      mainImage.style.backgroundImage = `url('${images[detailImageIndex]}')`;
-      
-      // Update dots
-      const dots = dotsContainer.querySelectorAll('.detail-carousel-dot');
-      dots.forEach((dot, index) => {
-        dot.classList.toggle('active', index === detailImageIndex);
-      });
-      
-      // Update thumbnails
-      const thumbnailsContainer = document.getElementById('detailThumbnails');
-      thumbnailsContainer.innerHTML = '';
-      
-      images.forEach((img, index) => {
-        const thumb = document.createElement('div');
-        thumb.className = `product-detail-thumbnail ${index === detailImageIndex ? 'active' : ''}`;
-        thumb.style.backgroundImage = `url('${img}')`;
-        thumb.addEventListener('click', () => {
-          detailImageIndex = index;
-          updateDetailCarousel(images);
-        });
-        thumbnailsContainer.appendChild(thumb);
-      });
-    }
-
-    // Show My Orders page
-    function showMyOrders() {
-      ordersViewed = true;
-      updateOrdersNotification();
-      
-      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
-      const ordersList = document.getElementById('ordersList');
-      const noOrders = document.getElementById('noOrders');
-      
-      ordersList.innerHTML = '';
-      
-      if (orders.length === 0) {
-        noOrders.style.display = 'block';
-        return;
-      }
-      
-      noOrders.style.display = 'none';
-      
-      // Sort orders by timestamp (newest first)
-      orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
-      orders.forEach((order, index) => {
-        const product = PRODUCTS.find(p => p.id === order.productId);
-        if (!product) return;
-        
-        const orderDate = new Date(order.timestamp);
-        const estimatedDelivery = new Date(orderDate);
-        estimatedDelivery.setDate(orderDate.getDate() + 7); // 7 days from order date
-        
-        const isCancellable = (Date.now() - orderDate.getTime()) < (24 * 60 * 60 * 1000); // Within 24 hours
-        const isShipped = (Date.now() - orderDate.getTime()) > (2 * 24 * 60 * 60 * 1000); // Shipped after 2 days
-        const isDelivered = (Date.now() - orderDate.getTime()) > (7 * 24 * 60 * 60 * 1000); // Delivered after 7 days
-        
-        let status = 'Confirmed';
-        let statusClass = 'status-confirmed';
-        
-        if (isDelivered) {
-          status = 'Delivered';
-          statusClass = 'status-delivered';
-        } else if (isShipped) {
-          status = 'Shipped';
-          statusClass = 'status-shipped';
-        } else if (!isCancellable) {
-          status = 'Processing';
-          statusClass = 'status-confirmed';
-        }
-        
-        // Check if refund is available (within 3 days of delivery)
-        const isRefundAvailable = isDelivered && 
-                                 (!order.refundRequested) && 
-                                 (Date.now() - new Date(orderDate.getTime() + 7 * 24 * 60 * 60 * 1000).getTime()) < (3 * 24 * 60 * 60 * 1000);
-        
-        const orderCard = document.createElement('div');
-        orderCard.className = 'order-card';
-        orderCard.innerHTML = `
-          <div class="order-header">
-            <div>
-              <div class="order-id">Order #${orders.length - index}</div>
-              <div class="order-date">Placed on ${orderDate.toLocaleDateString()} at ${orderDate.toLocaleTimeString()}</div>
-              <div class="order-estimated">Estimated delivery: ${estimatedDelivery.toLocaleDateString()}</div>
-            </div>
-            <span class="order-status ${statusClass}">${status}</span>
-          </div>
-          
-          <div class="order-details">
-            <div class="order-product-image" style="background-image:url('${product.images[0]}')"></div>
-            <div class="order-product-info">
-              <div class="order-product-title">${product.title}</div>
-              <div class="order-product-price">₹${product.price} x ${order.qty}</div>
-              <div class="order-product-meta">
-                Size: ${order.size} | Qty: ${order.qty}
-              </div>
-            </div>
-          </div>
-          
-          ${isDelivered ? `
-            <div class="delivery-congrats">
-              <div class="delivery-congrats-icon">🎉</div>
-              <div>Congratulations! Your order has been successfully delivered.</div>
-            </div>
-          ` : ''}
-          
-          ${order.refundRequested ? `
-            <div class="refund-section">
-              <div class="refund-title">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                Refund Request Submitted
-              </div>
-              <div class="refund-note">
-                Your refund request has been received and is being processed. We will contact you within 24 hours.
-              </div>
-            </div>
-          ` : ''}
-          
-          ${isRefundAvailable ? `
-            <div class="refund-section">
-              <div class="refund-title">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
-                  <path d="M12 18V6"></path>
-                </svg>
-                Not satisfied with your product?
-              </div>
-              <div class="refund-note">
-                You can request a refund within 3 days of delivery if you're not satisfied with your purchase.
-              </div>
-              <div class="refund-time-left">
-                Refund available for: ${Math.floor((3 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(orderDate.getTime() + 7 * 24 * 60 * 60 * 1000).getTime())) / (24 * 60 * 60 * 1000))} more days
-              </div>
-            </div>
-          ` : ''}
-          
-          <div class="order-actions">
-            ${isCancellable ? `
-              <button class="btn error cancel-order" data-index="${index}">Cancel Order</button>
-            ` : ''}
-            ${isRefundAvailable ? `
-              <button class="btn refund-order" data-index="${index}">Request Refund</button>
-            ` : ''}
-            <button class="btn secondary view-order-details" data-index="${index}">View Details</button>
-          </div>
-        `;
-        
-        ordersList.appendChild(orderCard);
-      });
-      
-      // Add event listeners to cancel buttons
-      document.querySelectorAll('.cancel-order').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const index = parseInt(this.getAttribute('data-index'));
-          showCancellationModal(index);
-        });
-      });
-      
-      // Add event listeners to refund buttons
-      document.querySelectorAll('.refund-order').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const index = parseInt(this.getAttribute('data-index'));
-          showRefundModal(index);
-        });
-      });
-      
-      // Add event listeners to view details buttons
-      document.querySelectorAll('.view-order-details').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const index = parseInt(this.getAttribute('data-index'));
-          viewOrderDetails(index);
-        });
-      });
-    }
-
-    // Show cancellation modal with reason selection
-    function showCancellationModal(index) {
-      selectedCancelOrderIndex = index;
-      const modal = document.getElementById('cancellationModal');
-      modal.classList.add('active');
-      
-      // Clear any previously selected reasons
-      document.querySelectorAll('input[name="cancelReason"]').forEach(radio => {
-        radio.checked = false;
-      });
-    }
-
-    // Close cancellation modal
-    function closeCancellationModal() {
-      const modal = document.getElementById('cancellationModal');
-      modal.classList.remove('active');
-      selectedCancelOrderIndex = null;
-    }
-
-    // Confirm order cancellation with selected reason
-    function confirmCancellation() {
-      const selectedReason = document.querySelector('input[name="cancelReason"]:checked');
-      if (!selectedReason) {
-        alert('Please select a reason for cancellation.');
-        return;
-      }
-      
-      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
-      const order = orders[selectedCancelOrderIndex];
-      const product = PRODUCTS.find(p => p.id === order.productId);
-      
-      // Calculate refund amount with deduction
-      const orderAmount = product.price * order.qty;
-      const deductionPercentage = 2 + Math.random(); // 2-3% deduction
-      const deductionAmount = Math.round(orderAmount * (deductionPercentage / 100));
-      const refundAmount = orderAmount - deductionAmount;
-      
-      // Show confirmation modal with Cancel and Yes buttons
-      showAlertModal(
-        `Please note that payment gateway charges (approx ${deductionPercentage.toFixed(1)}% of the order value) are non-refundable. For your order of ₹${orderAmount}, the refund amount will be ₹${refundAmount}. This deduction is due to Razorpay's non-refundable transaction fee. Do you want to proceed?`,
-        function() {
-          // This is the confirmation callback when user clicks "Yes"
-          orders.splice(selectedCancelOrderIndex, 1);
-          localStorage.setItem('demo_orders', JSON.stringify(orders));
-          
-          showToast(`Order cancelled successfully! Refund of ₹${refundAmount} will be processed in 5-7 working days.`);
-          closeCancellationModal();
-          showMyOrders(); // Refresh the orders view
-        }
-      );
-    }
-
-    // View order details
-    function viewOrderDetails(index) {
-      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
-      const order = orders[index];
-      const product = PRODUCTS.find(p => p.id === order.productId);
-      
-      if (!product) return;
-      
-      // Create a modal or page to show order details
-      alert(`Order Details:
-Order ID: #${orders.length - index}
-Product: ${product.title}
-Size: ${order.size}
-Quantity: ${order.qty}
-Price: ₹${product.price}
-Total: ₹${product.price * order.qty}
-Order Date: ${new Date(order.timestamp).toLocaleString()}
-Customer: ${order.fullname}
-Mobile: ${order.mobile}
-Address: ${order.house}, ${order.city}, ${order.state} - ${order.pincode}
-Payment Method: ${order.payment === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on Delivery'}`);
     }
 
     // Start order process
     function startOrder(productId) {
-      const product = PRODUCTS.find(p=>p.id===productId);
-      if(!product) return;
+      const product = PRODUCTS.find(p => p.id === productId);
+      if (!product) return;
       
       selectedProduct = product;
       orderDraft.productId = productId;
-      
-      // Reset order draft
-      orderDraft.size = null;
       orderDraft.qty = 1;
+      orderDraft.size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : '—';
+      currentImageIndex = 0;
       
-      // Update order page with product details
+      // Update selected product card
       document.getElementById('spTitle').textContent = product.title;
       document.getElementById('spPrice').textContent = `₹${product.price}`;
       document.getElementById('spDesc').textContent = product.desc;
       document.getElementById('spFullDesc').textContent = product.fullDesc;
       
-      // Setup gallery
-      setupGallery(product.images);
-      
-      // Setup size options
+      // Update size options
       const sizeSelect = document.getElementById('sizeSelect');
-      sizeSelect.innerHTML = '<option value="">Select size</option>';
-      product.sizes.forEach(size => {
-        const option = document.createElement('option');
-        option.value = size;
-        option.textContent = size;
-        sizeSelect.appendChild(option);
-      });
+      sizeSelect.innerHTML = '';
+      if (product.sizes && product.sizes.length > 0) {
+        product.sizes.forEach(size => {
+          const option = document.createElement('option');
+          option.value = size;
+          option.textContent = size;
+          sizeSelect.appendChild(option);
+        });
+        sizeSelect.value = orderDraft.size;
+      } else {
+        sizeSelect.innerHTML = '<option value="—">—</option>';
+      }
       
-      // Reset quantity to 1
-      document.getElementById('qtySelect').value = 1;
+      // Update product images
+      const galleryMain = document.getElementById('galleryMain');
+      if (product.images && product.images.length > 0) {
+        galleryMain.style.backgroundImage = `url('${product.images[0]}')`;
+        
+        // Update carousel dots
+        const dotsContainer = galleryMain.querySelector('.carousel-dots');
+        dotsContainer.innerHTML = '';
+        
+        product.images.forEach((_, index) => {
+          const dot = document.createElement('div');
+          dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+          dot.addEventListener('click', () => {
+            currentImageIndex = index;
+            galleryMain.style.backgroundImage = `url('${product.images[index]}')`;
+            updateCarouselDots();
+          });
+          dotsContainer.appendChild(dot);
+        });
+      }
       
-      // Show order page
       showPage('orderPage');
     }
 
-    // Setup gallery for product images
-    function setupGallery(images) {
-      const galleryMain = document.getElementById('galleryMain');
-      const prevBtn = galleryMain.querySelector('.prev');
-      const nextBtn = galleryMain.querySelector('.next');
-      const dotsContainer = galleryMain.querySelector('.carousel-dots');
+    // Update carousel dots
+    function updateCarouselDots() {
+      const product = selectedProduct;
+      if (!product || !product.images) return;
       
-      // Clear existing dots
+      const dotsContainer = document.querySelector('.carousel-dots');
       dotsContainer.innerHTML = '';
       
-      // Create dots
-      images.forEach((_, index) => {
+      product.images.forEach((_, index) => {
         const dot = document.createElement('div');
-        dot.className = 'carousel-dot' + (index === 0 ? ' active' : '');
+        dot.className = `carousel-dot ${index === currentImageIndex ? 'active' : ''}`;
         dot.addEventListener('click', () => {
           currentImageIndex = index;
-          updateGallery(images);
+          const galleryMain = document.getElementById('galleryMain');
+          galleryMain.style.backgroundImage = `url('${product.images[index]}')`;
+          updateCarouselDots();
         });
         dotsContainer.appendChild(dot);
       });
-      
-      // Previous button event
-      prevBtn.onclick = () => {
-        currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
-        updateGallery(images);
-      };
-      
-      // Next button event
-      nextBtn.onclick = () => {
-        currentImageIndex = (currentImageIndex + 1) % images.length;
-        updateGallery(images);
-      };
-      
-      // Initialize gallery
-      currentImageIndex = 0;
-      updateGallery(images);
-    }
-    
-    function updateGallery(images) {
-      const galleryMain = document.getElementById('galleryMain');
-      const dotsContainer = galleryMain.querySelector('.carousel-dots');
-      
-      // Update main image
-      galleryMain.style.backgroundImage = `url('${images[currentImageIndex]}')`;
-      
-      // Update dots
-      const dots = dotsContainer.querySelectorAll('.carousel-dot');
-      dots.forEach((dot, index) => {
-        dot.classList.toggle('active', index === currentImageIndex);
-      });
     }
 
-    // Show page
+    // Show page function
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
@@ -3345,334 +3328,574 @@ Payment Method: ${order.payment === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on 
       // Close mobile menu if open
       closeMenu();
       
+      // If showing products page, render it
+      if (pageId === 'productsPage') {
+        renderProducts();
+      }
+      
+      // If showing home page, render it
+      if (pageId === 'homePage') {
+        renderHomePreview();
+        homeSearchResults.style.display = 'none';
+        homeProductGrid.style.display = 'grid';
+      }
+      
       // If showing wishlist page, render it
       if (pageId === 'wishlistPage') {
         renderWishlist();
       }
+      
+      // If showing user page, pre-fill with saved info
+      if (pageId === 'userPage') {
+        prefillUserInfo();
+      }
+      
+      // If showing my orders page, render it
+      if (pageId === 'myOrdersPage') {
+        showMyOrders();
+      }
     }
 
-    // Initialize card sliders
-    function startCardSliders() {
-      document.querySelectorAll('.product-img-slider').forEach(slider => {
-        const images = JSON.parse(slider.getAttribute('data-images'));
-        let idx = 0;
+    // Show my orders
+    function showMyOrders() {
+      ordersViewed = true;
+      updateOrdersNotification();
+      
+      const ordersList = document.getElementById('ordersList');
+      const noOrders = document.getElementById('noOrders');
+      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
+      
+      ordersList.innerHTML = '';
+      
+      if (orders.length === 0) {
+        noOrders.style.display = 'block';
+        return;
+      }
+      
+      noOrders.style.display = 'none';
+      
+      // Show orders in reverse order (newest first)
+      orders.reverse().forEach((order, index) => {
+        const product = PRODUCTS.find(p => p.id === order.productId);
+        if (!product) return;
         
-        // Add hover effect to cycle through images
-        slider.addEventListener('mouseenter', function() {
-          if (images.length <= 1) return;
-          
-          this.interval = setInterval(() => {
-            idx = (idx + 1) % images.length;
-            this.style.backgroundImage = `url('${images[idx]}')`;
-            this.setAttribute('data-idx', idx);
-          }, 2000);
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
+        orderCard.setAttribute('data-index', orders.length - 1 - index); // Store original index
+        
+        // Format date
+        const orderDate = new Date(order.timestamp);
+        const formattedDate = orderDate.toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
         });
         
-        slider.addEventListener('mouseleave', function() {
-          if (this.interval) {
-            clearInterval(this.interval);
-            this.style.backgroundImage = `url('${images[0]}')`;
-            this.setAttribute('data-idx', 0);
+        // Determine status and estimated delivery
+        const statusInfo = getOrderStatusInfo(order);
+        
+        orderCard.innerHTML = `
+          <div class="order-header">
+            <div>
+              <div class="order-id">Order #${orders.length - index}</div>
+              <div class="order-date">Placed on ${formattedDate}</div>
+              <div class="order-estimated">${statusInfo.estimated}</div>
+            </div>
+            <div class="order-status ${statusInfo.class}">${statusInfo.text}</div>
+          </div>
+          <div class="order-details">
+            <div class="order-product-image" style="background-image:url('${product.images && product.images.length > 0 ? product.images[0] : ''}')"></div>
+            <div class="order-product-info">
+              <div class="order-product-title">${product.title}</div>
+              <div class="order-product-price">₹${product.price} × ${order.qty}</div>
+              <div class="order-product-meta">Size: ${order.size} | Payment: ${order.payment === 'cod' ? 'Cash on Delivery' : 'Prepaid'}</div>
+              <div class="order-product-meta">Delivery to: ${order.house}, ${order.city}, ${order.pincode}</div>
+            </div>
+          </div>
+          <div class="order-actions">
+            ${statusInfo.canCancel ? `<button class="btn error cancelOrderBtn">Cancel Order</button>` : ''}
+            ${statusInfo.canRefund ? `<button class="btn secondary refundBtn">Request Refund</button>` : ''}
+            <button class="btn secondary viewOrderBtn">View Details</button>
+          </div>
+        `;
+        
+        ordersList.appendChild(orderCard);
+        
+        // Add event listeners
+        orderCard.querySelector('.viewOrderBtn').addEventListener('click', () => {
+          showOrderDetail(orders.length - 1 - index);
+        });
+        
+        if (statusInfo.canCancel) {
+          orderCard.querySelector('.cancelOrderBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showCancellationModal(orders.length - 1 - index);
+          });
+        }
+        
+        if (statusInfo.canRefund) {
+          orderCard.querySelector('.refundBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showRefundModal(orders.length - 1 - index);
+          });
+        }
+        
+        // Make the whole card clickable
+        orderCard.addEventListener('click', (e) => {
+          // Only trigger if the click wasn't on a button
+          if (!e.target.closest('button')) {
+            showOrderDetail(orders.length - 1 - index);
           }
         });
       });
     }
 
-    // DOM ready
-    document.addEventListener('DOMContentLoaded', function() {
-      // Load wishlist
-      loadWishlist();
+    // Get order status information
+    function getOrderStatusInfo(order) {
+      const orderDate = new Date(order.timestamp);
+      const now = new Date();
+      const daysSinceOrder = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
       
-      // Load products from Firestore
-      loadProductsFromFirestore();
+      // Determine status based on days since order
+      let status, estimated, canCancel, canRefund;
       
-      // Update orders notification
-      updateOrdersNotification();
+      if (order.status === 'cancelled') {
+        status = { text: 'Cancelled', class: 'status-cancelled', estimated: 'Order was cancelled' };
+        canCancel = false;
+        canRefund = false;
+      } else if (order.status === 'refundRequested') {
+        status = { text: 'Refund Requested', class: 'status-cancelled', estimated: 'Refund request submitted' };
+        canCancel = false;
+        canRefund = false;
+      } else if (daysSinceOrder < 1) {
+        status = { text: 'Confirmed', class: 'status-confirmed', estimated: 'Estimated delivery: 5-7 days' };
+        canCancel = true;
+        canRefund = false;
+      } else if (daysSinceOrder < 3) {
+        status = { text: 'Shipped', class: 'status-shipped', estimated: 'Estimated delivery: 3-5 days' };
+        canCancel = false;
+        canRefund = false;
+      } else if (daysSinceOrder < 7) {
+        status = { text: 'In Transit', class: 'status-shipped', estimated: 'Estimated delivery: 1-2 days' };
+        canCancel = false;
+        canRefund = false;
+      } else {
+        status = { text: 'Delivered', class: 'status-delivered', estimated: 'Delivered on ' + new Date(orderDate.getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN') };
+        canCancel = false;
+        canRefund = daysSinceOrder <= 10; // Allow refund within 3 days of delivery
+      }
       
-      // Set up category pills - Removed default categories as requested
-      // Categories will be loaded from Firebase by admin
+      return {
+        text: status.text,
+        class: status.class,
+        estimated: status.estimated,
+        canCancel: canCancel,
+        canRefund: canRefund
+      };
+    }
+
+    // Show order detail
+    function showOrderDetail(index) {
+      selectedOrderIndex = index;
+      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
+      const order = orders[index];
       
-      // Set up search
-      searchInput.addEventListener('input', function() {
-        const term = this.value.toLowerCase().trim();
-        if(!term) return renderProducts();
-        
-        const filtered = PRODUCTS.filter(p => 
-          p.title.toLowerCase().includes(term) || 
-          p.desc.toLowerCase().includes(term) ||
-          (p.category && p.category.toLowerCase().includes(term))
-        );
-        renderProducts(filtered);
+      if (!order) return;
+      
+      const product = PRODUCTS.find(p => p.id === order.productId);
+      if (!product) return;
+      
+      const orderDetailContent = document.getElementById('orderDetailContent');
+      const statusInfo = getOrderStatusInfo(order);
+      
+      // Format dates
+      const orderDate = new Date(order.timestamp);
+      const formattedOrderDate = orderDate.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       });
       
+      const estimatedDeliveryDate = new Date(orderDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const formattedDeliveryDate = estimatedDeliveryDate.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      
+      orderDetailContent.innerHTML = `
+        <div class="order-detail-section">
+          <div class="order-detail-label">Order Status</div>
+          <div class="order-status ${statusInfo.class}" style="display:inline-block">${statusInfo.text}</div>
+          <div style="margin-top:8px;color:var(--muted)">${statusInfo.estimated}</div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Order Details</div>
+          <div class="order-detail-product">
+            <div class="order-detail-image" style="background-image:url('${product.images && product.images.length > 0 ? product.images[0] : ''}')"></div>
+            <div class="order-detail-product-info">
+              <div style="font-weight:600;font-size:18px">${product.title}</div>
+              <div style="color:var(--accent);font-weight:700;font-size:20px;margin:8px 0">₹${product.price} × ${order.qty} = ₹${product.price * order.qty}</div>
+              <div style="color:var(--muted)">Size: ${order.size} | Payment: ${order.payment === 'cod' ? 'Cash on Delivery' : 'Prepaid'}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Delivery Address</div>
+          <div class="order-detail-value">
+            ${order.fullname}<br>
+            ${order.house}<br>
+            ${order.city}, ${order.state} - ${order.pincode}<br>
+            Mobile: ${order.mobile}
+          </div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Order Information</div>
+          <div class="order-detail-value">
+            <div><strong>Order ID:</strong> #${orders.length - index}</div>
+            <div><strong>Order Date:</strong> ${formattedOrderDate}</div>
+            <div><strong>Estimated Delivery:</strong> ${formattedDeliveryDate}</div>
+            <div><strong>Payment Method:</strong> ${order.payment === 'cod' ? 'Cash on Delivery' : 'Prepaid (UPI/Card)'}</div>
+          </div>
+        </div>
+        
+        ${statusInfo.canCancel || statusInfo.canRefund ? `
+        <div class="order-detail-section">
+          <div class="order-detail-label">Order Actions</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            ${statusInfo.canCancel ? `<button class="btn error" id="detailCancelOrderBtn">Cancel Order</button>` : ''}
+            ${statusInfo.canRefund ? `<button class="btn secondary" id="detailRefundBtn">Request Refund</button>` : ''}
+          </div>
+        </div>
+        ` : ''}
+        
+        ${order.status === 'cancelled' ? `
+        <div class="refund-section">
+          <div class="refund-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            Order Cancelled
+          </div>
+          <div class="refund-note">This order was cancelled. If you paid online, your refund will be processed within 5-7 business days.</div>
+        </div>
+        ` : ''}
+        
+        ${order.status === 'refundRequested' ? `
+        <div class="refund-section">
+          <div class="refund-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Refund Request Submitted
+          </div>
+          <div class="refund-note">Your refund request has been submitted. We will process it within 24 hours and contact you for further details.</div>
+        </div>
+        ` : ''}
+        
+        ${statusInfo.text === 'Delivered' ? `
+        <div class="delivery-congrats">
+          <div class="delivery-congrats-icon">🎉</div>
+          <div>Your order has been delivered! We hope you enjoy your purchase.</div>
+        </div>
+        ` : ''}
+      `;
+      
+      // Add event listeners to action buttons
+      if (statusInfo.canCancel) {
+        document.getElementById('detailCancelOrderBtn').addEventListener('click', () => {
+          showCancellationModal(index);
+        });
+      }
+      
+      if (statusInfo.canRefund) {
+        document.getElementById('detailRefundBtn').addEventListener('click', () => {
+          showRefundModal(index);
+        });
+      }
+      
+      showPage('orderDetailPage');
+    }
+
+    // Show cancellation modal
+    function showCancellationModal(index) {
+      selectedCancelOrderIndex = index;
+      const modal = document.getElementById('cancellationModal');
+      modal.classList.add('active');
+      
+      // Clear any previously selected reason
+      document.querySelectorAll('input[name="cancelReason"]').forEach(radio => {
+        radio.checked = false;
+      });
+    }
+
+    // Close cancellation modal
+    function closeCancellationModal() {
+      const modal = document.getElementById('cancellationModal');
+      modal.classList.remove('active');
+      selectedCancelOrderIndex = null;
+    }
+
+    // Cancel order
+    function cancelOrder() {
+      const reason = document.querySelector('input[name="cancelReason"]:checked');
+      if (!reason) {
+        alert('Please select a reason for cancellation.');
+        return;
+      }
+      
+      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
+      const order = orders[selectedCancelOrderIndex];
+      
+      // Check if order can be cancelled (within 24 hours)
+      const orderDate = new Date(order.timestamp);
+      const now = new Date();
+      const hoursSinceOrder = (now - orderDate) / (1000 * 60 * 60);
+      
+      if (hoursSinceOrder > 24) {
+        showToast('This order can no longer be cancelled as it has been more than 24 hours since placement.', 'error');
+        closeCancellationModal();
+        return;
+      }
+      
+      // Update order status
+      orders[selectedCancelOrderIndex].status = 'cancelled';
+      orders[selectedCancelOrderIndex].cancellationReason = reason.value;
+      orders[selectedCancelOrderIndex].cancellationDate = new Date().toISOString();
+      
+      // Save to localStorage
+      localStorage.setItem('demo_orders', JSON.stringify(orders));
+      
+      showToast('Order cancelled successfully!', 'success');
+      closeCancellationModal();
+      
+      // Refresh orders view
+      if (document.getElementById('orderDetailPage').classList.contains('active')) {
+        showOrderDetail(selectedCancelOrderIndex);
+      } else {
+        showMyOrders();
+      }
+    }
+
+    // Initialize the app
+    function init() {
+      // Load data
+      loadProductsFromRealtimeDB();
+      loadWishlist();
+      loadUserInfo();
+      
+      // Set up event listeners for navigation
+      document.getElementById('openContactTop').addEventListener('click', () => showPage('contactPage'));
+      document.getElementById('openMyOrdersTop').addEventListener('click', () => {
+        showMyOrders();
+        showPage('myOrdersPage');
+      });
+      document.getElementById('openWishlistTop').addEventListener('click', () => showPage('wishlistPage'));
+      
+      // Set up search functionality
+      if (searchInput) {
+        searchInput.addEventListener('input', renderProducts);
+      }
+      
+      if (homeSearchInput) {
+        homeSearchInput.addEventListener('input', renderHomeSearchResults);
+      }
+      
       // Set up order process navigation
-      document.getElementById('toUserInfo').addEventListener('click', function() {
-        const sizeSelect = document.getElementById('sizeSelect');
-        if(!sizeSelect.value) {
-          alert('Please select a size');
-          return;
-        }
-        orderDraft.size = sizeSelect.value;
+      document.getElementById('toUserInfo').addEventListener('click', () => {
+        // Save size and quantity
+        orderDraft.size = document.getElementById('sizeSelect').value;
+        orderDraft.qty = parseInt(document.getElementById('qtySelect').value);
         showPage('userPage');
       });
       
-      document.getElementById('backToProducts').addEventListener('click', function() {
-        showPage('productsPage');
-      });
+      document.getElementById('backToProducts').addEventListener('click', () => showPage('productsPage'));
       
-      document.getElementById('editOrder').addEventListener('click', function() {
-        showPage('orderPage');
-      });
-      
-      document.getElementById('toPayment').addEventListener('click', function() {
-        const fullname = document.getElementById('fullname').value.trim();
-        const mobile = document.getElementById('mobile').value.trim();
-        const pincode = document.getElementById('pincode').value.trim();
-        const city = document.getElementById('city').value.trim();
-        const state = document.getElementById('state').value.trim();
-        const house = document.getElementById('house').value.trim();
+      document.getElementById('toPayment').addEventListener('click', () => {
+        // Save user info
+        orderDraft.fullname = document.getElementById('fullname').value;
+        orderDraft.mobile = document.getElementById('mobile').value;
+        orderDraft.pincode = document.getElementById('pincode').value;
+        orderDraft.city = document.getElementById('city').value;
+        orderDraft.state = document.getElementById('state').value;
+        orderDraft.house = document.getElementById('house').value;
         
-        // Basic validation
-        if(!fullname || !mobile || !pincode || !city || !state || !house) {
-          alert('Please fill all fields');
+        // Validate required fields
+        if (!orderDraft.fullname || !orderDraft.mobile || !orderDraft.pincode || 
+            !orderDraft.city || !orderDraft.state || !orderDraft.house) {
+          showToast('Please fill in all required fields.', 'error');
           return;
         }
         
-        if(mobile.length !== 10 || isNaN(mobile)) {
-          alert('Please enter a valid 10-digit mobile number');
+        // Validate mobile number
+        if (orderDraft.mobile.length !== 10 || isNaN(orderDraft.mobile)) {
+          showToast('Please enter a valid 10-digit mobile number.', 'error');
           return;
         }
         
-        if(pincode.length !== 6 || isNaN(pincode)) {
-          alert('Please enter a valid 6-digit pincode');
+        // Validate pincode
+        if (orderDraft.pincode.length !== 6 || isNaN(orderDraft.pincode)) {
+          showToast('Please enter a valid 6-digit pincode.', 'error');
           return;
         }
         
-        orderDraft.fullname = fullname;
-        orderDraft.mobile = mobile;
-        orderDraft.pincode = pincode;
-        orderDraft.city = city;
-        orderDraft.state = state;
-        orderDraft.house = house;
-        
-        // Update payment summary
+        // Update payment page summary
         const product = PRODUCTS.find(p => p.id === orderDraft.productId);
-        document.getElementById('sumProduct').textContent = product.title;
-        document.getElementById('sumQty').textContent = orderDraft.qty;
-        document.getElementById('sumPrice').textContent = `₹${product.price * orderDraft.qty}`;
-        document.getElementById('sumDel').textContent = '₹50';
-        document.getElementById('sumTotal').textContent = `₹${(product.price * orderDraft.qty) + 50}`;
+        if (product) {
+          document.getElementById('sumProduct').textContent = product.title;
+          document.getElementById('sumQty').textContent = orderDraft.qty;
+          document.getElementById('sumPrice').textContent = `₹${product.price * orderDraft.qty}`;
+          const total = product.price * orderDraft.qty + 50; // 50 delivery charge
+          document.getElementById('sumTotal').textContent = `₹${total}`;
+        }
         
         showPage('paymentPage');
       });
       
-      document.getElementById('payBack').addEventListener('click', function() {
-        showPage('userPage');
+      document.getElementById('editOrder').addEventListener('click', () => showPage('orderPage'));
+      document.getElementById('saveUserInfo').addEventListener('click', saveUserInfoToStorage);
+      
+      document.getElementById('payBack').addEventListener('click', () => showPage('userPage'));
+      
+      // Set up carousel controls for order page
+      document.querySelector('.carousel-control.prev').addEventListener('click', () => {
+        if (!selectedProduct || !selectedProduct.images) return;
+        currentImageIndex = (currentImageIndex - 1 + selectedProduct.images.length) % selectedProduct.images.length;
+        document.getElementById('galleryMain').style.backgroundImage = `url('${selectedProduct.images[currentImageIndex]}')`;
+        updateCarouselDots();
       });
       
-      document.getElementById('confirmOrder').addEventListener('click', function() {
-        const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-        orderDraft.payment = paymentMethod;
-        orderDraft.timestamp = new Date().toISOString();
-        
-        // Save order to localStorage
-        const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
-        orders.push({...orderDraft});
-        localStorage.setItem('demo_orders', JSON.stringify(orders));
-        
-        // Mark orders as not viewed
-        ordersViewed = false;
-        updateOrdersNotification();
-        
-        // Show success page
-        showPage('successPage');
+      document.querySelector('.carousel-control.next').addEventListener('click', () => {
+        if (!selectedProduct || !selectedProduct.images) return;
+        currentImageIndex = (currentImageIndex + 1) % selectedProduct.images.length;
+        document.getElementById('galleryMain').style.backgroundImage = `url('${selectedProduct.images[currentImageIndex]}')`;
+        updateCarouselDots();
       });
       
-      document.getElementById('goHome').addEventListener('click', function() {
-        showPage('productsPage');
+      // Set up carousel controls for product detail page
+      document.querySelector('.detail-carousel-control.prev').addEventListener('click', () => {
+        if (!selectedProduct || !selectedProduct.images) return;
+        detailImageIndex = (detailImageIndex - 1 + selectedProduct.images.length) % selectedProduct.images.length;
+        document.getElementById('detailMainImage').style.backgroundImage = `url('${selectedProduct.images[detailImageIndex]}')`;
+        document.querySelectorAll('.product-detail-thumbnail').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.product-detail-thumbnail')[detailImageIndex].classList.add('active');
+        updateCarouselDots();
       });
       
-      document.getElementById('viewOrders').addEventListener('click', function() {
-        showMyOrders();
-        showPage('myOrdersPage');
+      document.querySelector('.detail-carousel-control.next').addEventListener('click', () => {
+        if (!selectedProduct || !selectedProduct.images) return;
+        detailImageIndex = (detailImageIndex + 1) % selectedProduct.images.length;
+        document.getElementById('detailMainImage').style.backgroundImage = `url('${selectedProduct.images[detailImageIndex]}')`;
+        document.querySelectorAll('.product-detail-thumbnail').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.product-detail-thumbnail')[detailImageIndex].classList.add('active');
+        updateCarouselDots();
       });
       
       // Set up quantity controls
-      document.querySelector('.qty-minus').addEventListener('click', function() {
+      document.querySelector('.qty-minus').addEventListener('click', () => {
         const qtyInput = document.getElementById('qtySelect');
         let qty = parseInt(qtyInput.value);
-        if(qty > 1) {
-          qtyInput.value = qty - 1;
-          orderDraft.qty = qty - 1;
+        if (qty > 1) {
+          qty--;
+          qtyInput.value = qty;
         }
       });
       
-      document.querySelector('.qty-plus').addEventListener('click', function() {
+      document.querySelector('.qty-plus').addEventListener('click', () => {
         const qtyInput = document.getElementById('qtySelect');
         let qty = parseInt(qtyInput.value);
-        qtyInput.value = qty + 1;
-        orderDraft.qty = qty + 1;
+        qty++;
+        qtyInput.value = qty;
       });
       
-      // Set up policy page navigation
-      document.getElementById('openContactTop').addEventListener('click', function() {
-        showPage('contactPage');
-      });
-      
-      document.getElementById('openMyOrdersTop').addEventListener('click', function() {
-        showMyOrders();
-        showPage('myOrdersPage');
-      });
-      
-      document.getElementById('openWishlistTop').addEventListener('click', function() {
-        renderWishlist();
-        showPage('wishlistPage');
-      });
-      
-      // Set up cancellation modal
+      // Set up modal controls
       document.getElementById('cancelModalClose').addEventListener('click', closeCancellationModal);
-      document.getElementById('cancelModalConfirm').addEventListener('click', confirmCancellation);
+      document.getElementById('cancelModalConfirm').addEventListener('click', cancelOrder);
       
-      // Set up alert modal
       document.getElementById('alertModalCancel').addEventListener('click', closeAlertModal);
-      document.getElementById('alertModalConfirm').addEventListener('click', function() {
+      document.getElementById('alertModalConfirm').addEventListener('click', () => {
         if (alertModalConfirmCallback) {
           alertModalConfirmCallback();
         }
         closeAlertModal();
       });
       
-      // Set up refund modal
       document.getElementById('refundModalClose').addEventListener('click', closeRefundModal);
       document.getElementById('refundModalConfirm').addEventListener('click', submitRefundRequest);
       
-      // Set up category filtering
-      function setupCategoryFiltering() {
-        // Get unique categories from products
-        const categories = ['all', ...new Set(PRODUCTS.map(p => p.category).filter(c => c))];
-        
-        const categoriesContainer = document.getElementById('categoriesContainer');
-        categoriesContainer.innerHTML = '';
-        
-        categories.forEach(category => {
-          const pill = document.createElement('div');
-          pill.className = `category-pill ${category === 'all' ? 'active' : ''}`;
-          pill.textContent = category === 'all' ? 'All Products' : category;
-          pill.addEventListener('click', () => {
-            // Update active pill
-            document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            
-            // Filter products
-            currentCategory = category;
-            renderProducts();
-          });
-          categoriesContainer.appendChild(pill);
-        });
-      }
-      
-      // Setup category filtering when products are loaded
-      const checkProductsLoaded = setInterval(() => {
-        if (productsLoaded) {
-          setupCategoryFiltering();
-          clearInterval(checkProductsLoaded);
-        }
-      }, 100);
-    });
-
-    // Load categories from Firebase Realtime Database
-    function loadCategoriesFromFirebase() {
-      const categoriesRef = realtimeDB.ref('categories');
-      
-      categoriesRef.on('value', (snapshot) => {
-        const categories = snapshot.val();
-        if (categories) {
-          // Update the categories container
-          const categoriesContainer = document.getElementById('categoriesContainer');
-          categoriesContainer.innerHTML = '';
-          
-          // Add "All Products" category
-          const allPill = document.createElement('div');
-          allPill.className = 'category-pill active';
-          allPill.textContent = 'All Products';
-          allPill.addEventListener('click', () => {
-            document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-            allPill.classList.add('active');
-            currentCategory = 'all';
-            renderProducts();
-          });
-          categoriesContainer.appendChild(allPill);
-          
-          // Add other categories
-          categories.forEach(category => {
-            const pill = document.createElement('div');
-            pill.className = 'category-pill';
-            pill.textContent = category;
-            pill.addEventListener('click', () => {
-              document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-              pill.classList.add('active');
-              currentCategory = category;
-              renderProducts();
-            });
-            categoriesContainer.appendChild(pill);
-          });
-        }
-      }, (error) => {
-        console.error('Error loading categories:', error);
+      // Set up success page navigation
+      document.getElementById('goHome').addEventListener('click', () => showPage('homePage'));
+      document.getElementById('viewOrders').addEventListener('click', () => {
+        showMyOrders();
+        showPage('myOrdersPage');
       });
-    }
-
-    // Initialize category loading
-    loadCategoriesFromFirebase();
-  </script>
-  <script>
-    // ADDED: Code to load products from Firebase Realtime Database
-    const productList = document.getElementById("product-list");
-
-    function renderRealtimeDBProducts(products) {
-      productList.innerHTML = "";
-      for (let id in products) {
-        const product = products[id];
-        const imageSrc = product.imageUrl || product.image || product.photo || "";
+      
+      // Set up confirm order button with the new alert modal
+      document.getElementById('confirmOrder').addEventListener('click', () => {
+        // Get payment method
+        const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+        orderDraft.payment = paymentMethod;
+        orderDraft.timestamp = new Date().toISOString();
         
-        const card = document.createElement("div");
-        card.classList.add("card");
-        card.innerHTML = `
-          <div class="product-img-slider" style="background-image:url('${imageSrc}'); height: 220px; background-size: cover; background-position: center;"></div>
-          <div class="card-body">
-            <div class="title">${product.name || "No Name"}</div>
-            <div class="price">₹${product.price || "0"}</div>
-            <div class="badge">${product.description || ""}</div>
-            <div style="margin-top:auto;display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn orderBtn" data-id="${id}">Order Now</button>
-              <button class="btn secondary viewBtn" data-id="${id}">View Details</button>
-            </div>
-          </div>
-        `;
-        productList.appendChild(card);
+        // Show confirmation modal with the exact message
+        showAlertModal(
+          "Please note: Payment gateway charges (approx ₹8) are non-refundable if you cancel this order. Do you want to proceed?",
+          () => {
+            // User clicked Yes - proceed with order placement
+            placeOrder();
+          }
+        );
+      });
+      
+      // Set up rotating hero messages
+      let messageIndex = 0;
+      const heroMessages = document.querySelectorAll('#heroMessages span');
+      
+      if (heroMessages.length > 0) {
+        setInterval(() => {
+          heroMessages.forEach(msg => msg.classList.remove('active'));
+          messageIndex = (messageIndex + 1) % heroMessages.length;
+          heroMessages[messageIndex].classList.add('active');
+        }, 4000);
       }
+      
+      // Initial render
+      renderHomePreview();
+      renderProductSlider();
+      updateOrdersNotification();
     }
 
-    // Load cached data first
-    window.addEventListener("load", () => {
-      const cached = localStorage.getItem("cachedRealtimeDBProducts");
-      if (cached) {
-        try {
-          renderRealtimeDBProducts(JSON.parse(cached));
-        } catch (e) {
-          console.error("Cache parse error", e);
-        }
-      }
-    });
+    // Place order function
+    function placeOrder() {
+      // Save order to localStorage
+      const orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
+      orders.push({...orderDraft});
+      localStorage.setItem('demo_orders', JSON.stringify(orders));
+      
+      // Show success page
+      showPage('successPage');
+      
+      // Reset order draft
+      orderDraft = {productId:null, size:null, qty:1, fullname:'',mobile:'',pincode:'',city:'',state:'',house:'',payment:'prepaid',timestamp:null};
+      
+      // Update orders notification
+      ordersViewed = false;
+      updateOrdersNotification();
+    }
 
-    // Listen for realtime updates
-    realtimeDB.ref("products").on("value", (snapshot) => {
-      const products = snapshot.val();
-      if (products) {
-        localStorage.setItem("cachedRealtimeDBProducts", JSON.stringify(products));
-        renderRealtimeDBProducts(products);
-      }
-    });
+    // Initialize the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
