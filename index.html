@@ -10,45 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js">
-// === Product Card Slider Logic ===
-let cardImageIndexes = {};
-
-function showCardImage(productId, index, images) {
-  const slider = document.getElementById('slider-' + productId);
-  if (!slider) return;
-  if (index < 0) index = images.length - 1;
-  if (index >= images.length) index = 0;
-  cardImageIndexes[productId] = index;
-  slider.style.backgroundImage = `url(${images[index]})`;
-
-  const dotsContainer = document.getElementById('dots-' + productId);
-  if (dotsContainer) {
-    dotsContainer.innerHTML = '';
-    images.forEach((img, i) => {
-      const dot = document.createElement('div');
-      dot.className = 'product-card-dot' + (i === index ? ' active' : '');
-      dot.onclick = () => showCardImage(productId, i, images);
-      dotsContainer.appendChild(dot);
-    });
-  }
-}
-
-function prevCardImage(productId) {
-  const product = products.find(p => p.id === productId);
-  if (!product || !product.images) return;
-  let idx = (cardImageIndexes[productId] || 0) - 1;
-  showCardImage(productId, idx, product.images);
-}
-
-function nextCardImage(productId) {
-  const product = products.find(p => p.id === productId);
-  if (!product || !product.images) return;
-  let idx = (cardImageIndexes[productId] || 0) + 1;
-  showCardImage(productId, idx, product.images);
-}
-
-</script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
@@ -3055,11 +3017,6 @@ function nextCardImage(productId) {
 
     // NEW: Recently viewed products array
     let recentlyViewed = [];
-    let wishlistViewedCount = 0;
-    let alertModalConfirmCallback = null;
-    // Track how many wishlist items user has seen (persisted)
-    let wishlistViewedCount = 0;
-    let alertModalConfirmCallback = null;
 
     // Load products from Realtime Database with offline support
     function loadProductsFromRealtimeDB() {
@@ -3296,16 +3253,11 @@ function nextCardImage(productId) {
 
     // Load wishlist from localStorage
     function loadWishlist() {
-      const v = localStorage.getItem('wishlistViewedCount');
-      wishlistViewedCount = v ? parseInt(v, 10) : 0;
       const savedWishlist = localStorage.getItem('wishlist');
       if (savedWishlist) {
         wishlist = JSON.parse(savedWishlist);
+        updateWishlistNotification();
       }
-      // load last viewed wishlist count so we can hide badge after user checks
-      const v = localStorage.getItem('wishlistViewedCount');
-      wishlistViewedCount = v ? parseInt(v, 10) : 0;
-      updateWishlistNotification();
     }
 
     // Save wishlist to localStorage
@@ -3341,11 +3293,8 @@ function nextCardImage(productId) {
 
     // Update wishlist notification badge
     function updateWishlistNotification() {
-      const unseen = Math.max(0, wishlist.length - wishlistViewedCount);
-      // Show badge only if there are unseen items (items added after last view)
-      const unseen = Math.max(0, wishlist.length - (wishlistViewedCount || 0));
-      if (unseen > 0) {
-        wishlistNotification.textContent = unseen;
+      if (wishlist.length > 0) {
+        wishlistNotification.textContent = wishlist.length;
         wishlistNotification.style.display = 'flex';
       } else {
         wishlistNotification.style.display = 'none';
@@ -3712,7 +3661,6 @@ function nextCardImage(productId) {
         showToast('Added to wishlist', 'success');
       }
       
-      // Save wishlist. If new items were added, badge will reflect unseen count (because wishlistViewedCount remains previous value).
       saveWishlist();
       updateWishlistUI();
     }
@@ -4115,19 +4063,7 @@ function nextCardImage(productId) {
     // Show cancellation modal
     function showCancellationModal(orderIndex) {
       selectedCancelOrderIndex = orderIndex;
-      showAlertModal('Please note: Payment gateway charges (₹8) are non-refundable if you cancel this order. Do you want to continue?', () => {
-        document.getElementById('cancellationModal').classList.add('active');
-      });
-    }
-
-    // Old function renamed for clarity
-    function old_showCancellationModal(orderIndex) {
-      // When user initiates cancellation, first show payment gateway charges alert.
-      selectedCancelOrderIndex = orderIndex;
-      showAlertModal('Please note that payment gateway charges (approx ₹8) are non-refundable if you cancel this order. Do you want to continue to cancellation?', () => {
-        // If user confirms the alert, open the cancellation modal for final confirmation
-        document.getElementById('cancellationModal').classList.add('active');
-      });
+      document.getElementById('cancellationModal').classList.add('active');
     }
 
     // Show refund modal
@@ -4215,18 +4151,6 @@ function nextCardImage(productId) {
           showToast('Please select a size', 'error');
           return;
         }
-        if (selectedProduct && selectedProduct.colors && selectedProduct.colors.length > 0 && !orderDraft.color) {
-          showToast('Please select a colour', 'error');
-          return;
-        }
-          showToast('Please select a size', 'error');
-          return;
-        }
-        // If product has color options, require color selection too
-        if (selectedProduct && selectedProduct.colors && selectedProduct.colors.length > 0 && !orderDraft.color) {
-          showToast('Please select a colour', 'error');
-          return;
-        }
         
         // Load saved user info if available
         if (savedUserInfo.fullname) {
@@ -4250,31 +4174,6 @@ function nextCardImage(productId) {
         option.addEventListener('click', () => {
           document.querySelectorAll('.size-option').forEach(opt => {
             opt.classList.remove('selected');
-          });
-          option.classList.add('selected');
-          // Save selection in orderDraft
-          orderDraft.size = option.getAttribute('data-value') || option.textContent.trim();
-        });
-      });
-
-      // Color options (if present) - allow similarly
-      document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', () => {
-          document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
-          option.classList.add('selected');
-          orderDraft.color = option.getAttribute('data-value') || option.textContent.trim();
-        });
-      });
-
-      // Continue existing code that may follow...
-
-      document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', () => {
-          document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
-          option.classList.add('selected');
-          orderDraft.color = option.getAttribute('data-value') || option.textContent.trim();
-        });
-      });remove('selected');
           });
           option.classList.add('selected');
           orderDraft.size = option.getAttribute('data-value');
@@ -4414,10 +4313,6 @@ function nextCardImage(productId) {
       
       document.getElementById('openWishlistTop').addEventListener('click', () => {
         renderWishlistPage();
-        // mark wishlist as viewed so badge hides until new item added
-        wishlistViewedCount = wishlist.length;
-        localStorage.setItem('wishlistViewedCount', String(wishlistViewedCount));
-        updateWishlistNotification();
         showPage('wishlistPage');
       });
       
