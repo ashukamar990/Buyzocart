@@ -14,8 +14,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <!-- EmailJS SDK -->
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
     :root {
       --bg: #ffffff;
@@ -3561,90 +3559,7 @@
   </div>
 
   <script>
-    // =============================================
-    // EMAILJS + FIREBASE REALTIME DATABASE INTEGRATION
-    // =============================================
-    
-    // EmailJS Configuration
-    (function() {
-      emailjs.init("JvkKRLBYjYK-hmB-G");
-      console.log("✅ EmailJS initialized successfully");
-    })();
-    
-    // Firebase Realtime Database Configuration
-    const orderFirebaseConfig = {
-      apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
-      authDomain: "videomanager-23d98.firebaseapp.com",
-      databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
-      projectId: "videomanager-23d98",
-      storageBucket: "videomanager-23d98.firebasestorage.app",
-      messagingSenderId: "847321523576",
-      appId: "1:847321523576:web:bda3f5026e3e163603548d",
-      measurementId: "G-YBSJ1KMPV4"
-    };
-    
-    // Initialize Order Firebase App (separate from existing Firebase)
-    let orderDatabase;
-    try {
-      const orderFirebaseApp = firebase.initializeApp(orderFirebaseConfig, "OrderFirebase");
-      orderDatabase = orderFirebaseApp.database();
-      console.log("✅ Order Firebase initialized successfully");
-    } catch (error) {
-      console.log("ℹ️ Order Firebase already initialized");
-      orderDatabase = firebase.app("OrderFirebase").database();
-    }
-    
-    // Function to send order confirmation email
-    function sendOrderEmail(orderData) {
-      const templateParams = {
-        user_name: orderData.name,
-        order_id: orderData.orderId,
-        user_email: orderData.email,
-        item_list: orderData.items,
-        delivery_date: orderData.deliveryDate
-      };
-      
-      emailjs.send('service_m70ov9i', 'template_91ixptn', templateParams)
-        .then(function(response) {
-          console.log("✅ Order Email Sent Successfully!", response.status, response.text);
-        }, function(error) {
-          console.log("❌ Failed to send email.", error);
-        });
-    }
-    
-    // Listen for new orders in Firebase Realtime Database
-    function setupOrderListener() {
-      const ordersRef = orderDatabase.ref('orders');
-      
-      ordersRef.on('child_added', function(snapshot) {
-        const orderData = snapshot.val();
-        console.log('New order detected:', orderData);
-        
-        // Send email for the new order
-        sendOrderEmail(orderData);
-      });
-      
-      console.log("🎯 Firebase listener activated. Monitoring for new orders...");
-    }
-    
-    // Initialize the order monitoring system
-    function initializeOrderSystem() {
-      console.log("🛒 Initializing Buyzo Cart Order Email System...");
-      setupOrderListener();
-      console.log("✅ Order email system ready! Emails will be sent automatically for new orders.");
-    }
-    
-    // Start the order system when page loads
-    window.addEventListener('load', function() {
-      // Small delay to ensure everything else is loaded
-      setTimeout(initializeOrderSystem, 1000);
-    });
-    
-    // =============================================
-    // EXISTING CODE (KEEPING ALL ORIGINAL FUNCTIONALITY)
-    // =============================================
-    
-    // Firebase Configuration for existing app
+    // Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyDxW9Xc8y5X5Z5Q5X5Q5X5Q5X5Q5X5Q5X5Q",
       authDomain: "buyzo-cart.firebaseapp.com",
