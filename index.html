@@ -1086,6 +1086,8 @@
       padding: 24px;
       box-shadow: var(--shadow);
       margin-bottom: 24px;
+      border: 1px solid var(--border);
+      transition: var(--transition);
     }
     
     .order-detail-section {
@@ -4891,6 +4893,7 @@
     let recentlyViewed = [];
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
+    let language = localStorage.getItem('language') || 'en';
 
     // Amazon/Flipkart Gallery Variables
     let fkCurrentSlide = 0;
@@ -4978,6 +4981,7 @@
       loadBanners();
       setupHeroMessages();
       updateStepPills();
+      applyLanguage();
       
       // Check authentication state
       auth.onAuthStateChanged(user => {
@@ -5131,6 +5135,13 @@
       // Dark mode toggle in settings
       document.getElementById('darkModeToggle')?.addEventListener('change', function() {
         toggleTheme();
+      });
+
+      // Language toggle in settings
+      document.getElementById('languageSelect')?.addEventListener('change', function() {
+        language = this.value;
+        localStorage.setItem('language', language);
+        applyLanguage();
       });
 
       // Amazon/Flipkart Gallery Event Listeners
@@ -5656,36 +5667,34 @@
     // Data loading functions
     async function loadProducts() {
       try {
-        // Try to load from localStorage first
-        const cachedProducts = localStorage.getItem('cachedProducts');
-        const cacheTimestamp = localStorage.getItem('productsCacheTimestamp');
-        const now = Date.now();
-        
-        // Use cache if it's less than 5 minutes old
-        if (cachedProducts && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
+        // Try to load from localStorage first for faster display
+        const cachedProducts = localStorage.getItem('products');
+        if (cachedProducts) {
           products = JSON.parse(cachedProducts);
           renderProducts(products, 'homeProductGrid');
           renderProducts(products, 'productGrid');
           renderProductSlider(products.slice(0, 10), 'productSlider');
         }
         
-        // Always try to load from Firebase for latest data
-        const snapshot = await db.collection('products').get();
-        const firebaseProducts = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        // Update products with Firebase data
-        products = firebaseProducts;
-        
-        // Update cache
-        localStorage.setItem('cachedProducts', JSON.stringify(products));
-        localStorage.setItem('productsCacheTimestamp', now.toString());
-        
-        renderProducts(products, 'homeProductGrid');
-        renderProducts(products, 'productGrid');
-        renderProductSlider(products.slice(0, 10), 'productSlider');
+        // Then load from Firebase Realtime Database
+        const snapshot = await realtimeDb.ref('products').once('value');
+        if (snapshot.exists()) {
+          products = [];
+          snapshot.forEach(childSnapshot => {
+            products.push({
+              id: childSnapshot.key,
+              ...childSnapshot.val()
+            });
+          });
+          
+          // Cache in localStorage
+          localStorage.setItem('products', JSON.stringify(products));
+          
+          // Update UI
+          renderProducts(products, 'homeProductGrid');
+          renderProducts(products, 'productGrid');
+          renderProductSlider(products.slice(0, 10), 'productSlider');
+        }
       } catch (error) {
         console.error('Error loading products:', error);
         // Fallback to sample products if Firebase fails
@@ -5696,33 +5705,31 @@
     async function loadCategories() {
       try {
         // Try to load from localStorage first
-        const cachedCategories = localStorage.getItem('cachedCategories');
-        const cacheTimestamp = localStorage.getItem('categoriesCacheTimestamp');
-        const now = Date.now();
-        
-        // Use cache if it's less than 5 minutes old
-        if (cachedCategories && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
+        const cachedCategories = localStorage.getItem('categories');
+        if (cachedCategories) {
           categories = JSON.parse(cachedCategories);
           renderCategories();
           renderCategoryCircles();
         }
         
-        // Always try to load from Firebase for latest data
-        const snapshot = await db.collection('categories').get();
-        const firebaseCategories = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        // Update categories with Firebase data
-        categories = firebaseCategories;
-        
-        // Update cache
-        localStorage.setItem('cachedCategories', JSON.stringify(categories));
-        localStorage.setItem('categoriesCacheTimestamp', now.toString());
-        
-        renderCategories();
-        renderCategoryCircles();
+        // Then load from Firebase Realtime Database
+        const snapshot = await realtimeDb.ref('categories').once('value');
+        if (snapshot.exists()) {
+          categories = [];
+          snapshot.forEach(childSnapshot => {
+            categories.push({
+              id: childSnapshot.key,
+              ...childSnapshot.val()
+            });
+          });
+          
+          // Cache in localStorage
+          localStorage.setItem('categories', JSON.stringify(categories));
+          
+          // Update UI
+          renderCategories();
+          renderCategoryCircles();
+        }
       } catch (error) {
         console.error('Error loading categories:', error);
         // Fallback to sample categories
@@ -5733,31 +5740,29 @@
     async function loadBanners() {
       try {
         // Try to load from localStorage first
-        const cachedBanners = localStorage.getItem('cachedBanners');
-        const cacheTimestamp = localStorage.getItem('bannersCacheTimestamp');
-        const now = Date.now();
-        
-        // Use cache if it's less than 5 minutes old
-        if (cachedBanners && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
+        const cachedBanners = localStorage.getItem('banners');
+        if (cachedBanners) {
           banners = JSON.parse(cachedBanners);
           renderBannerCarousel();
         }
         
-        // Always try to load from Firebase for latest data
-        const snapshot = await db.collection('banners').get();
-        const firebaseBanners = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        // Update banners with Firebase data
-        banners = firebaseBanners;
-        
-        // Update cache
-        localStorage.setItem('cachedBanners', JSON.stringify(banners));
-        localStorage.setItem('bannersCacheTimestamp', now.toString());
-        
-        renderBannerCarousel();
+        // Then load from Firebase Realtime Database
+        const snapshot = await realtimeDb.ref('banners').once('value');
+        if (snapshot.exists()) {
+          banners = [];
+          snapshot.forEach(childSnapshot => {
+            banners.push({
+              id: childSnapshot.key,
+              ...childSnapshot.val()
+            });
+          });
+          
+          // Cache in localStorage
+          localStorage.setItem('banners', JSON.stringify(banners));
+          
+          // Update UI
+          renderBannerCarousel();
+        }
       } catch (error) {
         console.error('Error loading banners:', error);
         // Fallback to sample banners
@@ -6507,82 +6512,10 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
         showToast('Settings saved successfully', 'success');
-        
-        // Apply language change
-        if (language === 'hi') {
-          // Apply Hindi translations
-          applyHindiTranslations();
-        } else {
-          // Apply English translations
-          applyEnglishTranslations();
-        }
       }).catch(error => {
         console.error('Error saving settings:', error);
         showToast('Failed to save settings', 'error');
       });
-    }
-
-    // Language functions
-    function applyHindiTranslations() {
-      // Apply Hindi translations to key elements
-      document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (translations.hi[key]) {
-          element.textContent = translations.hi[key];
-        }
-      });
-      
-      // Update specific elements
-      if (document.getElementById('openLoginTop')) {
-        document.getElementById('openLoginTop').textContent = 'लॉगिन';
-      }
-      
-      if (document.getElementById('openMyOrdersTop')) {
-        document.getElementById('openMyOrdersTop').textContent = 'मेरे ऑर्डर';
-      }
-      
-      if (document.getElementById('openContactTop')) {
-        document.getElementById('openContactTop').textContent = 'संपर्क करें';
-      }
-      
-      // Update page titles
-      if (document.querySelector('.hero h1')) {
-        document.querySelector('.hero h1').innerHTML = 'Buyzo Cart में आपका स्वागत है';
-      }
-      
-      // Save language preference
-      localStorage.setItem('language', 'hi');
-    }
-
-    function applyEnglishTranslations() {
-      // Apply English translations to key elements
-      document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (translations.en[key]) {
-          element.textContent = translations.en[key];
-        }
-      });
-      
-      // Update specific elements
-      if (document.getElementById('openLoginTop')) {
-        document.getElementById('openLoginTop').textContent = 'Login';
-      }
-      
-      if (document.getElementById('openMyOrdersTop')) {
-        document.getElementById('openMyOrdersTop').textContent = 'My Orders';
-      }
-      
-      if (document.getElementById('openContactTop')) {
-        document.getElementById('openContactTop').textContent = 'Contact';
-      }
-      
-      // Update page titles
-      if (document.querySelector('.hero h1')) {
-        document.querySelector('.hero h1').innerHTML = 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
-      }
-      
-      // Save language preference
-      localStorage.setItem('language', 'en');
     }
 
     // Address functions
@@ -6712,6 +6645,34 @@
       console.log('Order confirmation email would be sent for:', orderData);
     }
 
+    // Language functions
+    function applyLanguage() {
+      // Set language in dropdown
+      const languageSelect = document.getElementById('languageSelect');
+      if (languageSelect) {
+        languageSelect.value = language;
+      }
+      
+      // Apply language to UI elements
+      if (language === 'hi') {
+        // Hindi translations
+        document.querySelectorAll('[data-en]').forEach(element => {
+          const hindiText = element.getAttribute('data-hi');
+          if (hindiText) {
+            element.textContent = hindiText;
+          }
+        });
+      } else {
+        // English (default)
+        document.querySelectorAll('[data-en]').forEach(element => {
+          const englishText = element.getAttribute('data-en');
+          if (englishText) {
+            element.textContent = englishText;
+          }
+        });
+      }
+    }
+
     // Sample data fallbacks
     function loadSampleProducts() {
       products = [
@@ -6775,7 +6736,7 @@
         {
           id: '3',
           name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aG9tZSUyMGRlY29yfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '4',
@@ -6792,51 +6753,19 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVjb21tZXJjZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=1200&q=60'
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGVjb21tZXJjZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=1200&q=60'
         },
         {
           id: '3',
-          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGVjb21tZXJjZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=1200&q=60'
         }
       ];
       
       renderBannerCarousel();
-    }
-
-    // Translation dictionary
-    const translations = {
-      en: {
-        login: 'Login',
-        myOrders: 'My Orders',
-        contact: 'Contact',
-        welcome: 'Welcome to Buyzo Cart',
-        featuredProducts: 'Featured Products',
-        allProducts: 'All Products',
-        myWishlist: 'My Wishlist',
-        myAccount: 'My Account'
-      },
-      hi: {
-        login: 'लॉगिन',
-        myOrders: 'मेरे ऑर्डर',
-        contact: 'संपर्क करें',
-        welcome: 'Buyzo Cart में आपका स्वागत है',
-        featuredProducts: 'फीचर्ड प्रोडक्ट्स',
-        allProducts: 'सभी प्रोडक्ट्स',
-        myWishlist: 'मेरी विशलिस्ट',
-        myAccount: 'मेरा अकाउंट'
-      }
-    };
-
-    // Apply saved language on page load
-    const savedLanguage = localStorage.getItem('language') || 'en';
-    if (savedLanguage === 'hi') {
-      applyHindiTranslations();
-    } else {
-      applyEnglishTranslations();
     }
   </script>
 </body>
