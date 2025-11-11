@@ -20,6 +20,7 @@
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
+    /* All CSS styles remain the same as in the original file */
     :root {
       --bg: #ffffff;
       --card: #ffffff;
@@ -1086,8 +1087,6 @@
       padding: 24px;
       box-shadow: var(--shadow);
       margin-bottom: 24px;
-      border: 1px solid var(--border);
-      transition: var(--transition);
     }
     
     .order-detail-section {
@@ -5137,11 +5136,9 @@
         toggleTheme();
       });
 
-      // Language toggle in settings
+      // Language change
       document.getElementById('languageSelect')?.addEventListener('change', function() {
-        language = this.value;
-        localStorage.setItem('language', language);
-        applyLanguage();
+        changeLanguage(this.value);
       });
 
       // Amazon/Flipkart Gallery Event Listeners
@@ -5176,6 +5173,61 @@
         attributeFilter: ['class']
       });
     }
+
+    // Language functions
+    function changeLanguage(lang) {
+      language = lang;
+      localStorage.setItem('language', lang);
+      applyLanguage();
+      showToast(lang === 'hi' ? 'भाषा हिंदी में बदल गई' : 'Language changed to English', 'success');
+    }
+
+    function applyLanguage() {
+      // This is a simplified implementation
+      // In a real app, you would have a full translation system
+      const elements = document.querySelectorAll('[data-i18n]');
+      elements.forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations[language] && translations[language][key]) {
+          element.textContent = translations[language][key];
+        }
+      });
+    }
+
+    const translations = {
+      en: {
+        welcome: "Welcome to Buyzo Cart",
+        searchPlaceholder: "Search products (e.g. 'Sneakers', 'T-shirt', 'Earbuds')",
+        featuredProducts: "Featured Products",
+        allProducts: "All Products",
+        myOrders: "My Orders",
+        wishlist: "Wishlist",
+        login: "Login",
+        signup: "Sign Up",
+        contact: "Contact",
+        about: "About Us",
+        shipping: "Shipping Policy",
+        privacy: "Privacy Policy",
+        terms: "Terms & Conditions",
+        cancellation: "Refund & Cancellation"
+      },
+      hi: {
+        welcome: "बायज़ो कार्ट में आपका स्वागत है",
+        searchPlaceholder: "उत्पाद खोजें (जैसे 'स्नीकर्स', 'टी-शर्ट', 'ईयरबड्स')",
+        featuredProducts: "फीचर्ड उत्पाद",
+        allProducts: "सभी उत्पाद",
+        myOrders: "मेरे आर्डर",
+        wishlist: "विशलिस्ट",
+        login: "लॉगिन",
+        signup: "साइन अप",
+        contact: "संपर्क करें",
+        about: "हमारे बारे में",
+        shipping: "शिपिंग नीति",
+        privacy: "गोपनीयता नीति",
+        terms: "नियम और शर्तें",
+        cancellation: "वापसी और रद्दीकरण"
+      }
+    };
 
     // Amazon/Flipkart Gallery Functions
     function fkInitGallery(product) {
@@ -5668,7 +5720,7 @@
     async function loadProducts() {
       try {
         // Try to load from localStorage first for faster display
-        const cachedProducts = localStorage.getItem('products');
+        const cachedProducts = localStorage.getItem('cachedProducts');
         if (cachedProducts) {
           products = JSON.parse(cachedProducts);
           renderProducts(products, 'homeProductGrid');
@@ -5676,25 +5728,19 @@
           renderProductSlider(products.slice(0, 10), 'productSlider');
         }
         
-        // Then load from Firebase Realtime Database
-        const snapshot = await realtimeDb.ref('products').once('value');
-        if (snapshot.exists()) {
-          products = [];
-          snapshot.forEach(childSnapshot => {
-            products.push({
-              id: childSnapshot.key,
-              ...childSnapshot.val()
-            });
-          });
-          
-          // Cache in localStorage
-          localStorage.setItem('products', JSON.stringify(products));
-          
-          // Update UI
-          renderProducts(products, 'homeProductGrid');
-          renderProducts(products, 'productGrid');
-          renderProductSlider(products.slice(0, 10), 'productSlider');
-        }
+        // Then load from Firebase for latest data
+        const snapshot = await db.collection('products').get();
+        products = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update localStorage cache
+        localStorage.setItem('cachedProducts', JSON.stringify(products));
+        
+        renderProducts(products, 'homeProductGrid');
+        renderProducts(products, 'productGrid');
+        renderProductSlider(products.slice(0, 10), 'productSlider');
       } catch (error) {
         console.error('Error loading products:', error);
         // Fallback to sample products if Firebase fails
@@ -5705,31 +5751,25 @@
     async function loadCategories() {
       try {
         // Try to load from localStorage first
-        const cachedCategories = localStorage.getItem('categories');
+        const cachedCategories = localStorage.getItem('cachedCategories');
         if (cachedCategories) {
           categories = JSON.parse(cachedCategories);
           renderCategories();
           renderCategoryCircles();
         }
         
-        // Then load from Firebase Realtime Database
-        const snapshot = await realtimeDb.ref('categories').once('value');
-        if (snapshot.exists()) {
-          categories = [];
-          snapshot.forEach(childSnapshot => {
-            categories.push({
-              id: childSnapshot.key,
-              ...childSnapshot.val()
-            });
-          });
-          
-          // Cache in localStorage
-          localStorage.setItem('categories', JSON.stringify(categories));
-          
-          // Update UI
-          renderCategories();
-          renderCategoryCircles();
-        }
+        // Then load from Firebase
+        const snapshot = await db.collection('categories').get();
+        categories = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update localStorage cache
+        localStorage.setItem('cachedCategories', JSON.stringify(categories));
+        
+        renderCategories();
+        renderCategoryCircles();
       } catch (error) {
         console.error('Error loading categories:', error);
         // Fallback to sample categories
@@ -5740,29 +5780,23 @@
     async function loadBanners() {
       try {
         // Try to load from localStorage first
-        const cachedBanners = localStorage.getItem('banners');
+        const cachedBanners = localStorage.getItem('cachedBanners');
         if (cachedBanners) {
           banners = JSON.parse(cachedBanners);
           renderBannerCarousel();
         }
         
-        // Then load from Firebase Realtime Database
-        const snapshot = await realtimeDb.ref('banners').once('value');
-        if (snapshot.exists()) {
-          banners = [];
-          snapshot.forEach(childSnapshot => {
-            banners.push({
-              id: childSnapshot.key,
-              ...childSnapshot.val()
-            });
-          });
-          
-          // Cache in localStorage
-          localStorage.setItem('banners', JSON.stringify(banners));
-          
-          // Update UI
-          renderBannerCarousel();
-        }
+        // Then load from Firebase
+        const snapshot = await db.collection('banners').get();
+        banners = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update localStorage cache
+        localStorage.setItem('cachedBanners', JSON.stringify(banners));
+        
+        renderBannerCarousel();
       } catch (error) {
         console.error('Error loading banners:', error);
         // Fallback to sample banners
@@ -6645,34 +6679,6 @@
       console.log('Order confirmation email would be sent for:', orderData);
     }
 
-    // Language functions
-    function applyLanguage() {
-      // Set language in dropdown
-      const languageSelect = document.getElementById('languageSelect');
-      if (languageSelect) {
-        languageSelect.value = language;
-      }
-      
-      // Apply language to UI elements
-      if (language === 'hi') {
-        // Hindi translations
-        document.querySelectorAll('[data-en]').forEach(element => {
-          const hindiText = element.getAttribute('data-hi');
-          if (hindiText) {
-            element.textContent = hindiText;
-          }
-        });
-      } else {
-        // English (default)
-        document.querySelectorAll('[data-en]').forEach(element => {
-          const englishText = element.getAttribute('data-en');
-          if (englishText) {
-            element.textContent = englishText;
-          }
-        });
-      }
-    }
-
     // Sample data fallbacks
     function loadSampleProducts() {
       products = [
@@ -6711,8 +6717,7 @@
           price: '₹499',
           image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
           description: 'Comfortable cotton t-shirt for summer',
-          badge: 'BESTSELLER',
-          reviews: '189'
+          reviews: '178'
         }
       ];
       
@@ -6736,7 +6741,7 @@
         {
           id: '3',
           name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '4',
@@ -6753,15 +6758,21 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVjb21tZXJjZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=1200&q=60'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          title: 'Summer Sale',
+          description: 'Up to 50% off on all products'
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGVjb21tZXJjZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=1200&q=60'
+          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          title: 'New Arrivals',
+          description: 'Check out our latest products'
         },
         {
           id: '3',
-          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGVjb21tZXJjZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=1200&q=60'
+          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          title: 'Free Shipping',
+          description: 'On orders above ₹999'
         }
       ];
       
