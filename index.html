@@ -4855,7 +4855,7 @@
 
   <!-- Firebase Configuration -->
   <script>
-    // Updated Firebase configuration
+    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
       authDomain: "videomanager-23d98.firebaseapp.com",
@@ -4973,9 +4973,9 @@
     document.addEventListener('DOMContentLoaded', function() {
       initApp();
       setupEventListeners();
-      loadProductsFromRealtimeDB();
-      loadCategoriesFromRealtimeDB();
-      loadBannersFromRealtimeDB();
+      loadProducts();
+      loadCategories();
+      loadBanners();
       setupHeroMessages();
       updateStepPills();
       
@@ -5164,132 +5164,6 @@
         attributes: true,
         attributeFilter: ['class']
       });
-    }
-
-    // NEW: Load products from Realtime Database
-    function loadProductsFromRealtimeDB() {
-      realtimeDb.ref('products').once('value')
-        .then(snapshot => {
-          const productsData = snapshot.val();
-          if (productsData) {
-            products = Object.keys(productsData).map(key => {
-              return {
-                id: key,
-                ...productsData[key]
-              };
-            });
-            
-            renderProducts(products, 'homeProductGrid');
-            renderProducts(products, 'productGrid');
-            renderProductSlider(products.slice(0, 10), 'productSlider');
-          } else {
-            // Fallback to sample products if no data in Realtime DB
-            loadSampleProducts();
-          }
-        })
-        .catch(error => {
-          console.error('Error loading products from Realtime DB:', error);
-          loadSampleProducts();
-        });
-    }
-
-    // NEW: Load categories from Realtime Database
-    function loadCategoriesFromRealtimeDB() {
-      realtimeDb.ref('categories').once('value')
-        .then(snapshot => {
-          const categoriesData = snapshot.val();
-          if (categoriesData) {
-            categories = Object.keys(categoriesData).map(key => {
-              return {
-                id: key,
-                ...categoriesData[key]
-              };
-            });
-            
-            renderCategories();
-            renderCategoryCircles();
-          } else {
-            // Fallback to sample categories
-            loadSampleCategories();
-          }
-        })
-        .catch(error => {
-          console.error('Error loading categories from Realtime DB:', error);
-          loadSampleCategories();
-        });
-    }
-
-    // NEW: Load banners from Realtime Database
-    function loadBannersFromRealtimeDB() {
-      realtimeDb.ref('banners').once('value')
-        .then(snapshot => {
-          const bannersData = snapshot.val();
-          if (bannersData) {
-            banners = Object.keys(bannersData).map(key => {
-              return {
-                id: key,
-                ...bannersData[key]
-              };
-            });
-            
-            renderBannerCarousel();
-          } else {
-            // Fallback to sample banners
-            loadSampleBanners();
-          }
-        })
-        .catch(error => {
-          console.error('Error loading banners from Realtime DB:', error);
-          loadSampleBanners();
-        });
-    }
-
-    // NEW: Save order to Realtime Database
-    async function saveOrderToRealtimeDB(orderData) {
-      try {
-        await realtimeDb.ref('orders/' + orderData.orderId).set({
-          orderId: orderData.orderId,
-          userId: orderData.userId,
-          username: orderData.username,
-          productName: orderData.productName,
-          price: orderData.price,
-          orderDate: orderData.orderDate,
-          status: orderData.status
-        });
-        return true;
-      } catch (error) {
-        console.error('Error saving order to Realtime DB:', error);
-        return false;
-      }
-    }
-
-    // NEW: Load user orders from Realtime Database
-    function loadUserOrdersFromRealtimeDB(userId) {
-      realtimeDb.ref('orders').orderByChild('userId').equalTo(userId).once('value')
-        .then(snapshot => {
-          const ordersData = snapshot.val();
-          const ordersList = document.getElementById('ordersList');
-          const noOrders = document.getElementById('noOrders');
-          
-          if (!ordersData) {
-            ordersList.style.display = 'none';
-            noOrders.style.display = 'block';
-            return;
-          }
-          
-          ordersList.style.display = 'block';
-          noOrders.style.display = 'none';
-          ordersList.innerHTML = '';
-          
-          Object.keys(ordersData).forEach(orderId => {
-            const order = ordersData[orderId];
-            const orderCard = createOrderCard(order);
-            ordersList.appendChild(orderCard);
-          });
-        })
-        .catch(error => {
-          console.error('Error loading orders from Realtime DB:', error);
-        });
     }
 
     // Amazon/Flipkart Gallery Functions
@@ -5606,12 +5480,17 @@
         // Save to Firestore
         await db.collection('orders').doc(orderId).set(orderData);
         
-        // NEW: Also save to Realtime Database
-        const realtimeSaved = await saveOrderToRealtimeDB(orderData);
+        // NEW: Also save to Realtime Database as required
+        const realtimeOrderData = {
+          orderId: orderId,
+          userId: currentUser.uid,
+          username: userInfo.fullName || 'Customer',
+          productName: currentProduct.name,
+          price: parseFloat(currentProduct.price.replace('₹', '')) * quantity,
+          orderDate: Date.now()
+        };
         
-        if (!realtimeSaved) {
-          console.warn('Order saved to Firestore but not to Realtime Database');
-        }
+        await realtimeDb.ref('orders/' + orderId).set(realtimeOrderData);
         
         // Update UI with order ID
         document.getElementById('orderIdDisplay').textContent = orderId;
@@ -5775,6 +5654,117 @@
     }
 
     // Data loading functions
+    async function loadProducts() {
+      try {
+        // Try to load from localStorage first
+        const cachedProducts = localStorage.getItem('cachedProducts');
+        const cacheTimestamp = localStorage.getItem('productsCacheTimestamp');
+        const now = Date.now();
+        
+        // Use cache if it's less than 5 minutes old
+        if (cachedProducts && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
+          products = JSON.parse(cachedProducts);
+          renderProducts(products, 'homeProductGrid');
+          renderProducts(products, 'productGrid');
+          renderProductSlider(products.slice(0, 10), 'productSlider');
+        }
+        
+        // Always try to load from Firebase for latest data
+        const snapshot = await db.collection('products').get();
+        const firebaseProducts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update products with Firebase data
+        products = firebaseProducts;
+        
+        // Update cache
+        localStorage.setItem('cachedProducts', JSON.stringify(products));
+        localStorage.setItem('productsCacheTimestamp', now.toString());
+        
+        renderProducts(products, 'homeProductGrid');
+        renderProducts(products, 'productGrid');
+        renderProductSlider(products.slice(0, 10), 'productSlider');
+      } catch (error) {
+        console.error('Error loading products:', error);
+        // Fallback to sample products if Firebase fails
+        loadSampleProducts();
+      }
+    }
+
+    async function loadCategories() {
+      try {
+        // Try to load from localStorage first
+        const cachedCategories = localStorage.getItem('cachedCategories');
+        const cacheTimestamp = localStorage.getItem('categoriesCacheTimestamp');
+        const now = Date.now();
+        
+        // Use cache if it's less than 5 minutes old
+        if (cachedCategories && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
+          categories = JSON.parse(cachedCategories);
+          renderCategories();
+          renderCategoryCircles();
+        }
+        
+        // Always try to load from Firebase for latest data
+        const snapshot = await db.collection('categories').get();
+        const firebaseCategories = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update categories with Firebase data
+        categories = firebaseCategories;
+        
+        // Update cache
+        localStorage.setItem('cachedCategories', JSON.stringify(categories));
+        localStorage.setItem('categoriesCacheTimestamp', now.toString());
+        
+        renderCategories();
+        renderCategoryCircles();
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        // Fallback to sample categories
+        loadSampleCategories();
+      }
+    }
+
+    async function loadBanners() {
+      try {
+        // Try to load from localStorage first
+        const cachedBanners = localStorage.getItem('cachedBanners');
+        const cacheTimestamp = localStorage.getItem('bannersCacheTimestamp');
+        const now = Date.now();
+        
+        // Use cache if it's less than 5 minutes old
+        if (cachedBanners && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
+          banners = JSON.parse(cachedBanners);
+          renderBannerCarousel();
+        }
+        
+        // Always try to load from Firebase for latest data
+        const snapshot = await db.collection('banners').get();
+        const firebaseBanners = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update banners with Firebase data
+        banners = firebaseBanners;
+        
+        // Update cache
+        localStorage.setItem('cachedBanners', JSON.stringify(banners));
+        localStorage.setItem('bannersCacheTimestamp', now.toString());
+        
+        renderBannerCarousel();
+      } catch (error) {
+        console.error('Error loading banners:', error);
+        // Fallback to sample banners
+        loadSampleBanners();
+      }
+    }
+
     function loadUserData(user) {
       db.collection('users').doc(user.uid).get().then(doc => {
         if (doc.exists) {
@@ -6517,10 +6507,82 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
         showToast('Settings saved successfully', 'success');
+        
+        // Apply language change
+        if (language === 'hi') {
+          // Apply Hindi translations
+          applyHindiTranslations();
+        } else {
+          // Apply English translations
+          applyEnglishTranslations();
+        }
       }).catch(error => {
         console.error('Error saving settings:', error);
         showToast('Failed to save settings', 'error');
       });
+    }
+
+    // Language functions
+    function applyHindiTranslations() {
+      // Apply Hindi translations to key elements
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations.hi[key]) {
+          element.textContent = translations.hi[key];
+        }
+      });
+      
+      // Update specific elements
+      if (document.getElementById('openLoginTop')) {
+        document.getElementById('openLoginTop').textContent = 'लॉगिन';
+      }
+      
+      if (document.getElementById('openMyOrdersTop')) {
+        document.getElementById('openMyOrdersTop').textContent = 'मेरे ऑर्डर';
+      }
+      
+      if (document.getElementById('openContactTop')) {
+        document.getElementById('openContactTop').textContent = 'संपर्क करें';
+      }
+      
+      // Update page titles
+      if (document.querySelector('.hero h1')) {
+        document.querySelector('.hero h1').innerHTML = 'Buyzo Cart में आपका स्वागत है';
+      }
+      
+      // Save language preference
+      localStorage.setItem('language', 'hi');
+    }
+
+    function applyEnglishTranslations() {
+      // Apply English translations to key elements
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations.en[key]) {
+          element.textContent = translations.en[key];
+        }
+      });
+      
+      // Update specific elements
+      if (document.getElementById('openLoginTop')) {
+        document.getElementById('openLoginTop').textContent = 'Login';
+      }
+      
+      if (document.getElementById('openMyOrdersTop')) {
+        document.getElementById('openMyOrdersTop').textContent = 'My Orders';
+      }
+      
+      if (document.getElementById('openContactTop')) {
+        document.getElementById('openContactTop').textContent = 'Contact';
+      }
+      
+      // Update page titles
+      if (document.querySelector('.hero h1')) {
+        document.querySelector('.hero h1').innerHTML = 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
+      }
+      
+      // Save language preference
+      localStorage.setItem('language', 'en');
     }
 
     // Address functions
@@ -6687,7 +6749,9 @@
           name: 'Casual Summer T-Shirt',
           price: '₹499',
           image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable cotton t-shirt for summer'
+          description: 'Comfortable cotton t-shirt for summer',
+          badge: 'BESTSELLER',
+          reviews: '189'
         }
       ];
       
@@ -6701,7 +6765,7 @@
         {
           id: '1',
           name: 'Electronics',
-          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZWxlY3Ryb25pY3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '2',
@@ -6711,12 +6775,12 @@
         {
           id: '3',
           name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aG9tZSUyMGFuZCUyMGtpdGNoZW58ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aG9tZSUyMGRlY29yfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '4',
           name: 'Beauty',
-          image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww%3D&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         }
       ];
       
@@ -6732,76 +6796,47 @@
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
         },
         {
           id: '3',
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
         }
       ];
       
       renderBannerCarousel();
     }
 
-    // Order card creation
-    function createOrderCard(order) {
-      const orderCard = document.createElement('div');
-      orderCard.className = 'order-card';
-      orderCard.innerHTML = `
-        <div class="order-header">
-          <div>
-            <div class="order-id">${order.orderId}</div>
-            <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
-            <div class="order-estimated">Estimated delivery: ${new Date(order.orderDate + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
-          </div>
-          <div class="order-status status-confirmed">${order.status}</div>
-        </div>
-        <div class="order-details">
-          <div class="order-product-image" style="background-image: url('${order.productImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8cHJvZHVjdHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60'}')"></div>
-          <div class="order-product-info">
-            <div class="order-product-title">${order.productName}</div>
-            <div class="order-product-price">${order.price}</div>
-            <div class="order-product-meta">Quantity: ${order.quantity} | Size: ${order.size}</div>
-          </div>
-        </div>
-        <div class="order-actions">
-          <button class="btn secondary view-order-detail" data-order-id="${order.orderId}">View Details</button>
-          <button class="btn secondary track-order" data-order-id="${order.orderId}">Track Order</button>
-          <button class="btn error cancel-order" data-order-id="${order.orderId}">Cancel Order</button>
-        </div>
-      `;
-      
-      // Add event listeners
-      orderCard.querySelector('.view-order-detail').addEventListener('click', () => viewOrderDetail(order.orderId));
-      orderCard.querySelector('.track-order').addEventListener('click', () => trackOrder(order.orderId));
-      orderCard.querySelector('.cancel-order').addEventListener('click', () => cancelOrder(order.orderId));
-      
-      return orderCard;
-    }
-
-    function viewOrderDetail(orderId) {
-      // In a real app, you would fetch order details from the database
-      showToast(`Viewing details for order: ${orderId}`, 'info');
-      // For now, just show a toast message
-    }
-
-    function trackOrder(orderId) {
-      // In a real app, you would show tracking information
-      showToast(`Tracking order: ${orderId}`, 'info');
-      // For now, just show a toast message
-    }
-
-    function cancelOrder(orderId) {
-      // In a real app, you would show a cancellation modal
-      showToast(`Cancelling order: ${orderId}`, 'info');
-      // For now, just show a toast message
-    }
-
-    // NEW: Function to show My Orders with Realtime DB data
-    function showMyOrders() {
-      if (currentUser) {
-        loadUserOrdersFromRealtimeDB(currentUser.uid);
+    // Translation dictionary
+    const translations = {
+      en: {
+        login: 'Login',
+        myOrders: 'My Orders',
+        contact: 'Contact',
+        welcome: 'Welcome to Buyzo Cart',
+        featuredProducts: 'Featured Products',
+        allProducts: 'All Products',
+        myWishlist: 'My Wishlist',
+        myAccount: 'My Account'
+      },
+      hi: {
+        login: 'लॉगिन',
+        myOrders: 'मेरे ऑर्डर',
+        contact: 'संपर्क करें',
+        welcome: 'Buyzo Cart में आपका स्वागत है',
+        featuredProducts: 'फीचर्ड प्रोडक्ट्स',
+        allProducts: 'सभी प्रोडक्ट्स',
+        myWishlist: 'मेरी विशलिस्ट',
+        myAccount: 'मेरा अकाउंट'
       }
+    };
+
+    // Apply saved language on page load
+    const savedLanguage = localStorage.getItem('language') || 'en';
+    if (savedLanguage === 'hi') {
+      applyHindiTranslations();
+    } else {
+      applyEnglishTranslations();
     }
   </script>
 </body>
