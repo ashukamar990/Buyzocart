@@ -4857,14 +4857,13 @@
   <script>
     // Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
-      authDomain: "videomanager-23d98.firebaseapp.com",
-      databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
-      projectId: "videomanager-23d98",
-      storageBucket: "videomanager-23d98.firebasestorage.app",
-      messagingSenderId: "847321523576",
-      appId: "1:847321523576:web:bda3f5026e3e163603548d",
-      measurementId: "G-YBSJ1KMPV4"
+      apiKey: "AIzaSyD4XKx1-0rQK9SXHh4fQn5k8b8t8z7Y6j8",
+      authDomain: "buyzocart-7a3f4.firebaseapp.com",
+      projectId: "buyzocart-7a3f4",
+      storageBucket: "buyzocart-7a3f4.appspot.com",
+      messagingSenderId: "123456789012",
+      appId: "1:123456789012:web:abcdef123456",
+      measurementId: "G-ABCDEF1234"
     };
 
     // Initialize Firebase
@@ -4891,7 +4890,6 @@
     let recentlyViewed = [];
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
-    let currentLanguage = localStorage.getItem('language') || 'en';
 
     // Amazon/Flipkart Gallery Variables
     let fkCurrentSlide = 0;
@@ -4979,7 +4977,6 @@
       loadBanners();
       setupHeroMessages();
       updateStepPills();
-      applyLanguage();
       
       // Check authentication state
       auth.onAuthStateChanged(user => {
@@ -5135,13 +5132,6 @@
         toggleTheme();
       });
 
-      // Language change in settings
-      document.getElementById('languageSelect')?.addEventListener('change', function() {
-        currentLanguage = this.value;
-        localStorage.setItem('language', currentLanguage);
-        applyLanguage();
-      });
-
       // Amazon/Flipkart Gallery Event Listeners
       fkPrevBtn?.addEventListener('click', fkPrevSlide);
       fkNextBtn?.addEventListener('click', fkNextSlide);
@@ -5173,33 +5163,6 @@
         attributes: true,
         attributeFilter: ['class']
       });
-    }
-
-    // Language functions
-    function applyLanguage() {
-      const languageSelect = document.getElementById('languageSelect');
-      if (languageSelect) {
-        languageSelect.value = currentLanguage;
-      }
-      
-      // Apply language-specific text
-      if (currentLanguage === 'hi') {
-        // Hindi translations
-        document.querySelectorAll('[data-en]').forEach(element => {
-          const hindiText = element.getAttribute('data-hi');
-          if (hindiText) {
-            element.textContent = hindiText;
-          }
-        });
-      } else {
-        // English (default)
-        document.querySelectorAll('[data-en]').forEach(element => {
-          const englishText = element.getAttribute('data-en');
-          if (englishText) {
-            element.textContent = englishText;
-          }
-        });
-      }
     }
 
     // Amazon/Flipkart Gallery Functions
@@ -5689,27 +5652,14 @@
       accountDropdown.classList.toggle('active');
     }
 
-    // Data loading functions with localStorage caching
+    // Data loading functions
     async function loadProducts() {
       try {
-        // Try to load from localStorage first
-        const cachedProducts = localStorage.getItem('products');
-        if (cachedProducts) {
-          products = JSON.parse(cachedProducts);
-          renderProducts(products, 'homeProductGrid');
-          renderProducts(products, 'productGrid');
-          renderProductSlider(products.slice(0, 10), 'productSlider');
-        }
-        
-        // Then load from Firebase
         const snapshot = await db.collection('products').get();
         products = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
-        // Update localStorage
-        localStorage.setItem('products', JSON.stringify(products));
         
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
@@ -5723,23 +5673,11 @@
 
     async function loadCategories() {
       try {
-        // Try to load from localStorage first
-        const cachedCategories = localStorage.getItem('categories');
-        if (cachedCategories) {
-          categories = JSON.parse(cachedCategories);
-          renderCategories();
-          renderCategoryCircles();
-        }
-        
-        // Then load from Firebase
         const snapshot = await db.collection('categories').get();
         categories = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
-        // Update localStorage
-        localStorage.setItem('categories', JSON.stringify(categories));
         
         renderCategories();
         renderCategoryCircles();
@@ -5752,22 +5690,11 @@
 
     async function loadBanners() {
       try {
-        // Try to load from localStorage first
-        const cachedBanners = localStorage.getItem('banners');
-        if (cachedBanners) {
-          banners = JSON.parse(cachedBanners);
-          renderBannerCarousel();
-        }
-        
-        // Then load from Firebase
         const snapshot = await db.collection('banners').get();
         banners = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
-        // Update localStorage
-        localStorage.setItem('banners', JSON.stringify(banners));
         
         renderBannerCarousel();
       } catch (error) {
@@ -6519,13 +6446,6 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
         showToast('Settings saved successfully', 'success');
-        
-        // Apply language if changed
-        if (currentLanguage !== language) {
-          currentLanguage = language;
-          localStorage.setItem('language', currentLanguage);
-          applyLanguage();
-        }
       }).catch(error => {
         console.error('Error saving settings:', error);
         showToast('Failed to save settings', 'error');
@@ -6696,8 +6616,8 @@
           name: 'Casual Summer T-Shirt',
           price: '₹499',
           image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable cotton t-shirt for everyday wear',
-          reviews: '78'
+          description: 'Soft and comfortable cotton t-shirt',
+          reviews: '167'
         }
       ];
       
@@ -6711,22 +6631,27 @@
         {
           id: '1',
           name: 'Electronics',
-          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '2',
           name: 'Fashion',
-          image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fGZhc2hpb258ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '3',
           name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aG9tZSUyMGFuZCUyMGtpdGNoZW58ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '4',
           name: 'Beauty',
-          image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+        },
+        {
+          id: '5',
+          name: 'Sports',
+          image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c3BvcnRzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         }
       ];
       
@@ -6738,20 +6663,179 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2FsZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          title: 'Summer Sale',
+          subtitle: 'Up to 50% off on selected items'
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          title: 'New Arrivals',
+          subtitle: 'Check out the latest trends'
         },
         {
           id: '3',
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          title: 'Free Shipping',
+          subtitle: 'On orders above ₹999'
         }
       ];
       
       renderBannerCarousel();
     }
+
+    // Show my orders
+    function showMyOrders() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      db.collection('orders')
+        .where('userId', '==', currentUser.uid)
+        .orderBy('orderDate', 'desc')
+        .get()
+        .then(snapshot => {
+          const ordersList = document.getElementById('ordersList');
+          const noOrders = document.getElementById('noOrders');
+          
+          if (snapshot.empty) {
+            ordersList.style.display = 'none';
+            noOrders.style.display = 'block';
+            return;
+          }
+          
+          ordersList.style.display = 'block';
+          noOrders.style.display = 'none';
+          ordersList.innerHTML = '';
+          
+          snapshot.docs.forEach(doc => {
+            const order = doc.data();
+            const orderCard = document.createElement('div');
+            orderCard.className = 'order-card';
+            orderCard.innerHTML = `
+              <div class="order-header">
+                <div>
+                  <div class="order-id">${order.orderId}</div>
+                  <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
+                </div>
+                <div class="order-status status-confirmed">${order.status}</div>
+              </div>
+              <div class="order-details">
+                <div class="order-product-image" style="background-image: url('${products.find(p => p.id === order.productId)?.image || ''}')"></div>
+                <div class="order-product-info">
+                  <div class="order-product-title">${order.productName}</div>
+                  <div class="order-product-price">${order.price}</div>
+                  <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
+                </div>
+              </div>
+              <div class="order-actions">
+                <button class="btn secondary view-order-detail" data-order-id="${order.orderId}">View Details</button>
+              </div>
+            `;
+            
+            orderCard.querySelector('.view-order-detail').addEventListener('click', () => {
+              showOrderDetail(order.orderId);
+            });
+            
+            ordersList.appendChild(orderCard);
+          });
+        })
+        .catch(error => {
+          console.error('Error loading orders:', error);
+          showToast('Failed to load orders', 'error');
+        });
+    }
+
+    function showOrderDetail(orderId) {
+      db.collection('orders').doc(orderId).get()
+        .then(doc => {
+          if (!doc.exists) {
+            showToast('Order not found', 'error');
+            return;
+          }
+          
+          const order = doc.data();
+          const container = document.getElementById('orderDetailContent');
+          
+          container.innerHTML = `
+            <div class="order-detail-section">
+              <div class="order-detail-label">Order ID</div>
+              <div class="order-detail-value">${order.orderId}</div>
+            </div>
+            
+            <div class="order-detail-section">
+              <div class="order-detail-label">Order Date</div>
+              <div class="order-detail-value">${new Date(order.orderDate).toLocaleString()}</div>
+            </div>
+            
+            <div class="order-detail-section">
+              <div class="order-detail-label">Status</div>
+              <div class="order-detail-value">
+                <span class="order-status status-confirmed">${order.status}</span>
+              </div>
+            </div>
+            
+            <div class="order-detail-section">
+              <div class="order-detail-label">Product</div>
+              <div class="order-detail-product">
+                <div class="order-detail-image" style="background-image: url('${products.find(p => p.id === order.productId)?.image || ''}')"></div>
+                <div class="order-detail-product-info">
+                  <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+                  <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${order.price}</div>
+                  <div style="color:var(--muted)">Qty: ${order.quantity} | Size: ${order.size}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="order-detail-section">
+              <div class="order-detail-label">Delivery Address</div>
+              <div class="order-detail-value">
+                <div>${order.userInfo?.fullName || 'N/A'}</div>
+                <div>${order.userInfo?.house || 'N/A'}</div>
+                <div>${order.userInfo?.city || 'N/A'}, ${order.userInfo?.state || 'N/A'} - ${order.userInfo?.pincode || 'N/A'}</div>
+                <div>Mobile: ${order.userInfo?.mobile || 'N/A'}</div>
+              </div>
+            </div>
+            
+            <div class="order-detail-section">
+              <div class="order-detail-label">Payment Method</div>
+              <div class="order-detail-value">${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Prepaid'}</div>
+            </div>
+          `;
+          
+          showPage('orderDetailPage');
+        })
+        .catch(error => {
+          console.error('Error loading order details:', error);
+          showToast('Failed to load order details', 'error');
+        });
+    }
+
+    // Initialize the app when DOM is loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
   </script>
+
+<!-- Firebase config injected -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
+  authDomain: "videomanager-23d98.firebaseapp.com",
+  databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
+  projectId: "videomanager-23d98",
+  storageBucket: "videomanager-23d98.firebasestorage.app",
+  messagingSenderId: "847321523576",
+  appId: "1:847321523576:web:bda3f5026e3e163603548d",
+  measurementId: "G-YBSJ1KMPV4"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+</script>
+
 </body>
 </html>
