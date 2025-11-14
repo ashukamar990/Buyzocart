@@ -20,7 +20,6 @@
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
-    /* All CSS styles remain the same as in the original file */
     :root {
       --bg: #ffffff;
       --card: #ffffff;
@@ -4892,7 +4891,7 @@
     let recentlyViewed = [];
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
-    let language = localStorage.getItem('language') || 'en';
+    let currentLanguage = localStorage.getItem('language') || 'en';
 
     // Amazon/Flipkart Gallery Variables
     let fkCurrentSlide = 0;
@@ -5136,9 +5135,11 @@
         toggleTheme();
       });
 
-      // Language change
+      // Language change in settings
       document.getElementById('languageSelect')?.addEventListener('change', function() {
-        changeLanguage(this.value);
+        currentLanguage = this.value;
+        localStorage.setItem('language', currentLanguage);
+        applyLanguage();
       });
 
       // Amazon/Flipkart Gallery Event Listeners
@@ -5175,59 +5176,31 @@
     }
 
     // Language functions
-    function changeLanguage(lang) {
-      language = lang;
-      localStorage.setItem('language', lang);
-      applyLanguage();
-      showToast(lang === 'hi' ? 'भाषा हिंदी में बदल गई' : 'Language changed to English', 'success');
-    }
-
     function applyLanguage() {
-      // This is a simplified implementation
-      // In a real app, you would have a full translation system
-      const elements = document.querySelectorAll('[data-i18n]');
-      elements.forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (translations[language] && translations[language][key]) {
-          element.textContent = translations[language][key];
-        }
-      });
-    }
-
-    const translations = {
-      en: {
-        welcome: "Welcome to Buyzo Cart",
-        searchPlaceholder: "Search products (e.g. 'Sneakers', 'T-shirt', 'Earbuds')",
-        featuredProducts: "Featured Products",
-        allProducts: "All Products",
-        myOrders: "My Orders",
-        wishlist: "Wishlist",
-        login: "Login",
-        signup: "Sign Up",
-        contact: "Contact",
-        about: "About Us",
-        shipping: "Shipping Policy",
-        privacy: "Privacy Policy",
-        terms: "Terms & Conditions",
-        cancellation: "Refund & Cancellation"
-      },
-      hi: {
-        welcome: "बायज़ो कार्ट में आपका स्वागत है",
-        searchPlaceholder: "उत्पाद खोजें (जैसे 'स्नीकर्स', 'टी-शर्ट', 'ईयरबड्स')",
-        featuredProducts: "फीचर्ड उत्पाद",
-        allProducts: "सभी उत्पाद",
-        myOrders: "मेरे आर्डर",
-        wishlist: "विशलिस्ट",
-        login: "लॉगिन",
-        signup: "साइन अप",
-        contact: "संपर्क करें",
-        about: "हमारे बारे में",
-        shipping: "शिपिंग नीति",
-        privacy: "गोपनीयता नीति",
-        terms: "नियम और शर्तें",
-        cancellation: "वापसी और रद्दीकरण"
+      const languageSelect = document.getElementById('languageSelect');
+      if (languageSelect) {
+        languageSelect.value = currentLanguage;
       }
-    };
+      
+      // Apply language-specific text
+      if (currentLanguage === 'hi') {
+        // Hindi translations
+        document.querySelectorAll('[data-en]').forEach(element => {
+          const hindiText = element.getAttribute('data-hi');
+          if (hindiText) {
+            element.textContent = hindiText;
+          }
+        });
+      } else {
+        // English (default)
+        document.querySelectorAll('[data-en]').forEach(element => {
+          const englishText = element.getAttribute('data-en');
+          if (englishText) {
+            element.textContent = englishText;
+          }
+        });
+      }
+    }
 
     // Amazon/Flipkart Gallery Functions
     function fkInitGallery(product) {
@@ -5716,11 +5689,11 @@
       accountDropdown.classList.toggle('active');
     }
 
-    // Data loading functions
+    // Data loading functions with localStorage caching
     async function loadProducts() {
       try {
-        // Try to load from localStorage first for faster display
-        const cachedProducts = localStorage.getItem('cachedProducts');
+        // Try to load from localStorage first
+        const cachedProducts = localStorage.getItem('products');
         if (cachedProducts) {
           products = JSON.parse(cachedProducts);
           renderProducts(products, 'homeProductGrid');
@@ -5728,15 +5701,15 @@
           renderProductSlider(products.slice(0, 10), 'productSlider');
         }
         
-        // Then load from Firebase for latest data
+        // Then load from Firebase
         const snapshot = await db.collection('products').get();
         products = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
         
-        // Update localStorage cache
-        localStorage.setItem('cachedProducts', JSON.stringify(products));
+        // Update localStorage
+        localStorage.setItem('products', JSON.stringify(products));
         
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
@@ -5751,7 +5724,7 @@
     async function loadCategories() {
       try {
         // Try to load from localStorage first
-        const cachedCategories = localStorage.getItem('cachedCategories');
+        const cachedCategories = localStorage.getItem('categories');
         if (cachedCategories) {
           categories = JSON.parse(cachedCategories);
           renderCategories();
@@ -5765,8 +5738,8 @@
           ...doc.data()
         }));
         
-        // Update localStorage cache
-        localStorage.setItem('cachedCategories', JSON.stringify(categories));
+        // Update localStorage
+        localStorage.setItem('categories', JSON.stringify(categories));
         
         renderCategories();
         renderCategoryCircles();
@@ -5780,7 +5753,7 @@
     async function loadBanners() {
       try {
         // Try to load from localStorage first
-        const cachedBanners = localStorage.getItem('cachedBanners');
+        const cachedBanners = localStorage.getItem('banners');
         if (cachedBanners) {
           banners = JSON.parse(cachedBanners);
           renderBannerCarousel();
@@ -5793,8 +5766,8 @@
           ...doc.data()
         }));
         
-        // Update localStorage cache
-        localStorage.setItem('cachedBanners', JSON.stringify(banners));
+        // Update localStorage
+        localStorage.setItem('banners', JSON.stringify(banners));
         
         renderBannerCarousel();
       } catch (error) {
@@ -6546,6 +6519,13 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
         showToast('Settings saved successfully', 'success');
+        
+        // Apply language if changed
+        if (currentLanguage !== language) {
+          currentLanguage = language;
+          localStorage.setItem('language', currentLanguage);
+          applyLanguage();
+        }
       }).catch(error => {
         console.error('Error saving settings:', error);
         showToast('Failed to save settings', 'error');
@@ -6716,8 +6696,8 @@
           name: 'Casual Summer T-Shirt',
           price: '₹499',
           image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable cotton t-shirt for summer',
-          reviews: '178'
+          description: 'Comfortable cotton t-shirt for everyday wear',
+          reviews: '78'
         }
       ];
       
@@ -6741,12 +6721,12 @@
         {
           id: '3',
           name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aG9tZSUyMGFuZCUyMGtpdGNoZW58ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '4',
           name: 'Beauty',
-          image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         }
       ];
       
@@ -6758,21 +6738,15 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
-          title: 'Summer Sale',
-          description: 'Up to 50% off on all products'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2FsZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
-          title: 'New Arrivals',
-          description: 'Check out our latest products'
+          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
         },
         {
           id: '3',
-          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
-          title: 'Free Shipping',
-          description: 'On orders above ₹999'
+          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
         }
       ];
       
