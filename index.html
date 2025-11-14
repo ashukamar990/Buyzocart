@@ -6860,5 +6860,41 @@ const auth = firebase.auth();
   console.log("Firebase Connected");
 </script>
 
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
+  authDomain: "videomanager-23d98.firebaseapp.com",
+  databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
+  projectId: "videomanager-23d98",
+  storageBucket: "videomanager-23d98.firebasestorage.app",
+  messagingSenderId: "847321523576",
+  appId: "1:847321523576:web:bda3f5026e3e163603548d",
+  measurementId: "G-YBSJ1KMPV4"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+window.googleLogin = function(){
+  signInWithPopup(auth, provider).then(()=>{
+    document.querySelector('.auth-modal')?.classList.remove('active');
+  });
+}
+
+onAuthStateChanged(auth, (user)=>{
+  if(user){
+    const nameEl=document.getElementById("userName");
+    const emailEl=document.getElementById("accountEmail");
+    if(nameEl) nameEl.textContent = user.displayName || "User";
+    if(emailEl) emailEl.textContent = user.email;
+  }
+});
+</script>
+
 </body>
 </html>
