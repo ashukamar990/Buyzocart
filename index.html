@@ -2060,6 +2060,7 @@
       display: none;
     }
     
+    /* NEW: Close button for auth modal */
     .auth-close {
       position: absolute;
       top: 16px;
@@ -4229,7 +4230,8 @@
         
         <div class="account-header">
           <div class="account-avatar" id="accountPageAvatar">
-            <img id="accountPageAvatarImg" style="width: 100%; height: 100%; border-radius: 50%; display: none;" />
+            <img id="accountPageAvatarImg" style="width:100%;height:100%;border-radius:50%;display:none" />
+            <span id="accountPageAvatarText">U</span>
           </div>
           <div class="account-info">
             <h2 id="accountPageName">User Name</h2>
@@ -4318,6 +4320,13 @@
           <h3>Danger Zone</h3>
           <p>Once you delete your account, there is no going back. Please be certain.</p>
           <button class="btn error" id="deleteAccountBtn">Delete Account</button>
+        </div>
+        
+        <!-- Logout Button -->
+        <div class="account-section">
+          <h3>Sign Out</h3>
+          <p>Sign out from your account</p>
+          <button class="btn secondary" onclick="logout()">Logout</button>
         </div>
       </div>
     </section>
@@ -4788,15 +4797,15 @@
   <script>
     // Firebase configuration
     const firebaseConfig = {
-  apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
-  authDomain: "videomanager-23d98.firebaseapp.com",
-  databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
-  projectId: "videomanager-23d98",
-  storageBucket: "videomanager-23d98.firebasestorage.app",
-  messagingSenderId: "847321523576",
-  appId: "1:847321523576:web:bda3f5026e3e163603548d",
-  measurementId: "G-YBSJ1KMPV4"
-};
+      apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
+      authDomain: "videomanager-23d98.firebaseapp.com",
+      databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
+      projectId: "videomanager-23d98",
+      storageBucket: "videomanager-23d98.firebasestorage.app",
+      messagingSenderId: "847321523576",
+      appId: "1:847321523576:web:bda3f5026e3e163603548d",
+      measurementId: "G-YBSJ1KMPV4"
+    };
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -4916,7 +4925,8 @@
           loadUserData(user);
           loadWishlist(user);
           loadRecentlyViewed(user);
-          authModal.classList.remove('active'); // Auto close login modal
+          // Auto close login modal if open
+          authModal.classList.remove('active');
         } else {
           currentUser = null;
           updateUIForGuest();
@@ -4971,9 +4981,6 @@
         loginForm.classList.add('active');
       });
       resetPasswordBtn.addEventListener('click', handleResetPassword);
-      
-      // User profile - directly opens account page
-      userProfile.addEventListener('click', () => showPage('accountPage'));
       
       // Navigation
       openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
@@ -5326,6 +5333,7 @@
           await db.collection('users').doc(user.uid).set({
             name: user.displayName,
             email: user.email,
+            photoURL: user.photoURL,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         }
@@ -5548,22 +5556,36 @@
           userName.textContent = userData.name || user.displayName || 'User';
           mobileUserName.textContent = userData.name || user.displayName || 'User';
           
-          // Set avatar - use Google profile photo if available
-          if (user.photoURL) {
-            userAvatar.innerHTML = `<img src="${user.photoURL}" style="width: 100%; height: 100%; border-radius: 50%;" alt="Profile" />`;
-            document.getElementById('accountPageAvatarImg').src = user.photoURL;
-            document.getElementById('accountPageAvatarImg').style.display = 'block';
-            document.getElementById('accountPageAvatar').textContent = '';
+          // Set avatar with Google photo if available
+          const photoURL = user.photoURL || userData.photoURL;
+          if (photoURL) {
+            userAvatar.innerHTML = `<img src="${photoURL}" style="width:100%;height:100%;border-radius:50%" alt="Profile" />`;
           } else {
             const initial = (userData.name || user.displayName || 'U').charAt(0).toUpperCase();
             userAvatar.textContent = initial;
-            document.getElementById('accountPageAvatar').textContent = initial;
           }
           
           // Update account page if open
           if (document.getElementById('accountPageName')) {
             document.getElementById('accountPageName').textContent = userData.name || user.displayName || 'User';
             document.getElementById('accountPageEmail').textContent = user.email;
+            
+            // Update account page avatar
+            const accountPageAvatar = document.getElementById('accountPageAvatar');
+            const accountPageAvatarImg = document.getElementById('accountPageAvatarImg');
+            const accountPageAvatarText = document.getElementById('accountPageAvatarText');
+            
+            if (photoURL) {
+              accountPageAvatarImg.src = photoURL;
+              accountPageAvatarImg.style.display = 'block';
+              accountPageAvatarText.style.display = 'none';
+            } else {
+              const initial = (userData.name || user.displayName || 'U').charAt(0).toUpperCase();
+              accountPageAvatarText.textContent = initial;
+              accountPageAvatarImg.style.display = 'none';
+              accountPageAvatarText.style.display = 'block';
+            }
+            
             document.getElementById('profileName').value = userData.name || user.displayName || '';
             document.getElementById('profileEmail').value = user.email;
             document.getElementById('profilePhone').value = userData.phone || '';
@@ -5890,17 +5912,6 @@
       
       // Show product detail page
       showPage('productDetailPage');
-    }
-
-    function setDetailImage(imageUrl, index) {
-      document.getElementById('detailMainImage').style.backgroundImage = `url('${imageUrl}')`;
-      
-      // Update active thumbnail
-      document.querySelectorAll('.product-detail-thumbnail').forEach((thumb, i) => {
-        thumb.classList.toggle('active', i === index);
-      });
-      
-      currentImageIndex = index;
     }
 
     function loadSimilarProducts(product) {
@@ -6543,9 +6554,9 @@
           name: 'Casual Summer T-Shirt',
           price: '₹499',
           image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable and stylish summer t-shirt',
-          badge: '',
-          reviews: '78'
+          description: 'Comfortable cotton t-shirt for summer',
+          badge: 'BESTSELLER',
+          reviews: '189'
         }
       ];
       
@@ -6568,13 +6579,13 @@
         },
         {
           id: '3',
-          name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          name: 'Home',
+          image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '4',
-          name: 'Beauty',
-          image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          name: 'Sports',
+          image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c3BvcnRzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         }
       ];
       
@@ -6586,15 +6597,15 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVjb21tZXJjZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGVjb21tZXJjZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
         },
         {
           id: '3',
-          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60'
+          image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGVjb21tZXJjZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60'
         }
       ];
       
