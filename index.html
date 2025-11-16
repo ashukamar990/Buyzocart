@@ -3737,7 +3737,7 @@
           <h2>Refund & Cancellation Policy</h2>
           
           <h3>Cancellation Policy</h3>
-          <p>You can cancel your order before it has been shipped. Once your order has been shipped, you can no longer cancel it. If you wish to cancel your order, please contact us immediately at <a href="mailto:buyzocartshop@gmail.com" style="color: var(--accent);">buyzocartshop@gmail.com</a> with your order details.</p>
+          <p>You can cancel your order before it has been shipped. Once your order has been shipped, you can no longer cancel it. If you wish to cancel your order, please contact us immediately at <a href="mailto:buyzocartshop@gmail.com"><strong>buyzocartshop@gmail.com</strong></a> with your order details.</p>
           
           <h3>Refund Policy</h3>
           <p>We offer refunds only in cases where the product is defective, damaged, or not as described. Refunds will be processed to the original payment method within 7-14 business days after we receive the returned product.</p>
@@ -3748,8 +3748,8 @@
           <h3>Contact Us</h3>
           <p>If you have any questions about our Refund & Cancellation Policy, please contact us:</p>
           <ul>
-            <li>Email: <a href="mailto:buyzocartshop@gmail.com" style="color: var(--accent);">buyzocartshop@gmail.com</a></li>
-            <li>Help Center: <a href="mailto:buyzocart.help@gmail.com" style="color: var(--accent);">buyzocart.help@gmail.com</a></li>
+            <li>Email: <a href="mailto:buyzocartshop@gmail.com"><strong>buyzocartshop@gmail.com</strong></a></li>
+            <li>Help Center: <a href="mailto:buyzocart.help@gmail.com"><strong>buyzocart.help@gmail.com</strong></a></li>
           </ul>
         </div>
       </div>
@@ -3843,7 +3843,7 @@
           <p>Once your order is shipped, you will receive a tracking number via email and SMS. You can use this tracking number to check the status of your delivery on our website or the courier partner's website.</p>
           
           <h3>Delivery Issues</h3>
-          <p>If you face any issues with your delivery, please contact us immediately at <a href="mailto:buyzocartshop@gmail.com" style="color: var(--accent);">buyzocartshop@gmail.com</a> with your order details.</p>
+          <p>If you face any issues with your delivery, please contact us immediately at <a href="mailto:buyzocartshop@gmail.com"><strong>buyzocartshop@gmail.com</strong></a> with your order details.</p>
         </div>
       </div>
     </section>
@@ -3915,7 +3915,7 @@
           
           <h3>Contact Us</h3>
           <p>If you have questions or comments about this Privacy Policy, please contact us at:</p>
-          <p><a href="mailto:buyzocartshop@gmail.com" style="color: var(--accent);">buyzocartshop@gmail.com</a></p>
+          <p><a href="mailto:buyzocartshop@gmail.com"><strong>buyzocartshop@gmail.com</strong></a></p>
         </div>
       </div>
     </section>
@@ -3936,8 +3936,8 @@
           <p>We'd love to hear from you! Please reach out to us with any questions, concerns, or feedback.</p>
           
           <h3>Email Us</h3>
-          <p>For general inquiries: <a href="mailto:buyzocartshop@gmail.com" style="color: var(--accent);">buyzocartshop@gmail.com</a></p>
-          <p>For help and support: <a href="mailto:buyzocart.help@gmail.com" style="color: var(--accent);">buyzocart.help@gmail.com</a></p>
+          <p>For general inquiries: <a href="mailto:buyzocartshop@gmail.com"><strong>buyzocartshop@gmail.com</strong></a></p>
+          <p>For help and support: <a href="mailto:buyzocart.help@gmail.com"><strong>buyzocart.help@gmail.com</strong></a></p>
           
           <h3>Connect With Us</h3>
           <p>Follow us on social media for the latest updates, new arrivals, and exclusive offers:</p>
@@ -4349,7 +4349,7 @@
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
-              <a href="mailto:buyzocartshop@gmail.com" style="color: inherit;">buyzocartshop@gmail.com</a>
+              <a href="mailto:buyzocartshop@gmail.com">buyzocartshop@gmail.com</a>
             </p>
             <p>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -5158,6 +5158,12 @@
         loginBtn.innerHTML = '<div class="loading-spinner"></div> Logging in...';
         
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        
+        // Update last login time
+        await db.collection('users').doc(userCredential.user.uid).set({
+          lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
         showToast('Login successful!', 'success');
         authModal.classList.remove('active');
         
@@ -5203,7 +5209,8 @@
         await db.collection('users').doc(user.uid).set({
           name: name,
           email: email,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         showToast('Account created successfully!', 'success');
@@ -5239,8 +5246,14 @@
             name: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
           });
+        } else {
+          // Update last login time
+          await db.collection('users').doc(user.uid).set({
+            lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
         }
         
         showToast('Login successful!', 'success');
@@ -5473,6 +5486,12 @@
             document.getElementById('profileName').value = userData.name || user.displayName || '';
             document.getElementById('profileEmail').value = user.email;
             document.getElementById('profilePhone').value = userData.phone || '';
+            
+            // Update last login time
+            if (userData.lastLoginAt) {
+              const lastLoginTime = new Date(userData.lastLoginAt.toDate()).toLocaleString();
+              document.getElementById('lastLoginTime').textContent = lastLoginTime;
+            }
           }
         }
       });
@@ -5588,6 +5607,12 @@
         if (doc.exists) {
           const userData = doc.data();
           userInfo = { ...userInfo, ...userData };
+          
+          // Update last login time in account page
+          if (userData.lastLoginAt && document.getElementById('lastLoginTime')) {
+            const lastLoginTime = new Date(userData.lastLoginAt.toDate()).toLocaleString();
+            document.getElementById('lastLoginTime').textContent = lastLoginTime;
+          }
         }
       }).catch(error => {
         console.error('Error loading user data:', error);
@@ -6583,6 +6608,16 @@
           id: '2',
           name: 'Fashion',
           image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60'
+        },
+        {
+          id: '3',
+          name: 'Home & Kitchen',
+          image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGhvbWUlMjBraXRjaGVufGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+        },
+        {
+          id: '4',
+          name: 'Beauty',
+          image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         }
       ];
       
@@ -6594,11 +6629,15 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          title: 'Summer Sale',
+          description: 'Up to 50% off on all items'
         },
         {
           id: '2',
-          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHNob3BwaW5nfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          title: 'New Arrivals',
+          description: 'Check out the latest products'
         }
       ];
       
