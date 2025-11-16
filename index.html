@@ -3434,18 +3434,13 @@
         
         <div class="product-detail-container">
           <div class="product-detail-gallery">
-            <!-- Amazon/Flipkart Style Gallery -->
-            <div class="fk-gallery-container">
-              <div class="fk-gallery-main" id="fkGalleryMain">
-                <div class="fk-gallery-track" id="fkGalleryTrack"></div>
-                <div class="fk-gallery-controls">
-                  <button class="fk-gallery-btn fk-prev-btn">❮</button>
-                  <button class="fk-gallery-btn fk-next-btn">❯</button>
-                </div>
-                <div class="fk-gallery-dots" id="fkGalleryDots"></div>
-              </div>
-              <div class="fk-gallery-thumbs" id="fkGalleryThumbs"></div>
+            <!-- Product Image Gallery -->
+            <div class="product-detail-main-image" id="detailMainImage" onclick="openImageZoom()">
+              <button class="detail-carousel-control prev" onclick="prevImage()">&#10094;</button>
+              <button class="detail-carousel-control next" onclick="nextImage()">&#10095;</button>
+              <div class="detail-carousel-dots" id="detailCarouselDots"></div>
             </div>
+            <div class="product-detail-thumbnails" id="detailThumbnails"></div>
           </div>
           
           <div class="product-detail-info">
@@ -3489,9 +3484,15 @@
               </button>
             </div>
             
+            <!-- Sticky Action Buttons -->
+            <div class="sticky-actions" style="position: sticky; bottom: 0; background: var(--card); padding: 16px 0; border-top: 1px solid var(--border); margin-top: 20px;">
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button class="btn" id="detailOrderBtn" style="flex: 1;">Buy Now</button>
+                <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
+              </div>
+            </div>
+            
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;">
-              <button class="btn" id="detailOrderBtn">Order Now</button>
-              <button class="btn secondary" id="detailWishlistBtn">Add to Wishlist</button>
               <button class="btn secondary" onclick="showPage('productsPage')">Continue Shopping</button>
             </div>
           </div>
@@ -4370,7 +4371,7 @@
                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
               </svg>
             </a>
-            <a href="https://www.youtube.com/@BuyzoCart" target="_blank" class="social-link instagram">
+            <a href="https://www.youtube.com/@BuyzoCart" target="_blank" class="social-link youtube">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#FF0000">
                 <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
               </svg>
@@ -4629,149 +4630,85 @@
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
 
-    // Amazon/Flipkart Gallery Variables
-    let fkCurrentSlide = 0;
-    let fkIsDragging = false;
-    let fkStartPos = 0;
-    let fkCurrentTranslate = 0;
-    let fkPrevTranslate = 0;
-    let fkAnimationID = null;
-    let fkImages = [];
-
-    // NEW: Order ID Generation Function
-    function generateOrderId() {
-        const date = new Date();
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const randomNum = Math.floor(100000 + Math.random() * 900000); 
-        return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
-    }
-
-    // NEW: LocalStorage Helper Functions
-    function saveToLocalStorage(key, data) {
-      const item = {
-        data: data,
-        timestamp: new Date().getTime()
-      };
-      localStorage.setItem(key, JSON.stringify(item));
-    }
-
-    function loadFromLocalStorage(key, maxAge = 5 * 60 * 1000) { // 5 minutes default
-      const item = localStorage.getItem(key);
-      if (!item) return null;
-
-      const parsed = JSON.parse(item);
-      const now = new Date().getTime();
-      if (now - parsed.timestamp > maxAge) {
-        localStorage.removeItem(key);
-        return null;
+    // Cache Manager Class
+    class CacheManager {
+      constructor() {
+        this.cacheDuration = 10 * 60 * 1000; // 10 minutes
       }
 
-      return parsed.data;
-    }
-
-    // NEW: Realtime Database Functions
-    function setupRealtimeListeners() {
-      // Products listener
-      db.ref('products').on('value', snapshot => {
-        const productsData = snapshot.val();
-        if (productsData) {
-          const newProducts = Object.keys(productsData).map(key => ({
-            id: key,
-            ...productsData[key]
-          }));
-          
-          products = newProducts;
-          saveToLocalStorage('products', products);
-          
-          // Update UI if on relevant pages
-          if (document.getElementById('homePage').classList.contains('active') || 
-              document.getElementById('productsPage').classList.contains('active') ||
-              document.getElementById('productDetailPage').classList.contains('active')) {
-            renderProducts(products, 'homeProductGrid');
-            renderProducts(products, 'productGrid');
-            renderProductSlider(products.slice(0, 10), 'productSlider');
-          }
+      // Save data to localStorage with timestamp
+      set(key, data) {
+        try {
+          const cacheItem = {
+            data: data,
+            timestamp: Date.now()
+          };
+          localStorage.setItem(key, JSON.stringify(cacheItem));
+          return true;
+        } catch (error) {
+          console.error('Error saving to cache:', error);
+          return false;
         }
-      }, error => {
-        console.error('Products listener error:', error);
-      });
+      }
 
-      // Categories listener
-      db.ref('categories').on('value', snapshot => {
-        const categoriesData = snapshot.val();
-        if (categoriesData) {
-          const newCategories = Object.keys(categoriesData).map(key => ({
-            id: key,
-            ...categoriesData[key]
-          }));
-          
-          categories = newCategories;
-          saveToLocalStorage('categories', categories);
-          
-          // Update UI if on relevant pages
-          if (document.getElementById('homePage').classList.contains('active') || 
-              document.getElementById('productsPage').classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
+      // Get data from localStorage if not expired
+      get(key) {
+        try {
+          const cached = localStorage.getItem(key);
+          if (!cached) return null;
+
+          const cacheItem = JSON.parse(cached);
+          const now = Date.now();
+
+          // Check if cache is expired
+          if (now - cacheItem.timestamp > this.cacheDuration) {
+            localStorage.removeItem(key);
+            return null;
           }
-        }
-      }, error => {
-        console.error('Categories listener error:', error);
-      });
 
-      // Banners listener
-      db.ref('banners').on('value', snapshot => {
-        const bannersData = snapshot.val();
-        if (bannersData) {
-          const newBanners = Object.keys(bannersData).map(key => ({
-            id: key,
-            ...bannersData[key]
-          }));
-          
-          banners = newBanners;
-          saveToLocalStorage('banners', banners);
-          
-          // Update UI if on home page
-          if (document.getElementById('homePage').classList.contains('active')) {
-            renderBannerCarousel();
-          }
+          return cacheItem.data;
+        } catch (error) {
+          console.error('Error reading from cache:', error);
+          return null;
         }
-      }, error => {
-        console.error('Banners listener error:', error);
-      });
+      }
 
-      // Orders listener for current user
-      if (currentUser) {
-        db.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
-          .on('value', snapshot => {
-            const ordersData = snapshot.val();
-            if (ordersData) {
-              const orders = Object.keys(ordersData).map(key => ({
-                id: key,
-                ...ordersData[key]
-              }));
-              
-              // Sort by orderDate descending
-              orders.sort((a, b) => b.orderDate - a.orderDate);
-              
-              // Update UI if on orders page
-              if (document.getElementById('myOrdersPage').classList.contains('active')) {
-                renderOrders(orders);
+      // Clear specific cache item
+      remove(key) {
+        try {
+          localStorage.removeItem(key);
+          return true;
+        } catch (error) {
+          console.error('Error removing cache:', error);
+          return false;
+        }
+      }
+
+      // Clear all expired cache items
+      clearExpired() {
+        const keys = Object.keys(localStorage);
+        const now = Date.now();
+
+        keys.forEach(key => {
+          if (key.startsWith('cache_')) {
+            try {
+              const cached = localStorage.getItem(key);
+              if (cached) {
+                const cacheItem = JSON.parse(cached);
+                if (now - cacheItem.timestamp > this.cacheDuration) {
+                  localStorage.removeItem(key);
+                }
               }
-            } else {
-              // No orders
-              if (document.getElementById('myOrdersPage').classList.contains('active')) {
-                document.getElementById('ordersList').style.display = 'none';
-                document.getElementById('noOrders').style.display = 'block';
-              }
+            } catch (error) {
+              console.error('Error clearing expired cache:', error);
             }
-          }, error => {
-            console.error('Orders listener error:', error);
-          });
+          }
+        });
       }
     }
+
+    // Create cache manager instance
+    const cacheManager = new CacheManager();
 
     // DOM Elements
     const menuIcon = document.getElementById('menuIcon');
@@ -4814,17 +4751,6 @@
     const zoomIn = document.getElementById('zoomIn');
     const zoomOut = document.getElementById('zoomOut');
     const zoomReset = document.getElementById('zoomReset');
-
-    // Amazon/Flipkart Gallery Elements
-    const fkGalleryMain = document.getElementById('fkGalleryMain');
-    const fkGalleryTrack = document.getElementById('fkGalleryTrack');
-    const fkGalleryDots = document.getElementById('fkGalleryDots');
-    const fkGalleryThumbs = document.getElementById('fkGalleryThumbs');
-    const fkPrevBtn = document.querySelector('.fk-prev-btn');
-    const fkNextBtn = document.querySelector('.fk-next-btn');
-    const fkZoomModal = document.getElementById('fkZoomModal');
-    const fkZoomImage = document.getElementById('fkZoomImage');
-    const fkZoomClose = document.getElementById('fkZoomClose');
 
     // NEW: Error Display Elements
     const loginError = document.getElementById('loginError');
@@ -4870,30 +4796,38 @@
 
     // NEW: Load initial data with localStorage caching
     function loadInitialData() {
+      // Clear expired cache first
+      cacheManager.clearExpired();
+      
       // Try to load from localStorage first
-      const cachedProducts = loadFromLocalStorage('products');
-      const cachedCategories = loadFromLocalStorage('categories');
-      const cachedBanners = loadFromLocalStorage('banners');
+      const cachedProducts = cacheManager.get('products');
+      const cachedCategories = cacheManager.get('categories');
+      const cachedBanners = cacheManager.get('banners');
       
       if (cachedProducts) {
         products = cachedProducts;
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         renderProductSlider(products.slice(0, 10), 'productSlider');
+        console.log('Loaded products from cache');
+      } else {
+        console.log('No cached products found');
       }
       
       if (cachedCategories) {
         categories = cachedCategories;
         renderCategories();
         renderCategoryCircles();
+        console.log('Loaded categories from cache');
       }
       
       if (cachedBanners) {
         banners = cachedBanners;
         renderBannerCarousel();
+        console.log('Loaded banners from cache');
       }
       
-      // Then load from Firebase
+      // Then load from Firebase in background
       loadProducts();
       loadCategories();
       loadBanners();
@@ -5024,143 +4958,6 @@
       document.getElementById('darkModeToggle')?.addEventListener('change', function() {
         toggleTheme();
       });
-
-      // Amazon/Flipkart Gallery Event Listeners
-      fkPrevBtn?.addEventListener('click', fkPrevSlide);
-      fkNextBtn?.addEventListener('click', fkNextSlide);
-      fkZoomClose?.addEventListener('click', () => fkZoomModal.classList.remove('active'));
-
-      // Touch events for swipe
-      if (fkGalleryMain) {
-        fkGalleryMain.addEventListener('touchstart', fkTouchStart);
-        fkGalleryMain.addEventListener('touchmove', fkTouchMove);
-        fkGalleryMain.addEventListener('touchend', fkTouchEnd);
-      }
-    }
-
-    // Amazon/Flipkart Gallery Functions
-    function fkInitGallery(product) {
-      if (!product) return;
-
-      // Clear existing gallery
-      fkGalleryTrack.innerHTML = '';
-      fkGalleryDots.innerHTML = '';
-      fkGalleryThumbs.innerHTML = '';
-
-      // Get images from product - Firebase path: /products/{productId}/images[]
-      fkImages = product.images && product.images.length > 0 ? product.images : [product.image];
-
-      // Create slides
-      fkImages.forEach((image, index) => {
-        // Main slide
-        const slide = document.createElement('div');
-        slide.className = 'fk-gallery-slide';
-        slide.style.backgroundImage = `url('${image}')`;
-        slide.addEventListener('click', () => fkOpenZoom(image));
-        fkGalleryTrack.appendChild(slide);
-
-        // Dot indicator
-        const dot = document.createElement('div');
-        dot.className = `fk-gallery-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => fkGoToSlide(index));
-        fkGalleryDots.appendChild(dot);
-
-        // Thumbnail
-        const thumb = document.createElement('div');
-        thumb.className = `fk-gallery-thumb ${index === 0 ? 'active' : ''}`;
-        thumb.style.backgroundImage = `url('${image}')`;
-        thumb.addEventListener('click', () => fkGoToSlide(index));
-        fkGalleryThumbs.appendChild(thumb);
-      });
-
-      // Reset to first slide
-      fkCurrentSlide = 0;
-      fkUpdateGallery();
-    }
-
-    function fkUpdateGallery() {
-      fkGalleryTrack.style.transform = `translateX(-${fkCurrentSlide * 100}%)`;
-      
-      // Update dots
-      document.querySelectorAll('.fk-gallery-dot').forEach((dot, index) => {
-        dot.classList.toggle('active', index === fkCurrentSlide);
-      });
-      
-      // Update thumbnails
-      document.querySelectorAll('.fk-gallery-thumb').forEach((thumb, index) => {
-        thumb.classList.toggle('active', index === fkCurrentSlide);
-      });
-    }
-
-    function fkPrevSlide() {
-      if (fkCurrentSlide > 0) {
-        fkCurrentSlide--;
-        fkUpdateGallery();
-      }
-    }
-
-    function fkNextSlide() {
-      if (fkCurrentSlide < fkImages.length - 1) {
-        fkCurrentSlide++;
-        fkUpdateGallery();
-      }
-    }
-
-    function fkGoToSlide(index) {
-      fkCurrentSlide = index;
-      fkUpdateGallery();
-    }
-
-    function fkOpenZoom(imageUrl) {
-      fkZoomImage.src = imageUrl;
-      fkZoomModal.classList.add('active');
-    }
-
-    // Touch swipe functionality
-    function fkTouchStart(event) {
-      fkIsDragging = true;
-      fkStartPos = getPositionX(event);
-      fkAnimationID = requestAnimationFrame(fkAnimation);
-      fkGalleryTrack.style.cursor = 'grabbing';
-    }
-
-    function fkTouchMove(event) {
-      if (fkIsDragging) {
-        const currentPosition = getPositionX(event);
-        fkCurrentTranslate = fkPrevTranslate + currentPosition - fkStartPos;
-      }
-    }
-
-    function fkTouchEnd() {
-      cancelAnimationFrame(fkAnimationID);
-      fkIsDragging = false;
-      const movedBy = fkCurrentTranslate - fkPrevTranslate;
-
-      if (movedBy < -100 && fkCurrentSlide < fkImages.length - 1) {
-        fkCurrentSlide += 1;
-      }
-
-      if (movedBy > 100 && fkCurrentSlide > 0) {
-        fkCurrentSlide -= 1;
-      }
-
-      fkSetPositionByIndex();
-      fkGalleryTrack.style.cursor = 'grab';
-    }
-
-    function fkAnimation() {
-      fkGalleryTrack.style.transform = `translateX(${fkCurrentTranslate}px)`;
-      if (fkIsDragging) requestAnimationFrame(fkAnimation);
-    }
-
-    function fkSetPositionByIndex() {
-      fkCurrentTranslate = fkCurrentSlide * -fkGalleryMain.offsetWidth;
-      fkPrevTranslate = fkCurrentTranslate;
-      fkUpdateGallery();
-    }
-
-    function getPositionX(event) {
-      return event.type.includes('mouse') ? event.pageX : event.touches[0].clientX;
     }
 
     // NEW: Improved Authentication Functions with Error Handling
@@ -5563,11 +5360,12 @@
           }));
           
           products = newProducts;
-          saveToLocalStorage('products', products);
+          cacheManager.set('products', products);
           
           renderProducts(products, 'homeProductGrid');
           renderProducts(products, 'productGrid');
           renderProductSlider(products.slice(0, 10), 'productSlider');
+          console.log('Loaded fresh products from Firebase');
         }
       } catch (error) {
         console.error('Error loading products:', error);
@@ -5587,10 +5385,11 @@
           }));
           
           categories = newCategories;
-          saveToLocalStorage('categories', categories);
+          cacheManager.set('categories', categories);
           
           renderCategories();
           renderCategoryCircles();
+          console.log('Loaded fresh categories from Firebase');
         }
       } catch (error) {
         console.error('Error loading categories:', error);
@@ -5610,9 +5409,10 @@
           }));
           
           banners = newBanners;
-          saveToLocalStorage('banners', banners);
+          cacheManager.set('banners', banners);
           
           renderBannerCarousel();
+          console.log('Loaded fresh banners from Firebase');
         }
       } catch (error) {
         console.error('Error loading banners:', error);
@@ -5873,8 +5673,8 @@
         stockStatus.className = 'stock-status out-of-stock';
       }
       
-      // Initialize Amazon/Flipkart gallery
-      fkInitGallery(product);
+      // Initialize product image gallery
+      initProductGallery(product);
       
       // Update share link
       document.getElementById('productShareLink').value = window.location.origin + window.location.pathname + '?product=' + product.id;
@@ -5901,6 +5701,41 @@
       showPage('productDetailPage');
     }
 
+    function initProductGallery(product) {
+      const mainImage = document.getElementById('detailMainImage');
+      const thumbnails = document.getElementById('detailThumbnails');
+      const dots = document.getElementById('detailCarouselDots');
+      
+      if (!mainImage || !thumbnails || !dots) return;
+      
+      // Clear existing content
+      thumbnails.innerHTML = '';
+      dots.innerHTML = '';
+      
+      // Get images array from product
+      const images = product.images && product.images.length > 0 ? product.images : [product.image];
+      
+      // Set first image as main
+      mainImage.style.backgroundImage = `url('${images[0]}')`;
+      currentImageIndex = 0;
+      
+      // Create thumbnails and dots
+      images.forEach((image, index) => {
+        // Create thumbnail
+        const thumb = document.createElement('div');
+        thumb.className = `product-detail-thumbnail ${index === 0 ? 'active' : ''}`;
+        thumb.style.backgroundImage = `url('${image}')`;
+        thumb.addEventListener('click', () => setDetailImage(image, index));
+        thumbnails.appendChild(thumb);
+        
+        // Create dot
+        const dot = document.createElement('div');
+        dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => setDetailImage(image, index));
+        dots.appendChild(dot);
+      });
+    }
+
     function setDetailImage(imageUrl, index) {
       document.getElementById('detailMainImage').style.backgroundImage = `url('${imageUrl}')`;
       
@@ -5909,7 +5744,26 @@
         thumb.classList.toggle('active', i === index);
       });
       
+      // Update active dot
+      document.querySelectorAll('.detail-carousel-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+      });
+      
       currentImageIndex = index;
+    }
+
+    function prevImage() {
+      const images = currentProduct.images && currentProduct.images.length > 0 ? currentProduct.images : [currentProduct.image];
+      if (currentImageIndex > 0) {
+        setDetailImage(images[currentImageIndex - 1], currentImageIndex - 1);
+      }
+    }
+
+    function nextImage() {
+      const images = currentProduct.images && currentProduct.images.length > 0 ? currentProduct.images : [currentProduct.image];
+      if (currentImageIndex < images.length - 1) {
+        setDetailImage(images[currentImageIndex + 1], currentImageIndex + 1);
+      }
     }
 
     function loadSimilarProducts(product) {
@@ -6320,8 +6174,8 @@
     function openImageZoom() {
       if (!currentProduct) return;
       
-      const imageUrl = currentProduct.images && currentProduct.images[currentImageIndex] ? 
-        currentProduct.images[currentImageIndex] : currentProduct.image;
+      const images = currentProduct.images && currentProduct.images.length > 0 ? currentProduct.images : [currentProduct.image];
+      const imageUrl = images[currentImageIndex];
       
       zoomImage.src = imageUrl;
       zoomModal.classList.add('active');
@@ -6646,32 +6500,12 @@
           id: '2',
           name: 'Smart Fitness Band',
           price: '₹1,999',
-          image: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGZpdG5lc3MlMjBiYW5kfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Track your fitness goals with this smart band',
+          image: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Zml0bmVzcyUyMGJhbmR8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          description: 'Track your fitness with this smart band',
           badge: 'NEW',
           reviews: '89'
-        },
-        {
-          id: '3',
-          name: 'Classic White Sneakers',
-          price: '₹2,499',
-          originalPrice: '₹3,999',
-          image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c25lYWtlcnN8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable and stylish white sneakers',
-          badge: '37% OFF',
-          reviews: '256'
-        },
-        {
-          id: '4',
-          name: 'Casual Summer T-Shirt',
-          price: '₹499',
-          image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable cotton t-shirt for summer',
-          badge: 'BESTSELLER',
-          reviews: '512'
         }
       ];
-      
       renderProducts(products, 'homeProductGrid');
       renderProducts(products, 'productGrid');
       renderProductSlider(products.slice(0, 10), 'productSlider');
@@ -6682,25 +6516,14 @@
         {
           id: '1',
           name: 'Electronics',
-          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZWxlY3Ryb25pY3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '2',
           name: 'Fashion',
           image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60'
-        },
-        {
-          id: '3',
-          name: 'Home & Kitchen',
-          image: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8aG9tZSUyMGFuZCUyMGtpdGNoZW58ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
-        },
-        {
-          id: '4',
-          name: 'Beauty',
-          image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YmVhdXR5fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
         }
       ];
-      
       renderCategories();
       renderCategoryCircles();
     }
@@ -6709,106 +6532,125 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
           title: 'Summer Sale',
           description: 'Up to 50% off on all items'
-        },
-        {
-          id: '2',
-          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
-          title: 'New Arrivals',
-          description: 'Check out our latest products'
         }
       ];
-      
       renderBannerCarousel();
     }
-  </script>
 
-<!-- ADDED: Profile redirect + Auth listener to auto-close modal and populate header avatar/name -->
-<script>
-(function(){
-  try {
-    // redirect profile click to account page
-    const selectors = ['.user-profile', '#profileLink', '#profileBtn', '.user-avatar', '.user-name', '#profileLinkHeader'];
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        el.addEventListener('click', function(e){
-          e.preventDefault();
-          window.location.href = 'account.html';
-        });
-      });
-    });
-  } catch(e){ console.warn('profile redirect init error', e); }
+    // NEW: Order ID Generation Function
+    function generateOrderId() {
+        const date = new Date();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const randomNum = Math.floor(100000 + Math.random() * 900000); 
+        return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
+    }
 
-  // compat firebase auth listener
-  function onFirebaseReady(){
-    try{
-      if(!window.firebase || !firebase.auth) return;
-      firebase.auth().onAuthStateChanged(function(user){
-        // close auth modal if open
-        const authModal = document.getElementById('authModal');
-        if(authModal && authModal.classList.contains('active')) {
-          authModal.classList.remove('active');
+    // NEW: Realtime Database Functions
+    function setupRealtimeListeners() {
+      // Products listener
+      db.ref('products').on('value', snapshot => {
+        const productsData = snapshot.val();
+        if (productsData) {
+          const newProducts = Object.keys(productsData).map(key => ({
+            id: key,
+            ...productsData[key]
+          }));
+          
+          products = newProducts;
+          cacheManager.set('products', products);
+          
+          // Update UI if on relevant pages
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active') ||
+              document.getElementById('productDetailPage').classList.contains('active')) {
+            renderProducts(products, 'homeProductGrid');
+            renderProducts(products, 'productGrid');
+            renderProductSlider(products.slice(0, 10), 'productSlider');
+          }
         }
-        // update header name and avatar
-        const headerName = document.querySelector('.user-name');
-        const headerAvatar = document.querySelector('.user-avatar');
-        if(user){
-          if(headerName) headerName.textContent = user.displayName || user.email || 'User';
-          if(headerAvatar){
-            if(user.photoURL){
-              if(headerAvatar.tagName && headerAvatar.tagName.toLowerCase()==='img'){
-                headerAvatar.src = user.photoURL;
-                headerAvatar.classList.add('user-avatar-img');
-              } else {
-                headerAvatar.style.backgroundImage = 'url('+user.photoURL+')';
-                headerAvatar.style.backgroundSize = 'cover';
-                headerAvatar.textContent = '';
+      }, error => {
+        console.error('Products listener error:', error);
+      });
+
+      // Categories listener
+      db.ref('categories').on('value', snapshot => {
+        const categoriesData = snapshot.val();
+        if (categoriesData) {
+          const newCategories = Object.keys(categoriesData).map(key => ({
+            id: key,
+            ...categoriesData[key]
+          }));
+          
+          categories = newCategories;
+          cacheManager.set('categories', categories);
+          
+          // Update UI if on relevant pages
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
+            renderCategories();
+            renderCategoryCircles();
+          }
+        }
+      }, error => {
+        console.error('Categories listener error:', error);
+      });
+
+      // Banners listener
+      db.ref('banners').on('value', snapshot => {
+        const bannersData = snapshot.val();
+        if (bannersData) {
+          const newBanners = Object.keys(bannersData).map(key => ({
+            id: key,
+            ...bannersData[key]
+          }));
+          
+          banners = newBanners;
+          cacheManager.set('banners', banners);
+          
+          // Update UI if on home page
+          if (document.getElementById('homePage').classList.contains('active')) {
+            renderBannerCarousel();
+          }
+        }
+      }, error => {
+        console.error('Banners listener error:', error);
+      });
+
+      // Orders listener for current user
+      if (currentUser) {
+        db.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
+          .on('value', snapshot => {
+            const ordersData = snapshot.val();
+            if (ordersData) {
+              const orders = Object.keys(ordersData).map(key => ({
+                id: key,
+                ...ordersData[key]
+              }));
+              
+              // Sort by orderDate descending
+              orders.sort((a, b) => b.orderDate - a.orderDate);
+              
+              // Update UI if on orders page
+              if (document.getElementById('myOrdersPage').classList.contains('active')) {
+                renderOrders(orders);
               }
             } else {
-              headerAvatar.style.backgroundImage = '';
-              headerAvatar.textContent = (user.displayName||'U').charAt(0).toUpperCase();
+              // No orders
+              if (document.getElementById('myOrdersPage').classList.contains('active')) {
+                document.getElementById('ordersList').style.display = 'none';
+                document.getElementById('noOrders').style.display = 'block';
+              }
             }
-          }
-        } else {
-          if(headerName) headerName.textContent = '';
-          if(headerAvatar){ headerAvatar.style.backgroundImage = ''; headerAvatar.textContent = 'U'; }
-        }
-      });
-    }catch(err){
-      console.warn('Firebase auth listener error', err);
-    }
-  }
-
-  // wait for firebase to load (compat script)
-  if(window.firebase && firebase.auth){
-    onFirebaseReady();
-  } else {
-    // poll for firebase
-    let tries = 0;
-    const t = setInterval(()=>{
-      tries++;
-      if(window.firebase && firebase.auth){
-        clearInterval(t);
-        onFirebaseReady();
-      } else if(tries>20) {
-        clearInterval(t);
+          }, error => {
+            console.error('Orders listener error:', error);
+          });
       }
-    }, 300);
-  }
-
-  // Hide header logout button if present
-  try{
-    const ids = ['logoutBtn', 'headerLogout', 'signOutBtn'];
-    ids.forEach(id=>{
-      const el = document.getElementById(id);
-      if(el) el.style.display = 'none';
-    });
-    document.querySelectorAll('.logout-btn, .logout, .signout').forEach(el=> el.style.display='none');
-  }catch(e){}
-})();
-</script>
-
+    }
+  </script>
 </body>
 </html>
