@@ -4937,8 +4937,46 @@
     const signupError = document.getElementById('signupError');
 
     // Initialize the app
-    document.addEventListener('DOMContentLoaded', function() {
+    
+// --- Cached User Helpers (injected) ---
+function showCachedUser() {
+  try {
+    const raw = localStorage.getItem('cachedUser');
+    if (!raw) return false;
+    const user = JSON.parse(raw);
+    if (!user) return false;
+    if (user.name) {
+      document.getElementById('userName')?.textContent = user.name;
+      document.getElementById('mobileUserName')?.textContent = user.name;
+      const ua = document.getElementById('userAvatarInitial');
+      if (ua) ua.textContent = user.name.charAt(0).toUpperCase();
+      // Account page
+      document.getElementById('accountPageName')?.textContent = user.name;
+      const aai = document.getElementById('accountPageAvatarInitial');
+      if (aai) aai.textContent = user.name.charAt(0).toUpperCase();
+      return true;
+    }
+  } catch(e){ console.warn('showCachedUser error', e); }
+  return false;
+}
+
+function saveCachedUser(userData){
+  try{
+    if(!userData) return;
+    const payload = {
+      name: userData.name || userData.displayName || '',
+      email: userData.email || '',
+      photoURL: userData.photoURL || ''
+    };
+    localStorage.setItem('cachedUser', JSON.stringify(payload));
+  }catch(e){ console.warn('saveCachedUser error', e); }
+}
+// --- end cached user helpers ---
+
+document.addEventListener('DOMContentLoaded', function() {
       initApp();
+      // Show cached user (instant)
+      try{ showCachedUser(); }catch(e){ }
       setupEventListeners();
       loadInitialData();
       setupHeroMessages();
@@ -5616,6 +5654,7 @@
         if (snapshot.exists()) {
           const userData = snapshot.val();
           userInfo = { ...userInfo, ...userData };
+          try{ saveCachedUser(userData); }catch(e){console.warn('saveCachedUser failed', e);}
           
           // Update last login time in account page
           if (userData.lastLoginAt && document.getElementById('lastLoginTime')) {
@@ -6582,6 +6621,7 @@
         updatedAt: Date.now()
       }).then(() => {
         showToast('Profile updated successfully', 'success');
+        try{ saveCachedUser({ name: name, phone: phone }); }catch(e){console.warn('saveCachedUser failed', e);}
         // Update UI
         userName.textContent = name;
         mobileUserName.textContent = name;
@@ -7009,178 +7049,8 @@
     }
   </script>
 
-<!-- LocalCache + Background Firebase Fetch (Injected by assistant) -->
-<script>
-(function(){
-  const CACHE_KEY = 'buyzocart_products_v1';
-  const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-  const PREFERRED_CONTAINERS = ['homeSearchResults','homeProductGrid','productGrid','productSlider','homeProducts','productsContainer','products','mainProducts'];
-
-  function parseCache(){
-    try{
-      const raw = localStorage.getItem(CACHE_KEY);
-      if(!raw) return null;
-      const obj = JSON.parse(raw);
-      if(!obj || !obj.data) return null;
-      return obj;
-    }catch(e){
-      console.warn('Failed to parse cache', e);
-      return null;
-    }
-  }
-
-  function saveToCache(data){
-    try{
-      const payload = { timestamp: Date.now(), data: data };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-    }catch(e){
-      console.warn('Failed to save cache', e);
-    }
-  }
-
-  function isCacheValid(cache){
-    if(!cache) return false;
-    return (Date.now() - cache.timestamp) < CACHE_TTL;
-  }
-
-  function findContainer(){
-    for(let id of PREFERRED_CONTAINERS){
-      const el = document.getElementById(id);
-      if(el) return el;
-      const q = document.querySelector('[data-products="'+id+'"]');
-      if(q) return q;
-    }
-    // fallback: first .product-grid or .product-list
-    let el = document.querySelector('.product-grid') || document.querySelector('.product-list') || document.querySelector('#homeSearchResults');
-    return el;
-  }
-
-  function clearChildren(el){
-    while(el.firstChild) el.removeChild(el.firstChild);
-  }
-
-  // Minimal product card HTML generator (matches site CSS classes lightly)
-  function createProductCard(p){
-    const card = document.createElement('div');
-    card.className = 'product-card';
-    // image div
-    const imgWrap = document.createElement('div');
-    imgWrap.className = 'product-card-image';
-    if(p.image) imgWrap.style.backgroundImage = 'url("'+p.image+'")';
-    else imgWrap.style.backgroundColor = '#f3f4f6';
-    card.appendChild(imgWrap);
-    // body
-    const body = document.createElement('div');
-    body.className = 'product-card-body';
-    const title = document.createElement('div');
-    title.className = 'product-card-title';
-    title.textContent = p.name || p.title || 'Product';
-    body.appendChild(title);
-    const priceRow = document.createElement('div');
-    priceRow.className = 'product-card-price';
-    const current = document.createElement('div');
-    current.className = 'product-card-current-price';
-    current.textContent = (p.price!=null) ? ('₹' + p.price) : (p.price_str || '—');
-    priceRow.appendChild(current);
-    body.appendChild(priceRow);
-    card.appendChild(body);
-    // allow clicking to product detail if link provided
-    if(p.url){
-      card.style.cursor = 'pointer';
-      card.addEventListener('click', ()=>{ window.location.href = p.url; });
-    }
-    return card;
-  }
-
-  function displayProducts(products){
-    if(!products || !products.length) return;
-    const container = findContainer();
-    if(!container) return;
-    // Decide layout: grid or flex
-    if(container.classList.contains('product-grid') || container.id==='homeProductGrid' || container.id==='productGrid'){
-      container.style.display = 'grid';
-      // ensure at least two columns if CSS supports it
-      if(!container.style.gridTemplateColumns) container.style.gridTemplateColumns = 'repeat(2, 1fr)';
-    } else if(container.id==='productSlider' || container.classList.contains('slider-track')){
-      container.style.display = 'flex';
-    } else {
-      container.style.display = 'grid';
-    }
-    clearChildren(container);
-    // render cards
-    for(let p of products){
-      try{
-        const card = createProductCard(p);
-        container.appendChild(card);
-      }catch(e){
-        console.warn('product render error', e);
-      }
-    }
-  }
-
-  function showCachedIfAny(){
-    const cache = parseCache();
-    if(cache && cache.data && cache.data.length){
-      displayProducts(cache.data);
-      console.log('Displayed products from localStorage cache ('+cache.data.length+' items).');
-      // ensure visibility of surrounding containers
-      const homeGrid = document.getElementById('homeProductGrid');
-      const productGrid = document.getElementById('productGrid');
-      const slider = document.getElementById('productSlider');
-      if(homeGrid) homeGrid.style.display = 'grid';
-      if(productGrid) productGrid.style.display = 'grid';
-      if(slider) slider.style.display = 'flex';
-    }
-  }
-
-  async function fetchFreshFromFirebase(){
-    try{
-      if(!window.firebase || !firebase.firestore){
-        console.warn('Firebase not available on this page. Background fetch skipped.');
-        return;
-      }
-      const db = firebase.firestore();
-      const snapshot = await db.collection('products').get();
-      const fresh = snapshot.docs.map(d=>{
-        const data = d.data();
-        data.id = d.id;
-        // normalize image & price fields to expected names
-        if(data.imageUrl && !data.image) data.image = data.imageUrl;
-        if(data.images && Array.isArray(data.images) && data.images.length && !data.image) data.image = data.images[0];
-        if(data.price && typeof data.price!=='number') {
-          const parsed = Number(data.price);
-          if(!isNaN(parsed)) data.price = parsed;
-        }
-        return data;
-      });
-      if(fresh && fresh.length){
-        displayProducts(fresh);
-        saveToCache(fresh);
-        console.log('Fetched fresh products from Firebase and updated UI ('+fresh.length+' items).');
-      }
-    }catch(err){
-      console.error('Error fetching fresh products from Firebase:', err);
-    }
-  }
-
-  // Run on DOM ready (but show cache instantly even before DOMContentLoaded if possible)
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', ()=>{
-      showCachedIfAny();
-      // always try to fetch fresh in background (do not block)
-      setTimeout(fetchFreshFromFirebase, 50);
-    });
-  } else {
-    // DOM already ready (in case script injected late)
-    showCachedIfAny();
-    setTimeout(fetchFreshFromFirebase, 50);
-  }
-
-  // Expose methods for debugging
-  window.BuyzoCache = { showCachedIfAny, fetchFreshFromFirebase, saveToCache };
-})();
-</script>
-<!-- End of injected caching script -->
-
+<!-- cached-user-injector -->
+<script> try{ showCachedUser(); }catch(e){} </script>
+<!-- end cached-user-injector -->
 </body>
 </html>
