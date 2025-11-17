@@ -4937,46 +4937,8 @@
     const signupError = document.getElementById('signupError');
 
     // Initialize the app
-    
-// --- Cached User Helpers (injected) ---
-function showCachedUser() {
-  try {
-    const raw = localStorage.getItem('cachedUser');
-    if (!raw) return false;
-    const user = JSON.parse(raw);
-    if (!user) return false;
-    if (user.name) {
-      document.getElementById('userName')?.textContent = user.name;
-      document.getElementById('mobileUserName')?.textContent = user.name;
-      const ua = document.getElementById('userAvatarInitial');
-      if (ua) ua.textContent = user.name.charAt(0).toUpperCase();
-      // Account page
-      document.getElementById('accountPageName')?.textContent = user.name;
-      const aai = document.getElementById('accountPageAvatarInitial');
-      if (aai) aai.textContent = user.name.charAt(0).toUpperCase();
-      return true;
-    }
-  } catch(e){ console.warn('showCachedUser error', e); }
-  return false;
-}
-
-function saveCachedUser(userData){
-  try{
-    if(!userData) return;
-    const payload = {
-      name: userData.name || userData.displayName || '',
-      email: userData.email || '',
-      photoURL: userData.photoURL || ''
-    };
-    localStorage.setItem('cachedUser', JSON.stringify(payload));
-  }catch(e){ console.warn('saveCachedUser error', e); }
-}
-// --- end cached user helpers ---
-
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
       initApp();
-      // Show cached user (instant)
-      try{ showCachedUser(); }catch(e){ }
       setupEventListeners();
       loadInitialData();
       setupHeroMessages();
@@ -4985,6 +4947,19 @@ document.addEventListener('DOMContentLoaded', function() {
       // Check authentication state
       auth.onAuthStateChanged(user => {
         if (user) {
+
+        // INSTANT USERNAME FIX
+        db.ref('users/' + user.uid).once('value').then(snapshot => {
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            if (userData.name) {
+              userName.textContent = userData.name;
+              mobileUserName.textContent = userData.name;
+              userAvatarInitial.textContent = userData.name.charAt(0).toUpperCase();
+            }
+          }
+        });
+
           currentUser = user;
           updateUIForUser(user);
           loadUserData(user);
@@ -5654,7 +5629,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (snapshot.exists()) {
           const userData = snapshot.val();
           userInfo = { ...userInfo, ...userData };
-          try{ saveCachedUser(userData); }catch(e){console.warn('saveCachedUser failed', e);}
           
           // Update last login time in account page
           if (userData.lastLoginAt && document.getElementById('lastLoginTime')) {
@@ -6621,7 +6595,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updatedAt: Date.now()
       }).then(() => {
         showToast('Profile updated successfully', 'success');
-        try{ saveCachedUser({ name: name, phone: phone }); }catch(e){console.warn('saveCachedUser failed', e);}
         // Update UI
         userName.textContent = name;
         mobileUserName.textContent = name;
@@ -7048,9 +7021,5 @@ document.addEventListener('DOMContentLoaded', function() {
         return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
     }
   </script>
-
-<!-- cached-user-injector -->
-<script> try{ showCachedUser(); }catch(e){} </script>
-<!-- end cached-user-injector -->
 </body>
 </html>
