@@ -7021,5 +7021,95 @@
         return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
     }
   </script>
+
+<!-- Injected: Safe Cached-Username Helper (non-invasive) -->
+<script>
+(function(){
+  const CACHE_KEY = 'cachedUser';
+  function safeGet(id){ try{ return document.getElementById(id); }catch(e){return null;} }
+  function getCached(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){return null;} }
+  function setCached(obj){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(obj||{})); }catch(e){} }
+  function applyNameToDOM(name){
+    if(!name) return;
+    const ids = ['userName','mobileUserName','accountPageName','profileName'];
+    ids.forEach(id=>{ const el = safeGet(id); if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA')) el.value = name; else if(el) el.textContent = name; });
+    // avatar initial elements
+    const ai = safeGet('userAvatarInitial') || safeGet('accountPageAvatarInitial');
+    if(ai) ai.textContent = name.charAt(0).toUpperCase();
+    // avatar images if exist should be handled by existing code; don't override src
+  }
+
+  // Immediately apply cached name if present
+  try{
+    const cached = getCached();
+    if(cached && cached.name){
+      applyNameToDOM(cached.name);
+      console.log('[cached-user] Applied cached name:', cached.name);
+    }
+  }catch(e){
+    console.warn('[cached-user] apply error', e);
+  }
+
+  // Observe DOM changes to username nodes and save to cache when they update (non-invasive)
+  try{
+    const watchIds = ['userName','mobileUserName','accountPageName','profileName','userAvatarInitial','accountPageAvatarInitial'];
+    const observed = [];
+    const observer = new MutationObserver(function(muts){
+      muts.forEach(m=>{
+        const target = m.target;
+        // capture text changes
+        if(target){
+          let name = null;
+          if(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') name = target.value;
+          else name = target.textContent;
+          if(name && name.trim()){
+            const prev = getCached()||{};
+            if(prev.name !== name.trim()){
+              setCached(Object.assign({}, prev, { name: name.trim() }));
+              console.log('[cached-user] Saved updated name from DOM ->', name.trim());
+            }
+          }
+        }
+      });
+    });
+    watchIds.forEach(id=>{ const el = safeGet(id); if(el){ observed.push(el); observer.observe(el, { childList:true, characterData:true, subtree:true, attributes:true }); } });
+    // Additionally, watch profileName input changes (user editing saved profile) to update cache on blur/change
+    const profileInput = safeGet('profileName');
+    if(profileInput){
+      profileInput.addEventListener('change', function(){ const v=this.value; if(v && v.trim()){ const prev=getCached()||{}; setCached(Object.assign({}, prev, {name:v.trim()})); console.log('[cached-user] profile input saved to cache'); } });
+      profileInput.addEventListener('blur', function(){ const v=this.value; if(v && v.trim()){ const prev=getCached()||{}; setCached(Object.assign({}, prev, {name:v.trim()})); } });
+    }
+    // Try to detect Save/Profile update button to hook and update cache after it is clicked
+    let saveBtn = document.querySelector("button[id*='save'][id*='profile'], button[id*='saveProfile'], button.profile-save, button.save-profile");
+    if(!saveBtn) saveBtn = document.querySelector("button[type='submit'][form*='profile'], button[type='button'][data-action='save-profile']");
+    if(saveBtn){
+      saveBtn.addEventListener('click', function(){ setTimeout(function(){ // delay to allow original handler to run
+        const nameEl = safeGet('profileName') || safeGet('userName') || safeGet('mobileUserName');
+        const name = nameEl ? (nameEl.value || nameEl.textContent) : null;
+        if(name && name.trim()){ const prev = getCached()||{}; setCached(Object.assign({}, prev, { name: name.trim() })); console.log('[cached-user] saveBtn hooked: cached updated'); }
+      }, 600); });
+    }
+    // As a fallback, monitor the whole body for added nodes that look like user name fields and apply observer
+    const bodyObserver = new MutationObserver(function(muts){
+      muts.forEach(m=>{
+        if(m.addedNodes && m.addedNodes.length){
+          m.addedNodes.forEach(node=>{
+            if(node.nodeType===1){
+              watchIds.forEach(id=>{ const el = node.querySelector && node.querySelector('#'+id); if(el){ observer.observe(el, { childList:true, characterData:true, subtree:true, attributes:true }); } });
+            }
+          });
+        }
+      });
+    });
+    bodyObserver.observe(document.body, { childList:true, subtree:true });
+  }catch(e){
+    console.warn('[cached-user] observer error', e);
+  }
+
+  // Expose debug helpers
+  window.__cachedUserHelpers = { applyNameToDOM, getCached: getCached, setCached: setCached };
+})();
+</script>
+<!-- End Injected cached-user helper -->
 </body>
 </html>
