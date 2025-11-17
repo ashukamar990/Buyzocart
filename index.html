@@ -4974,47 +4974,41 @@
       showPage('homePage');
     }
 
-    // Cache Functions
-    function loadCachedProducts() {
-      const cachedProducts = cacheManager.get('cachedProducts');
-      if (cachedProducts) {
-        products = cachedProducts;
-        displayProducts(products);
-        console.log('Loaded products from cache');
-        return true;
-      }
-      return false;
-    }
-
-    function displayProducts(productsToDisplay) {
-      renderProducts(productsToDisplay, 'homeProductGrid');
-      renderProducts(productsToDisplay, 'productGrid');
-      renderProductSlider(productsToDisplay.slice(0, 10), 'productSlider');
-    }
-
-    function saveToCache(products) {
-      cacheManager.set('cachedProducts', products);
-    }
-
-    function isCacheValid() {
-      const cachedProducts = cacheManager.get('cachedProducts');
-      return cachedProducts !== null;
-    }
-
-    function fetchFreshProducts() {
-      loadProducts();
-    }
-
     // NEW: Load initial data with localStorage caching
     function loadInitialData() {
       // Clear expired cache first
       cacheManager.clearExpired();
       
-      // Load cached products instantly (even if they are old)
-      loadCachedProducts();
+      // Try to load from localStorage first
+      const cachedProducts = cacheManager.get('cachedProducts');
+      const cachedCategories = cacheManager.get('cachedCategories');
+      const cachedBanners = cacheManager.get('cachedBanners');
       
-      // Then load fresh data from Firebase in background
-      fetchFreshProducts();
+      if (cachedProducts) {
+        products = cachedProducts;
+        renderProducts(products, 'homeProductGrid');
+        renderProducts(products, 'productGrid');
+        renderProductSlider(products.slice(0, 10), 'productSlider');
+        console.log('Loaded products from cache');
+      } else {
+        console.log('No cached products found');
+      }
+      
+      if (cachedCategories) {
+        categories = cachedCategories;
+        renderCategories();
+        renderCategoryCircles();
+        console.log('Loaded categories from cache');
+      }
+      
+      if (cachedBanners) {
+        banners = cachedBanners;
+        renderBannerCarousel();
+        console.log('Loaded banners from cache');
+      }
+      
+      // Then load from Firebase in background
+      loadProducts();
       loadCategories();
       loadBanners();
     }
@@ -5314,6 +5308,236 @@
       }
     }
 
+    // NEW: Improved Order Placement with Order ID - UPDATED FOR REALTIME DATABASE
+    async function confirmOrder() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      // Generate Order ID
+      const orderId = generateOrderId();
+      currentOrderId = orderId;
+      
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      const quantity = parseInt(document.getElementById('qtySelect').value);
+      const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
+      
+      const orderData = {
+        orderId: orderId,
+        userId: currentUser.uid,
+        username: userInfo.fullName || 'Customer',
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        price: parseFloat(currentProduct.price.replace('₹', '')) * quantity,
+        quantity: quantity,
+        size: size,
+        paymentMethod: paymentMethod,
+        status: 'confirmed',
+        orderDate: Date.now(),
+        userInfo: userInfo
+      };
+      
+      try {
+        // Save to Realtime Database
+        await db.ref('orders/' + orderId).set(orderData);
+        
+        // Update UI with order ID
+        document.getElementById('orderIdDisplay').textContent = orderId;
+        
+        // Show success page
+        showPage('successPage');
+        
+        // Send confirmation email
+        sendOrderConfirmationEmail(orderData);
+        
+        // Clear user info for next order
+        userInfo = {};
+        
+      } catch (error) {
+        console.error('Error placing order:', error);
+        showToast('Failed to place order. Please try again.', 'error');
+      }
+    }
+
+    // Page navigation
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+      });
+      document.getElementById(pageId).classList.add('active');
+      
+      // Update step pills based on current page
+      updateStepPills();
+      
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    function checkAuthAndShowPage(pageId) {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      showPage(pageId);
+    }
+
+    function showLoginModal() {
+      authModal.classList.add('active');
+      switchAuthTab('login');
+    }
+
+    function switchAuthTab(tab) {
+      // Reset forms
+      loginForm.classList.remove('active');
+      signupForm.classList.remove('active');
+      forgotPasswordForm.classList.remove('active');
+      
+      // Reset tabs
+      loginTab.classList.remove('active');
+      signupTab.classList.remove('active');
+      
+      // Clear errors
+      loginError.textContent = '';
+      signupError.textContent = '';
+      
+      if (tab === 'login') {
+        loginTab.classList.add('active');
+        loginForm.classList.add('active');
+      } else {
+        signupTab.classList.add('active');
+        signupForm.classList.add('active');
+      }
+    }
+
+    function logout() {
+      auth.signOut().then(() => {
+        showToast('Logged out successfully', 'success');
+        showPage('homePage');
+      }).catch(error => {
+        console.error('Logout error:', error);
+        showToast('Error logging out', 'error');
+      });
+    }
+
+    // Mobile menu functions
+    function openMenu() {
+      mobileMenu.classList.add('active');
+      menuOverlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMenu() {
+      mobileMenu.classList.remove('active');
+      menuOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Theme functions
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      
+      // Update toggle in settings if it exists
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      if (darkModeToggle) {
+        darkModeToggle.checked = newTheme === 'dark';
+      }
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      toast.textContent = message;
+      toast.className = 'toast ' + type;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // User interface updates
+    function updateUIForUser(user) {
+      userProfile.style.display = 'flex';
+      openLoginTop.style.display = 'none';
+      mobileLoginBtn.style.display = 'none';
+      mobileUserProfile.style.display = 'flex';
+      mobileLogoutBtn.style.display = 'flex';
+      
+      // NEW: Update profile with Google data
+      updateUserProfile(user);
+      
+      // Load user data to display
+      db.ref('users/' + user.uid).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          userName.textContent = userData.name || user.displayName || 'User';
+          mobileUserName.textContent = userData.name || user.displayName || 'User';
+          
+          // Update account page if open
+          if (document.getElementById('accountPageName')) {
+            document.getElementById('accountPageName').textContent = userData.name || user.displayName || 'User';
+            document.getElementById('accountPageEmail').textContent = user.email;
+            document.getElementById('profileName').value = userData.name || user.displayName || '';
+            document.getElementById('profileEmail').value = user.email;
+            document.getElementById('profilePhone').value = userData.phone || '';
+            
+            // Update last login time
+            if (userData.lastLoginAt) {
+              const lastLoginTime = new Date(userData.lastLoginAt).toLocaleString();
+              document.getElementById('lastLoginTime').textContent = lastLoginTime;
+            }
+          }
+        }
+      });
+    }
+
+    // NEW: Function to update user profile with Google data
+    function updateUserProfile(user) {
+      // Update header avatar and name
+      if (user.photoURL) {
+        userAvatarImg.src = user.photoURL;
+        userAvatarImg.style.display = 'block';
+        userAvatarInitial.style.display = 'none';
+      } else {
+        userAvatarImg.style.display = 'none';
+        userAvatarInitial.style.display = 'block';
+        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
+      }
+      
+      userName.textContent = user.displayName || 'User';
+      
+      // Update mobile menu
+      mobileUserName.textContent = user.displayName || 'User';
+      
+      // Update account page
+      if (document.getElementById('accountPageAvatarImg')) {
+        if (user.photoURL) {
+          document.getElementById('accountPageAvatarImg').src = user.photoURL;
+          document.getElementById('accountPageAvatarImg').style.display = 'block';
+          document.getElementById('accountPageAvatarInitial').style.display = 'none';
+        } else {
+          document.getElementById('accountPageAvatarImg').style.display = 'none';
+          document.getElementById('accountPageAvatarInitial').style.display = 'block';
+          document.getElementById('accountPageAvatarInitial').textContent = (user.displayName || 'U').charAt(0).toUpperCase();
+        }
+        
+        document.getElementById('accountPageName').textContent = user.displayName || 'User';
+        document.getElementById('accountPageEmail').textContent = user.email;
+      }
+    }
+
+    function updateUIForGuest() {
+      userProfile.style.display = 'none';
+      openLoginTop.style.display = 'block';
+      mobileLoginBtn.style.display = 'flex';
+      mobileUserProfile.style.display = 'none';
+      mobileLogoutBtn.style.display = 'none';
+    }
+
     // Data loading functions - UPDATED FOR REALTIME DATABASE
     async function loadProducts() {
       try {
@@ -5326,9 +5550,11 @@
           }));
           
           products = newProducts;
-          saveToCache(products);
+          cacheManager.set('cachedProducts', products);
           
-          displayProducts(products);
+          renderProducts(products, 'homeProductGrid');
+          renderProducts(products, 'productGrid');
+          renderProductSlider(products.slice(0, 10), 'productSlider');
           console.log('Loaded fresh products from Firebase');
         }
       } catch (error) {
@@ -6477,34 +6703,59 @@
             id: key,
             ...addressesData[key]
           }));
-
+          
+          // Sort by createdAt descending
+          addresses.sort((a, b) => b.createdAt - a.createdAt);
+          
           addresses.forEach(address => {
             const addressCard = document.createElement('div');
             addressCard.className = 'address-card';
             addressCard.innerHTML = `
-              <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div>
-                  <div style="font-weight:600;margin-bottom:4px">${address.name}</div>
-                  <div style="color:var(--muted);margin-bottom:4px">${address.mobile}</div>
-                  <div style="color:var(--muted);font-size:14px">${address.street}, ${address.city}, ${address.state} - ${address.pincode}</div>
-                  <div style="display:inline-block;background:#f1f5f9;color:var(--muted);padding:2px 8px;border-radius:4px;font-size:12px;margin-top:8px">${address.type}</div>
-                </div>
-              </div>
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile}</div>
               <div class="address-actions">
-                <button class="btn secondary" onclick="editAddress('${address.id}')">Edit</button>
-                <button class="btn error" onclick="deleteAddress('${address.id}')">Delete</button>
+                <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+                <button class="btn secondary delete-address" data-id="${address.id}">Delete</button>
               </div>
             `;
             container.appendChild(addressCard);
           });
-        }).catch(error => {
+        })
+        .catch(error => {
           console.error('Error loading addresses:', error);
         });
     }
 
-    // Helper functions
+    // Step pills update
+    function updateStepPills() {
+      const currentPage = document.querySelector('.page.active').id;
+      
+      document.querySelectorAll('.step-pill').forEach(pill => {
+        pill.classList.remove('disabled');
+      });
+      
+      switch (currentPage) {
+        case 'homePage':
+        case 'productsPage':
+          document.getElementById('pill-order').classList.add('disabled');
+          document.getElementById('pill-user').classList.add('disabled');
+          document.getElementById('pill-pay').classList.add('disabled');
+          break;
+        case 'orderPage':
+          document.getElementById('pill-user').classList.add('disabled');
+          document.getElementById('pill-pay').classList.add('disabled');
+          break;
+        case 'userPage':
+          document.getElementById('pill-pay').classList.add('disabled');
+          break;
+      }
+    }
+
+    // Hero messages rotation
     function setupHeroMessages() {
-      const messages = document.querySelectorAll('.hero-messages span');
+      const messages = document.querySelectorAll('#heroMessages span');
       let currentIndex = 0;
       
       setInterval(() => {
@@ -6514,32 +6765,90 @@
       }, 3000);
     }
 
-    function updateStepPills() {
-      const currentPage = document.querySelector('.page.active').id;
-      
-      document.querySelectorAll('.step-pill').forEach(pill => {
-        pill.classList.remove('active');
-        pill.classList.add('disabled');
-      });
-      
-      if (currentPage === 'homePage' || currentPage === 'productsPage') {
-        document.getElementById('pill-products').classList.add('active');
-        document.getElementById('pill-products').classList.remove('disabled');
-      } else if (currentPage === 'orderPage') {
-        document.getElementById('pill-order').classList.add('active');
-        document.getElementById('pill-order').classList.remove('disabled');
-      } else if (currentPage === 'userPage') {
-        document.getElementById('pill-user').classList.add('active');
-        document.getElementById('pill-user').classList.remove('disabled');
-      } else if (currentPage === 'paymentPage') {
-        document.getElementById('pill-pay').classList.add('active');
-        document.getElementById('pill-pay').classList.remove('disabled');
-      }
+    // Email sending function
+    function sendOrderConfirmationEmail(orderData) {
+      // This would use EmailJS or your email service in a real app
+      console.log('Order confirmation email would be sent for:', orderData);
     }
 
+    // Orders rendering function - UPDATED FOR REALTIME DATABASE
+    function renderOrders(orders) {
+      const container = document.getElementById('ordersList');
+      const noOrders = document.getElementById('noOrders');
+      
+      if (!container || !noOrders) return;
+      
+      if (orders.length === 0) {
+        container.style.display = 'none';
+        noOrders.style.display = 'block';
+        return;
+      }
+      
+      container.style.display = 'block';
+      noOrders.style.display = 'none';
+      container.innerHTML = '';
+      
+      orders.forEach(order => {
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
+        orderCard.innerHTML = `
+          <div class="order-header">
+            <div>
+              <div class="order-id">${order.orderId}</div>
+              <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
+            </div>
+            <div class="order-status status-${order.status}">${order.status}</div>
+          </div>
+          <div class="order-details">
+            <div class="order-product-image" style="background-image: url('${products.find(p => p.id === order.productId)?.image || ''}')"></div>
+            <div class="order-product-info">
+              <div class="order-product-title">${order.productName}</div>
+              <div class="order-product-price">₹${order.price}</div>
+              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
+            </div>
+          </div>
+        `;
+        
+        orderCard.addEventListener('click', () => showOrderDetail(order));
+        container.appendChild(orderCard);
+      });
+    }
+
+    function showOrderDetail(order) {
+      // Implementation for showing order details
+      showPage('orderDetailPage');
+    }
+
+    function showMyOrders() {
+      if (!currentUser) return;
+      
+      db.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
+        .once('value')
+        .then(snapshot => {
+          if (snapshot.exists()) {
+            const ordersData = snapshot.val();
+            const orders = Object.keys(ordersData).map(key => ({
+              id: key,
+              ...ordersData[key]
+            }));
+            
+            // Sort by orderDate descending
+            orders.sort((a, b) => b.orderDate - a.orderDate);
+            renderOrders(orders);
+          } else {
+            document.getElementById('ordersList').style.display = 'none';
+            document.getElementById('noOrders').style.display = 'block';
+          }
+        })
+        .catch(error => {
+          console.error('Error loading orders:', error);
+        });
+    }
+
+    // NEW: Realtime Database Functions
     function setupRealtimeListeners() {
-      // Listen for real-time product updates
-      db.ref('products').on('value', (snapshot) => {
+      // Products listener
+      db.ref('products').on('value', snapshot => {
         const productsData = snapshot.val();
         if (productsData) {
           const newProducts = Object.keys(productsData).map(key => ({
@@ -6548,283 +6857,116 @@
           }));
           
           products = newProducts;
-          saveToCache(products);
-          displayProducts(products);
-          console.log('Products updated in real-time');
-        }
-      });
-    }
-
-    // NEW: Improved Order Placement with Order ID - UPDATED FOR REALTIME DATABASE
-    async function confirmOrder() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      
-      // Generate Order ID
-      const orderId = generateOrderId();
-      currentOrderId = orderId;
-      
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      const quantity = parseInt(document.getElementById('qtySelect').value);
-      const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
-      
-      const orderData = {
-        orderId: orderId,
-        userId: currentUser.uid,
-        username: userInfo.fullName || 'Customer',
-        productId: currentProduct.id,
-        productName: currentProduct.name,
-        price: parseFloat(currentProduct.price.replace('₹', '')) * quantity,
-        quantity: quantity,
-        size: size,
-        paymentMethod: paymentMethod,
-        status: 'confirmed',
-        orderDate: Date.now(),
-        userInfo: userInfo
-      };
-      
-      try {
-        // Save to Realtime Database
-        await db.ref('orders/' + orderId).set(orderData);
-        
-        // Update UI with order ID
-        document.getElementById('orderIdDisplay').textContent = orderId;
-        
-        // Show success page
-        showPage('successPage');
-        
-        // Send confirmation email
-        sendOrderConfirmationEmail(orderData);
-        
-        // Clear user info for next order
-        userInfo = {};
-        
-      } catch (error) {
-        console.error('Error placing order:', error);
-        showToast('Failed to place order. Please try again.', 'error');
-      }
-    }
-
-    function generateOrderId() {
-      const timestamp = Date.now().toString().slice(-6);
-      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-      return `BZ${timestamp}${random}`;
-    }
-
-    function sendOrderConfirmationEmail(orderData) {
-      // This would integrate with EmailJS or another email service
-      console.log('Order confirmation email would be sent for:', orderData);
-    }
-
-    // Page navigation
-    function showPage(pageId) {
-      document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-      });
-      document.getElementById(pageId).classList.add('active');
-      
-      // Update step pills based on current page
-      updateStepPills();
-      
-      // Scroll to top
-      window.scrollTo(0, 0);
-    }
-
-    function checkAuthAndShowPage(pageId) {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      showPage(pageId);
-    }
-
-    function showLoginModal() {
-      authModal.classList.add('active');
-      switchAuthTab('login');
-    }
-
-    function switchAuthTab(tab) {
-      // Reset forms
-      loginForm.classList.remove('active');
-      signupForm.classList.remove('active');
-      forgotPasswordForm.classList.remove('active');
-      
-      // Reset tabs
-      loginTab.classList.remove('active');
-      signupTab.classList.remove('active');
-      
-      // Clear errors
-      loginError.textContent = '';
-      signupError.textContent = '';
-      
-      if (tab === 'login') {
-        loginTab.classList.add('active');
-        loginForm.classList.add('active');
-      } else {
-        signupTab.classList.add('active');
-        signupForm.classList.add('active');
-      }
-    }
-
-    function logout() {
-      auth.signOut().then(() => {
-        showToast('Logged out successfully', 'success');
-        showPage('homePage');
-      }).catch(error => {
-        console.error('Logout error:', error);
-        showToast('Error logging out', 'error');
-      });
-    }
-
-    // Mobile menu functions
-    function openMenu() {
-      mobileMenu.classList.add('active');
-      menuOverlay.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeMenu() {
-      mobileMenu.classList.remove('active');
-      menuOverlay.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-
-    // Theme functions
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      
-      // Update toggle in settings if it exists
-      const darkModeToggle = document.getElementById('darkModeToggle');
-      if (darkModeToggle) {
-        darkModeToggle.checked = newTheme === 'dark';
-      }
-    }
-
-    // Toast notification
-    function showToast(message, type = 'success') {
-      toast.textContent = message;
-      toast.className = 'toast ' + type;
-      toast.classList.add('show');
-      
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
-
-    // User interface updates
-    function updateUIForUser(user) {
-      userProfile.style.display = 'flex';
-      openLoginTop.style.display = 'none';
-      mobileLoginBtn.style.display = 'none';
-      mobileUserProfile.style.display = 'flex';
-      mobileLogoutBtn.style.display = 'flex';
-      
-      // NEW: Update profile with Google data
-      updateUserProfile(user);
-      
-      // Load user data to display
-      db.ref('users/' + user.uid).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          userName.textContent = userData.name || user.displayName || 'User';
-          mobileUserName.textContent = userData.name || user.displayName || 'User';
+          cacheManager.set('cachedProducts', products);
           
-          // Update account page if open
-          if (document.getElementById('accountPageName')) {
-            document.getElementById('accountPageName').textContent = userData.name || user.displayName || 'User';
-            document.getElementById('accountPageEmail').textContent = user.email;
-            document.getElementById('profileName').value = userData.name || user.displayName || '';
-            document.getElementById('profileEmail').value = user.email;
-            document.getElementById('profilePhone').value = userData.phone || '';
-            
-            // Update last login time
-            if (userData.lastLoginAt) {
-              const lastLoginTime = new Date(userData.lastLoginAt).toLocaleString();
-              document.getElementById('lastLoginTime').textContent = lastLoginTime;
-            }
+          // Update UI if on relevant pages
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active') ||
+              document.getElementById('productDetailPage').classList.contains('active')) {
+            renderProducts(products, 'homeProductGrid');
+            renderProducts(products, 'productGrid');
+            renderProductSlider(products.slice(0, 10), 'productSlider');
           }
         }
+      }, error => {
+        console.error('Products listener error:', error);
       });
-    }
 
-    // NEW: Function to update user profile with Google data
-    function updateUserProfile(user) {
-      // Update header avatar and name
-      if (user.photoURL) {
-        userAvatarImg.src = user.photoURL;
-        userAvatarImg.style.display = 'block';
-        userAvatarInitial.style.display = 'none';
-      } else {
-        userAvatarImg.style.display = 'none';
-        userAvatarInitial.style.display = 'block';
-        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
-      }
-      
-      userName.textContent = user.displayName || 'User';
-      
-      // Update mobile menu
-      mobileUserName.textContent = user.displayName || 'User';
-      
-      // Update account page
-      if (document.getElementById('accountPageAvatarImg')) {
-        if (user.photoURL) {
-          document.getElementById('accountPageAvatarImg').src = user.photoURL;
-          document.getElementById('accountPageAvatarImg').style.display = 'block';
-          document.getElementById('accountPageAvatarInitial').style.display = 'none';
-        } else {
-          document.getElementById('accountPageAvatarImg').style.display = 'none';
-          document.getElementById('accountPageAvatarInitial').style.display = 'block';
-          document.getElementById('accountPageAvatarInitial').textContent = (user.displayName || 'U').charAt(0).toUpperCase();
+      // Categories listener
+      db.ref('categories').on('value', snapshot => {
+        const categoriesData = snapshot.val();
+        if (categoriesData) {
+          const newCategories = Object.keys(categoriesData).map(key => ({
+            id: key,
+            ...categoriesData[key]
+          }));
+          
+          categories = newCategories;
+          cacheManager.set('cachedCategories', categories);
+          
+          // Update UI if on relevant pages
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
+            renderCategories();
+            renderCategoryCircles();
+          }
         }
-        
-        document.getElementById('accountPageName').textContent = user.displayName || 'User';
-        document.getElementById('accountPageEmail').textContent = user.email;
+      }, error => {
+        console.error('Categories listener error:', error);
+      });
+
+      // Banners listener
+      db.ref('banners').on('value', snapshot => {
+        const bannersData = snapshot.val();
+        if (bannersData) {
+          const newBanners = Object.keys(bannersData).map(key => ({
+            id: key,
+            ...bannersData[key]
+          }));
+          
+          banners = newBanners;
+          cacheManager.set('cachedBanners', banners);
+          
+          // Update UI if on home page
+          if (document.getElementById('homePage').classList.contains('active')) {
+            renderBannerCarousel();
+          }
+        }
+      }, error => {
+        console.error('Banners listener error:', error);
+      });
+
+      // Orders listener for current user
+      if (currentUser) {
+        db.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
+          .on('value', snapshot => {
+            const ordersData = snapshot.val();
+            if (ordersData) {
+              const orders = Object.keys(ordersData).map(key => ({
+                id: key,
+                ...ordersData[key]
+              }));
+              
+              // Sort by orderDate descending
+              orders.sort((a, b) => b.orderDate - a.orderDate);
+              
+              // Update UI if on orders page
+              if (document.getElementById('myOrdersPage').classList.contains('active')) {
+                renderOrders(orders);
+              }
+            }
+          }, error => {
+            console.error('Orders listener error:', error);
+          });
       }
     }
 
-    function updateUIForGuest() {
-      userProfile.style.display = 'none';
-      openLoginTop.style.display = 'block';
-      mobileLoginBtn.style.display = 'flex';
-      mobileUserProfile.style.display = 'none';
-      mobileLogoutBtn.style.display = 'none';
-    }
-
-    // Fallback functions for sample data
+    // Sample data fallbacks
     function loadSampleProducts() {
-      const sampleProducts = [
+      products = [
         {
           id: '1',
-          name: 'Wireless Earbuds',
+          name: 'Wireless Bluetooth Earbuds',
           price: '₹1,299',
-          description: 'Premium sound quality',
-          image: 'https://images.unsplash.com/photo-1590658165737-15a047b8b5e2?w=300'
+          originalPrice: '₹2,499',
+          image: 'https://images.unsplash.com/photo-1590658165737-15a047b8b5e3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8ZWFyYnVkc3xlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60',
+          description: 'High-quality wireless earbuds with noise cancellation',
+          badge: '50% OFF',
+          reviews: '124'
         },
         {
           id: '2',
-          name: 'Smart Watch',
-          price: '₹2,499',
-          description: 'Fitness tracking',
-          image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300'
-        },
-        {
-          id: '3',
-          name: 'Bluetooth Speaker',
-          price: '₹1,799',
-          description: 'Portable and powerful',
-          image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=300'
+          name: 'Smart Fitness Band',
+          price: '₹1,999',
+          image: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Zml0bmVzcyUyMGJhbmR8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          description: 'Track your fitness with this smart band',
+          badge: 'NEW',
+          reviews: '89'
         }
       ];
-      
-      products = sampleProducts;
-      saveToCache(products);
-      displayProducts(products);
+      renderProducts(products, 'homeProductGrid');
+      renderProducts(products, 'productGrid');
+      renderProductSlider(products.slice(0, 10), 'productSlider');
     }
 
     function loadSampleCategories() {
@@ -6832,20 +6974,14 @@
         {
           id: '1',
           name: 'Electronics',
-          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=70'
+          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZWxlY3Ryb25pY3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '2',
           name: 'Fashion',
-          image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=70'
-        },
-        {
-          id: '3',
-          name: 'Home',
-          image: 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=70'
+          image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60'
         }
       ];
-      
       renderCategories();
       renderCategoryCircles();
     }
@@ -6854,21 +6990,197 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=800'
-        },
-        {
-          id: '2',
-          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800'
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          title: 'Summer Sale',
+          description: 'Up to 50% off on all items'
         }
       ];
-      
       renderBannerCarousel();
     }
 
-    // Final initialization
-    window.onload = function() {
-      console.log('Buyzo Cart loaded successfully with caching system');
-    };
+    // NEW: Order ID Generation Function
+    function generateOrderId() {
+        const date = new Date();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const randomNum = Math.floor(100000 + Math.random() * 900000); 
+        return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
+    }
   </script>
+
+<!-- LocalCache + Background Firebase Fetch (Injected by assistant) -->
+<script>
+(function(){
+  const CACHE_KEY = 'buyzocart_products_v1';
+  const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+  const PREFERRED_CONTAINERS = ['homeSearchResults','homeProductGrid','productGrid','productSlider','homeProducts','productsContainer','products','mainProducts'];
+
+  function parseCache(){
+    try{
+      const raw = localStorage.getItem(CACHE_KEY);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || !obj.data) return null;
+      return obj;
+    }catch(e){
+      console.warn('Failed to parse cache', e);
+      return null;
+    }
+  }
+
+  function saveToCache(data){
+    try{
+      const payload = { timestamp: Date.now(), data: data };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    }catch(e){
+      console.warn('Failed to save cache', e);
+    }
+  }
+
+  function isCacheValid(cache){
+    if(!cache) return false;
+    return (Date.now() - cache.timestamp) < CACHE_TTL;
+  }
+
+  function findContainer(){
+    for(let id of PREFERRED_CONTAINERS){
+      const el = document.getElementById(id);
+      if(el) return el;
+      const q = document.querySelector('[data-products="'+id+'"]');
+      if(q) return q;
+    }
+    // fallback: first .product-grid or .product-list
+    let el = document.querySelector('.product-grid') || document.querySelector('.product-list') || document.querySelector('#homeSearchResults');
+    return el;
+  }
+
+  function clearChildren(el){
+    while(el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  // Minimal product card HTML generator (matches site CSS classes lightly)
+  function createProductCard(p){
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    // image div
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'product-card-image';
+    if(p.image) imgWrap.style.backgroundImage = 'url("'+p.image+'")';
+    else imgWrap.style.backgroundColor = '#f3f4f6';
+    card.appendChild(imgWrap);
+    // body
+    const body = document.createElement('div');
+    body.className = 'product-card-body';
+    const title = document.createElement('div');
+    title.className = 'product-card-title';
+    title.textContent = p.name || p.title || 'Product';
+    body.appendChild(title);
+    const priceRow = document.createElement('div');
+    priceRow.className = 'product-card-price';
+    const current = document.createElement('div');
+    current.className = 'product-card-current-price';
+    current.textContent = (p.price!=null) ? ('₹' + p.price) : (p.price_str || '—');
+    priceRow.appendChild(current);
+    body.appendChild(priceRow);
+    card.appendChild(body);
+    // allow clicking to product detail if link provided
+    if(p.url){
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', ()=>{ window.location.href = p.url; });
+    }
+    return card;
+  }
+
+  function displayProducts(products){
+    if(!products || !products.length) return;
+    const container = findContainer();
+    if(!container) return;
+    // Decide layout: grid or flex
+    if(container.classList.contains('product-grid') || container.id==='homeProductGrid' || container.id==='productGrid'){
+      container.style.display = 'grid';
+      // ensure at least two columns if CSS supports it
+      if(!container.style.gridTemplateColumns) container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    } else if(container.id==='productSlider' || container.classList.contains('slider-track')){
+      container.style.display = 'flex';
+    } else {
+      container.style.display = 'grid';
+    }
+    clearChildren(container);
+    // render cards
+    for(let p of products){
+      try{
+        const card = createProductCard(p);
+        container.appendChild(card);
+      }catch(e){
+        console.warn('product render error', e);
+      }
+    }
+  }
+
+  function showCachedIfAny(){
+    const cache = parseCache();
+    if(cache && cache.data && cache.data.length){
+      displayProducts(cache.data);
+      console.log('Displayed products from localStorage cache ('+cache.data.length+' items).');
+      // ensure visibility of surrounding containers
+      const homeGrid = document.getElementById('homeProductGrid');
+      const productGrid = document.getElementById('productGrid');
+      const slider = document.getElementById('productSlider');
+      if(homeGrid) homeGrid.style.display = 'grid';
+      if(productGrid) productGrid.style.display = 'grid';
+      if(slider) slider.style.display = 'flex';
+    }
+  }
+
+  async function fetchFreshFromFirebase(){
+    try{
+      if(!window.firebase || !firebase.firestore){
+        console.warn('Firebase not available on this page. Background fetch skipped.');
+        return;
+      }
+      const db = firebase.firestore();
+      const snapshot = await db.collection('products').get();
+      const fresh = snapshot.docs.map(d=>{
+        const data = d.data();
+        data.id = d.id;
+        // normalize image & price fields to expected names
+        if(data.imageUrl && !data.image) data.image = data.imageUrl;
+        if(data.images && Array.isArray(data.images) && data.images.length && !data.image) data.image = data.images[0];
+        if(data.price && typeof data.price!=='number') {
+          const parsed = Number(data.price);
+          if(!isNaN(parsed)) data.price = parsed;
+        }
+        return data;
+      });
+      if(fresh && fresh.length){
+        displayProducts(fresh);
+        saveToCache(fresh);
+        console.log('Fetched fresh products from Firebase and updated UI ('+fresh.length+' items).');
+      }
+    }catch(err){
+      console.error('Error fetching fresh products from Firebase:', err);
+    }
+  }
+
+  // Run on DOM ready (but show cache instantly even before DOMContentLoaded if possible)
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', ()=>{
+      showCachedIfAny();
+      // always try to fetch fresh in background (do not block)
+      setTimeout(fetchFreshFromFirebase, 50);
+    });
+  } else {
+    // DOM already ready (in case script injected late)
+    showCachedIfAny();
+    setTimeout(fetchFreshFromFirebase, 50);
+  }
+
+  // Expose methods for debugging
+  window.BuyzoCache = { showCachedIfAny, fetchFreshFromFirebase, saveToCache };
+})();
+</script>
+<!-- End of injected caching script -->
+
 </body>
 </html>
