@@ -20,6 +20,7 @@
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
+    /* All CSS styles from original file */
     :root {
       --bg: #ffffff;
       --card: #ffffff;
@@ -2859,6 +2860,146 @@
       height: 24px;
     }
 
+    /* Review System Styles */
+    .review-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .review-section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--ink);
+    }
+
+    .review-form {
+      background: #f8fafc;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .review-form h4 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: var(--accent);
+    }
+
+    .review-stars {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .review-star {
+      font-size: 24px;
+      color: #ddd;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .review-star.active {
+      color: #ffc107;
+    }
+
+    .review-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .review-item {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .review-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .review-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .review-avatar-img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .review-user-info {
+      flex: 1;
+    }
+
+    .review-user-name {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .review-date {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .review-rating {
+      display: flex;
+      gap: 2px;
+    }
+
+    .review-rating-star {
+      color: #ffc107;
+      font-size: 14px;
+    }
+
+    .review-text {
+      margin-top: 8px;
+      line-height: 1.5;
+      color: var(--ink-2);
+    }
+
+    .no-reviews {
+      text-align: center;
+      color: var(--muted);
+      padding: 20px;
+    }
+
+    .average-rating {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .average-rating-stars {
+      color: #ffc107;
+    }
+
+    .review-count {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-inner {
@@ -2999,6 +3140,11 @@
       /* Social menu items mobile */
       .social-menu-item {
         padding: 15px 20px;
+      }
+
+      /* Review form mobile */
+      .review-form {
+        padding: 16px;
       }
     }
 
@@ -3452,6 +3598,39 @@
             <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
+            
+            <!-- NEW: Review Section -->
+            <div class="review-section">
+              <div class="average-rating" id="averageRatingContainer" style="display: none;">
+                <div class="average-rating-stars" id="averageRatingStars"></div>
+                <span id="averageRatingValue">0.0</span>
+                <span class="review-count" id="reviewCount">(0 reviews)</span>
+              </div>
+              
+              <!-- Review Form (only for logged in users) -->
+              <div class="review-form" id="reviewForm" style="display: none;">
+                <h4>Write a Review</h4>
+                <div class="review-stars" id="reviewStars">
+                  <span class="review-star" data-rating="1">★</span>
+                  <span class="review-star" data-rating="2">★</span>
+                  <span class="review-star" data-rating="3">★</span>
+                  <span class="review-star" data-rating="4">★</span>
+                  <span class="review-star" data-rating="5">★</span>
+                </div>
+                <textarea id="reviewText" placeholder="Share your experience with this product..." rows="4"></textarea>
+                <button class="btn" id="submitReview" style="margin-top: 12px;">Submit Review</button>
+              </div>
+              
+              <!-- Reviews List -->
+              <div class="review-list" id="reviewList">
+                <!-- Reviews will be loaded here -->
+              </div>
+              
+              <!-- No Reviews Message -->
+              <div class="no-reviews" id="noReviews">
+                No reviews yet. Be the first to review this product!
+              </div>
+            </div>
             
             <!-- NEW: Share Link Section -->
             <div class="product-detail-meta" style="margin-top: 20px;">
@@ -4629,6 +4808,7 @@
     let recentlyViewed = [];
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
+    let currentRating = 0;
 
     // Cache Manager Class
     class CacheManager {
@@ -4800,9 +4980,9 @@
       cacheManager.clearExpired();
       
       // Try to load from localStorage first
-      const cachedProducts = cacheManager.get('products');
-      const cachedCategories = cacheManager.get('categories');
-      const cachedBanners = cacheManager.get('banners');
+      const cachedProducts = cacheManager.get('cachedProducts');
+      const cachedCategories = cacheManager.get('cachedCategories');
+      const cachedBanners = cacheManager.get('cachedBanners');
       
       if (cachedProducts) {
         products = cachedProducts;
@@ -4958,6 +5138,16 @@
       document.getElementById('darkModeToggle')?.addEventListener('change', function() {
         toggleTheme();
       });
+      
+      // NEW: Review system
+      document.querySelectorAll('.review-star').forEach(star => {
+        star.addEventListener('click', function() {
+          const rating = parseInt(this.getAttribute('data-rating'));
+          setRating(rating);
+        });
+      });
+      
+      document.getElementById('submitReview')?.addEventListener('click', submitReview);
     }
 
     // NEW: Improved Authentication Functions with Error Handling
@@ -5360,7 +5550,7 @@
           }));
           
           products = newProducts;
-          cacheManager.set('products', products);
+          cacheManager.set('cachedProducts', products);
           
           renderProducts(products, 'homeProductGrid');
           renderProducts(products, 'productGrid');
@@ -5385,7 +5575,7 @@
           }));
           
           categories = newCategories;
-          cacheManager.set('categories', categories);
+          cacheManager.set('cachedCategories', categories);
           
           renderCategories();
           renderCategoryCircles();
@@ -5409,7 +5599,7 @@
           }));
           
           banners = newBanners;
-          cacheManager.set('banners', banners);
+          cacheManager.set('cachedBanners', banners);
           
           renderBannerCarousel();
           console.log('Loaded fresh banners from Firebase');
@@ -5485,6 +5675,22 @@
       }
     }
 
+    // NEW: Product Image Helper Function
+    function getProductImage(product) {
+      // Handle different image field names and formats
+      if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+        return product.images[0];
+      } else if (product.image) {
+        return product.image;
+      } else if (product.img) {
+        return product.img;
+      } else if (product.imageUrl) {
+        return product.imageUrl;
+      } else {
+        return 'https://via.placeholder.com/300x300?text=No+Image';
+      }
+    }
+
     // Product rendering functions
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
@@ -5501,19 +5707,20 @@
     function createProductCard(product) {
       const card = document.createElement('div');
       card.className = 'product-card';
+      const productImage = getProductImage(product);
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${product.image}')">
+        <div class="product-card-image" style="background-image: url('${productImage}')" loading="lazy">
           ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
           ${product.professional ? `<div class="professional-badge">PRO</div>` : ''}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${product.name}</div>
+          <div class="product-card-title">${product.name || 'Product Name'}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">★★★★★</div>
             <div class="product-card-review-count">(${product.reviews || '0'})</div>
           </div>
           <div class="product-card-price">
-            <div class="product-card-current-price">${product.price}</div>
+            <div class="product-card-current-price">${product.price || '₹0'}</div>
             ${product.originalPrice ? `<div class="product-card-original-price">${product.originalPrice}</div>` : ''}
           </div>
           <div class="product-card-actions">
@@ -5558,11 +5765,12 @@
       productsToRender.forEach(product => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
+        const productImage = getProductImage(product);
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${product.image}')"></div>
+          <div class="slider-item-img" style="background-image: url('${productImage}')" loading="lazy"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${product.name}</div>
-            <div class="slider-item-price">${product.price}</div>
+            <div class="slider-item-title">${product.name || 'Product Name'}</div>
+            <div class="slider-item-price">${product.price || '₹0'}</div>
           </div>
         `;
         
@@ -5580,7 +5788,7 @@
       categories.forEach(category => {
         const categoryPill = document.createElement('div');
         categoryPill.className = 'category-pill';
-        categoryPill.textContent = category.name;
+        categoryPill.textContent = category.name || 'Category';
         categoryPill.addEventListener('click', () => filterByCategory(category.id));
         container.appendChild(categoryPill);
       });
@@ -5595,9 +5803,10 @@
       categories.forEach(category => {
         const circle = document.createElement('div');
         circle.className = 'category-circle';
+        const categoryImage = category.image || 'https://via.placeholder.com/70x70?text=Category';
         circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${category.image}')"></div>
-          <div class="category-circle-name">${category.name}</div>
+          <div class="category-circle-image" style="background-image: url('${categoryImage}')" loading="lazy"></div>
+          <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
         
         circle.addEventListener('click', () => filterByCategory(category.id));
@@ -5617,7 +5826,7 @@
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${banner.image}')`;
+        slide.style.backgroundImage = `url('${banner.image || 'https://via.placeholder.com/800x200?text=Banner'}')`;
         track.appendChild(slide);
         
         const dot = document.createElement('div');
@@ -5654,8 +5863,8 @@
       currentProduct = product;
       
       // Update product detail page
-      document.getElementById('detailTitle').textContent = product.name;
-      document.getElementById('detailPrice').textContent = product.price;
+      document.getElementById('detailTitle').textContent = product.name || 'Product Name';
+      document.getElementById('detailPrice').textContent = product.price || '₹0';
       document.getElementById('detailDesc').textContent = product.description || '';
       document.getElementById('detailFullDesc').textContent = product.fullDescription || product.description || 'No description available.';
       document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
@@ -5692,6 +5901,17 @@
       // Load similar products
       loadSimilarProducts(product);
       
+      // Load reviews for this product
+      loadReviews(product.id);
+      
+      // Show/hide review form based on user authentication
+      const reviewForm = document.getElementById('reviewForm');
+      if (currentUser) {
+        reviewForm.style.display = 'block';
+      } else {
+        reviewForm.style.display = 'none';
+      }
+      
       // Add to recently viewed if user is logged in
       if (currentUser) {
         addToRecentlyViewed(product.id);
@@ -5713,7 +5933,9 @@
       dots.innerHTML = '';
       
       // Get images array from product
-      const images = product.images && product.images.length > 0 ? product.images : [product.image];
+      const images = product.images && Array.isArray(product.images) && product.images.length > 0 ? 
+        product.images : 
+        [getProductImage(product)];
       
       // Set first image as main
       mainImage.style.backgroundImage = `url('${images[0]}')`;
@@ -5753,14 +5975,18 @@
     }
 
     function prevImage() {
-      const images = currentProduct.images && currentProduct.images.length > 0 ? currentProduct.images : [currentProduct.image];
+      const images = currentProduct.images && Array.isArray(currentProduct.images) && currentProduct.images.length > 0 ? 
+        currentProduct.images : 
+        [getProductImage(currentProduct)];
       if (currentImageIndex > 0) {
         setDetailImage(images[currentImageIndex - 1], currentImageIndex - 1);
       }
     }
 
     function nextImage() {
-      const images = currentProduct.images && currentProduct.images.length > 0 ? currentProduct.images : [currentProduct.image];
+      const images = currentProduct.images && Array.isArray(currentProduct.images) && currentProduct.images.length > 0 ? 
+        currentProduct.images : 
+        [getProductImage(currentProduct)];
       if (currentImageIndex < images.length - 1) {
         setDetailImage(images[currentImageIndex + 1], currentImageIndex + 1);
       }
@@ -5773,6 +5999,139 @@
         .slice(0, 10);
       
       renderProductSlider(similarProducts, 'similarProductsSlider');
+    }
+
+    // NEW: Review System Functions
+    function setRating(rating) {
+      currentRating = rating;
+      const stars = document.querySelectorAll('.review-star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    async function submitReview() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      if (currentRating === 0) {
+        showToast('Please select a rating', 'error');
+        return;
+      }
+      
+      const reviewText = document.getElementById('reviewText').value.trim();
+      if (!reviewText) {
+        showToast('Please enter your review', 'error');
+        return;
+      }
+      
+      try {
+        const reviewId = db.ref().child('reviews').push().key;
+        const reviewData = {
+          id: reviewId,
+          productId: currentProduct.id,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || 'Anonymous',
+          userEmail: currentUser.email,
+          userAvatar: currentUser.photoURL || '',
+          rating: currentRating,
+          reviewText: reviewText,
+          timestamp: Date.now()
+        };
+        
+        await db.ref('reviews/' + reviewId).set(reviewData);
+        
+        // Clear form
+        document.getElementById('reviewText').value = '';
+        setRating(0);
+        
+        showToast('Review submitted successfully!', 'success');
+        
+        // Reload reviews
+        loadReviews(currentProduct.id);
+      } catch (error) {
+        console.error('Error submitting review:', error);
+        showToast('Failed to submit review. Please try again.', 'error');
+      }
+    }
+
+    async function loadReviews(productId) {
+      try {
+        const snapshot = await db.ref('reviews').orderByChild('productId').equalTo(productId).once('value');
+        const reviewsData = snapshot.val();
+        const reviewList = document.getElementById('reviewList');
+        const noReviews = document.getElementById('noReviews');
+        const averageRatingContainer = document.getElementById('averageRatingContainer');
+        
+        if (!reviewsData) {
+          reviewList.innerHTML = '';
+          noReviews.style.display = 'block';
+          averageRatingContainer.style.display = 'none';
+          return;
+        }
+        
+        const reviews = Object.keys(reviewsData).map(key => reviewsData[key]);
+        
+        // Sort by timestamp descending (newest first)
+        reviews.sort((a, b) => b.timestamp - a.timestamp);
+        
+        // Calculate average rating
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = totalRating / reviews.length;
+        
+        // Update average rating display
+        document.getElementById('averageRatingValue').textContent = averageRating.toFixed(1);
+        document.getElementById('reviewCount').textContent = `(${reviews.length} reviews)`;
+        
+        // Update average rating stars
+        const averageRatingStars = document.getElementById('averageRatingStars');
+        averageRatingStars.innerHTML = '';
+        for (let i = 1; i <= 5; i++) {
+          const star = document.createElement('span');
+          star.className = 'review-rating-star';
+          star.textContent = i <= Math.round(averageRating) ? '★' : '☆';
+          averageRatingStars.appendChild(star);
+        }
+        
+        averageRatingContainer.style.display = 'flex';
+        noReviews.style.display = 'none';
+        
+        // Render reviews
+        reviewList.innerHTML = '';
+        reviews.forEach(review => {
+          const reviewItem = document.createElement('div');
+          reviewItem.className = 'review-item';
+          
+          const starsHtml = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+          
+          reviewItem.innerHTML = `
+            <div class="review-header">
+              ${review.userAvatar ? 
+                `<img class="review-avatar-img" src="${review.userAvatar}" alt="${review.userName}">` : 
+                `<div class="review-avatar">${review.userName.charAt(0).toUpperCase()}</div>`
+              }
+              <div class="review-user-info">
+                <div class="review-user-name">${review.userName}</div>
+                <div class="review-date">${new Date(review.timestamp).toLocaleDateString()}</div>
+              </div>
+              <div class="review-rating">
+                ${starsHtml}
+              </div>
+            </div>
+            <div class="review-text">${review.reviewText}</div>
+          `;
+          
+          reviewList.appendChild(reviewItem);
+        });
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+      }
     }
 
     // Order flow functions
@@ -6119,7 +6478,8 @@
       
       // Update gallery
       const galleryMain = document.getElementById('galleryMain');
-      galleryMain.style.backgroundImage = `url('${currentProduct.image}')`;
+      const productImage = getProductImage(currentProduct);
+      galleryMain.style.backgroundImage = `url('${productImage}')`;
       
       // Show order page
       showPage('orderPage');
@@ -6174,7 +6534,9 @@
     function openImageZoom() {
       if (!currentProduct) return;
       
-      const images = currentProduct.images && currentProduct.images.length > 0 ? currentProduct.images : [currentProduct.image];
+      const images = currentProduct.images && Array.isArray(currentProduct.images) && currentProduct.images.length > 0 ? 
+        currentProduct.images : 
+        [getProductImage(currentProduct)];
       const imageUrl = images[currentImageIndex];
       
       zoomImage.src = imageUrl;
@@ -6483,6 +6845,102 @@
         });
     }
 
+    // NEW: Realtime Database Functions
+    function setupRealtimeListeners() {
+      // Products listener
+      db.ref('products').on('value', snapshot => {
+        const productsData = snapshot.val();
+        if (productsData) {
+          const newProducts = Object.keys(productsData).map(key => ({
+            id: key,
+            ...productsData[key]
+          }));
+          
+          products = newProducts;
+          cacheManager.set('cachedProducts', products);
+          
+          // Update UI if on relevant pages
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active') ||
+              document.getElementById('productDetailPage').classList.contains('active')) {
+            renderProducts(products, 'homeProductGrid');
+            renderProducts(products, 'productGrid');
+            renderProductSlider(products.slice(0, 10), 'productSlider');
+          }
+        }
+      }, error => {
+        console.error('Products listener error:', error);
+      });
+
+      // Categories listener
+      db.ref('categories').on('value', snapshot => {
+        const categoriesData = snapshot.val();
+        if (categoriesData) {
+          const newCategories = Object.keys(categoriesData).map(key => ({
+            id: key,
+            ...categoriesData[key]
+          }));
+          
+          categories = newCategories;
+          cacheManager.set('cachedCategories', categories);
+          
+          // Update UI if on relevant pages
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
+            renderCategories();
+            renderCategoryCircles();
+          }
+        }
+      }, error => {
+        console.error('Categories listener error:', error);
+      });
+
+      // Banners listener
+      db.ref('banners').on('value', snapshot => {
+        const bannersData = snapshot.val();
+        if (bannersData) {
+          const newBanners = Object.keys(bannersData).map(key => ({
+            id: key,
+            ...bannersData[key]
+          }));
+          
+          banners = newBanners;
+          cacheManager.set('cachedBanners', banners);
+          
+          // Update UI if on home page
+          if (document.getElementById('homePage').classList.contains('active')) {
+            renderBannerCarousel();
+          }
+        }
+      }, error => {
+        console.error('Banners listener error:', error);
+      });
+
+      // Orders listener for current user
+      if (currentUser) {
+        db.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
+          .on('value', snapshot => {
+            const ordersData = snapshot.val();
+            if (ordersData) {
+              const orders = Object.keys(ordersData).map(key => ({
+                id: key,
+                ...ordersData[key]
+              }));
+              
+              // Sort by orderDate descending
+              orders.sort((a, b) => b.orderDate - a.orderDate);
+              
+              // Update UI if on orders page
+              if (document.getElementById('myOrdersPage').classList.contains('active')) {
+                renderOrders(orders);
+              }
+            }
+          }, error => {
+            console.error('Orders listener error:', error);
+          });
+      }
+    }
+
     // Sample data fallbacks
     function loadSampleProducts() {
       products = [
@@ -6548,108 +7006,6 @@
         const dd = String(date.getDate()).padStart(2, '0');
         const randomNum = Math.floor(100000 + Math.random() * 900000); 
         return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
-    }
-
-    // NEW: Realtime Database Functions
-    function setupRealtimeListeners() {
-      // Products listener
-      db.ref('products').on('value', snapshot => {
-        const productsData = snapshot.val();
-        if (productsData) {
-          const newProducts = Object.keys(productsData).map(key => ({
-            id: key,
-            ...productsData[key]
-          }));
-          
-          products = newProducts;
-          cacheManager.set('products', products);
-          
-          // Update UI if on relevant pages
-          if (document.getElementById('homePage').classList.contains('active') || 
-              document.getElementById('productsPage').classList.contains('active') ||
-              document.getElementById('productDetailPage').classList.contains('active')) {
-            renderProducts(products, 'homeProductGrid');
-            renderProducts(products, 'productGrid');
-            renderProductSlider(products.slice(0, 10), 'productSlider');
-          }
-        }
-      }, error => {
-        console.error('Products listener error:', error);
-      });
-
-      // Categories listener
-      db.ref('categories').on('value', snapshot => {
-        const categoriesData = snapshot.val();
-        if (categoriesData) {
-          const newCategories = Object.keys(categoriesData).map(key => ({
-            id: key,
-            ...categoriesData[key]
-          }));
-          
-          categories = newCategories;
-          cacheManager.set('categories', categories);
-          
-          // Update UI if on relevant pages
-          if (document.getElementById('homePage').classList.contains('active') || 
-              document.getElementById('productsPage').classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
-        }
-      }, error => {
-        console.error('Categories listener error:', error);
-      });
-
-      // Banners listener
-      db.ref('banners').on('value', snapshot => {
-        const bannersData = snapshot.val();
-        if (bannersData) {
-          const newBanners = Object.keys(bannersData).map(key => ({
-            id: key,
-            ...bannersData[key]
-          }));
-          
-          banners = newBanners;
-          cacheManager.set('banners', banners);
-          
-          // Update UI if on home page
-          if (document.getElementById('homePage').classList.contains('active')) {
-            renderBannerCarousel();
-          }
-        }
-      }, error => {
-        console.error('Banners listener error:', error);
-      });
-
-      // Orders listener for current user
-      if (currentUser) {
-        db.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
-          .on('value', snapshot => {
-            const ordersData = snapshot.val();
-            if (ordersData) {
-              const orders = Object.keys(ordersData).map(key => ({
-                id: key,
-                ...ordersData[key]
-              }));
-              
-              // Sort by orderDate descending
-              orders.sort((a, b) => b.orderDate - a.orderDate);
-              
-              // Update UI if on orders page
-              if (document.getElementById('myOrdersPage').classList.contains('active')) {
-                renderOrders(orders);
-              }
-            } else {
-              // No orders
-              if (document.getElementById('myOrdersPage').classList.contains('active')) {
-                document.getElementById('ordersList').style.display = 'none';
-                document.getElementById('noOrders').style.display = 'block';
-              }
-            }
-          }, error => {
-            console.error('Orders listener error:', error);
-          });
-      }
     }
   </script>
 </body>
