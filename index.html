@@ -2859,6 +2859,50 @@
       height: 24px;
     }
 
+    /* NEW: Empty State Styles */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    
+    .empty-icon {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 24px;
+      opacity: 0.7;
+    }
+    
+    .empty-state h3 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+    
+    .empty-state p {
+      font-size: 16px;
+      margin-bottom: 24px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .empty-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 12px 24px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    
+    .empty-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-inner {
@@ -3431,18 +3475,12 @@
         
         <div class="product-detail-container">
           <div class="product-detail-gallery">
-            <!-- Amazon/Flipkart Style Gallery -->
-            <div class="fk-gallery-container">
-              <div class="fk-gallery-main" id="fkGalleryMain">
-                <div class="fk-gallery-track" id="fkGalleryTrack"></div>
-                <div class="fk-gallery-controls">
-                  <button class="fk-gallery-btn fk-prev-btn">❮</button>
-                  <button class="fk-gallery-btn fk-next-btn">❯</button>
-                </div>
-                <div class="fk-gallery-dots" id="fkGalleryDots"></div>
-              </div>
-              <div class="fk-gallery-thumbs" id="fkGalleryThumbs"></div>
+            <div class="product-detail-main-image" id="productDetailMainImage">
+              <button class="detail-carousel-control prev">&#10094;</button>
+              <button class="detail-carousel-control next">&#10095;</button>
+              <div class="detail-carousel-dots" id="detailCarouselDots"></div>
             </div>
+            <div class="product-detail-thumbnails" id="productDetailThumbnails"></div>
           </div>
           
           <div class="product-detail-info">
@@ -3454,6 +3492,19 @@
             <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
+            
+            <!-- Rating and Reviews Section -->
+            <div class="product-detail-meta">
+              <h4>Customer Reviews</h4>
+              <div class="product-rating-overview">
+                <div class="rating-stars">
+                  <span class="stars">★★★★★</span>
+                  <span class="rating-value">4.5</span>
+                  <span class="review-count">(128 reviews)</span>
+                </div>
+                <button class="btn secondary" id="writeReviewBtn">Write a Review</button>
+              </div>
+            </div>
             
             <!-- NEW: Share Link Section -->
             <div class="product-detail-meta" style="margin-top: 20px;">
@@ -3661,16 +3712,12 @@
             <!-- Orders will be dynamically inserted here -->
           </div>
           
-          <div id="noOrders" class="card-panel center" style="display:none">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
-            <h3 style="margin:16px 0 8px;color:var(--muted)">Aapke paas abhi koi orders nahi hain.</h3>
-            <p style="color:var(--muted-light)">You haven't placed any orders yet. Start shopping to see your orders here.</p>
-            <button class="btn" style="margin-top:16px" onclick="showPage('productsPage')">Start Shopping</button>
-            </div>
+          <div id="orders-empty" class="empty-state" style="display:none">
+            <img src="https://cdn-icons-png.flaticon.com/512/891/891419.png" class="empty-icon">
+            <h3>No Orders Yet</h3>
+            <p>Your orders will appear here after you place them.</p>
+            <a href="#" class="empty-btn" onclick="showPage('productsPage')">Start Shopping</a>
+          </div>
         </div>
       </div>
     </section>
@@ -4631,15 +4678,21 @@
     let recentlyViewed = [];
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
+    let currentCategoryFilter = null;
 
-    // Amazon/Flipkart Gallery Variables
-    let fkCurrentSlide = 0;
-    let fkIsDragging = false;
-    let fkStartPos = 0;
-    let fkCurrentTranslate = 0;
-    let fkPrevTranslate = 0;
-    let fkAnimationID = null;
-    let fkImages = [];
+    // Product Image Helper Function
+    function getProductImage(product, idx = 0) {
+      if (!product) return "assets/placeholder.png";
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        if (idx < product.images.length) return product.images[idx];
+        return product.images[0];
+      }
+      if (product.image) return product.image;
+      if (product.img) return product.img;
+      if (product.imageUrl) return product.imageUrl;
+      if (product.photo) return product.photo;
+      return "assets/placeholder.png";
+    }
 
     // NEW: Order ID Generation Function
     function generateOrderId() {
@@ -4816,17 +4869,6 @@
     const zoomIn = document.getElementById('zoomIn');
     const zoomOut = document.getElementById('zoomOut');
     const zoomReset = document.getElementById('zoomReset');
-
-    // Amazon/Flipkart Gallery Elements
-    const fkGalleryMain = document.getElementById('fkGalleryMain');
-    const fkGalleryTrack = document.getElementById('fkGalleryTrack');
-    const fkGalleryDots = document.getElementById('fkGalleryDots');
-    const fkGalleryThumbs = document.getElementById('fkGalleryThumbs');
-    const fkPrevBtn = document.querySelector('.fk-prev-btn');
-    const fkNextBtn = document.querySelector('.fk-next-btn');
-    const fkZoomModal = document.getElementById('fkZoomModal');
-    const fkZoomImage = document.getElementById('fkZoomImage');
-    const fkZoomClose = document.getElementById('fkZoomClose');
 
     // NEW: Error Display Elements
     const loginError = document.getElementById('loginError');
@@ -5027,142 +5069,12 @@
         toggleTheme();
       });
 
-      // Amazon/Flipkart Gallery Event Listeners
-      fkPrevBtn?.addEventListener('click', fkPrevSlide);
-      fkNextBtn?.addEventListener('click', fkNextSlide);
-      fkZoomClose?.addEventListener('click', () => fkZoomModal.classList.remove('active'));
-
-      // Touch events for swipe
-      if (fkGalleryMain) {
-        fkGalleryMain.addEventListener('touchstart', fkTouchStart);
-        fkGalleryMain.addEventListener('touchmove', fkTouchMove);
-        fkGalleryMain.addEventListener('touchend', fkTouchEnd);
-      }
-    }
-
-    // Amazon/Flipkart Gallery Functions
-    function fkInitGallery(product) {
-      if (!product) return;
-
-      // Clear existing gallery
-      fkGalleryTrack.innerHTML = '';
-      fkGalleryDots.innerHTML = '';
-      fkGalleryThumbs.innerHTML = '';
-
-      // Get images from product - Firebase path: /products/{productId}/images[]
-      fkImages = product.images && product.images.length > 0 ? product.images : [product.image];
-
-      // Create slides
-      fkImages.forEach((image, index) => {
-        // Main slide
-        const slide = document.createElement('div');
-        slide.className = 'fk-gallery-slide';
-        slide.style.backgroundImage = `url('${image}')`;
-        slide.addEventListener('click', () => fkOpenZoom(image));
-        fkGalleryTrack.appendChild(slide);
-
-        // Dot indicator
-        const dot = document.createElement('div');
-        dot.className = `fk-gallery-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => fkGoToSlide(index));
-        fkGalleryDots.appendChild(dot);
-
-        // Thumbnail
-        const thumb = document.createElement('div');
-        thumb.className = `fk-gallery-thumb ${index === 0 ? 'active' : ''}`;
-        thumb.style.backgroundImage = `url('${image}')`;
-        thumb.addEventListener('click', () => fkGoToSlide(index));
-        fkGalleryThumbs.appendChild(thumb);
-      });
-
-      // Reset to first slide
-      fkCurrentSlide = 0;
-      fkUpdateGallery();
-    }
-
-    function fkUpdateGallery() {
-      fkGalleryTrack.style.transform = `translateX(-${fkCurrentSlide * 100}%)`;
+      // Product detail image click to open zoom
+      document.getElementById('productDetailMainImage')?.addEventListener('click', openImageZoom);
       
-      // Update dots
-      document.querySelectorAll('.fk-gallery-dot').forEach((dot, index) => {
-        dot.classList.toggle('active', index === fkCurrentSlide);
-      });
-      
-      // Update thumbnails
-      document.querySelectorAll('.fk-gallery-thumb').forEach((thumb, index) => {
-        thumb.classList.toggle('active', index === fkCurrentSlide);
-      });
-    }
-
-    function fkPrevSlide() {
-      if (fkCurrentSlide > 0) {
-        fkCurrentSlide--;
-        fkUpdateGallery();
-      }
-    }
-
-    function fkNextSlide() {
-      if (fkCurrentSlide < fkImages.length - 1) {
-        fkCurrentSlide++;
-        fkUpdateGallery();
-      }
-    }
-
-    function fkGoToSlide(index) {
-      fkCurrentSlide = index;
-      fkUpdateGallery();
-    }
-
-    function fkOpenZoom(imageUrl) {
-      fkZoomImage.src = imageUrl;
-      fkZoomModal.classList.add('active');
-    }
-
-    // Touch swipe functionality
-    function fkTouchStart(event) {
-      fkIsDragging = true;
-      fkStartPos = getPositionX(event);
-      fkAnimationID = requestAnimationFrame(fkAnimation);
-      fkGalleryTrack.style.cursor = 'grabbing';
-    }
-
-    function fkTouchMove(event) {
-      if (fkIsDragging) {
-        const currentPosition = getPositionX(event);
-        fkCurrentTranslate = fkPrevTranslate + currentPosition - fkStartPos;
-      }
-    }
-
-    function fkTouchEnd() {
-      cancelAnimationFrame(fkAnimationID);
-      fkIsDragging = false;
-      const movedBy = fkCurrentTranslate - fkPrevTranslate;
-
-      if (movedBy < -100 && fkCurrentSlide < fkImages.length - 1) {
-        fkCurrentSlide += 1;
-      }
-
-      if (movedBy > 100 && fkCurrentSlide > 0) {
-        fkCurrentSlide -= 1;
-      }
-
-      fkSetPositionByIndex();
-      fkGalleryTrack.style.cursor = 'grab';
-    }
-
-    function fkAnimation() {
-      fkGalleryTrack.style.transform = `translateX(${fkCurrentTranslate}px)`;
-      if (fkIsDragging) requestAnimationFrame(fkAnimation);
-    }
-
-    function fkSetPositionByIndex() {
-      fkCurrentTranslate = fkCurrentSlide * -fkGalleryMain.offsetWidth;
-      fkPrevTranslate = fkCurrentTranslate;
-      fkUpdateGallery();
-    }
-
-    function getPositionX(event) {
-      return event.type.includes('mouse') ? event.pageX : event.touches[0].clientX;
+      // Product detail carousel controls
+      document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
+      document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
     }
 
     // NEW: Improved Authentication Functions with Error Handling
@@ -5696,7 +5608,7 @@
       const card = document.createElement('div');
       card.className = 'product-card';
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${product.image}')">
+        <div class="product-card-image" style="background-image: url('${getProductImage(product)}')">
           ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
           ${product.professional ? `<div class="professional-badge">PRO</div>` : ''}
         </div>
@@ -5764,7 +5676,7 @@
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${product.image}')"></div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${product.name}</div>
             <div class="slider-item-price">${product.price}</div>
@@ -5801,7 +5713,7 @@
         const circle = document.createElement('div');
         circle.className = 'category-circle';
         circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${category.image}')"></div>
+          <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
           <div class="category-circle-name">${category.name}</div>
         `;
         
@@ -5822,7 +5734,7 @@
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${banner.image}')`;
+        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
         track.appendChild(slide);
         
         const dot = document.createElement('div');
@@ -5878,8 +5790,8 @@
         stockStatus.className = 'stock-status out-of-stock';
       }
       
-      // Initialize Amazon/Flipkart gallery
-      fkInitGallery(product);
+      // Initialize product detail gallery
+      initProductDetailGallery(product);
       
       // Update share link
       document.getElementById('productShareLink').value = window.location.origin + window.location.pathname + '?product=' + product.id;
@@ -5904,6 +5816,119 @@
       
       // Show product detail page
       showPage('productDetailPage');
+    }
+
+    // NEW: Initialize product detail gallery
+    function initProductDetailGallery(product) {
+      const mainImage = document.getElementById('productDetailMainImage');
+      const thumbnails = document.getElementById('productDetailThumbnails');
+      const dots = document.getElementById('detailCarouselDots');
+      
+      if (!mainImage || !thumbnails || !dots) return;
+      
+      // Clear existing content
+      thumbnails.innerHTML = '';
+      dots.innerHTML = '';
+      
+      // Get images for the product
+      const productImages = [];
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        productImages.push(...product.images);
+      } else {
+        productImages.push(getProductImage(product));
+      }
+      
+      // Set initial main image
+      currentImageIndex = 0;
+      updateMainImage();
+      
+      // Create thumbnails and dots
+      productImages.forEach((image, index) => {
+        // Create thumbnail
+        const thumb = document.createElement('div');
+        thumb.className = `product-detail-thumbnail ${index === 0 ? 'active' : ''}`;
+        thumb.style.backgroundImage = `url('${image}')`;
+        thumb.addEventListener('click', () => {
+          currentImageIndex = index;
+          updateMainImage();
+          updateThumbnails();
+          updateDots();
+        });
+        thumbnails.appendChild(thumb);
+        
+        // Create dot
+        const dot = document.createElement('div');
+        dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          currentImageIndex = index;
+          updateMainImage();
+          updateThumbnails();
+          updateDots();
+        });
+        dots.appendChild(dot);
+      });
+      
+      function updateMainImage() {
+        mainImage.style.backgroundImage = `url('${productImages[currentImageIndex]}')`;
+      }
+      
+      function updateThumbnails() {
+        document.querySelectorAll('.product-detail-thumbnail').forEach((thumb, index) => {
+          thumb.classList.toggle('active', index === currentImageIndex);
+        });
+      }
+      
+      function updateDots() {
+        document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
+          dot.classList.toggle('active', index === currentImageIndex);
+        });
+      }
+    }
+
+    // NEW: Product detail image navigation
+    function prevDetailImage() {
+      const productImages = getProductImages();
+      if (productImages.length <= 1) return;
+      
+      currentImageIndex = (currentImageIndex - 1 + productImages.length) % productImages.length;
+      updateProductDetailImage();
+    }
+
+    function nextDetailImage() {
+      const productImages = getProductImages();
+      if (productImages.length <= 1) return;
+      
+      currentImageIndex = (currentImageIndex + 1) % productImages.length;
+      updateProductDetailImage();
+    }
+
+    function getProductImages() {
+      if (!currentProduct) return [];
+      
+      if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
+        return currentProduct.images;
+      } else {
+        return [getProductImage(currentProduct)];
+      }
+    }
+
+    function updateProductDetailImage() {
+      const productImages = getProductImages();
+      const mainImage = document.getElementById('productDetailMainImage');
+      
+      if (mainImage && productImages[currentImageIndex]) {
+        mainImage.style.backgroundImage = `url('${productImages[currentImageIndex]}')`;
+        
+        // Update active thumbnail
+        document.querySelectorAll('.product-detail-thumbnail').forEach((thumb, index) => {
+          thumb.classList.toggle('active', index === currentImageIndex);
+        });
+        
+        // Update active dot
+        document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
+          dot.classList.toggle('active', index === currentImageIndex);
+        });
+      }
     }
 
     function loadSimilarProducts(product) {
@@ -6175,7 +6200,10 @@
       renderProducts(filteredProducts, containerId);
     }
 
+    // NEW: Improved category filtering
     function filterByCategory(categoryId) {
+      currentCategoryFilter = categoryId;
+      
       const filteredProducts = products.filter(product => 
         product.category === categoryId
       );
@@ -6192,6 +6220,9 @@
           pill.classList.add('active');
         }
       });
+      
+      // Show products page if not already there
+      showPage('productsPage');
     }
 
     // Price filter functions
@@ -6199,7 +6230,17 @@
       const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
       const maxPrice = parseFloat(document.getElementById('maxPrice').value) || 5000;
       
-      const filteredProducts = products.filter(product => {
+      let filteredProducts = products;
+      
+      // Apply category filter if active
+      if (currentCategoryFilter) {
+        filteredProducts = filteredProducts.filter(product => 
+          product.category === currentCategoryFilter
+        );
+      }
+      
+      // Apply price filter
+      filteredProducts = filteredProducts.filter(product => {
         const price = parseFloat(product.price.replace('₹', ''));
         return price >= minPrice && price <= maxPrice;
       });
@@ -6215,7 +6256,16 @@
       document.getElementById('minPriceValue').textContent = '₹0';
       document.getElementById('maxPriceValue').textContent = '₹5000';
       
-      renderProducts(products, 'productGrid');
+      let filteredProducts = products;
+      
+      // Apply category filter if active
+      if (currentCategoryFilter) {
+        filteredProducts = filteredProducts.filter(product => 
+          product.category === currentCategoryFilter
+        );
+      }
+      
+      renderProducts(filteredProducts, 'productGrid');
     }
 
     // Quantity functions
@@ -6250,7 +6300,7 @@
       
       // Update gallery
       const galleryMain = document.getElementById('galleryMain');
-      galleryMain.style.backgroundImage = `url('${currentProduct.image}')`;
+      galleryMain.style.backgroundImage = `url('${getProductImage(currentProduct)}')`;
       
       // Show order page
       showPage('orderPage');
@@ -6305,8 +6355,8 @@
     function openImageZoom() {
       if (!currentProduct) return;
       
-      const imageUrl = currentProduct.images && currentProduct.images[currentImageIndex] ? 
-        currentProduct.images[currentImageIndex] : currentProduct.image;
+      const productImages = getProductImages();
+      const imageUrl = productImages[currentImageIndex];
       
       zoomImage.src = imageUrl;
       zoomModal.classList.add('active');
@@ -6538,18 +6588,18 @@
     // Orders rendering function
     function renderOrders(orders) {
       const container = document.getElementById('ordersList');
-      const noOrders = document.getElementById('noOrders');
+      const empty = document.getElementById('orders-empty');
       
-      if (!container || !noOrders) return;
+      if (!container || !empty) return;
       
       if (orders.length === 0) {
         container.style.display = 'none';
-        noOrders.style.display = 'block';
+        empty.style.display = 'block';
         return;
       }
       
       container.style.display = 'block';
-      noOrders.style.display = 'none';
+      empty.style.display = 'none';
       container.innerHTML = '';
       
       orders.forEach(order => {
@@ -6564,7 +6614,7 @@
             <div class="order-status status-${order.status}">${order.status}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${products.find(p => p.id === order.productId)?.image || ''}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.price}</div>
@@ -6625,29 +6675,9 @@
           id: '2',
           name: 'Smart Fitness Band',
           price: '₹1,999',
-          image: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGZpdG5lc3MlMjBiYW5kfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Track your fitness goals with this smart band',
-          badge: 'NEW',
+          image: 'https://images.unsplash.com/photo-1575311373937-040b8e1f4ed5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zml0bmVzcyUyMGJhbmR8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          description: 'Track your fitness with this smart band',
           reviews: '89'
-        },
-        {
-          id: '3',
-          name: 'Classic White Sneakers',
-          price: '₹2,499',
-          originalPrice: '₹3,999',
-          image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c25lYWtlcnN8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable and stylish white sneakers',
-          badge: '37% OFF',
-          reviews: '256'
-        },
-        {
-          id: '4',
-          name: 'Casual Summer T-Shirt',
-          price: '₹499',
-          image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHNoaXJ0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60',
-          description: 'Comfortable cotton t-shirt for summer',
-          badge: 'BESTSELLER',
-          reviews: '512'
         }
       ];
       
@@ -6661,7 +6691,7 @@
         {
           id: '1',
           name: 'Electronics',
-          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60'
+          image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZWxlY3Ryb25pY3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60'
         },
         {
           id: '2',
@@ -6678,15 +6708,9 @@
       banners = [
         {
           id: '1',
-          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
+          image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvcHBpbmclMjBiYW5uZXJ8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
           title: 'Summer Sale',
-          description: 'Up to 50% off on all products'
-        },
-        {
-          id: '2',
-          image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c2hvcHBpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60',
-          title: 'New Arrivals',
-          description: 'Check out our latest products'
+          description: 'Up to 50% off on all items'
         }
       ];
       
