@@ -2847,6 +2847,167 @@
       transform: translateY(-2px);
     }
 
+    /* NEW: Sticky Action Buttons for Product Detail */
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      background: var(--card);
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* NEW: Rating and Review Styles */
+    .rating-section {
+      margin: 24px 0;
+    }
+
+    .rating-form {
+      background: #f8fafc;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .rating-stars-input {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .rating-star {
+      font-size: 24px;
+      color: #ddd;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .rating-star.active {
+      color: #ffc107;
+    }
+
+    .review-item {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+
+    .review-item:last-child {
+      border-bottom: none;
+    }
+
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .review-author {
+      font-weight: 600;
+    }
+
+    .review-date {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .review-rating {
+      color: #ffc107;
+      margin-bottom: 8px;
+    }
+
+    /* NEW: Touch Slider Styles */
+    .touch-slider {
+      touch-action: pan-y;
+    }
+
+    /* NEW: Payment Gateway Charge Note */
+    .payment-charge-note {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: var(--radius);
+      padding: 12px;
+      margin: 16px 0;
+      color: #92400e;
+      font-size: 14px;
+    }
+
+    /* NEW: Order Tracking Styles */
+    .tracking-steps {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .tracking-steps::before {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border);
+      z-index: 1;
+    }
+
+    .tracking-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .tracking-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .tracking-step.active .tracking-icon {
+      background: var(--accent);
+      color: white;
+    }
+
+    .tracking-step.completed .tracking-icon {
+      background: var(--success);
+      color: white;
+    }
+
+    .tracking-label {
+      font-size: 12px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .tracking-step.active .tracking-label {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .tracking-step.completed .tracking-label {
+      color: var(--success);
+    }
+
+    /* NEW: Refund Button Styles */
+    .refund-button {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1px solid #f59e0b;
+      color: #92400e;
+    }
+
+    .refund-button:hover {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-inner {
@@ -2983,6 +3144,16 @@
       /* Social menu items mobile */
       .social-menu-item {
         padding: 15px 20px;
+      }
+
+      /* Tracking steps mobile */
+      .tracking-steps {
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .tracking-steps::before {
+        display: none;
       }
     }
 
@@ -3281,7 +3452,7 @@
       </section>
 
       <!-- NEW: Banner Carousel -->
-      <div class="banner-carousel" id="bannerCarousel">
+      <div class="banner-carousel touch-slider" id="bannerCarousel">
         <div class="banner-track" id="bannerTrack"></div>
         <div class="banner-controls" id="bannerControls"></div>
       </div>
@@ -3425,16 +3596,58 @@
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
             
-            <!-- Rating and Reviews Section -->
-            <div class="product-detail-meta">
-              <h4>Customer Reviews</h4>
-              <div class="product-rating-overview">
-                <div class="rating-stars">
-                  <span class="stars">★★★★★</span>
-                  <span class="rating-value">4.5</span>
-                  <span class="review-count">(128 reviews)</span>
+            <!-- NEW: Rating and Reviews Section -->
+            <div class="rating-section">
+              <div class="product-detail-meta">
+                <h4>Customer Reviews</h4>
+                <div class="product-rating-overview">
+                  <div class="rating-stars">
+                    <span class="stars">★★★★★</span>
+                    <span class="rating-value">4.5</span>
+                    <span class="review-count">(128 reviews)</span>
+                  </div>
+                  <button class="btn secondary" id="writeReviewBtn">Write a Review</button>
                 </div>
-                <button class="btn secondary" id="writeReviewBtn">Write a Review</button>
+              </div>
+              
+              <!-- NEW: Review Form -->
+              <div class="rating-form" id="ratingForm" style="display: none;">
+                <h4>Add Your Review</h4>
+                <div class="rating-stars-input" id="ratingStarsInput">
+                  <span class="rating-star" data-rating="1">★</span>
+                  <span class="rating-star" data-rating="2">★</span>
+                  <span class="rating-star" data-rating="3">★</span>
+                  <span class="rating-star" data-rating="4">★</span>
+                  <span class="rating-star" data-rating="5">★</span>
+                </div>
+                <div>
+                  <label>Your Review</label>
+                  <textarea id="reviewText" placeholder="Share your experience with this product..." rows="4"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                  <button class="btn" id="submitReviewBtn">Submit Review</button>
+                  <button class="btn secondary" id="cancelReviewBtn">Cancel</button>
+                </div>
+              </div>
+              
+              <!-- NEW: Reviews List -->
+              <div id="reviewsList">
+                <div class="review-item">
+                  <div class="review-header">
+                    <div class="review-author">Rahul Sharma</div>
+                    <div class="review-date">2 days ago</div>
+                  </div>
+                  <div class="review-rating">★★★★★</div>
+                  <p>Excellent product! Fast delivery and great quality. Will definitely buy again.</p>
+                </div>
+                <div class="review-item">
+                  <div class="review-header">
+                    <div class="review-author">Priya Patel</div>
+                    <div class="review-date">1 week ago</div>
+                  </div>
+                  <div class="review-rating">★★★★☆</div>
+                  <p>Good value for money. The product met my expectations. Delivery was a bit delayed but overall satisfied.</p>
+                </div>
               </div>
             </div>
             
@@ -3469,10 +3682,10 @@
               </button>
             </div>
             
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;">
-              <button class="btn" id="detailOrderBtn">Order Now</button>
-              <button class="btn secondary" id="detailWishlistBtn">Add to Wishlist</button>
-              <button class="btn secondary" onclick="showPage('productsPage')">Continue Shopping</button>
+            <!-- NEW: Sticky Action Buttons -->
+            <div class="sticky-actions">
+              <button class="btn" id="detailOrderBtn" style="flex: 2;">Order Now</button>
+              <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
             </div>
           </div>
         </div>
@@ -3582,6 +3795,12 @@
     <section class="page" id="paymentPage">
       <div class="card-panel">
         <h3 style="margin-top:0">Payment Method</h3>
+        
+        <!-- NEW: Payment Gateway Charge Note -->
+        <div class="payment-charge-note">
+          <strong>Note:</strong> Online payments may include payment gateway charges as per RBI guidelines. These charges will be added to your final amount.
+        </div>
+        
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
           <label style="flex:1;display:flex;align-items:center;gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;">
             <input type="radio" name="pay" value="prepaid" checked /> Prepaid (UPI / Card)
@@ -3595,7 +3814,9 @@
           <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Product</div><div id="sumProduct">-</div></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Qty</div><div id="sumQty">-</div></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Price</div><div id="sumPrice">-</div></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--border)"><div>Delivery</div><div id="sumDel">₹50</div></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Delivery</div><div id="sumDel">₹50</div></div>
+          <!-- NEW: Payment Gateway Charges -->
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--border)"><div>Payment Gateway Charges</div><div id="sumGateway">₹0</div></div>
           <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:8px;font-size:18px"><div>Total</div><div id="sumTotal">-</div></div>
         </div>
         
@@ -4265,6 +4486,31 @@
     </div>
   </div>
 
+  <!-- Password Change Modal -->
+  <div class="modal-overlay" id="passwordChangeModal">
+    <div class="auth-modal">
+      <button class="auth-close" id="passwordChangeClose">×</button>
+      <h3>Change Password</h3>
+      
+      <div class="auth-form active">
+        <div class="auth-form-group">
+          <label>Email Address</label>
+          <input type="email" id="passwordChangeEmail" placeholder="Enter your email address">
+        </div>
+        <div class="auth-form-group">
+          <label>New Password</label>
+          <input type="password" id="newPassword" placeholder="Enter new password">
+        </div>
+        <div class="auth-form-group">
+          <label>Confirm New Password</label>
+          <input type="password" id="confirmNewPassword" placeholder="Confirm new password">
+        </div>
+        <div id="passwordChangeError" style="color:red; font-size:14px; margin-bottom:12px;"></div>
+        <button class="btn" id="confirmPasswordChange" style="width:100%">Change Password</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Configuration -->
   <script>
     // Firebase configuration
@@ -4303,6 +4549,7 @@
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
     let currentCategoryFilter = null;
+    let pageHistory = ['homePage']; // For back button navigation
 
     // Product Image Helper Function
     function getProductImage(product, idx = 0) {
@@ -4493,6 +4740,12 @@
     const zoomOut = document.getElementById('zoomOut');
     const zoomReset = document.getElementById('zoomReset');
 
+    // NEW: Password Change Modal Elements
+    const passwordChangeModal = document.getElementById('passwordChangeModal');
+    const passwordChangeClose = document.getElementById('passwordChangeClose');
+    const confirmPasswordChange = document.getElementById('confirmPasswordChange');
+    const passwordChangeError = document.getElementById('passwordChangeError');
+
     // NEW: Error Display Elements
     const loginError = document.getElementById('loginError');
     const signupError = document.getElementById('signupError');
@@ -4519,6 +4772,17 @@
         } else {
           currentUser = null;
           updateUIForGuest();
+        }
+      });
+
+      // NEW: Handle browser back button
+      window.addEventListener('popstate', function(event) {
+        if (pageHistory.length > 1) {
+          pageHistory.pop(); // Remove current page
+          const previousPage = pageHistory.pop(); // Get previous page
+          if (previousPage) {
+            showPage(previousPage);
+          }
         }
       });
     });
@@ -4675,11 +4939,28 @@
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       
+      // NEW: Rating and review buttons
+      document.getElementById('writeReviewBtn')?.addEventListener('click', showReviewForm);
+      document.getElementById('cancelReviewBtn')?.addEventListener('click', hideReviewForm);
+      document.getElementById('submitReviewBtn')?.addEventListener('click', submitReview);
+      
+      // Rating stars
+      document.querySelectorAll('.rating-star').forEach(star => {
+        star.addEventListener('click', function() {
+          const rating = this.getAttribute('data-rating');
+          setRatingStars(rating);
+        });
+      });
+      
       // Account page
       document.getElementById('saveProfile')?.addEventListener('click', saveProfile);
-      document.getElementById('changePasswordBtn')?.addEventListener('click', changePassword);
+      document.getElementById('changePasswordBtn')?.addEventListener('click', showPasswordChangeModal);
       document.getElementById('deleteAccountBtn')?.addEventListener('click', deleteAccount);
       document.getElementById('saveSettings')?.addEventListener('click', saveSettings);
+      
+      // NEW: Password change modal
+      passwordChangeClose.addEventListener('click', () => passwordChangeModal.classList.remove('active'));
+      confirmPasswordChange.addEventListener('click', handlePasswordChange);
       
       // Address page
       document.getElementById('addNewAddress')?.addEventListener('click', showNewAddressForm);
@@ -4697,6 +4978,69 @@
       // Product detail carousel controls
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
       document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
+      
+      // NEW: Touch events for banner carousel
+      setupTouchSlider();
+    }
+
+    // NEW: Setup touch events for banner carousel
+    function setupTouchSlider() {
+      const bannerTrack = document.getElementById('bannerTrack');
+      if (!bannerTrack) return;
+      
+      let startX = 0;
+      let currentX = 0;
+      let isDragging = false;
+      
+      bannerTrack.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+      });
+      
+      bannerTrack.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        const diff = startX - currentX;
+        
+        // Only allow horizontal dragging
+        if (Math.abs(diff) > 10) {
+          e.preventDefault();
+        }
+      });
+      
+      bannerTrack.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        
+        const diff = startX - currentX;
+        if (Math.abs(diff) > 50) { // Minimum swipe distance
+          if (diff > 0) {
+            // Swipe left - next slide
+            nextBannerSlide();
+          } else {
+            // Swipe right - previous slide
+            prevBannerSlide();
+          }
+        }
+        
+        isDragging = false;
+      });
+    }
+
+    // NEW: Banner navigation functions
+    function nextBannerSlide() {
+      const activeIndex = banners.findIndex((_, index) => 
+        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
+      );
+      const nextIndex = (activeIndex + 1) % banners.length;
+      setBannerSlide(nextIndex);
+    }
+
+    function prevBannerSlide() {
+      const activeIndex = banners.findIndex((_, index) => 
+        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
+      );
+      const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+      setBannerSlide(prevIndex);
     }
 
     // NEW: Improved Authentication Functions with Error Handling
@@ -4856,6 +5200,72 @@
       }
     }
 
+    // NEW: Password Change Function
+    async function handlePasswordChange() {
+      const email = document.getElementById('passwordChangeEmail').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmNewPassword').value;
+      
+      // Clear previous errors
+      passwordChangeError.textContent = '';
+      
+      if (!email || !newPassword || !confirmPassword) {
+        passwordChangeError.textContent = 'Please fill in all fields';
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        passwordChangeError.textContent = 'Passwords do not match';
+        return;
+      }
+      
+      if (newPassword.length < 6) {
+        passwordChangeError.textContent = 'Password should be at least 6 characters';
+        return;
+      }
+      
+      try {
+        confirmPasswordChange.disabled = true;
+        confirmPasswordChange.innerHTML = '<div class="loading-spinner"></div> Changing...';
+        
+        // Re-authenticate user
+        const user = auth.currentUser;
+        if (!user) {
+          passwordChangeError.textContent = 'User not authenticated';
+          return;
+        }
+        
+        // Update password
+        await user.updatePassword(newPassword);
+        
+        showToast('Password changed successfully!', 'success');
+        passwordChangeModal.classList.remove('active');
+        
+        // Clear form
+        document.getElementById('passwordChangeEmail').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmNewPassword').value = '';
+      } catch (err) {
+        console.error('Password change error:', err);
+        passwordChangeError.textContent = err.message;
+      } finally {
+        confirmPasswordChange.disabled = false;
+        confirmPasswordChange.textContent = 'Change Password';
+      }
+    }
+
+    // NEW: Show password change modal
+    function showPasswordChangeModal() {
+      if (!currentUser) {
+        showToast('Please login to change password', 'error');
+        return;
+      }
+      
+      // Pre-fill email if user is logged in
+      document.getElementById('passwordChangeEmail').value = currentUser.email;
+      passwordChangeModal.classList.add('active');
+    }
+
     // NEW: Improved Order Placement with Order ID
     async function confirmOrder() {
       if (!currentUser) {
@@ -4871,19 +5281,32 @@
       const quantity = parseInt(document.getElementById('qtySelect').value);
       const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
       
+      // Calculate payment gateway charges for online payments
+      const productPrice = parseFloat(currentProduct.price.replace('₹', ''));
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = 50;
+      const gatewayCharge = paymentMethod === 'prepaid' ? Math.round(subtotal * 0.02) : 0; // 2% gateway charge
+      const total = subtotal + deliveryCharge + gatewayCharge;
+      
       const orderData = {
         orderId: orderId,
         userId: currentUser.uid,
         username: userInfo.fullName || 'Customer',
         productId: currentProduct.id,
         productName: currentProduct.name,
-        price: parseFloat(currentProduct.price.replace('₹', '')) * quantity,
+        price: total,
         quantity: quantity,
         size: size,
         paymentMethod: paymentMethod,
+        gatewayCharge: gatewayCharge,
         status: 'confirmed',
         orderDate: Date.now(),
-        userInfo: userInfo
+        userInfo: userInfo,
+        tracking: {
+          confirmed: Date.now(),
+          shipped: null,
+          delivered: null
+        }
       };
       
       try {
@@ -4915,11 +5338,19 @@
       });
       document.getElementById(pageId).classList.add('active');
       
+      // Update page history for back button
+      if (pageHistory[pageHistory.length - 1] !== pageId) {
+        pageHistory.push(pageId);
+      }
+      
       // Update step pills based on current page
       updateStepPills();
       
       // Scroll to top
       window.scrollTo(0, 0);
+      
+      // Update browser history
+      window.history.pushState({ page: pageId }, '', `#${pageId}`);
     }
 
     function checkAuthAndShowPage(pageId) {
@@ -5562,6 +5993,57 @@
       renderProductSlider(similarProducts, 'similarProductsSlider');
     }
 
+    // NEW: Rating and Review Functions
+    function showReviewForm() {
+      document.getElementById('ratingForm').style.display = 'block';
+      document.getElementById('writeReviewBtn').style.display = 'none';
+    }
+
+    function hideReviewForm() {
+      document.getElementById('ratingForm').style.display = 'none';
+      document.getElementById('writeReviewBtn').style.display = 'block';
+      resetRatingStars();
+    }
+
+    function setRatingStars(rating) {
+      const stars = document.querySelectorAll('.rating-star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    function resetRatingStars() {
+      const stars = document.querySelectorAll('.rating-star');
+      stars.forEach(star => {
+        star.classList.remove('active');
+      });
+    }
+
+    function submitReview() {
+      const reviewText = document.getElementById('reviewText').value;
+      const activeStars = document.querySelectorAll('.rating-star.active').length;
+      
+      if (activeStars === 0) {
+        showToast('Please select a rating', 'error');
+        return;
+      }
+      
+      if (!reviewText.trim()) {
+        showToast('Please write a review', 'error');
+        return;
+      }
+      
+      // In a real app, you would save the review to your database
+      showToast('Review submitted successfully!', 'success');
+      hideReviewForm();
+      document.getElementById('reviewText').value = '';
+      resetRatingStars();
+    }
+
     // Order flow functions
     function toUserInfo() {
       // Validate size selection
@@ -5601,11 +6083,17 @@
       // Update summary
       const quantity = parseInt(document.getElementById('qtySelect').value);
       const productPrice = parseFloat(currentProduct.price.replace('₹', ''));
-      const total = (productPrice * quantity) + 50; // Adding delivery charge
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = 50;
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      const gatewayCharge = paymentMethod === 'prepaid' ? Math.round(subtotal * 0.02) : 0; // 2% gateway charge
+      const total = subtotal + deliveryCharge + gatewayCharge;
       
       document.getElementById('sumProduct').textContent = currentProduct.name;
       document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${productPrice * quantity}`;
+      document.getElementById('sumPrice').textContent = `₹${subtotal}`;
+      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
+      document.getElementById('sumGateway').textContent = `₹${gatewayCharge}`;
       document.getElementById('sumTotal').textContent = `₹${total}`;
       
       showPage('paymentPage');
@@ -6227,11 +6715,18 @@
       orders.forEach(order => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
+        
+        // NEW: Add tracking information
+        const trackingInfo = getTrackingInfo(order);
+        
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
               <div class="order-id">${order.orderId}</div>
               <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
+              ${order.tracking && order.tracking.delivered ? 
+                `<div class="order-estimated">Delivered on ${new Date(order.tracking.delivered).toLocaleDateString()}</div>` : 
+                ''}
             </div>
             <div class="order-status status-${order.status}">${order.status}</div>
           </div>
@@ -6243,11 +6738,62 @@
               <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
           </div>
+          <!-- NEW: Tracking Steps -->
+          ${trackingInfo}
+          <!-- NEW: Refund Button for Delivered Orders (within 5 days) -->
+          ${shouldShowRefundButton(order) ? `
+            <div class="order-actions">
+              <button class="btn refund-button request-refund-btn" data-order-id="${order.id}">
+                Request Refund
+              </button>
+            </div>
+          ` : ''}
         `;
         
         orderCard.addEventListener('click', () => showOrderDetail(order));
         container.appendChild(orderCard);
       });
+    }
+
+    // NEW: Get tracking information for an order
+    function getTrackingInfo(order) {
+      if (!order.tracking) return '';
+      
+      const steps = [
+        { id: 'confirmed', label: 'Confirmed', date: order.tracking.confirmed },
+        { id: 'shipped', label: 'Shipped', date: order.tracking.shipped },
+        { id: 'delivered', label: 'Delivered', date: order.tracking.delivered }
+      ];
+      
+      let activeStep = 'confirmed';
+      if (order.tracking.delivered) activeStep = 'delivered';
+      else if (order.tracking.shipped) activeStep = 'shipped';
+      
+      return `
+        <div class="tracking-steps">
+          ${steps.map(step => `
+            <div class="tracking-step ${step.id === activeStep ? 'active' : ''} ${step.date ? 'completed' : ''}">
+              <div class="tracking-icon">
+                ${step.date ? '✓' : step.id.charAt(0).toUpperCase()}
+              </div>
+              <div class="tracking-label">${step.label}</div>
+              ${step.date ? `<div class="tracking-date" style="font-size:10px;color:var(--muted);margin-top:4px">${new Date(step.date).toLocaleDateString()}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // NEW: Check if refund button should be shown
+    function shouldShowRefundButton(order) {
+      if (!order.tracking || !order.tracking.delivered) return false;
+      
+      const deliveredDate = new Date(order.tracking.delivered);
+      const currentDate = new Date();
+      const daysSinceDelivery = Math.floor((currentDate - deliveredDate) / (1000 * 60 * 60 * 24));
+      
+      // Show refund button for 5 days after delivery
+      return daysSinceDelivery <= 5;
     }
 
     function showOrderDetail(order) {
