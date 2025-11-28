@@ -452,7 +452,11 @@
     }
 
     .wishlist-btn.active {
-      color: var(--error);
+      color: red !important;
+    }
+
+    .wishlist-btn.active svg {
+      fill: red !important;
     }
 
     .share-btn {
@@ -1723,20 +1727,18 @@
 
     /* Wishlist Button Active State - UPDATED TO RED */
     .wishlist-btn.active {
-      color: var(--error) !important;
-      background: #fee2e2 !important;
-      border-color: var(--error) !important;
+      color: red !important;
     }
 
-    .wishlist-btn.active:hover {
-      background: #fecaca !important;
+    .wishlist-btn.active svg {
+      fill: red !important;
     }
 
     /* Product Detail Page Wishlist Button - UPDATED TO RED */
     #detailWishlistBtn.active {
-      background: var(--error) !important;
+      background: red !important;
       color: white !important;
-      border-color: var(--error) !important;
+      border-color: red !important;
     }
 
     #detailWishlistBtn.active:hover {
@@ -3498,7 +3500,7 @@
         <span id="mobileUserName">My Account</span>
       </div>
       <!-- NEW: Logout in mobile menu -->
-      <div class="menu-item" id="mobileLogoutBtn" style="display:none;" onclick="logout(); closeMenu();">
+      <div class="menu-item" id="mobileLogoutBtn" style="display:none;" onclick="showLogoutConfirmation(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
@@ -4588,6 +4590,16 @@
     </div>
   </div>
 
+  <!-- Password Reset Modal -->
+  <div class="modal-overlay" id="passwordResetModal">
+    <div class="auth-modal">
+      <h3>Reset Password</h3>
+      <input type="email" id="passwordResetEmail" placeholder="Enter your email">
+      <button class="btn" id="confirmPasswordReset">Send Reset Link</button>
+      <button class="btn secondary" id="cancelPasswordReset">Cancel</button>
+    </div>
+  </div>
+
   <!-- Firebase Configuration -->
   <script>
     // Firebase configuration
@@ -4839,6 +4851,19 @@
     const submitReview = document.getElementById('submitReview');
     const reviewsList = document.getElementById('reviewsList');
 
+    // NEW: Password Reset Modal Elements
+    const passwordResetModal = document.getElementById('passwordResetModal');
+    const passwordResetEmail = document.getElementById('passwordResetEmail');
+    const confirmPasswordReset = document.getElementById('confirmPasswordReset');
+    const cancelPasswordReset = document.getElementById('cancelPasswordReset');
+
+    // NEW: Alert Modal Elements
+    const alertModal = document.getElementById('alertModal');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertCancelBtn = document.getElementById('alertCancelBtn');
+    const alertConfirmBtn = document.getElementById('alertConfirmBtn');
+
     // Initialize the app
     document.addEventListener('DOMContentLoaded', function() {
       initApp();
@@ -4947,9 +4972,30 @@
       // User profile - NEW: Direct navigation to account page
       userProfile.addEventListener('click', () => showPage('accountPage'));
       
-      // NEW: Logout buttons
-      accountLogoutBtn.addEventListener('click', logout);
-      mobileLogoutBtn.addEventListener('click', logout);
+      // NEW: Logout buttons with confirmation
+      accountLogoutBtn.addEventListener('click', showLogoutConfirmation);
+      mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
+      
+      // NEW: Alert modal buttons
+      alertCancelBtn.addEventListener('click', () => {
+        alertModal.classList.remove('active');
+      });
+      alertConfirmBtn.addEventListener('click', confirmLogout);
+      
+      // NEW: Password reset modal
+      document.getElementById('changePasswordBtn').addEventListener('click', () => {
+        passwordResetModal.classList.add('active');
+      });
+      cancelPasswordReset.addEventListener('click', () => {
+        passwordResetModal.classList.remove('active');
+      });
+      confirmPasswordReset.addEventListener('click', () => {
+        const email = passwordResetEmail.value;
+        auth.sendPasswordResetEmail(email).then(() => {
+          showToast('Password reset email sent!', 'success');
+          passwordResetModal.classList.remove('active');
+        });
+      });
       
       // Navigation
       openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
@@ -4965,16 +5011,16 @@
       productImageModalPrev.addEventListener('click', prevProductModalImage);
       productImageModalNext.addEventListener('click', nextProductModalImage);
       
-      // Search functionality
+      // Search functionality with debounce
       const searchInput = document.getElementById('searchInput');
       const homeSearchInput = document.getElementById('homeSearchInput');
       
       if (searchInput) {
-        searchInput.addEventListener('input', handleSearch);
+        searchInput.addEventListener('input', debounce(handleSearch, 300));
       }
       
       if (homeSearchInput) {
-        homeSearchInput.addEventListener('input', handleHomeSearch);
+        homeSearchInput.addEventListener('input', debounce(handleHomeSearch, 300));
       }
       
       // Order flow buttons
@@ -5024,7 +5070,6 @@
       
       // Account page
       document.getElementById('saveProfile')?.addEventListener('click', saveProfile);
-      document.getElementById('changePasswordBtn')?.addEventListener('click', changePassword);
       document.getElementById('deleteAccountBtn')?.addEventListener('click', deleteAccount);
       document.getElementById('saveSettings')?.addEventListener('click', saveSettings);
       
@@ -5076,7 +5121,102 @@
       });
     }
 
-    // NEW: Banner touch handlers for mobile swipe
+    // NEW: Debounce function for search optimization
+    function debounce(func, wait) {
+      let timeout;
+      return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
+
+    // NEW: Logout with confirmation
+    function showLogoutConfirmation() {
+      alertTitle.textContent = 'Logout Confirmation';
+      alertMessage.textContent = 'Are you sure you want to logout?';
+      alertModal.classList.add('active');
+    }
+
+    function confirmLogout() {
+      auth.signOut().then(() => {
+        showToast('Logged out successfully', 'success');
+        alertModal.classList.remove('active');
+        showPage('homePage');
+      });
+    }
+
+    // NEW: Auto Address Management
+    function saveAddressFromUserInfo() {
+      if (!currentUser) return;
+
+      const addressId = 'address_' + Date.now();
+
+      realtimeDb.ref('addresses/' + addressId).set({
+        userId: currentUser.uid,
+        name: userInfo.fullName,
+        mobile: userInfo.mobile,
+        pincode: userInfo.pincode,
+        city: userInfo.city,
+        state: userInfo.state,
+        street: userInfo.house,
+        type: 'home',
+        createdAt: Date.now()
+      });
+    }
+
+    // NEW: Improved toPayment function with address auto-save
+    function toPayment() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
+
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      if (currentUser) saveAddressFromUserInfo();
+
+      showPage('paymentPage');
+    }
+
+    // NEW: Improved Wishlist Functions
+    function isInWishlist(productId) {
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      return wishlist.includes(productId);
+    }
+
+    function toggleWishlist(productId) {
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+
+      if (wishlist.includes(productId)) {
+        wishlist = wishlist.filter(id => id !== productId);
+        showToast('Removed from wishlist');
+      } else {
+        wishlist.push(productId);
+        showToast('Added to wishlist');
+      }
+
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      updateWishlistButtons();
+    }
+
+    function updateWishlistButtons() {
+      document.querySelectorAll('.wishlist-btn').forEach(btn => {
+        const productId = btn.getAttribute('data-product-id');
+        btn.classList.toggle('active', isInWishlist(productId));
+      });
+    }
+
+    // Rest of the JavaScript code remains the same as in the original file
+    // ... (all other functions from the original file)
+
+    // Banner touch handlers for mobile swipe
     function handleBannerTouchStart(e) {
       bannerStartX = e.touches[0].clientX;
       isBannerDragging = true;
@@ -5111,7 +5251,7 @@
       isBannerDragging = false;
     }
 
-    // NEW: Product Image Modal Functions
+    // Product Image Modal Functions
     function openProductImageModal() {
       if (!currentProduct) return;
       
@@ -5154,7 +5294,7 @@
       updateProductModalImage();
     }
 
-    // NEW: Rating and Review Functions
+    // Rating and Review Functions
     function setRating(rating) {
       const stars = ratingInput.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
@@ -5264,7 +5404,7 @@
       });
     }
 
-    // NEW: Improved Authentication Functions with Error Handling
+    // Improved Authentication Functions with Error Handling
     async function handleLogin() {
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
@@ -5421,7 +5561,7 @@
       }
     }
 
-    // NEW: Improved Order Placement with Order ID
+    // Improved Order Placement with Order ID
     async function confirmOrder() {
       if (!currentUser) {
         showLoginModal();
@@ -5632,7 +5772,7 @@
       });
     }
 
-    // NEW: Function to update user profile with Google data
+    // Function to update user profile with Google data
     function updateUserProfile(user) {
       // Update header avatar and name
       if (user.photoURL) {
@@ -5866,17 +6006,6 @@
       return card;
     }
 
-    // NEW: Check if product is in wishlist (localStorage fallback)
-    function isInWishlist(productId) {
-      if (currentUser) {
-        return wishlist.includes(productId);
-      } else {
-        // Fallback to localStorage for guests
-        const guestWishlist = JSON.parse(localStorage.getItem('guestWishlist') || '[]');
-        return guestWishlist.includes(productId);
-      }
-    }
-
     function renderProductSlider(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -6032,7 +6161,7 @@
       showPage('productDetailPage');
     }
 
-    // NEW: Initialize product detail gallery
+    // Initialize product detail gallery
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('productDetailMainImage');
       const thumbnails = document.getElementById('productDetailThumbnails');
@@ -6094,7 +6223,7 @@
       }
     }
 
-    // NEW: Product detail image navigation
+    // Product detail image navigation
     function prevDetailImage() {
       if (currentProductImages.length <= 1) return;
       
@@ -6158,149 +6287,10 @@
       showPage('userPage');
     }
 
-    function toPayment() {
-      // Validate user info
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-      
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-      
-      // Save user info
-      userInfo = {
-        fullName: fullname,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        house: house
-      };
-      
-      // Update summary
-      const quantity = parseInt(document.getElementById('qtySelect').value);
-      const productPrice = parseFloat(currentProduct.price.replace('₹', ''));
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = 50;
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * 0.02 : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      document.getElementById('sumProduct').textContent = currentProduct.name;
-      document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${subtotal}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `₹${gatewayCharge}`;
-      document.getElementById('sumTotal').textContent = `₹${total}`;
-      
-      showPage('paymentPage');
-    }
-
     // Wishlist functions
-    async function toggleWishlist(productId) {
-      if (!currentUser) {
-        // For guests, use localStorage
-        let guestWishlist = JSON.parse(localStorage.getItem('guestWishlist') || '[]');
-        
-        if (!guestWishlist.includes(productId)) {
-          // Add to wishlist
-          guestWishlist.push(productId);
-          localStorage.setItem('guestWishlist', JSON.stringify(guestWishlist));
-          showToast('Added to wishlist', 'success');
-        } else {
-          // Remove from wishlist
-          guestWishlist = guestWishlist.filter(id => id !== productId);
-          localStorage.setItem('guestWishlist', JSON.stringify(guestWishlist));
-          showToast('Removed from wishlist', 'success');
-        }
-        
-        updateWishlistButtons();
-        
-        // Update detail page if open
-        if (document.getElementById('productDetailPage').classList.contains('active') && 
-            currentProduct && currentProduct.id === productId) {
-          const wishlistBtn = document.getElementById('detailWishlistBtn');
-          if (isInWishlist(productId)) {
-            wishlistBtn.textContent = 'Remove from Wishlist';
-            wishlistBtn.classList.add('active');
-          } else {
-            wishlistBtn.textContent = 'Add to Wishlist';
-            wishlistBtn.classList.remove('active');
-          }
-        }
-        
-        // Update wishlist page if open
-        if (document.getElementById('wishlistPage').classList.contains('active')) {
-          renderWishlist();
-        }
-        
-        return;
-      }
-      
-      try {
-        const wishlistRef = realtimeDb.ref('wishlist/' + currentUser.uid + '/' + productId);
-        const snapshot = await wishlistRef.once('value');
-        
-        if (!snapshot.exists()) {
-          // Add to wishlist
-          await wishlistRef.set(true);
-          
-          wishlist.push(productId);
-          showToast('Added to wishlist', 'success');
-        } else {
-          // Remove from wishlist
-          await wishlistRef.remove();
-          
-          wishlist = wishlist.filter(id => id !== productId);
-          showToast('Removed from wishlist', 'success');
-        }
-        
-        updateWishlistButtons();
-        
-        // Update detail page if open
-        if (document.getElementById('productDetailPage').classList.contains('active') && 
-            currentProduct && currentProduct.id === productId) {
-          const wishlistBtn = document.getElementById('detailWishlistBtn');
-          if (isInWishlist(productId)) {
-            wishlistBtn.textContent = 'Remove from Wishlist';
-            wishlistBtn.classList.add('active');
-          } else {
-            wishlistBtn.textContent = 'Add to Wishlist';
-            wishlistBtn.classList.remove('active');
-          }
-        }
-        
-        // Update wishlist page if open
-        if (document.getElementById('wishlistPage').classList.contains('active')) {
-          renderWishlist();
-        }
-      } catch (error) {
-        console.error('Error updating wishlist:', error);
-        showToast('Failed to update wishlist', 'error');
-      }
-    }
-
     function toggleWishlistFromDetail() {
       if (!currentProduct) return;
       toggleWishlist(currentProduct.id);
-    }
-
-    function updateWishlistButtons() {
-      document.querySelectorAll('.wishlist-btn').forEach(btn => {
-        const productId = btn.getAttribute('data-product-id');
-        if (isInWishlist(productId)) {
-          btn.classList.add('active');
-          btn.querySelector('svg').setAttribute('fill', 'currentColor');
-        } else {
-          btn.classList.remove('active');
-          btn.querySelector('svg').setAttribute('fill', 'none');
-        }
-      });
     }
 
     function renderWishlist() {
@@ -6315,7 +6305,7 @@
         wishlistProductIds = wishlist;
       } else {
         // For guests, get from localStorage
-        wishlistProductIds = JSON.parse(localStorage.getItem('guestWishlist') || '[]');
+        wishlistProductIds = JSON.parse(localStorage.getItem('wishlist') || '[]');
       }
       
       const wishlistProducts = products.filter(product => wishlistProductIds.includes(product.id));
@@ -6412,7 +6402,7 @@
       renderProducts(filteredProducts, containerId);
     }
 
-    // NEW: Improved category filtering
+    // Improved category filtering
     function filterByCategory(categoryId) {
       currentCategoryFilter = categoryId;
       
@@ -6621,12 +6611,6 @@
         console.error('Error updating profile:', error);
         showToast('Failed to update profile', 'error');
       });
-    }
-
-    function changePassword() {
-      // Show forgot password form in auth modal
-      showLoginModal();
-      forgotPasswordLink.click();
     }
 
     function deleteAccount() {
