@@ -1728,10 +1728,12 @@
     /* Wishlist Button Active State - UPDATED TO RED */
     .wishlist-btn.active {
       color: red !important;
+      background: #fee2e2 !important;
+      border-color: red !important;
     }
 
-    .wishlist-btn.active svg {
-      fill: red !important;
+    .wishlist-btn.active:hover {
+      background: #fecaca !important;
     }
 
     /* Product Detail Page Wishlist Button - UPDATED TO RED */
@@ -3138,6 +3140,18 @@
       z-index: 100;
     }
 
+    /* NEW: Password Reset Modal Styles */
+    .password-reset-modal {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow-hover);
+      max-width: 450px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-inner {
@@ -4513,6 +4527,18 @@
     </div>
   </div>
 
+  <!-- NEW: Password Reset Modal -->
+  <div class="modal-overlay" id="passwordResetModal">
+    <div class="password-reset-modal">
+      <h3>Reset Password</h3>
+      <input type="email" id="passwordResetEmail" placeholder="Enter your email">
+      <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end">
+        <button class="btn secondary" id="cancelPasswordReset">Cancel</button>
+        <button class="btn" id="confirmPasswordReset">Send Reset Link</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Cancellation Modal -->
   <div class="modal-overlay" id="cancellationModal">
     <div class="cancellation-modal">
@@ -4590,16 +4616,6 @@
     </div>
   </div>
 
-  <!-- Password Reset Modal -->
-  <div class="modal-overlay" id="passwordResetModal">
-    <div class="auth-modal">
-      <h3>Reset Password</h3>
-      <input type="email" id="passwordResetEmail" placeholder="Enter your email">
-      <button class="btn" id="confirmPasswordReset">Send Reset Link</button>
-      <button class="btn secondary" id="cancelPasswordReset">Cancel</button>
-    </div>
-  </div>
-
   <!-- Firebase Configuration -->
   <script>
     // Firebase configuration
@@ -4643,6 +4659,49 @@
     let bannerStartX = 0;
     let bannerCurrentX = 0;
     let isBannerDragging = false;
+
+    // NEW: Debounce function for search optimization
+    function debounce(func, wait) {
+      let timeout;
+      return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
+
+    // NEW: Logout with confirmation
+    function showLogoutConfirmation() {
+      document.getElementById('alertTitle').textContent = 'Logout Confirmation';
+      document.getElementById('alertMessage').textContent = 'Are you sure you want to logout?';
+      document.getElementById('alertModal').classList.add('active');
+    }
+
+    function confirmLogout() {
+      auth.signOut().then(() => {
+        showToast('Logged out successfully', 'success');
+        document.getElementById('alertModal').classList.remove('active');
+        showPage('homePage');
+      });
+    }
+
+    // NEW: Auto Address Management
+    function saveAddressFromUserInfo() {
+      if (!currentUser) return;
+
+      const addressId = 'address_' + Date.now();
+
+      realtimeDb.ref('addresses/' + addressId).set({
+        userId: currentUser.uid,
+        name: userInfo.fullName,
+        mobile: userInfo.mobile,
+        pincode: userInfo.pincode,
+        city: userInfo.city,
+        state: userInfo.state,
+        street: userInfo.house,
+        type: 'home',
+        createdAt: Date.now()
+      });
+    }
 
     // Product Image Helper Function
     function getProductImage(product, idx = 0) {
@@ -4689,6 +4748,34 @@
       }
 
       return parsed.data;
+    }
+
+    // NEW: Improved Wishlist Functions
+    function isInWishlist(productId) {
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      return wishlist.includes(productId);
+    }
+
+    function toggleWishlist(productId) {
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+
+      if (wishlist.includes(productId)) {
+        wishlist = wishlist.filter(id => id !== productId);
+        showToast('Removed from wishlist');
+      } else {
+        wishlist.push(productId);
+        showToast('Added to wishlist');
+      }
+
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      updateWishlistButtons();
+    }
+
+    function updateWishlistButtons() {
+      document.querySelectorAll('.wishlist-btn').forEach(btn => {
+        const productId = btn.getAttribute('data-product-id');
+        btn.classList.toggle('active', isInWishlist(productId));
+      });
     }
 
     // NEW: Realtime Database Listeners
@@ -4854,15 +4941,8 @@
     // NEW: Password Reset Modal Elements
     const passwordResetModal = document.getElementById('passwordResetModal');
     const passwordResetEmail = document.getElementById('passwordResetEmail');
-    const confirmPasswordReset = document.getElementById('confirmPasswordReset');
     const cancelPasswordReset = document.getElementById('cancelPasswordReset');
-
-    // NEW: Alert Modal Elements
-    const alertModal = document.getElementById('alertModal');
-    const alertTitle = document.getElementById('alertTitle');
-    const alertMessage = document.getElementById('alertMessage');
-    const alertCancelBtn = document.getElementById('alertCancelBtn');
-    const alertConfirmBtn = document.getElementById('alertConfirmBtn');
+    const confirmPasswordReset = document.getElementById('confirmPasswordReset');
 
     // Initialize the app
     document.addEventListener('DOMContentLoaded', function() {
@@ -4972,30 +5052,15 @@
       // User profile - NEW: Direct navigation to account page
       userProfile.addEventListener('click', () => showPage('accountPage'));
       
-      // NEW: Logout buttons with confirmation
+      // NEW: Logout buttons
       accountLogoutBtn.addEventListener('click', showLogoutConfirmation);
       mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
       
       // NEW: Alert modal buttons
-      alertCancelBtn.addEventListener('click', () => {
-        alertModal.classList.remove('active');
+      document.getElementById('alertCancelBtn').addEventListener('click', () => {
+        document.getElementById('alertModal').classList.remove('active');
       });
-      alertConfirmBtn.addEventListener('click', confirmLogout);
-      
-      // NEW: Password reset modal
-      document.getElementById('changePasswordBtn').addEventListener('click', () => {
-        passwordResetModal.classList.add('active');
-      });
-      cancelPasswordReset.addEventListener('click', () => {
-        passwordResetModal.classList.remove('active');
-      });
-      confirmPasswordReset.addEventListener('click', () => {
-        const email = passwordResetEmail.value;
-        auth.sendPasswordResetEmail(email).then(() => {
-          showToast('Password reset email sent!', 'success');
-          passwordResetModal.classList.remove('active');
-        });
-      });
+      document.getElementById('alertConfirmBtn').addEventListener('click', confirmLogout);
       
       // Navigation
       openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
@@ -5010,6 +5075,27 @@
       productImageModalClose.addEventListener('click', () => productImageModal.classList.remove('active'));
       productImageModalPrev.addEventListener('click', prevProductModalImage);
       productImageModalNext.addEventListener('click', nextProductModalImage);
+      
+      // NEW: Password Reset Modal
+      document.getElementById('changePasswordBtn').addEventListener('click', () => {
+        passwordResetModal.classList.add('active');
+      });
+      cancelPasswordReset.addEventListener('click', () => {
+        passwordResetModal.classList.remove('active');
+      });
+      confirmPasswordReset.addEventListener('click', () => {
+        const email = passwordResetEmail.value;
+        if (!email) {
+          showToast('Please enter your email address', 'error');
+          return;
+        }
+        auth.sendPasswordResetEmail(email).then(() => {
+          showToast('Password reset email sent!', 'success');
+          passwordResetModal.classList.remove('active');
+        }).catch(error => {
+          showToast(error.message, 'error');
+        });
+      });
       
       // Search functionality with debounce
       const searchInput = document.getElementById('searchInput');
@@ -5070,6 +5156,7 @@
       
       // Account page
       document.getElementById('saveProfile')?.addEventListener('click', saveProfile);
+      document.getElementById('changePasswordBtn')?.addEventListener('click', changePassword);
       document.getElementById('deleteAccountBtn')?.addEventListener('click', deleteAccount);
       document.getElementById('saveSettings')?.addEventListener('click', saveSettings);
       
@@ -5121,102 +5208,7 @@
       });
     }
 
-    // NEW: Debounce function for search optimization
-    function debounce(func, wait) {
-      let timeout;
-      return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
-      };
-    }
-
-    // NEW: Logout with confirmation
-    function showLogoutConfirmation() {
-      alertTitle.textContent = 'Logout Confirmation';
-      alertMessage.textContent = 'Are you sure you want to logout?';
-      alertModal.classList.add('active');
-    }
-
-    function confirmLogout() {
-      auth.signOut().then(() => {
-        showToast('Logged out successfully', 'success');
-        alertModal.classList.remove('active');
-        showPage('homePage');
-      });
-    }
-
-    // NEW: Auto Address Management
-    function saveAddressFromUserInfo() {
-      if (!currentUser) return;
-
-      const addressId = 'address_' + Date.now();
-
-      realtimeDb.ref('addresses/' + addressId).set({
-        userId: currentUser.uid,
-        name: userInfo.fullName,
-        mobile: userInfo.mobile,
-        pincode: userInfo.pincode,
-        city: userInfo.city,
-        state: userInfo.state,
-        street: userInfo.house,
-        type: 'home',
-        createdAt: Date.now()
-      });
-    }
-
-    // NEW: Improved toPayment function with address auto-save
-    function toPayment() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-
-      if (currentUser) saveAddressFromUserInfo();
-
-      showPage('paymentPage');
-    }
-
-    // NEW: Improved Wishlist Functions
-    function isInWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      return wishlist.includes(productId);
-    }
-
-    function toggleWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-
-      if (wishlist.includes(productId)) {
-        wishlist = wishlist.filter(id => id !== productId);
-        showToast('Removed from wishlist');
-      } else {
-        wishlist.push(productId);
-        showToast('Added to wishlist');
-      }
-
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
-      updateWishlistButtons();
-    }
-
-    function updateWishlistButtons() {
-      document.querySelectorAll('.wishlist-btn').forEach(btn => {
-        const productId = btn.getAttribute('data-product-id');
-        btn.classList.toggle('active', isInWishlist(productId));
-      });
-    }
-
-    // Rest of the JavaScript code remains the same as in the original file
-    // ... (all other functions from the original file)
-
-    // Banner touch handlers for mobile swipe
+    // NEW: Banner touch handlers for mobile swipe
     function handleBannerTouchStart(e) {
       bannerStartX = e.touches[0].clientX;
       isBannerDragging = true;
@@ -5251,7 +5243,7 @@
       isBannerDragging = false;
     }
 
-    // Product Image Modal Functions
+    // NEW: Product Image Modal Functions
     function openProductImageModal() {
       if (!currentProduct) return;
       
@@ -5294,7 +5286,7 @@
       updateProductModalImage();
     }
 
-    // Rating and Review Functions
+    // NEW: Rating and Review Functions
     function setRating(rating) {
       const stars = ratingInput.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
@@ -5404,7 +5396,7 @@
       });
     }
 
-    // Improved Authentication Functions with Error Handling
+    // NEW: Improved Authentication Functions with Error Handling
     async function handleLogin() {
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
@@ -5561,7 +5553,7 @@
       }
     }
 
-    // Improved Order Placement with Order ID
+    // NEW: Improved Order Placement with Order ID
     async function confirmOrder() {
       if (!currentUser) {
         showLoginModal();
@@ -5772,7 +5764,7 @@
       });
     }
 
-    // Function to update user profile with Google data
+    // NEW: Function to update user profile with Google data
     function updateUserProfile(user) {
       // Update header avatar and name
       if (user.photoURL) {
@@ -6161,7 +6153,7 @@
       showPage('productDetailPage');
     }
 
-    // Initialize product detail gallery
+    // NEW: Initialize product detail gallery
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('productDetailMainImage');
       const thumbnails = document.getElementById('productDetailThumbnails');
@@ -6223,7 +6215,7 @@
       }
     }
 
-    // Product detail image navigation
+    // NEW: Product detail image navigation
     function prevDetailImage() {
       if (currentProductImages.length <= 1) return;
       
@@ -6287,6 +6279,27 @@
       showPage('userPage');
     }
 
+    // NEW: Updated toPayment function with auto address management
+    function toPayment() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
+
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      if (currentUser) saveAddressFromUserInfo();
+
+      showPage('paymentPage');
+    }
+
     // Wishlist functions
     function toggleWishlistFromDetail() {
       if (!currentProduct) return;
@@ -6300,13 +6313,7 @@
       if (!container || !empty) return;
       
       // Get wishlist product IDs
-      let wishlistProductIds = [];
-      if (currentUser) {
-        wishlistProductIds = wishlist;
-      } else {
-        // For guests, get from localStorage
-        wishlistProductIds = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      }
+      let wishlistProductIds = JSON.parse(localStorage.getItem('wishlist') || '[]');
       
       const wishlistProducts = products.filter(product => wishlistProductIds.includes(product.id));
       
@@ -6402,7 +6409,7 @@
       renderProducts(filteredProducts, containerId);
     }
 
-    // Improved category filtering
+    // NEW: Improved category filtering
     function filterByCategory(categoryId) {
       currentCategoryFilter = categoryId;
       
@@ -6611,6 +6618,12 @@
         console.error('Error updating profile:', error);
         showToast('Failed to update profile', 'error');
       });
+    }
+
+    function changePassword() {
+      // Show forgot password form in auth modal
+      showLoginModal();
+      forgotPasswordLink.click();
     }
 
     function deleteAccount() {
