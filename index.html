@@ -17,7 +17,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <!-- EmailJS SDK Removed as per fix -->
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
     :root {
       --bg: #ffffff;
@@ -68,7 +69,11 @@
       color: var(--ink);
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
-      /* Removed global user-select: none for accessibility */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      transition: var(--transition);
     }
 
     a {
@@ -106,10 +111,6 @@
       align-items: center;
       gap: 8px;
       cursor: pointer;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
     }
 
     .brand .chip {
@@ -166,10 +167,6 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
     }
 
     .btn:hover {
@@ -357,15 +354,10 @@
 
     .product-card-image {
       height: 180px;
+      background-position: center;
+      background-size: cover;
       position: relative;
       cursor: pointer;
-      overflow: hidden;
-    }
-
-    .product-card-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
     }
 
     .product-card-badge {
@@ -931,6 +923,7 @@
       border: 1px solid var(--border);
       cursor: pointer;
       transition: all 0.3s ease;
+      user-select: none;
     }
     
     .order-card:hover {
@@ -1135,6 +1128,7 @@
       scroll-behavior: smooth;
       scrollbar-width: none; /* Firefox */
       -ms-overflow-style: none; /* IE and Edge */
+      user-select: none;
     }
     
     .slider-container::-webkit-scrollbar {
@@ -1145,6 +1139,7 @@
       display: flex;
       gap: 16px;
       padding: 4px;
+      user-select: none;
     }
     
     .slider-item {
@@ -1157,6 +1152,7 @@
       border: 1px solid var(--border);
       transition: all 0.3s ease;
       cursor: pointer;
+      user-select: none;
     }
     
     .slider-item:hover {
@@ -4639,7 +4635,8 @@
     const auth = firebase.auth();
     const realtimeDb = firebase.database();
 
-    // EmailJS removed as per fix
+    // Initialize EmailJS
+    emailjs.init("user_your_emailjs_user_id_here");
   </script>
 
   <!-- JavaScript -->
@@ -4652,7 +4649,6 @@
     let products = [];
     let categories = [];
     let banners = [];
-    let wishlist = [];
     let recentlyViewed = [];
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
@@ -4662,19 +4658,6 @@
     let bannerStartX = 0;
     let bannerCurrentX = 0;
     let isBannerDragging = false;
-    
-    // NEW: Safe interval management
-    const intervals = {};
-    function safeSetInterval(fn, ms, key) {
-      if (intervals[key]) clearInterval(intervals[key]);
-      intervals[key] = setInterval(fn, ms);
-    }
-    
-    // NEW: Helper function for safe event listener addition
-    function safeAdd(id, event, fn) {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener(event, fn);
-    }
 
     // NEW: Debounce function for search optimization
     function debounce(func, wait) {
@@ -4719,9 +4702,9 @@
       });
     }
 
-    // Product Image Helper Function - UPDATED to use img tags
+    // Product Image Helper Function
     function getProductImage(product, idx = 0) {
-      if (!product) return "assets/placeholder.png";
+      if (!product) return "https://via.placeholder.com/300x300?text=No+Image";
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
@@ -4730,7 +4713,7 @@
       if (product.img) return product.img;
       if (product.imageUrl) return product.imageUrl;
       if (product.photo) return product.photo;
-      return "assets/placeholder.png";
+      return "https://via.placeholder.com/300x300?text=No+Image";
     }
 
     // NEW: Order ID Generation Function
@@ -4809,9 +4792,9 @@
           saveToLocalStorage('products', products);
           
           // Update UI if on relevant pages
-          if (document.getElementById('homePage')?.classList.contains('active') || 
-              document.getElementById('productsPage')?.classList.contains('active') ||
-              document.getElementById('productDetailPage')?.classList.contains('active')) {
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active') ||
+              document.getElementById('productDetailPage').classList.contains('active')) {
             renderProducts(products, 'homeProductGrid');
             renderProducts(products, 'productGrid');
             renderProductSlider(products.slice(0, 10), 'productSlider');
@@ -4834,8 +4817,8 @@
           saveToLocalStorage('categories', categories);
           
           // Update UI if on relevant pages
-          if (document.getElementById('homePage')?.classList.contains('active') || 
-              document.getElementById('productsPage')?.classList.contains('active')) {
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
             renderCategories();
             renderCategoryCircles();
           }
@@ -4857,7 +4840,7 @@
           saveToLocalStorage('banners', banners);
           
           // Update UI if on home page
-          if (document.getElementById('homePage')?.classList.contains('active')) {
+          if (document.getElementById('homePage').classList.contains('active')) {
             renderBannerCarousel();
           }
         }
@@ -4880,12 +4863,12 @@
               orders.sort((a, b) => b.orderDate - a.orderDate);
               
               // Update UI if on orders page
-              if (document.getElementById('myOrdersPage')?.classList.contains('active')) {
+              if (document.getElementById('myOrdersPage').classList.contains('active')) {
                 renderOrders(orders);
               }
             } else {
               // No orders
-              if (document.getElementById('myOrdersPage')?.classList.contains('active')) {
+              if (document.getElementById('myOrdersPage').classList.contains('active')) {
                 renderOrders([]);
               }
             }
@@ -4974,7 +4957,6 @@
           currentUser = user;
           updateUIForUser(user);
           loadUserData(user);
-          loadWishlist(user);
           loadRecentlyViewed(user);
           setupRealtimeListeners();
           // NEW: Auto close login modal after successful login
@@ -5031,75 +5013,75 @@
 
     function setupEventListeners() {
       // Mobile menu
-      menuIcon?.addEventListener('click', openMenu);
-      menuClose?.addEventListener('click', closeMenu);
-      menuOverlay?.addEventListener('click', closeMenu);
+      menuIcon.addEventListener('click', openMenu);
+      menuClose.addEventListener('click', closeMenu);
+      menuOverlay.addEventListener('click', closeMenu);
       
       // Theme toggle
-      themeToggle?.addEventListener('click', toggleTheme);
+      themeToggle.addEventListener('click', toggleTheme);
       
       // Auth modal
-      authClose?.addEventListener('click', () => authModal.classList.remove('active'));
-      openLoginTop?.addEventListener('click', showLoginModal);
-      mobileLoginBtn?.addEventListener('click', showLoginModal);
+      authClose.addEventListener('click', () => authModal.classList.remove('active'));
+      openLoginTop.addEventListener('click', showLoginModal);
+      mobileLoginBtn.addEventListener('click', showLoginModal);
       
       // Auth tabs
-      loginTab?.addEventListener('click', () => switchAuthTab('login'));
-      signupTab?.addEventListener('click', () => switchAuthTab('signup'));
-      switchToLogin?.addEventListener('click', () => switchAuthTab('login'));
+      loginTab.addEventListener('click', () => switchAuthTab('login'));
+      signupTab.addEventListener('click', () => switchAuthTab('signup'));
+      switchToLogin.addEventListener('click', () => switchAuthTab('login'));
       
       // Auth forms
-      loginBtn?.addEventListener('click', handleLogin);
-      signupBtn?.addEventListener('click', handleSignup);
-      googleLoginBtn?.addEventListener('click', handleGoogleLogin);
-      googleSignupBtn?.addEventListener('click', handleGoogleLogin);
+      loginBtn.addEventListener('click', handleLogin);
+      signupBtn.addEventListener('click', handleSignup);
+      googleLoginBtn.addEventListener('click', handleGoogleLogin);
+      googleSignupBtn.addEventListener('click', handleGoogleLogin);
       
       // Forgot password
-      forgotPasswordLink?.addEventListener('click', () => {
+      forgotPasswordLink.addEventListener('click', () => {
         loginForm.classList.remove('active');
         forgotPasswordForm.classList.add('active');
       });
-      backToLogin?.addEventListener('click', () => {
+      backToLogin.addEventListener('click', () => {
         forgotPasswordForm.classList.remove('active');
         loginForm.classList.add('active');
       });
-      resetPasswordBtn?.addEventListener('click', handleResetPassword);
+      resetPasswordBtn.addEventListener('click', handleResetPassword);
       
       // User profile - NEW: Direct navigation to account page
-      userProfile?.addEventListener('click', () => showPage('accountPage'));
+      userProfile.addEventListener('click', () => showPage('accountPage'));
       
       // NEW: Logout buttons
-      accountLogoutBtn?.addEventListener('click', showLogoutConfirmation);
-      mobileLogoutBtn?.addEventListener('click', showLogoutConfirmation);
+      accountLogoutBtn.addEventListener('click', showLogoutConfirmation);
+      mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
       
       // NEW: Alert modal buttons
-      document.getElementById('alertCancelBtn')?.addEventListener('click', () => {
+      document.getElementById('alertCancelBtn').addEventListener('click', () => {
         document.getElementById('alertModal').classList.remove('active');
       });
-      document.getElementById('alertConfirmBtn')?.addEventListener('click', confirmLogout);
+      document.getElementById('alertConfirmBtn').addEventListener('click', confirmLogout);
       
       // Navigation
-      openMyOrdersTop?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+      openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       
       // Image zoom
-      zoomClose?.addEventListener('click', () => zoomModal.classList.remove('active'));
-      zoomIn?.addEventListener('click', () => adjustZoom(0.2));
-      zoomOut?.addEventListener('click', () => adjustZoom(-0.2));
-      zoomReset?.addEventListener('click', resetZoom);
+      zoomClose.addEventListener('click', () => zoomModal.classList.remove('active'));
+      zoomIn.addEventListener('click', () => adjustZoom(0.2));
+      zoomOut.addEventListener('click', () => adjustZoom(-0.2));
+      zoomReset.addEventListener('click', resetZoom);
       
       // NEW: Product Image Modal
-      productImageModalClose?.addEventListener('click', () => productImageModal.classList.remove('active'));
-      productImageModalPrev?.addEventListener('click', prevProductModalImage);
-      productImageModalNext?.addEventListener('click', nextProductModalImage);
+      productImageModalClose.addEventListener('click', () => productImageModal.classList.remove('active'));
+      productImageModalPrev.addEventListener('click', prevProductModalImage);
+      productImageModalNext.addEventListener('click', nextProductModalImage);
       
       // NEW: Password Reset Modal
-      document.getElementById('changePasswordBtn')?.addEventListener('click', () => {
+      document.getElementById('changePasswordBtn').addEventListener('click', () => {
         passwordResetModal.classList.add('active');
       });
-      cancelPasswordReset?.addEventListener('click', () => {
+      cancelPasswordReset.addEventListener('click', () => {
         passwordResetModal.classList.remove('active');
       });
-      confirmPasswordReset?.addEventListener('click', () => {
+      confirmPasswordReset.addEventListener('click', () => {
         const email = passwordResetEmail.value;
         if (!email) {
           showToast('Please enter your email address', 'error');
@@ -5144,7 +5126,7 @@
         option.addEventListener('click', function() {
           document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
           this.classList.add('selected');
-          document.getElementById('sizeValidationError')?.classList.remove('show');
+          document.getElementById('sizeValidationError').classList.remove('show');
         });
       });
       
@@ -5240,10 +5222,9 @@
       
       const diff = bannerStartX - bannerCurrentX;
       const bannerTrack = document.getElementById('bannerTrack');
-      const activeIndex = banners.findIndex((_, index) => {
-        const dot = document.querySelector(`.banner-dot:nth-child(${index + 1})`);
-        return dot ? dot.classList.contains('active') : false;
-      });
+      const activeIndex = banners.findIndex((_, index) => 
+        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
+      );
       
       if (Math.abs(diff) > 50) { // Minimum swipe distance
         if (diff > 0) {
@@ -5642,7 +5623,7 @@
       document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
       });
-      document.getElementById(pageId)?.classList.add('active');
+      document.getElementById(pageId).classList.add('active');
       
       // Update step pills based on current page
       updateStepPills();
@@ -5911,27 +5892,6 @@
       });
     }
 
-    async function loadWishlist(user) {
-      try {
-        const snapshot = await realtimeDb.ref('wishlist/' + user.uid).once('value');
-        const wishlistObj = snapshot.val();
-        if (wishlistObj) {
-          wishlist = Object.keys(wishlistObj);
-        } else {
-          wishlist = [];
-        }
-        
-        updateWishlistButtons();
-        
-        // Render wishlist page if open
-        if (document.getElementById('wishlistPage')?.classList.contains('active')) {
-          renderWishlist();
-        }
-      } catch (error) {
-        console.error('Error loading wishlist:', error);
-      }
-    }
-
     async function loadRecentlyViewed(user) {
       try {
         const snapshot = await realtimeDb.ref('recentlyViewed/' + user.uid).once('value');
@@ -5964,24 +5924,22 @@
       });
     }
 
-    // UPDATED: Product card with img tags instead of background-image
     function createProductCard(product) {
       const card = document.createElement('div');
       card.className = 'product-card';
       card.innerHTML = `
-        <div class="product-card-image">
-          <img src="${getProductImage(product)}" alt="${product.name}" loading="lazy">
+        <div class="product-card-image" style="background-image: url('${getProductImage(product)}')">
           ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
           ${product.professional ? `<div class="professional-badge">PRO</div>` : ''}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${product.name || '—'}</div>
+          <div class="product-card-title">${product.name}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">★★★★★</div>
             <div class="product-card-review-count">(${product.reviews || '0'})</div>
           </div>
           <div class="product-card-price">
-            <div class="product-card-current-price">${product.price || '—'}</div>
+            <div class="product-card-current-price">${product.price}</div>
             ${product.originalPrice ? `<div class="product-card-original-price">${product.originalPrice}</div>` : ''}
           </div>
           <div class="product-card-actions">
@@ -6029,8 +5987,8 @@
         sliderItem.innerHTML = `
           <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || '—'}</div>
-            <div class="slider-item-price">${product.price || '—'}</div>
+            <div class="slider-item-title">${product.name}</div>
+            <div class="slider-item-price">${product.price}</div>
           </div>
         `;
         
@@ -6048,7 +6006,7 @@
       categories.forEach(category => {
         const categoryPill = document.createElement('div');
         categoryPill.className = 'category-pill';
-        categoryPill.textContent = category.name || '—';
+        categoryPill.textContent = category.name;
         categoryPill.addEventListener('click', () => filterByCategory(category.id));
         container.appendChild(categoryPill);
       });
@@ -6065,7 +6023,7 @@
         circle.className = 'category-circle';
         circle.innerHTML = `
           <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
-          <div class="category-circle-name">${category.name || '—'}</div>
+          <div class="category-circle-name">${category.name}</div>
         `;
         
         circle.addEventListener('click', () => filterByCategory(category.id));
@@ -6094,15 +6052,14 @@
         controls.appendChild(dot);
       });
       
-      // Auto-rotate banners with safe interval
-      safeSetInterval(() => {
-        const activeIndex = banners.findIndex((_, index) => {
-          const dot = document.querySelector(`.banner-dot:nth-child(${index + 1})`);
-          return dot ? dot.classList.contains('active') : false;
-        });
+      // Auto-rotate banners
+      setInterval(() => {
+        const activeIndex = banners.findIndex((_, index) => 
+          document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
+        );
         const nextIndex = (activeIndex + 1) % banners.length;
         setBannerSlide(nextIndex);
-      }, 5000, 'bannerRotation');
+      }, 5000);
     }
 
     function setBannerSlide(index) {
@@ -6123,8 +6080,8 @@
       currentProduct = product;
       
       // Update product detail page
-      document.getElementById('detailTitle').textContent = product.name || '—';
-      document.getElementById('detailPrice').textContent = product.price || '—';
+      document.getElementById('detailTitle').textContent = product.name;
+      document.getElementById('detailPrice').textContent = product.price;
       document.getElementById('detailDesc').textContent = product.description || '';
       document.getElementById('detailFullDesc').textContent = product.fullDescription || product.description || 'No description available.';
       document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
@@ -6292,7 +6249,7 @@
       // Validate size selection
       const selectedSize = document.querySelector('.size-option.selected');
       if (!selectedSize) {
-        document.getElementById('sizeValidationError')?.classList.add('show');
+        document.getElementById('sizeValidationError').classList.add('show');
         return;
       }
       
@@ -6404,7 +6361,7 @@
       }
       
       const filteredProducts = products.filter(product => 
-        product.name?.toLowerCase().includes(query) ||
+        product.name.toLowerCase().includes(query) ||
         (product.description && product.description.toLowerCase().includes(query))
       );
       
@@ -6421,7 +6378,7 @@
     function filterProducts(query, containerId) {
       const filteredProducts = query ? 
         products.filter(product => 
-          product.name?.toLowerCase().includes(query) ||
+          product.name.toLowerCase().includes(query) ||
           (product.description && product.description.toLowerCase().includes(query))
         ) : 
         products;
@@ -6470,7 +6427,7 @@
       
       // Apply price filter
       filteredProducts = filteredProducts.filter(product => {
-        const price = parseFloat(product.price?.replace('₹', '') || 0);
+        const price = parseFloat(product.price.replace('₹', ''));
         return price >= minPrice && price <= maxPrice;
       });
       
@@ -6522,8 +6479,8 @@
       currentProduct = currentProduct;
       
       // Update order page
-      document.getElementById('spTitle').textContent = currentProduct.name || '—';
-      document.getElementById('spPrice').textContent = currentProduct.price || '—';
+      document.getElementById('spTitle').textContent = currentProduct.name;
+      document.getElementById('spPrice').textContent = currentProduct.price;
       document.getElementById('spDesc').textContent = currentProduct.description || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.description || '';
       
@@ -6774,8 +6731,7 @@
 
     // Step pills update
     function updateStepPills() {
-      const currentPage = document.querySelector('.page.active')?.id;
-      if (!currentPage) return;
+      const currentPage = document.querySelector('.page.active').id;
       
       document.querySelectorAll('.step-pill').forEach(pill => {
         pill.classList.remove('disabled');
@@ -6784,16 +6740,16 @@
       switch (currentPage) {
         case 'homePage':
         case 'productsPage':
-          document.getElementById('pill-order')?.classList.add('disabled');
-          document.getElementById('pill-user')?.classList.add('disabled');
-          document.getElementById('pill-pay')?.classList.add('disabled');
+          document.getElementById('pill-order').classList.add('disabled');
+          document.getElementById('pill-user').classList.add('disabled');
+          document.getElementById('pill-pay').classList.add('disabled');
           break;
         case 'orderPage':
-          document.getElementById('pill-user')?.classList.add('disabled');
-          document.getElementById('pill-pay')?.classList.add('disabled');
+          document.getElementById('pill-user').classList.add('disabled');
+          document.getElementById('pill-pay').classList.add('disabled');
           break;
         case 'userPage':
-          document.getElementById('pill-pay')?.classList.add('disabled');
+          document.getElementById('pill-pay').classList.add('disabled');
           break;
       }
     }
@@ -6803,11 +6759,11 @@
       const messages = document.querySelectorAll('#heroMessages span');
       let currentIndex = 0;
       
-      safeSetInterval(() => {
+      setInterval(() => {
         messages.forEach(msg => msg.classList.remove('active'));
         currentIndex = (currentIndex + 1) % messages.length;
         messages[currentIndex].classList.add('active');
-      }, 3000, 'heroMessages');
+      }, 3000);
     }
 
     // Email sending function
