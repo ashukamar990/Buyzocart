@@ -867,6 +867,32 @@
       margin-top: 20px;
     }
 
+    /* Empty State Styles */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .empty-state-description {
+      font-size: 14px;
+      max-width: 400px;
+      margin: 0 auto 20px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .account-menu {
@@ -1200,6 +1226,11 @@
         <div class="account-section professional">
           <h3>Saved Addresses</h3>
           <div id="savedAddresses">
+            <div class="empty-state" id="addressesEmptyState">
+              <div class="empty-state-icon">🏠</div>
+              <div class="empty-state-title">No addresses saved yet</div>
+              <div class="empty-state-description">Add your first address to make checkout faster</div>
+            </div>
             <!-- Address cards will be dynamically inserted here -->
           </div>
           <button class="btn" id="addNewAddress" style="margin-top: 16px;">Add New Address</button>
@@ -1272,6 +1303,11 @@
         <div class="account-section professional">
           <h3>Saved Products</h3>
           <div id="wishlistItems">
+            <div class="empty-state" id="wishlistEmptyState">
+              <div class="empty-state-icon">❤️</div>
+              <div class="empty-state-title">Your wishlist is empty</div>
+              <div class="empty-state-description">Start adding products you love to your wishlist</div>
+            </div>
             <!-- Wishlist products will be dynamically inserted here -->
           </div>
         </div>
@@ -1293,6 +1329,11 @@
         <div class="account-section professional">
           <h3>Order History</h3>
           <div id="ordersList">
+            <div class="empty-state" id="ordersEmptyState">
+              <div class="empty-state-icon">📦</div>
+              <div class="empty-state-title">You have no orders yet</div>
+              <div class="empty-state-description">Start shopping to see your orders here</div>
+            </div>
             <!-- Orders will be dynamically inserted here -->
           </div>
         </div>
@@ -1411,6 +1452,10 @@
           updateUIForUser(user);
           loadUserData(user);
           recordLoginActivity(user);
+          // Load all data initially
+          loadAddresses();
+          loadWishlist();
+          loadOrders();
         } else {
           // Redirect to index.html if not logged in
           window.location.href = 'index.html';
@@ -1798,37 +1843,44 @@
         });
     }
 
-    // Wishlist functions
+    // Wishlist functions - FIXED
     function loadWishlist() {
       if (!currentUser) return;
       
-      realtimeDb.ref('wishlist/' + currentUser.uid).once('value')
+      realtimeDb.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid)
+        .once('value')
         .then(snapshot => {
           const container = document.getElementById('wishlistItems');
-          container.innerHTML = '';
+          const emptyState = document.getElementById('wishlistEmptyState');
           
           if (!snapshot.exists()) {
-            container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px;">Your wishlist is empty.</p>';
+            if (emptyState) emptyState.style.display = 'block';
+            container.innerHTML = '';
+            container.appendChild(emptyState);
             return;
           }
           
+          if (emptyState) emptyState.style.display = 'none';
+          
           const wishlist = snapshot.val();
-          Object.keys(wishlist).forEach(productId => {
-            const product = wishlist[productId];
+          container.innerHTML = '';
+          
+          Object.keys(wishlist).forEach(wishlistId => {
+            const item = wishlist[wishlistId];
             const productCard = document.createElement('div');
             productCard.className = 'product-card';
             productCard.innerHTML = `
-              <img src="${product.image || 'https://via.placeholder.com/100x100?text=Product'}" alt="${product.name}" class="product-image">
+              <img src="${item.image || 'https://via.placeholder.com/100x100?text=Product'}" alt="${item.name}" class="product-image">
               <div class="product-info">
-                <div class="product-title">${product.name}</div>
-                <div class="product-price">₹${product.price}</div>
+                <div class="product-title">${item.name || 'Product Name'}</div>
+                <div class="product-price">₹${item.price || '0'}</div>
                 <div class="product-rating">
-                  ${'★'.repeat(Math.floor(product.rating || 4))}${'☆'.repeat(5 - Math.floor(product.rating || 4))}
-                  <span style="color:var(--muted);font-size:12px;">(${product.rating || 4})</span>
+                  ${'★'.repeat(Math.floor(item.rating || 4))}${'☆'.repeat(5 - Math.floor(item.rating || 4))}
+                  <span style="color:var(--muted);font-size:12px;">(${item.rating || 4})</span>
                 </div>
                 <div class="address-actions">
-                  <button class="btn secondary" onclick="removeFromWishlist('${productId}')">Remove</button>
-                  <button class="btn" onclick="addToCart('${productId}')">Add to Cart</button>
+                  <button class="btn secondary" onclick="removeFromWishlist('${wishlistId}')">Remove</button>
+                  <button class="btn" onclick="addToCart('${item.productId || wishlistId}')">Add to Cart</button>
                 </div>
               </div>
             `;
@@ -1841,11 +1893,11 @@
         });
     }
 
-    function removeFromWishlist(productId) {
+    function removeFromWishlist(wishlistId) {
       if (!currentUser) return;
       
       if (confirm('Are you sure you want to remove this item from wishlist?')) {
-        realtimeDb.ref('wishlist/' + currentUser.uid + '/' + productId).remove()
+        realtimeDb.ref('wishlist/' + wishlistId).remove()
           .then(() => {
             showToast('Removed from wishlist', 'success');
             loadWishlist();
@@ -1862,21 +1914,28 @@
       showToast('Product added to cart!', 'success');
     }
 
-    // Orders functions
+    // Orders functions - FIXED
     function loadOrders() {
       if (!currentUser) return;
       
-      realtimeDb.ref('orders/' + currentUser.uid).once('value')
+      realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
+        .once('value')
         .then(snapshot => {
           const container = document.getElementById('ordersList');
-          container.innerHTML = '';
+          const emptyState = document.getElementById('ordersEmptyState');
           
           if (!snapshot.exists()) {
-            container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px;">You have no orders yet.</p>';
+            if (emptyState) emptyState.style.display = 'block';
+            container.innerHTML = '';
+            container.appendChild(emptyState);
             return;
           }
           
+          if (emptyState) emptyState.style.display = 'none';
+          
           const orders = snapshot.val();
+          container.innerHTML = '';
+          
           Object.keys(orders).forEach(orderId => {
             const order = orders[orderId];
             const orderCard = document.createElement('div');
@@ -1891,24 +1950,27 @@
             } else if (order.status === 'shipped') {
               statusClass = 'shipped';
               statusText = 'Shipped';
+            } else if (order.status === 'cancelled') {
+              statusClass = 'error';
+              statusText = 'Cancelled';
             }
             
             orderCard.innerHTML = `
               <div class="order-header">
                 <div>
                   <div class="order-id">Order #${orderId.slice(-8)}</div>
-                  <div style="font-size:12px;color:var(--muted);">Placed on ${new Date(order.timestamp).toLocaleDateString()}</div>
+                  <div style="font-size:12px;color:var(--muted);">Placed on ${new Date(order.timestamp || Date.now()).toLocaleDateString()}</div>
                 </div>
                 <div class="order-status ${statusClass}">${statusText}</div>
               </div>
               <div class="order-details">
                 <div>
                   <div style="font-size:12px;color:var(--muted);">Total Amount</div>
-                  <div style="font-weight:700;font-size:18px;">₹${order.total}</div>
+                  <div style="font-weight:700;font-size:18px;">₹${order.total || '0'}</div>
                 </div>
                 <div>
                   <div style="font-size:12px;color:var(--muted);">Items</div>
-                  <div style="font-weight:600;">${order.items ? Object.keys(order.items).length : 0} items</div>
+                  <div style="font-weight:600;">${order.items ? order.items.length || Object.keys(order.items).length : 0} items</div>
                 </div>
                 <div>
                   <div style="font-size:12px;color:var(--muted);">Payment Method</div>
@@ -1918,19 +1980,31 @@
               ${order.items ? `
                 <div style="margin-top:16px;">
                   <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Items:</div>
-                  ${Object.keys(order.items).map(itemId => {
-                    const item = order.items[itemId];
-                    return `
+                  ${Array.isArray(order.items) ? 
+                    order.items.map(item => `
                       <div class="order-item">
                         <img src="${item.image || 'https://via.placeholder.com/60x60?text=Product'}" alt="${item.name}" class="order-item-image">
                         <div>
                           <div style="font-weight:600;">${item.name}</div>
-                          <div>Quantity: ${item.quantity}</div>
-                          <div>₹${item.price} each</div>
+                          <div>Quantity: ${item.quantity || 1}</div>
+                          <div>₹${item.price || '0'} each</div>
                         </div>
                       </div>
-                    `;
-                  }).join('')}
+                    `).join('') :
+                    Object.keys(order.items).map(itemId => {
+                      const item = order.items[itemId];
+                      return `
+                        <div class="order-item">
+                          <img src="${item.image || 'https://via.placeholder.com/60x60?text=Product'}" alt="${item.name}" class="order-item-image">
+                          <div>
+                            <div style="font-weight:600;">${item.name}</div>
+                            <div>Quantity: ${item.quantity || 1}</div>
+                            <div>₹${item.price || '0'} each</div>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')
+                  }
                 </div>
               ` : ''}
               <div class="address-actions" style="margin-top:16px;">
@@ -1955,7 +2029,7 @@
       showToast(`Reordering items from order ${orderId.slice(-8)}`, 'success');
     }
 
-    // Address functions
+    // Address functions - FIXED
     function showNewAddressForm() {
       document.getElementById('savedAddresses').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
@@ -2022,12 +2096,16 @@
         .once('value')
         .then(snapshot => {
           const container = document.getElementById('savedAddresses');
-          container.innerHTML = '';
+          const emptyState = document.getElementById('addressesEmptyState');
           
           if (!snapshot.exists()) {
-            container.innerHTML = '<p style="color:var(--muted);text-align:center">No addresses saved yet</p>';
+            if (emptyState) emptyState.style.display = 'block';
+            container.innerHTML = '';
+            container.appendChild(emptyState);
             return;
           }
+          
+          if (emptyState) emptyState.style.display = 'none';
           
           const addressesObj = snapshot.val();
           const addresses = Object.keys(addressesObj).map(key => ({
@@ -2038,6 +2116,8 @@
           // Sort by creation date
           addresses.sort((a, b) => b.createdAt - a.createdAt);
           
+          container.innerHTML = '';
+          
           addresses.forEach(address => {
             const addressCard = document.createElement('div');
             addressCard.className = 'address-card';
@@ -2046,18 +2126,27 @@
               <div>${address.street}</div>
               <div>${address.city}, ${address.state} - ${address.pincode}</div>
               <div>Mobile: ${address.mobile}</div>
+              <div style="margin-top: 8px;">
+                <span style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; text-transform: capitalize;">${address.type || 'home'}</span>
+                ${address.isDefault ? '<span style="background: #22c55e; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">Default</span>' : ''}
+              </div>
               <div class="address-actions">
                 <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
                 <button class="btn secondary delete-address" data-id="${address.id}">Delete</button>
+                ${!address.isDefault ? `<button class="btn set-default-address" data-id="${address.id}">Set as Default</button>` : ''}
               </div>
             `;
             
             // Add event listeners for edit and delete
             const editBtn = addressCard.querySelector('.edit-address');
             const deleteBtn = addressCard.querySelector('.delete-address');
+            const setDefaultBtn = addressCard.querySelector('.set-default-address');
             
             editBtn.addEventListener('click', () => editAddress(address));
             deleteBtn.addEventListener('click', () => deleteAddress(address.id));
+            if (setDefaultBtn) {
+              setDefaultBtn.addEventListener('click', () => setDefaultAddress(address.id));
+            }
             
             container.appendChild(addressCard);
           });
@@ -2075,7 +2164,7 @@
       document.getElementById('addressPincode').value = address.pincode;
       document.getElementById('addressCity').value = address.city;
       document.getElementById('addressState').value = address.state;
-      document.getElementById('addressType').value = address.type;
+      document.getElementById('addressType').value = address.type || 'home';
       document.getElementById('addressStreet').value = address.street;
       
       // Show edit form
@@ -2141,6 +2230,38 @@
       }
     }
 
+    function setDefaultAddress(addressId) {
+      if (!currentUser) return;
+      
+      // First, remove default from all addresses of this user
+      realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid)
+        .once('value')
+        .then(snapshot => {
+          const updates = {};
+          if (snapshot.exists()) {
+            const addresses = snapshot.val();
+            Object.keys(addresses).forEach(id => {
+              if (addresses[id].isDefault) {
+                updates[`addresses/${id}/isDefault`] = false;
+              }
+            });
+          }
+          
+          // Set the new default
+          updates[`addresses/${addressId}/isDefault`] = true;
+          
+          return realtimeDb.ref().update(updates);
+        })
+        .then(() => {
+          showToast('Default address updated successfully', 'success');
+          loadAddresses();
+        })
+        .catch(error => {
+          console.error('Error setting default address:', error);
+          showToast('Failed to set default address', 'error');
+        });
+    }
+
     // Logout function
     function showLogoutConfirmation() {
       alertTitle.textContent = 'Logout Confirmation';
@@ -2160,6 +2281,94 @@
         showToast('Error logging out', 'error');
       });
     }
+
+    // Initialize sample data if database is empty (for testing)
+    function initializeSampleData() {
+      if (!currentUser) return;
+      
+      // Check if user has any data
+      Promise.all([
+        realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value'),
+        realtimeDb.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid).once('value'),
+        realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid).once('value')
+      ]).then(([addressSnapshot, wishlistSnapshot, ordersSnapshot]) => {
+        // Add sample address if none exists
+        if (!addressSnapshot.exists()) {
+          const addressId = 'address_' + Date.now();
+          realtimeDb.ref('addresses/' + addressId).set({
+            userId: currentUser.uid,
+            name: currentUser.displayName || 'John Doe',
+            mobile: '9876543210',
+            pincode: '110001',
+            city: 'New Delhi',
+            state: 'Delhi',
+            type: 'home',
+            street: '123 Main Street, Connaught Place',
+            isDefault: true,
+            createdAt: Date.now()
+          });
+        }
+        
+        // Add sample wishlist items if none exists
+        if (!wishlistSnapshot.exists()) {
+          const sampleWishlist = [
+            {
+              userId: currentUser.uid,
+              productId: 'prod_001',
+              name: 'Wireless Bluetooth Headphones',
+              price: 2499,
+              rating: 4.5,
+              image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+            },
+            {
+              userId: currentUser.uid,
+              productId: 'prod_002',
+              name: 'Smart Watch Series 5',
+              price: 8999,
+              rating: 4.2,
+              image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+            }
+          ];
+          
+          sampleWishlist.forEach((item, index) => {
+            realtimeDb.ref('wishlist/wish_' + Date.now() + '_' + index).set(item);
+          });
+        }
+        
+        // Add sample orders if none exists
+        if (!ordersSnapshot.exists()) {
+          const orderId = 'order_' + Date.now();
+          realtimeDb.ref('orders/' + orderId).set({
+            userId: currentUser.uid,
+            timestamp: Date.now() - 86400000, // Yesterday
+            total: 11498,
+            status: 'delivered',
+            paymentMethod: 'Credit Card',
+            items: [
+              {
+                name: 'Wireless Bluetooth Headphones',
+                price: 2499,
+                quantity: 1,
+                image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+              },
+              {
+                name: 'Smart Watch Series 5',
+                price: 8999,
+                quantity: 1,
+                image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+              }
+            ]
+          });
+        }
+      });
+    }
+    
+    // Call initializeSampleData after user is loaded (for testing)
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        setTimeout(initializeSampleData, 1000);
+      }
+    });
   </script>
 </body>
 </html>
