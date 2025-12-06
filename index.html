@@ -4272,134 +4272,93 @@
       freeShippingOver: 999
     };
     let savedAddresses = [];
-    
+
     // =========================================================
     // PART 1 — LOCAL STORAGE FUNCTIONS
     // =========================================================
-    
+
     // 1) USER NAME LIVE UPDATE
     function saveUserName(name) {
-      if (!name) return;
       localStorage.setItem('userName', name);
-      updateUserNameUI();
     }
-    
+
     function loadUserName() {
-      const savedName = localStorage.getItem('userName');
-      if (savedName) {
-        updateProfileName(savedName);
-      }
-      return savedName || '';
+      return localStorage.getItem('userName') || '';
     }
-    
-    function updateUserNameUI() {
-      const userName = localStorage.getItem('userName') || 'User';
-      // Update all elements with class="user-name"
+
+    function updateUserNameUI(name) {
       document.querySelectorAll('.user-name').forEach(el => {
-        el.textContent = userName;
+        el.textContent = name;
       });
-      // Update mobile user name
-      const mobileUserName = document.getElementById('mobileUserName');
-      if (mobileUserName) mobileUserName.textContent = userName;
     }
-    
-    function updateProfileName(name) {
-      localStorage.setItem('userName', name);
-      updateUserNameUI();
+
+    function updateProfileName() {
+      const name = loadUserName();
+      if (name) {
+        updateUserNameUI(name);
+      }
     }
-    
+
     // 2) BANNER LOCAL STORAGE
     function saveBannerUrl(url) {
-      if (url) localStorage.setItem('bannerUrl', url);
+      localStorage.setItem('mainBanner', url);
     }
-    
-    function loadBanner() {
-      const bannerUrl = localStorage.getItem('bannerUrl');
-      if (bannerUrl) {
-        const bannerElement = document.getElementById('mainBanner');
-        if (bannerElement) {
-          bannerElement.style.backgroundImage = `url('${bannerUrl}')`;
-        }
-      }
+
+    function loadBannerUrl() {
+      return localStorage.getItem('mainBanner') || '';
     }
-    
+
     // 3) CATEGORY LOCAL STORAGE
-    function saveCategories(categoryList) {
-      localStorage.setItem('categories', JSON.stringify(categoryList));
+    function saveCategoriesToLocalStorage(categories) {
+      localStorage.setItem('categoryBox', JSON.stringify(categories));
     }
-    
-    function loadCategories() {
-      const savedCategories = localStorage.getItem('categories');
-      if (savedCategories) {
-        try {
-          const categories = JSON.parse(savedCategories);
-          renderCategoryList(categories);
-          return categories;
-        } catch (e) {
-          console.error('Error loading categories from localStorage:', e);
-        }
-      }
-      return [];
+
+    function loadCategoriesFromLocalStorage() {
+      const cat = localStorage.getItem('categoryBox');
+      return cat ? JSON.parse(cat) : [];
     }
-    
-    function renderCategoryList(categories) {
-      const container = document.getElementById('categoryBox');
-      if (!container) return;
-      container.innerHTML = '';
-      categories.forEach(category => {
-        const catElement = document.createElement('div');
-        catElement.className = 'category-item';
-        catElement.textContent = category.name || category;
-        container.appendChild(catElement);
-      });
-    }
-    
+
     // 4) CART LOCAL STORAGE
-    function saveCart(cartItems) {
-      localStorage.setItem('cart', JSON.stringify(cartItems));
+    function saveCartToLocalStorage(cart) {
+      localStorage.setItem('cart', JSON.stringify(cart));
     }
-    
-    function loadCart() {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        try {
-          return JSON.parse(savedCart);
-        } catch (e) {
-          console.error('Error loading cart from localStorage:', e);
-        }
-      }
-      return [];
+
+    function loadCartFromLocalStorage() {
+      const cart = localStorage.getItem('cart');
+      return cart ? JSON.parse(cart) : null;
     }
-    
+
     // 5) WISHLIST LOCAL STORAGE
-    function saveWishlist(wishlistItems) {
-      localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
+    function saveWishlistToLocalStorage(wishlist) {
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
     }
-    
-    function loadWishlist() {
-      const savedWishlist = localStorage.getItem('wishlist');
-      if (savedWishlist) {
-        try {
-          return JSON.parse(savedWishlist);
-        } catch (e) {
-          console.error('Error loading wishlist from localStorage:', e);
-        }
-      }
-      return [];
+
+    function loadWishlistFromLocalStorage() {
+      const wishlist = localStorage.getItem('wishlist');
+      return wishlist ? JSON.parse(wishlist) : [];
     }
-    
+
     // 6) THEME LOCAL STORAGE
-    function saveTheme(theme) {
+    function saveThemeToLocalStorage(theme) {
       localStorage.setItem('theme', theme);
     }
-    
-    function loadTheme() {
+
+    function loadThemeFromLocalStorage() {
       return localStorage.getItem('theme') || 'light';
     }
-    
+
+    // =========================================================
+    // PART 2 — PAYMENT PAGE & ORDER PLACEMENT FIXES
+    // =========================================================
+
+    // SAFE PRICE PARSING FUNCTION
+    function parsePrice(p) {
+      return typeof p === "number" ? p : parseFloat(p.replace(/[₹,]/g, "")) || 0;
+    }
+
     // Cache Manager
     const cacheManager = {
-      set: function(key, data, ttl = 5 * 60 * 1000) { // 5 minutes default
+      set: function(key, data, ttl = 5 * 60 * 1000) {
         const item = {
           data: data,
           timestamp: Date.now(),
@@ -4446,44 +4405,6 @@
       };
     }
 
-    // =========================================================
-    // PART 2 — PAYMENT PAGE FIXES
-    // =========================================================
-    
-    // 3) SAFE PRICE PARSING
-    function parsePrice(p) {
-      if (typeof p === 'number') return p;
-      if (typeof p === 'string') {
-        return parseFloat(p.replace(/[₹,]/g, "")) || 0;
-      }
-      return 0;
-    }
-    
-    // Payment Calculation Function - FIXED
-    function updatePaymentSummary() {
-      if (!currentProduct) return;
-      
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      
-      const priceStr = currentProduct.price || '₹0';
-      const productPrice = parsePrice(priceStr);
-      
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      // Update all summary fields
-      document.getElementById('sumProduct').textContent = currentProduct.name || 'Product';
-      document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
-      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
-    }
-
     // Logout with confirmation
     function showLogoutConfirmation() {
       document.getElementById('alertTitle').textContent = 'Logout Confirmation';
@@ -4515,10 +4436,8 @@
         await auth.sendPasswordResetEmail(email);
         showToast('Password reset email sent! Check your inbox.', 'success');
         
-        // Don't switch back to login form, just clear the field
         document.getElementById('forgotPasswordEmail').value = '';
         
-        // Close the modal after 2 seconds
         setTimeout(() => {
           authModal.classList.remove('active');
         }, 2000);
@@ -4536,7 +4455,6 @@
     async function saveAddress(addressData, isDefault = false) {
       if (!currentUser) return null;
       
-      // Check for duplicate address
       const isDuplicate = savedAddresses.some(addr => 
         addr.name === addressData.name &&
         addr.mobile === addressData.mobile &&
@@ -4570,7 +4488,6 @@
         await realtimeDb.ref('addresses/' + addressId).set(addressToSave);
         showToast('Address saved successfully', 'success');
         
-        // Update local cache
         savedAddresses.push(addressToSave);
         cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
         
@@ -4588,7 +4505,6 @@
       try {
         await realtimeDb.ref('addresses/' + addressId).remove();
         
-        // Update local cache
         savedAddresses = savedAddresses.filter(addr => addr.id !== addressId);
         cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
         
@@ -4606,7 +4522,6 @@
       try {
         await realtimeDb.ref('addresses/' + addressId).update(addressData);
         
-        // Update local cache
         const index = savedAddresses.findIndex(addr => addr.id === addressId);
         if (index !== -1) {
           savedAddresses[index] = { ...savedAddresses[index], ...addressData };
@@ -4637,7 +4552,6 @@
       
       const addressId = await saveAddress(addressData, true);
       if (addressId) {
-        // Update userInfo with address ID
         userInfo.addressId = addressId;
       }
     }
@@ -4668,12 +4582,12 @@
 
     // FIXED: Improved Wishlist Functions with Instant Like/Dislike
     function isInWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      let wishlist = loadWishlistFromLocalStorage();
       return wishlist.includes(productId);
     }
 
     function toggleWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      let wishlist = loadWishlistFromLocalStorage();
       const isWishlisted = wishlist.includes(productId);
 
       if (isWishlisted) {
@@ -4684,16 +4598,13 @@
         showToast('Added to wishlist', 'success');
       }
 
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
-      saveWishlist(wishlist); // Save to localStorage
+      saveWishlistToLocalStorage(wishlist);
       updateWishlistButtons();
       
-      // Update Firebase if user is logged in
       if (currentUser) {
         updateWishlistInFirebase(productId, !isWishlisted);
       }
       
-      // Refresh wishlist page if it's active
       if (document.getElementById('wishlistPage').classList.contains('active')) {
         renderWishlist();
       }
@@ -4717,14 +4628,12 @@
     }
 
     function updateWishlistButtons() {
-      // Update all wishlist buttons on the page
       document.querySelectorAll('.wishlist-btn').forEach(btn => {
         const productId = btn.getAttribute('data-product-id');
         if (productId) {
           const isActive = isInWishlist(productId);
           btn.classList.toggle('active', isActive);
           
-          // Update SVG fill color instantly
           const svg = btn.querySelector('svg');
           if (svg) {
             if (isActive) {
@@ -4736,7 +4645,6 @@
         }
       });
       
-      // Update detail page wishlist button
       const detailBtn = document.getElementById('detailWishlistBtn');
       if (detailBtn && currentProduct) {
         const isActive = isInWishlist(currentProduct.id);
@@ -4747,7 +4655,6 @@
 
     // Realtime Database Listeners
     function setupRealtimeListeners() {
-      // Products listener
       realtimeDb.ref('products').on('value', snapshot => {
         const productsObj = snapshot.val();
         if (productsObj) {
@@ -4759,18 +4666,15 @@
           products = newProducts;
           cacheManager.set('products', products);
           
-          // Update UI if on relevant pages
           if (document.getElementById('homePage').classList.contains('active') || 
               document.getElementById('productsPage').classList.contains('active') ||
               document.getElementById('productDetailPage').classList.contains('active')) {
             renderProducts(products, 'homeProductGrid');
             renderProducts(products, 'productGrid');
             
-            // Show trending products (admin panel decides)
             const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
             renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
             
-            // Show featured products (admin panel decides)
             const featuredProducts = products.filter(p => p.isFeatured);
             if (featuredProducts.length > 0) {
               renderProducts(featuredProducts, 'homeProductGrid');
@@ -4781,7 +4685,6 @@
         console.error('Products listener error:', error);
       });
 
-      // Categories listener
       realtimeDb.ref('categories').on('value', snapshot => {
         const categoriesObj = snapshot.val();
         if (categoriesObj) {
@@ -4792,9 +4695,8 @@
           
           categories = newCategories;
           cacheManager.set('categories', categories);
-          saveCategories(categories); // Save to localStorage
+          saveCategoriesToLocalStorage(categories);
           
-          // Update UI if on relevant pages
           if (document.getElementById('homePage').classList.contains('active') || 
               document.getElementById('productsPage').classList.contains('active')) {
             renderCategories();
@@ -4805,7 +4707,6 @@
         console.error('Categories listener error:', error);
       });
 
-      // Banners listener
       realtimeDb.ref('banners').on('value', snapshot => {
         const bannersObj = snapshot.val();
         if (bannersObj) {
@@ -4817,7 +4718,6 @@
           banners = newBanners;
           cacheManager.set('banners', banners);
           
-          // Update UI if on home page
           if (document.getElementById('homePage').classList.contains('active')) {
             renderBannerCarousel();
           }
@@ -4826,19 +4726,16 @@
         console.error('Banners listener error:', error);
       });
 
-      // Admin settings listener
       realtimeDb.ref('adminSettings').on('value', snapshot => {
         const settingsObj = snapshot.val();
         if (settingsObj) {
           adminSettings = { ...adminSettings, ...settingsObj };
           cacheManager.set('adminSettings', adminSettings);
           
-          // Update UI
           updateAdminSettingsUI();
         }
       });
 
-      // Orders listener for current user
       if (currentUser) {
         realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
           .on('value', snapshot => {
@@ -4849,15 +4746,12 @@
                 ...ordersObj[key]
               }));
               
-              // Sort by order date
               orders.sort((a, b) => b.orderDate - a.orderDate);
               
-              // Update UI if on orders page
               if (document.getElementById('myOrdersPage').classList.contains('active')) {
                 renderOrders(orders);
               }
             } else {
-              // No orders
               if (document.getElementById('myOrdersPage').classList.contains('active')) {
                 renderOrders([]);
               }
@@ -4870,11 +4764,8 @@
 
     // Update admin settings in UI
     function updateAdminSettingsUI() {
-      // Update delivery charge
       document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
       document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge}`;
-      
-      // Update gateway charge percentage
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
     }
 
@@ -4950,14 +4841,6 @@
       setupHeroMessages();
       updateStepPills();
       
-      // Load Local Storage data
-      loadUserName();
-      loadBanner();
-      loadCategories();
-      loadCart();
-      loadWishlist();
-      
-      // Check authentication state
       auth.onAuthStateChanged(user => {
         if (user) {
           currentUser = user;
@@ -4975,25 +4858,23 @@
     });
 
     function initApp() {
-      // Set initial theme from localStorage
-      const savedTheme = loadTheme();
+      const savedTheme = loadThemeFromLocalStorage();
       document.documentElement.setAttribute('data-theme', savedTheme);
       
-      // Show home page by default
       showPage('homePage');
       
-      // Handle URL hash for direct navigation
       if (window.location.hash) {
         const pageId = window.location.hash.replace('#', '');
         if (document.getElementById(pageId)) {
           showPage(pageId);
         }
       }
+      
+      updateProfileName();
     }
 
     // Load initial data with caching
     function loadInitialData() {
-      // Load from cache first
       const cachedProducts = cacheManager.get('products');
       const cachedCategories = cacheManager.get('categories');
       const cachedBanners = cacheManager.get('banners');
@@ -5004,18 +4885,22 @@
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         
-        // Show trending products
         const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
         renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
         
-        // Show featured products
         const featuredProducts = products.filter(p => p.isFeatured);
         if (featuredProducts.length > 0) {
           renderProducts(featuredProducts, 'homeProductGrid');
         }
       } else {
-        // Show loading state
         document.getElementById('homeProductGrid').innerHTML = '<div class="loading-spinner" style="margin: 40px auto;"></div>';
+      }
+      
+      const localCategories = loadCategoriesFromLocalStorage();
+      if (localCategories && localCategories.length > 0) {
+        categories = localCategories;
+        renderCategories();
+        renderCategoryCircles();
       }
       
       if (cachedCategories && cachedCategories.length > 0) {
@@ -5034,44 +4919,40 @@
         updateAdminSettingsUI();
       }
       
-      // Then load fresh data from Firebase
       loadProducts();
       loadCategories();
       loadBanners();
       loadAdminSettings();
+      
+      const cart = loadCartFromLocalStorage();
+      if (cart && cart.productId) {
+        const product = products.find(p => p.id === cart.productId);
+        if (product) {
+          currentProduct = product;
+        }
+      }
     }
 
     function setupEventListeners() {
-      // Mobile menu
       menuIcon.addEventListener('click', openMenu);
       menuClose.addEventListener('click', closeMenu);
       menuOverlay.addEventListener('click', closeMenu);
       
-      // Theme toggle
-      themeToggle.addEventListener('click', function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        saveTheme(newTheme); // Save to localStorage
-      });
+      themeToggle.addEventListener('click', toggleTheme);
       
-      // Auth modal
       authClose.addEventListener('click', () => authModal.classList.remove('active'));
       openLoginTop.addEventListener('click', showLoginModal);
       mobileLoginBtn.addEventListener('click', showLoginModal);
       
-      // Auth tabs
       loginTab.addEventListener('click', () => switchAuthTab('login'));
       signupTab.addEventListener('click', () => switchAuthTab('signup'));
       switchToLogin.addEventListener('click', () => switchAuthTab('login'));
       
-      // Auth forms
       loginBtn.addEventListener('click', handleLogin);
       signupBtn.addEventListener('click', handleSignup);
       googleLoginBtn.addEventListener('click', handleGoogleLogin);
       googleSignupBtn.addEventListener('click', handleGoogleLogin);
       
-      // Forgot password - UPDATED
       forgotPasswordLink.addEventListener('click', () => {
         loginForm.classList.remove('active');
         forgotPasswordForm.classList.add('active');
@@ -5082,33 +4963,26 @@
       });
       resetPasswordBtn.addEventListener('click', handleResetPassword);
       
-      // User profile
       userProfile.addEventListener('click', () => window.location.href = 'account.html');
       
-      // Logout buttons
       mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
       
-      // Alert modal buttons
       document.getElementById('alertCancelBtn').addEventListener('click', () => {
         document.getElementById('alertModal').classList.remove('active');
       });
       document.getElementById('alertConfirmBtn').addEventListener('click', confirmLogout);
       
-      // Navigation
       openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       
-      // Image zoom
       zoomClose.addEventListener('click', () => zoomModal.classList.remove('active'));
       zoomIn.addEventListener('click', () => adjustZoom(0.2));
       zoomOut.addEventListener('click', () => adjustZoom(-0.2));
       zoomReset.addEventListener('click', resetZoom);
       
-      // Product Image Modal
       productImageModalClose.addEventListener('click', () => productImageModal.classList.remove('active'));
       productImageModalPrev.addEventListener('click', prevProductModalImage);
       productImageModalNext.addEventListener('click', nextProductModalImage);
       
-      // Search functionality with debounce
       const searchInput = document.getElementById('searchInput');
       const homeSearchInput = document.getElementById('homeSearchInput');
       
@@ -5120,7 +4994,6 @@
         homeSearchInput.addEventListener('input', debounce(handleHomeSearch, 300));
       }
       
-      // Order flow buttons - FIXED: Place order button
       document.getElementById('backToProducts')?.addEventListener('click', () => showPage('productsPage'));
       document.getElementById('toUserInfo')?.addEventListener('click', toUserInfo);
       document.getElementById('editOrder')?.addEventListener('click', () => showPage('orderPage'));
@@ -5130,17 +5003,9 @@
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       
-      // Quantity controls
-      document.querySelector('.qty-minus')?.addEventListener('click', function() {
-        decreaseQuantity();
-        updatePaymentSummary(); // Update summary when quantity changes
-      });
-      document.querySelector('.qty-plus')?.addEventListener('click', function() {
-        increaseQuantity();
-        updatePaymentSummary(); // Update summary when quantity changes
-      });
+      document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
+      document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       
-      // UPDATED: Size and color selection
       document.querySelectorAll('.size-option').forEach(option => {
         option.addEventListener('click', function() {
           document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
@@ -5156,14 +5021,11 @@
         });
       });
       
-      // Price filter
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
       document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
       
-      // Newsletter
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
       
-      // Share buttons
       document.querySelectorAll('.share-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const platform = this.getAttribute('data-platform');
@@ -5171,21 +5033,16 @@
         });
       });
       
-      // Copy share link
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
       
-      // Product detail buttons
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       
-      // Product detail image click to open modal
       document.getElementById('productDetailMainImage')?.addEventListener('click', openProductImageModal);
       
-      // Product detail carousel controls
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
       document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
       
-      // Rating stars
       if (ratingInput) {
         ratingInput.querySelectorAll('.rating-star').forEach(star => {
           star.addEventListener('click', function() {
@@ -5195,12 +5052,10 @@
         });
       }
       
-      // Submit review
       if (submitReview) {
         submitReview.addEventListener('click', submitProductReview);
       }
       
-      // Banner touch events for mobile swipe
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (bannerCarousel) {
         bannerCarousel.addEventListener('touchstart', handleBannerTouchStart);
@@ -5208,13 +5063,25 @@
         bannerCarousel.addEventListener('touchend', handleBannerTouchEnd);
       }
       
-      // Handle browser back button
       window.addEventListener('popstate', function(event) {
         const page = event.state ? event.state.page : 'homePage';
         showPage(page);
       });
       
-      // Payment page quantity and payment method listeners
+      document.querySelector('.qty-minus')?.addEventListener('click', function() {
+        decreaseQuantity();
+        if (document.getElementById('paymentPage').classList.contains('active')) {
+          updatePaymentSummary();
+        }
+      });
+      
+      document.querySelector('.qty-plus')?.addEventListener('click', function() {
+        increaseQuantity();
+        if (document.getElementById('paymentPage').classList.contains('active')) {
+          updatePaymentSummary();
+        }
+      });
+      
       document.querySelectorAll('input[name="pay"]').forEach(radio => {
         radio.addEventListener('change', function() {
           if (document.getElementById('paymentPage').classList.contains('active')) {
@@ -5223,7 +5090,6 @@
         });
       });
       
-      // UPDATED: Save user info button
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
     }
 
@@ -5431,9 +5297,6 @@
           lastLoginAt: Date.now()
         });
         
-        // Save user name to localStorage
-        saveUserName(userCredential.user.displayName || 'User');
-        
         showToast('Login successful!', 'success');
         authModal.classList.remove('active');
         
@@ -5479,8 +5342,8 @@
           lastLoginAt: Date.now()
         });
         
-        // Save user name to localStorage
         saveUserName(name);
+        updateUserNameUI(name);
         
         showToast('Account created successfully!', 'success');
         authModal.classList.remove('active');
@@ -5520,8 +5383,8 @@
           });
         }
         
-        // Save user name to localStorage
         saveUserName(user.displayName || 'User');
+        updateUserNameUI(user.displayName || 'User');
         
         showToast('Login successful!', 'success');
         authModal.classList.remove('active');
@@ -5535,9 +5398,7 @@
       }
     }
 
-    // =========================================================
-    // 4) CONFIRM & PLACE ORDER BUTTON FIX - COMPLETELY FIXED
-    // =========================================================
+    // FIXED: Place Order Function with proper calculations
     async function confirmOrder() {
       if (!currentUser) {
         showLoginModal();
@@ -5550,6 +5411,12 @@
         return;
       }
       
+      if (!currentProduct) {
+        showToast('No product selected', 'error');
+        showPage('productsPage');
+        return;
+      }
+      
       const orderId = generateOrderId();
       currentOrderId = orderId;
       
@@ -5558,9 +5425,7 @@
       const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
       const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
       
-      // Use safe price parsing
-      const priceStr = currentProduct.price || '₹0';
-      const productPrice = parsePrice(priceStr);
+      const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
       const deliveryCharge = adminSettings.deliveryCharge || 50;
       const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
@@ -5594,118 +5459,51 @@
       };
       
       try {
-        // Show loading state
-        const confirmBtn = document.getElementById('confirmOrder');
-        const originalText = confirmBtn.innerHTML;
-        confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
-        confirmBtn.disabled = true;
-        
         await realtimeDb.ref('orders/' + orderId).set(orderData);
         
-        // Reset button
-        confirmBtn.innerHTML = originalText;
-        confirmBtn.disabled = false;
-        
-        // Update UI
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
         
-        // Send confirmation email
         sendOrderConfirmationEmail(orderData);
         
         showToast('Order placed successfully!', 'success');
         
+        localStorage.removeItem('cart');
+        
       } catch (error) {
         console.error('Error placing order:', error);
         showToast('Failed to place order. Please try again.', 'error');
-        
-        // Reset button on error
-        const confirmBtn = document.getElementById('confirmOrder');
-        confirmBtn.innerHTML = 'Confirm & Place Order';
-        confirmBtn.disabled = false;
       }
     }
 
-    // Order flow functions
-    function toUserInfo() {
-      const selectedSize = document.querySelector('.size-option.selected');
-      if (!selectedSize) {
-        document.getElementById('sizeValidationError').classList.add('show');
+    // Payment Calculation Function - FIXED
+    function updatePaymentSummary() {
+      if (!currentProduct) {
+        document.getElementById('sumProduct').textContent = '-';
+        document.getElementById('sumQty').textContent = '-';
+        document.getElementById('sumPrice').textContent = '-';
+        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
+        document.getElementById('sumGateway').textContent = '₹0';
+        document.getElementById('sumTotal').textContent = '-';
         return;
       }
       
-      showPage('userPage');
-    }
-
-    function toPayment() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-
-      showPage('paymentPage');
-      updatePaymentSummary(); // Update summary when going to payment page
-    }
-
-    // UPDATED: Save user info and address
-    async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-      const addressType = document.getElementById('addressType').value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
       
-      // Save user name to localStorage
-      saveUserName(fullname);
+      const productPrice = parsePrice(currentProduct.price);
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
+      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
+      const total = subtotal + deliveryCharge + gatewayCharge;
       
-      // Save address
-      const addressData = {
-        name: fullname,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        street: house,
-        type: addressType
-      };
-      
-      await saveAddress(addressData, true);
-      loadSavedAddresses();
-    }
-
-    function showNewAddressForm() {
-      document.getElementById('savedAddressesSection').style.display = 'none';
-      document.getElementById('newAddressForm').style.display = 'block';
-      
-      document.getElementById('fullname').value = '';
-      document.getElementById('mobile').value = '';
-      document.getElementById('pincode').value = '';
-      document.getElementById('city').value = '';
-      document.getElementById('state').value = '';
-      document.getElementById('house').value = '';
-      document.getElementById('addressType').value = 'home';
-      
-      const saveBtn = document.getElementById('saveUserInfo');
-      saveBtn.textContent = 'Save This Address';
-      saveBtn.onclick = saveUserInfoAndAddress;
+      document.getElementById('sumProduct').textContent = currentProduct.name;
+      document.getElementById('sumQty').textContent = quantity;
+      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
+      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
+      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
+      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
     }
 
     // Page navigation
@@ -5739,7 +5537,7 @@
       }
       
       if (pageId === 'paymentPage') {
-        updatePaymentSummary(); // Always update summary when showing payment page
+        updatePaymentSummary();
       }
       
       if (pageId === 'userPage' && currentUser) {
@@ -5813,7 +5611,7 @@
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       
       document.documentElement.setAttribute('data-theme', newTheme);
-      saveTheme(newTheme);
+      saveThemeToLocalStorage(newTheme);
     }
 
     // Toast notification
@@ -5840,10 +5638,10 @@
       realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
         if (snapshot.exists()) {
           const userData = snapshot.val();
-          const userNameText = userData.name || user.displayName || 'User';
-          userName.textContent = userNameText;
-          mobileUserName.textContent = userNameText;
-          saveUserName(userNameText); // Save to localStorage
+          const name = userData.name || user.displayName || 'User';
+          saveUserName(name);
+          updateUserNameUI(name);
+          mobileUserName.textContent = name;
         }
       });
     }
@@ -5859,10 +5657,9 @@
         userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
       }
       
-      const userNameText = user.displayName || 'User';
-      userName.textContent = userNameText;
-      mobileUserName.textContent = userNameText;
-      saveUserName(userNameText); // Save to localStorage
+      const name = user.displayName || 'User';
+      userName.textContent = name;
+      mobileUserName.textContent = name;
     }
 
     function updateUIForGuest() {
@@ -5915,7 +5712,7 @@
           
           categories = newCategories;
           cacheManager.set('categories', categories);
-          saveCategories(categories); // Save to localStorage
+          saveCategoriesToLocalStorage(categories);
           
           renderCategories();
           renderCategoryCircles();
@@ -5994,14 +5791,12 @@
       if (!currentUser) return;
       
       try {
-        // Try cache first
         const cachedAddresses = cacheManager.get('addresses_' + currentUser.uid);
         if (cachedAddresses && cachedAddresses.length > 0) {
           savedAddresses = cachedAddresses;
           renderSavedAddresses();
         }
         
-        // Then load from Firebase
         const snapshot = await realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value');
         const addressesList = document.getElementById('savedAddressesList');
         const savedAddressesSection = document.getElementById('savedAddressesSection');
@@ -6100,7 +5895,6 @@
       document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
       
-      // Change button text
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Update Address';
       saveBtn.onclick = function() {
@@ -6423,7 +6217,6 @@
         dotsContainer.appendChild(dot);
       });
       
-      // Update carousel controls
       const prevBtn = galleryMain.querySelector('.carousel-control.prev');
       const nextBtn = galleryMain.querySelector('.carousel-control.next');
       
@@ -6506,6 +6299,95 @@
       renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
     }
 
+    // Order flow functions
+    function toUserInfo() {
+      const selectedSize = document.querySelector('.size-option.selected');
+      if (!selectedSize) {
+        document.getElementById('sizeValidationError').classList.add('show');
+        return;
+      }
+      
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const size = selectedSize.getAttribute('data-value');
+      const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
+      
+      const cart = {
+        productId: currentProduct.id,
+        quantity: quantity,
+        size: size,
+        color: color
+      };
+      saveCartToLocalStorage(cart);
+      
+      showPage('userPage');
+    }
+
+    function toPayment() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
+
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      showPage('paymentPage');
+    }
+
+    // UPDATED: Save user info and address
+    async function saveUserInfoAndAddress() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
+      const addressType = document.getElementById('addressType').value;
+
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+      
+      const addressData = {
+        name: fullname,
+        mobile: mobile,
+        pincode: pincode,
+        city: city,
+        state: state,
+        street: house,
+        type: addressType
+      };
+      
+      await saveAddress(addressData, true);
+      loadSavedAddresses();
+    }
+
+    function showNewAddressForm() {
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
+      
+      document.getElementById('fullname').value = '';
+      document.getElementById('mobile').value = '';
+      document.getElementById('pincode').value = '';
+      document.getElementById('city').value = '';
+      document.getElementById('state').value = '';
+      document.getElementById('house').value = '';
+      document.getElementById('addressType').value = 'home';
+      
+      const saveBtn = document.getElementById('saveUserInfo');
+      saveBtn.textContent = 'Save This Address';
+      saveBtn.onclick = saveUserInfoAndAddress;
+    }
+
     // Wishlist functions
     function toggleWishlistFromDetail() {
       if (!currentProduct) return;
@@ -6518,7 +6400,7 @@
       
       if (!container || !empty) return;
       
-      let wishlistProductIds = loadWishlist(); // Load from localStorage
+      let wishlistProductIds = loadWishlistFromLocalStorage();
       const wishlistProducts = products.filter(product => wishlistProductIds.includes(product.id));
       
       if (wishlistProducts.length === 0) {
@@ -6647,7 +6529,7 @@
       }
       
       filteredProducts = filteredProducts.filter(product => {
-        const price = parsePrice(product.price);
+        const price = parseFloat(product.price.replace('₹', '')) || 0;
         return price >= minPrice && price <= maxPrice;
       });
       
