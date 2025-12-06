@@ -6,19 +6,12 @@
   <title>Buyzocart Shop - Best Deals & Products</title>
   <meta name="description" content="Buyzo Cart - Best online shopping deals, secure checkout, and superfast delivery."/>
   <meta name="robots" content="index, follow">
-  <meta name="keywords" content="online shopping, buyzocart, deals, products, ecommerce">
   <link rel="canonical" href="https://buyzocartshop.com/">
   <meta property="og:image" content="https://buyzocartshop.com/logo.png">
-  <meta property="og:title" content="Buyzocart Shop - Best Deals & Products">
-  <meta property="og:description" content="Buyzo Cart - Best online shopping deals, secure checkout, and superfast delivery.">
-  <meta property="og:url" content="https://buyzocartshop.com/">
-  <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -4030,7 +4023,7 @@
     </div>
     
     <div class="copyright">
-      &copy; <span id="currentYear"></span> Buyzo Cart. All rights reserved.
+      &copy; 2024 Buyzo Cart. All rights reserved.
     </div>
   </footer>
 
@@ -4279,285 +4272,134 @@
       freeShippingOver: 999
     };
     let savedAddresses = [];
-
-    // ============================================
-    // LOCAL STORAGE INTEGRATION FUNCTIONS
-    // ============================================
-
-    // 1. USER NAME STORAGE
-    function saveUserNameToLocalStorage(name) {
-      localStorage.setItem('buyzocart_userName', name);
-      updateUserNameEverywhere(name);
+    
+    // =========================================================
+    // PART 1 — LOCAL STORAGE FUNCTIONS
+    // =========================================================
+    
+    // 1) USER NAME LIVE UPDATE
+    function saveUserName(name) {
+      if (!name) return;
+      localStorage.setItem('userName', name);
+      updateUserNameUI();
     }
-
-    function loadUserNameFromLocalStorage() {
-      const savedName = localStorage.getItem('buyzocart_userName');
+    
+    function loadUserName() {
+      const savedName = localStorage.getItem('userName');
       if (savedName) {
-        updateUserNameEverywhere(savedName);
-        return savedName;
+        updateProfileName(savedName);
       }
-      return null;
+      return savedName || '';
     }
-
-    function updateUserNameEverywhere(name) {
-      // Update in header
-      const userNameElements = document.querySelectorAll('.user-name');
-      userNameElements.forEach(el => {
-        el.textContent = name;
+    
+    function updateUserNameUI() {
+      const userName = localStorage.getItem('userName') || 'User';
+      // Update all elements with class="user-name"
+      document.querySelectorAll('.user-name').forEach(el => {
+        el.textContent = userName;
       });
-      
-      // Update in mobile menu
-      const mobileUserNameElements = document.querySelectorAll('#mobileUserName');
-      mobileUserNameElements.forEach(el => {
-        el.textContent = name;
-      });
-      
-      // Update in user profile section
-      const userProfileName = document.getElementById('userName');
-      if (userProfileName) {
-        userProfileName.textContent = name;
-      }
-      
-      // Update avatar initial
-      const avatarInitial = document.getElementById('userAvatarInitial');
-      if (avatarInitial && name && name.length > 0) {
-        avatarInitial.textContent = name.charAt(0).toUpperCase();
-      }
+      // Update mobile user name
+      const mobileUserName = document.getElementById('mobileUserName');
+      if (mobileUserName) mobileUserName.textContent = userName;
     }
-
-    // 2. BANNER STORAGE
-    function saveBannerToLocalStorage(bannerUrl) {
-      localStorage.setItem('buyzocart_banner', bannerUrl);
+    
+    function updateProfileName(name) {
+      localStorage.setItem('userName', name);
+      updateUserNameUI();
     }
-
-    function loadBannerFromLocalStorage() {
-      const bannerUrl = localStorage.getItem('buyzocart_banner');
+    
+    // 2) BANNER LOCAL STORAGE
+    function saveBannerUrl(url) {
+      if (url) localStorage.setItem('bannerUrl', url);
+    }
+    
+    function loadBanner() {
+      const bannerUrl = localStorage.getItem('bannerUrl');
       if (bannerUrl) {
-        const mainBanner = document.getElementById('mainBanner');
-        if (mainBanner) {
-          mainBanner.style.backgroundImage = `url('${bannerUrl}')`;
-        }
-        
-        // Also update banner carousel
-        const bannerTrack = document.getElementById('bannerTrack');
-        if (bannerTrack && bannerUrl) {
-          const bannerSlide = document.querySelector('.banner-slide');
-          if (bannerSlide) {
-            bannerSlide.style.backgroundImage = `url('${bannerUrl}')`;
-          }
+        const bannerElement = document.getElementById('mainBanner');
+        if (bannerElement) {
+          bannerElement.style.backgroundImage = `url('${bannerUrl}')`;
         }
       }
-      return bannerUrl;
     }
-
-    // 3. CATEGORY STORAGE
-    function saveCategoriesToLocalStorage(categoriesArray) {
-      localStorage.setItem('buyzocart_categories', JSON.stringify(categoriesArray));
+    
+    // 3) CATEGORY LOCAL STORAGE
+    function saveCategories(categoryList) {
+      localStorage.setItem('categories', JSON.stringify(categoryList));
     }
-
-    function loadCategoriesFromLocalStorage() {
-      const savedCategories = localStorage.getItem('buyzocart_categories');
+    
+    function loadCategories() {
+      const savedCategories = localStorage.getItem('categories');
       if (savedCategories) {
         try {
-          const categoriesArray = JSON.parse(savedCategories);
-          renderCategoriesToUI(categoriesArray);
-          return categoriesArray;
+          const categories = JSON.parse(savedCategories);
+          renderCategoryList(categories);
+          return categories;
         } catch (e) {
           console.error('Error loading categories from localStorage:', e);
-          return [];
         }
       }
       return [];
     }
-
-    function renderCategoriesToUI(categoriesArray) {
-      const categoryBox = document.getElementById('categoryBox');
-      const categoriesContainer = document.getElementById('categoriesContainer');
-      const categoryCirclesContainer = document.getElementById('categoryCirclesContainer');
-      
-      if (!categoriesArray || categoriesArray.length === 0) return;
-      
-      // Update categories navigation
-      if (categoriesContainer) {
-        categoriesContainer.innerHTML = '';
-        categoriesArray.forEach(category => {
-          const categoryPill = document.createElement('div');
-          categoryPill.className = 'category-pill';
-          categoryPill.textContent = category.name || 'Category';
-          categoryPill.addEventListener('click', () => filterByCategory(category.id));
-          categoriesContainer.appendChild(categoryPill);
-        });
-      }
-      
-      // Update category circles
-      if (categoryCirclesContainer) {
-        categoryCirclesContainer.innerHTML = '';
-        categoriesArray.forEach(category => {
-          const circle = document.createElement('div');
-          circle.className = 'category-circle';
-          circle.innerHTML = `
-            <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
-            <div class="category-circle-name">${category.name || 'Category'}</div>
-          `;
-          circle.addEventListener('click', () => filterByCategory(category.id));
-          categoryCirclesContainer.appendChild(circle);
-        });
-      }
-      
-      // Update category box (if exists)
-      if (categoryBox) {
-        categoryBox.innerHTML = '';
-        categoriesArray.forEach(category => {
-          const categoryItem = document.createElement('div');
-          categoryItem.className = 'category-item';
-          categoryItem.textContent = category.name || 'Category';
-          categoryBox.appendChild(categoryItem);
-        });
-      }
+    
+    function renderCategoryList(categories) {
+      const container = document.getElementById('categoryBox');
+      if (!container) return;
+      container.innerHTML = '';
+      categories.forEach(category => {
+        const catElement = document.createElement('div');
+        catElement.className = 'category-item';
+        catElement.textContent = category.name || category;
+        container.appendChild(catElement);
+      });
     }
-
-    // 4. CART STORAGE
-    let cart = [];
-
-    function loadCartFromLocalStorage() {
-      const savedCart = localStorage.getItem('buyzocart_cart');
+    
+    // 4) CART LOCAL STORAGE
+    function saveCart(cartItems) {
+      localStorage.setItem('cart', JSON.stringify(cartItems));
+    }
+    
+    function loadCart() {
+      const savedCart = localStorage.getItem('cart');
       if (savedCart) {
         try {
-          cart = JSON.parse(savedCart);
-          updateCartUI();
-          return cart;
+          return JSON.parse(savedCart);
         } catch (e) {
           console.error('Error loading cart from localStorage:', e);
-          cart = [];
-          return [];
         }
       }
       return [];
     }
-
-    function saveCartToLocalStorage() {
-      localStorage.setItem('buyzocart_cart', JSON.stringify(cart));
-      updateCartUI();
+    
+    // 5) WISHLIST LOCAL STORAGE
+    function saveWishlist(wishlistItems) {
+      localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
     }
-
-    function addToCart(product, quantity = 1, size = null, color = null) {
-      const existingItemIndex = cart.findIndex(item => 
-        item.productId === product.id && 
-        item.size === size && 
-        item.color === color
-      );
-      
-      if (existingItemIndex > -1) {
-        cart[existingItemIndex].quantity += quantity;
-      } else {
-        cart.push({
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          image: getProductImage(product),
-          quantity: quantity,
-          size: size,
-          color: color,
-          addedAt: Date.now()
-        });
-      }
-      
-      saveCartToLocalStorage();
-      showToast('Product added to cart', 'success');
-    }
-
-    function removeFromCart(productId, size = null, color = null) {
-      cart = cart.filter(item => 
-        !(item.productId === productId && 
-          item.size === size && 
-          item.color === color)
-      );
-      saveCartToLocalStorage();
-      showToast('Product removed from cart', 'success');
-    }
-
-    function updateCartUI() {
-      const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
-      
-      // Update cart badge if exists
-      const cartBadge = document.getElementById('cartBadge');
-      if (cartBadge) {
-        if (cartCount > 0) {
-          cartBadge.textContent = cartCount;
-          cartBadge.style.display = 'flex';
-        } else {
-          cartBadge.style.display = 'none';
-        }
-      }
-      
-      // Update cart page if active
-      if (document.getElementById('cartPage') && 
-          document.getElementById('cartPage').classList.contains('active')) {
-        renderCartPage();
-      }
-    }
-
-    // 5. WISHLIST STORAGE
-    function loadWishlistFromLocalStorage() {
-      const savedWishlist = localStorage.getItem('buyzocart_wishlist');
+    
+    function loadWishlist() {
+      const savedWishlist = localStorage.getItem('wishlist');
       if (savedWishlist) {
         try {
           return JSON.parse(savedWishlist);
         } catch (e) {
           console.error('Error loading wishlist from localStorage:', e);
-          return [];
         }
       }
       return [];
     }
-
-    function saveWishlistToLocalStorage(wishlistArray) {
-      localStorage.setItem('buyzocart_wishlist', JSON.stringify(wishlistArray));
-      updateWishlistUI();
+    
+    // 6) THEME LOCAL STORAGE
+    function saveTheme(theme) {
+      localStorage.setItem('theme', theme);
     }
-
-    function updateWishlistUI() {
-      const wishlist = loadWishlistFromLocalStorage();
-      const wishlistCount = wishlist.length;
-      
-      // Update wishlist badge if exists
-      const wishlistBadge = document.getElementById('wishlistBadge');
-      if (wishlistBadge) {
-        if (wishlistCount > 0) {
-          wishlistBadge.textContent = wishlistCount;
-          wishlistBadge.style.display = 'flex';
-        } else {
-          wishlistBadge.style.display = 'none';
-        }
-      }
-      
-      // Update wishlist buttons
-      updateWishlistButtons();
-      
-      // Update wishlist page if active
-      if (document.getElementById('wishlistPage') && 
-          document.getElementById('wishlistPage').classList.contains('active')) {
-        renderWishlist();
-      }
+    
+    function loadTheme() {
+      return localStorage.getItem('theme') || 'light';
     }
-
-    // 6. THEME STORAGE
-    function saveThemeToLocalStorage(theme) {
-      localStorage.setItem('buyzocart_theme', theme);
-    }
-
-    function loadThemeFromLocalStorage() {
-      const savedTheme = localStorage.getItem('buyzocart_theme');
-      if (savedTheme) {
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        return savedTheme;
-      }
-      return 'light';
-    }
-
-    // Cache Manager (existing)
+    
+    // Cache Manager
     const cacheManager = {
-      set: function(key, data, ttl = 5 * 60 * 1000) {
+      set: function(key, data, ttl = 5 * 60 * 1000) { // 5 minutes default
         const item = {
           data: data,
           timestamp: Date.now(),
@@ -4602,6 +4444,44 @@
         clearTimeout(timeout);
         timeout = setTimeout(() => func(...args), wait);
       };
+    }
+
+    // =========================================================
+    // PART 2 — PAYMENT PAGE FIXES
+    // =========================================================
+    
+    // 3) SAFE PRICE PARSING
+    function parsePrice(p) {
+      if (typeof p === 'number') return p;
+      if (typeof p === 'string') {
+        return parseFloat(p.replace(/[₹,]/g, "")) || 0;
+      }
+      return 0;
+    }
+    
+    // Payment Calculation Function - FIXED
+    function updatePaymentSummary() {
+      if (!currentProduct) return;
+      
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      
+      const priceStr = currentProduct.price || '₹0';
+      const productPrice = parsePrice(priceStr);
+      
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
+      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
+      const total = subtotal + deliveryCharge + gatewayCharge;
+      
+      // Update all summary fields
+      document.getElementById('sumProduct').textContent = currentProduct.name || 'Product';
+      document.getElementById('sumQty').textContent = quantity;
+      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
+      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
+      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
+      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
     }
 
     // Logout with confirmation
@@ -4805,7 +4685,8 @@
       }
 
       localStorage.setItem('wishlist', JSON.stringify(wishlist));
-      saveWishlistToLocalStorage(wishlist); // NEW: Save to localStorage
+      saveWishlist(wishlist); // Save to localStorage
+      updateWishlistButtons();
       
       // Update Firebase if user is logged in
       if (currentUser) {
@@ -4911,7 +4792,7 @@
           
           categories = newCategories;
           cacheManager.set('categories', categories);
-          saveCategoriesToLocalStorage(newCategories); // NEW: Save to localStorage
+          saveCategories(categories); // Save to localStorage
           
           // Update UI if on relevant pages
           if (document.getElementById('homePage').classList.contains('active') || 
@@ -4935,11 +4816,6 @@
           
           banners = newBanners;
           cacheManager.set('banners', banners);
-          
-          // Save first banner to localStorage
-          if (newBanners.length > 0 && newBanners[0].image) {
-            saveBannerToLocalStorage(getProductImage(newBanners[0]));
-          }
           
           // Update UI if on home page
           if (document.getElementById('homePage').classList.contains('active')) {
@@ -5074,6 +4950,13 @@
       setupHeroMessages();
       updateStepPills();
       
+      // Load Local Storage data
+      loadUserName();
+      loadBanner();
+      loadCategories();
+      loadCart();
+      loadWishlist();
+      
       // Check authentication state
       auth.onAuthStateChanged(user => {
         if (user) {
@@ -5093,26 +4976,8 @@
 
     function initApp() {
       // Set initial theme from localStorage
-      const savedTheme = loadThemeFromLocalStorage();
+      const savedTheme = loadTheme();
       document.documentElement.setAttribute('data-theme', savedTheme);
-      
-      // Load user name from localStorage
-      loadUserNameFromLocalStorage();
-      
-      // Load cart from localStorage
-      loadCartFromLocalStorage();
-      
-      // Load wishlist from localStorage
-      loadWishlistFromLocalStorage();
-      
-      // Load categories from localStorage
-      loadCategoriesFromLocalStorage();
-      
-      // Load banner from localStorage
-      loadBannerFromLocalStorage();
-      
-      // Update copyright year
-      document.getElementById('currentYear').textContent = new Date().getFullYear();
       
       // Show home page by default
       showPage('homePage');
@@ -5182,13 +5047,12 @@
       menuClose.addEventListener('click', closeMenu);
       menuOverlay.addEventListener('click', closeMenu);
       
-      // Theme toggle with localStorage save
+      // Theme toggle
       themeToggle.addEventListener('click', function() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
         document.documentElement.setAttribute('data-theme', newTheme);
-        saveThemeToLocalStorage(newTheme);
+        saveTheme(newTheme); // Save to localStorage
       });
       
       // Auth modal
@@ -5267,8 +5131,14 @@
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       
       // Quantity controls
-      document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
-      document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
+      document.querySelector('.qty-minus')?.addEventListener('click', function() {
+        decreaseQuantity();
+        updatePaymentSummary(); // Update summary when quantity changes
+      });
+      document.querySelector('.qty-plus')?.addEventListener('click', function() {
+        increaseQuantity();
+        updatePaymentSummary(); // Update summary when quantity changes
+      });
       
       // UPDATED: Size and color selection
       document.querySelectorAll('.size-option').forEach(option => {
@@ -5345,20 +5215,6 @@
       });
       
       // Payment page quantity and payment method listeners
-      document.querySelector('.qty-minus')?.addEventListener('click', function() {
-        decreaseQuantity();
-        if (document.getElementById('paymentPage').classList.contains('active')) {
-          updatePaymentSummary();
-        }
-      });
-      
-      document.querySelector('.qty-plus')?.addEventListener('click', function() {
-        increaseQuantity();
-        if (document.getElementById('paymentPage').classList.contains('active')) {
-          updatePaymentSummary();
-        }
-      });
-      
       document.querySelectorAll('input[name="pay"]').forEach(radio => {
         radio.addEventListener('change', function() {
           if (document.getElementById('paymentPage').classList.contains('active')) {
@@ -5576,9 +5432,7 @@
         });
         
         // Save user name to localStorage
-        if (userCredential.user.displayName) {
-          saveUserNameToLocalStorage(userCredential.user.displayName);
-        }
+        saveUserName(userCredential.user.displayName || 'User');
         
         showToast('Login successful!', 'success');
         authModal.classList.remove('active');
@@ -5626,7 +5480,7 @@
         });
         
         // Save user name to localStorage
-        saveUserNameToLocalStorage(name);
+        saveUserName(name);
         
         showToast('Account created successfully!', 'success');
         authModal.classList.remove('active');
@@ -5667,9 +5521,7 @@
         }
         
         // Save user name to localStorage
-        if (user.displayName) {
-          saveUserNameToLocalStorage(user.displayName);
-        }
+        saveUserName(user.displayName || 'User');
         
         showToast('Login successful!', 'success');
         authModal.classList.remove('active');
@@ -5683,7 +5535,9 @@
       }
     }
 
-    // FIXED: Place Order Function
+    // =========================================================
+    // 4) CONFIRM & PLACE ORDER BUTTON FIX - COMPLETELY FIXED
+    // =========================================================
     async function confirmOrder() {
       if (!currentUser) {
         showLoginModal();
@@ -5704,8 +5558,9 @@
       const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
       const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
       
-      const priceStr = currentProduct.price.replace('₹', '').replace(',', '');
-      const productPrice = parseFloat(priceStr) || 0;
+      // Use safe price parsing
+      const priceStr = currentProduct.price || '₹0';
+      const productPrice = parsePrice(priceStr);
       const subtotal = productPrice * quantity;
       const deliveryCharge = adminSettings.deliveryCharge || 50;
       const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
@@ -5739,46 +5594,118 @@
       };
       
       try {
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmOrder');
+        const originalText = confirmBtn.innerHTML;
+        confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
+        confirmBtn.disabled = true;
+        
         await realtimeDb.ref('orders/' + orderId).set(orderData);
         
+        // Reset button
+        confirmBtn.innerHTML = originalText;
+        confirmBtn.disabled = false;
+        
+        // Update UI
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
         
+        // Send confirmation email
         sendOrderConfirmationEmail(orderData);
         
         showToast('Order placed successfully!', 'success');
         
-        // Clear cart for this product
-        removeFromCart(currentProduct.id, size, color);
-        
       } catch (error) {
         console.error('Error placing order:', error);
         showToast('Failed to place order. Please try again.', 'error');
+        
+        // Reset button on error
+        const confirmBtn = document.getElementById('confirmOrder');
+        confirmBtn.innerHTML = 'Confirm & Place Order';
+        confirmBtn.disabled = false;
       }
     }
 
-    // Payment Calculation Function
-    function updatePaymentSummary() {
-      if (!currentProduct) return;
+    // Order flow functions
+    function toUserInfo() {
+      const selectedSize = document.querySelector('.size-option.selected');
+      if (!selectedSize) {
+        document.getElementById('sizeValidationError').classList.add('show');
+        return;
+      }
       
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      showPage('userPage');
+    }
+
+    function toPayment() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
+
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      showPage('paymentPage');
+      updatePaymentSummary(); // Update summary when going to payment page
+    }
+
+    // UPDATED: Save user info and address
+    async function saveUserInfoAndAddress() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
+      const addressType = document.getElementById('addressType').value;
+
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       
-      const priceStr = currentProduct.price.replace('₹', '').replace(',', '');
-      const productPrice = parseFloat(priceStr) || 0;
+      // Save user name to localStorage
+      saveUserName(fullname);
       
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
+      // Save address
+      const addressData = {
+        name: fullname,
+        mobile: mobile,
+        pincode: pincode,
+        city: city,
+        state: state,
+        street: house,
+        type: addressType
+      };
       
-      document.getElementById('sumProduct').textContent = currentProduct.name;
-      document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
-      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
+      await saveAddress(addressData, true);
+      loadSavedAddresses();
+    }
+
+    function showNewAddressForm() {
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
+      
+      document.getElementById('fullname').value = '';
+      document.getElementById('mobile').value = '';
+      document.getElementById('pincode').value = '';
+      document.getElementById('city').value = '';
+      document.getElementById('state').value = '';
+      document.getElementById('house').value = '';
+      document.getElementById('addressType').value = 'home';
+      
+      const saveBtn = document.getElementById('saveUserInfo');
+      saveBtn.textContent = 'Save This Address';
+      saveBtn.onclick = saveUserInfoAndAddress;
     }
 
     // Page navigation
@@ -5812,7 +5739,7 @@
       }
       
       if (pageId === 'paymentPage') {
-        updatePaymentSummary();
+        updatePaymentSummary(); // Always update summary when showing payment page
       }
       
       if (pageId === 'userPage' && currentUser) {
@@ -5880,6 +5807,15 @@
       document.body.style.overflow = '';
     }
 
+    // Theme functions
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      saveTheme(newTheme);
+    }
+
     // Toast notification
     function showToast(message, type = 'success') {
       toast.textContent = message;
@@ -5904,13 +5840,10 @@
       realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
         if (snapshot.exists()) {
           const userData = snapshot.val();
-          userName.textContent = userData.name || user.displayName || 'User';
-          mobileUserName.textContent = userData.name || user.displayName || 'User';
-          
-          // Save to localStorage
-          if (userData.name) {
-            saveUserNameToLocalStorage(userData.name);
-          }
+          const userNameText = userData.name || user.displayName || 'User';
+          userName.textContent = userNameText;
+          mobileUserName.textContent = userNameText;
+          saveUserName(userNameText); // Save to localStorage
         }
       });
     }
@@ -5926,8 +5859,10 @@
         userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
       }
       
-      userName.textContent = user.displayName || 'User';
-      mobileUserName.textContent = user.displayName || 'User';
+      const userNameText = user.displayName || 'User';
+      userName.textContent = userNameText;
+      mobileUserName.textContent = userNameText;
+      saveUserName(userNameText); // Save to localStorage
     }
 
     function updateUIForGuest() {
@@ -5980,7 +5915,7 @@
           
           categories = newCategories;
           cacheManager.set('categories', categories);
-          saveCategoriesToLocalStorage(newCategories);
+          saveCategories(categories); // Save to localStorage
           
           renderCategories();
           renderCategoryCircles();
@@ -6571,84 +6506,6 @@
       renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
     }
 
-    // Order flow functions
-    function toUserInfo() {
-      const selectedSize = document.querySelector('.size-option.selected');
-      if (!selectedSize) {
-        document.getElementById('sizeValidationError').classList.add('show');
-        return;
-      }
-      
-      showPage('userPage');
-    }
-
-    function toPayment() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-
-      showPage('paymentPage');
-    }
-
-    // UPDATED: Save user info and address
-    async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-      const addressType = document.getElementById('addressType').value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-      
-      // Save address
-      const addressData = {
-        name: fullname,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        street: house,
-        type: addressType
-      };
-      
-      await saveAddress(addressData, true);
-      loadSavedAddresses();
-    }
-
-    function showNewAddressForm() {
-      document.getElementById('savedAddressesSection').style.display = 'none';
-      document.getElementById('newAddressForm').style.display = 'block';
-      
-      document.getElementById('fullname').value = '';
-      document.getElementById('mobile').value = '';
-      document.getElementById('pincode').value = '';
-      document.getElementById('city').value = '';
-      document.getElementById('state').value = '';
-      document.getElementById('house').value = '';
-      document.getElementById('addressType').value = 'home';
-      
-      const saveBtn = document.getElementById('saveUserInfo');
-      saveBtn.textContent = 'Save This Address';
-      saveBtn.onclick = saveUserInfoAndAddress;
-    }
-
     // Wishlist functions
     function toggleWishlistFromDetail() {
       if (!currentProduct) return;
@@ -6661,7 +6518,7 @@
       
       if (!container || !empty) return;
       
-      let wishlistProductIds = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      let wishlistProductIds = loadWishlist(); // Load from localStorage
       const wishlistProducts = products.filter(product => wishlistProductIds.includes(product.id));
       
       if (wishlistProducts.length === 0) {
@@ -6790,7 +6647,7 @@
       }
       
       filteredProducts = filteredProducts.filter(product => {
-        const price = parseFloat(product.price.replace('₹', '')) || 0;
+        const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
       
