@@ -12,8 +12,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
-  <!-- EmailJS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
     :root {
       --bg: #ffffff;
@@ -629,13 +627,12 @@
       margin-bottom: 16px;
       position: relative;
       overflow: hidden;
-      cursor: zoom-in;
+      cursor: pointer;
     }
     
+    /* REMOVED: Product thumbnail gallery */
     .product-detail-thumbnails {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      display: none;
     }
     
     .product-detail-thumbnail {
@@ -2209,7 +2206,7 @@
     /* NEW: Enhanced Product Gallery */
     .product-gallery-zoom {
       position: relative;
-      cursor: zoom-in;
+      cursor: pointer;
     }
     
     .zoom-indicator {
@@ -2337,6 +2334,7 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
+      cursor: pointer;
     }
 
     .banner-controls {
@@ -2642,7 +2640,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -2659,14 +2657,25 @@
     
     .product-image-modal-content {
       position: relative;
-      max-width: 90%;
-      max-height: 90%;
+      max-width: 95%;
+      max-height: 95%;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
     
     .product-image-modal-image {
       max-width: 100%;
-      max-height: 90vh;
+      max-height: 85vh;
       object-fit: contain;
+      cursor: grab;
+    }
+    
+    .product-image-modal-image:active {
+      cursor: grabbing;
     }
     
     .product-image-modal-close {
@@ -2685,6 +2694,7 @@
       cursor: pointer;
       font-size: 20px;
       transition: all 0.2s ease;
+      z-index: 10;
     }
     
     .product-image-modal-close:hover {
@@ -2700,6 +2710,7 @@
       justify-content: space-between;
       padding: 0 20px;
       transform: translateY(-50%);
+      z-index: 10;
     }
     
     .product-image-modal-prev,
@@ -2731,6 +2742,7 @@
       display: flex;
       justify-content: center;
       gap: 10px;
+      z-index: 10;
     }
     
     .product-image-modal-dot {
@@ -2805,6 +2817,7 @@
       padding: 16px;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
+      position: relative;
     }
     
     .review-header {
@@ -2831,6 +2844,24 @@
     .review-text {
       color: var(--ink-2);
       line-height: 1.5;
+    }
+    
+    .review-delete-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--error);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .review-delete-btn:hover {
+      background: #fee2e2;
     }
 
     /* NEW: Payment Gateway Charge Note */
@@ -3017,6 +3048,191 @@
       color: var(--ink);
     }
 
+    /* NEW: Professional Color Selection System */
+    .color-selection-system {
+      margin: 24px 0;
+    }
+    
+    .color-selection-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+    
+    .selected-color-display {
+      font-size: 14px;
+      margin-bottom: 16px;
+      color: var(--muted);
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    
+    .selected-color-display strong {
+      color: var(--ink);
+    }
+    
+    .color-options-grid {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .color-box {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    
+    .color-box:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    
+    .color-box.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent), 0 4px 12px rgba(37, 99, 235, 0.1);
+    }
+    
+    .color-box.out-of-stock {
+      opacity: 0.5;
+      cursor: not-allowed;
+      position: relative;
+    }
+    
+    .color-box.out-of-stock::after {
+      content: 'Out of Stock';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 9px;
+      text-align: center;
+      padding: 2px;
+    }
+    
+    .color-label {
+      font-size: 12px;
+      text-align: center;
+      margin-top: 4px;
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    /* Skeleton Loaders */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: var(--radius);
+    }
+
+    .product-card.skeleton {
+      border: none;
+    }
+    
+    .product-card.skeleton .product-card-image {
+      background: none;
+    }
+    
+    .product-card.skeleton .product-card-title {
+      height: 16px;
+      width: 80%;
+      margin-bottom: 8px;
+    }
+    
+    .product-card.skeleton .product-card-rating {
+      height: 14px;
+      width: 60%;
+      margin-bottom: 8px;
+    }
+    
+    .product-card.skeleton .product-card-price {
+      height: 18px;
+      width: 50%;
+    }
+    
+    .banner-carousel.skeleton {
+      background: #f0f0f0;
+    }
+    
+    .category-circle.skeleton .category-circle-image {
+      background: #f0f0f0;
+    }
+    
+    .category-circle.skeleton .category-circle-name {
+      height: 12px;
+      width: 50px;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+
+    /* NEW: Image Zoom Controls */
+    .zoom-controls-container {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 10;
+    }
+    
+    .zoom-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.2s ease;
+    }
+    
+    .zoom-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* NEW: Email Notification Styles */
+    .email-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--success);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-hover);
+      z-index: 1000;
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+    }
+    
+    .email-notification.show {
+      transform: translateX(0);
+    }
+    
+    .email-notification.error {
+      background: var(--error);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-inner {
@@ -3162,6 +3378,26 @@
         padding: 10px 14px;
         min-width: 45px;
       }
+      
+      /* Color selection mobile */
+      .color-options-grid {
+        gap: 10px;
+      }
+      
+      .color-box {
+        width: 50px;
+        height: 50px;
+      }
+      
+      /* Product image modal mobile */
+      .product-image-modal-content {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      
+      .product-image-modal-image {
+        max-height: 70vh;
+      }
     }
 
     @media (max-width: 480px) {
@@ -3172,11 +3408,6 @@
       .product-detail-main-image {
         height: 50vh;
         max-height: 400px;
-      }
-      
-      .product-detail-thumbnail {
-        width: 60px;
-        height: 60px;
       }
       
       /* Keep 2 columns on very small screens */
@@ -3195,6 +3426,24 @@
         padding: 8px 12px;
         min-width: 40px;
         font-size: 14px;
+      }
+      
+      /* Color selection very small */
+      .color-options-grid {
+        gap: 8px;
+      }
+      
+      .color-box {
+        width: 45px;
+        height: 45px;
+      }
+      
+      /* Product image modal very small */
+      .product-image-modal-prev,
+      .product-image-modal-next {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
       }
     }
 
@@ -3234,72 +3483,6 @@
     .social-link:hover {
       background: var(--accent);
       color: white !important;
-    }
-
-    /* =============== SKELETON LOADER STYLES =============== */
-    .skeleton {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: var(--radius);
-    }
-
-    .skeleton-text {
-      height: 12px;
-      margin-bottom: 8px;
-      border-radius: 4px;
-    }
-
-    .skeleton-title {
-      height: 20px;
-      width: 60%;
-      margin-bottom: 12px;
-    }
-
-    .skeleton-price {
-      height: 24px;
-      width: 40%;
-    }
-
-    .skeleton-product-card {
-      background: var(--card);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      border: 1px solid var(--border);
-    }
-
-    .skeleton-product-image {
-      height: 180px;
-      width: 100%;
-    }
-
-    .skeleton-product-body {
-      padding: 16px;
-    }
-
-    .skeleton-category-pill {
-      height: 32px;
-      width: 80px;
-      border-radius: 20px;
-    }
-
-    .skeleton-banner {
-      height: 200px;
-      width: 100%;
-      border-radius: var(--radius);
-    }
-
-    .skeleton-slider-item {
-      width: 200px;
-      height: 200px;
-      border-radius: var(--radius);
-    }
-
-    [data-theme="dark"] .skeleton {
-      background: linear-gradient(90deg, #2d3748 25%, #4a5568 50%, #2d3748 75%);
     }
   </style>
 
@@ -3433,7 +3616,7 @@
       <!-- Login/Signup at the bottom of mobile menu -->
       <div class="menu-item" id="mobileLoginBtn" onclick="showLoginModal(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <path d="M20 21v -2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         Login / Sign Up
@@ -3526,7 +3709,7 @@
       </section>
 
       <!-- NEW: Banner Carousel -->
-      <div class="banner-carousel" id="bannerCarousel">
+      <div class="banner-carousel skeleton" id="bannerCarousel">
         <div class="banner-track" id="bannerTrack"></div>
         <div class="banner-controls" id="bannerControls"></div>
       </div>
@@ -3537,14 +3720,39 @@
           <h2 class="trending-title">Trending Now</h2>
         </div>
         <div class="slider-container">
-          <div class="slider-track" id="productSlider"></div>
+          <div class="slider-track" id="productSlider">
+            <!-- Skeleton loader for trending products -->
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+          </div>
         </div>
       </div>
 
       <!-- NEW: Category Circles Section -->
       <div class="category-circles">
         <h2 class="category-circles-title">Shop by Category</h2>
-        <div class="category-circles-container" id="categoryCirclesContainer"></div>
+        <div class="category-circles-container" id="categoryCirclesContainer">
+          <!-- Skeleton loader for categories -->
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
+          </div>
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
+          </div>
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
+          </div>
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
+          </div>
+        </div>
       </div>
 
       <!-- SEARCH BAR -->
@@ -3568,7 +3776,43 @@
 
       <!-- Featured Products Grid -->
       <div class="product-grid" id="homeProductGrid">
-        <!-- Product cards will be loaded here -->
+        <!-- Skeleton loader for products -->
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Recently Viewed Products Section -->
@@ -3627,7 +3871,43 @@
       </div>
 
       <div class="product-grid" id="productGrid">
-        <!-- Product cards will be loaded here -->
+        <!-- Skeleton loader for products -->
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -3657,7 +3937,16 @@
               <button class="detail-carousel-control next">&#10095;</button>
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
             </div>
-            <div class="product-detail-thumbnails" id="productDetailThumbnails"></div>
+            
+            <!-- REMOVED: Product thumbnail gallery -->
+            <!-- ADDED: Color selection system in place of thumbnails -->
+            <div class="color-selection-system" id="colorSelectionSystem">
+              <div class="color-selection-title">Select Color</div>
+              <div class="selected-color-display">Selected Color: <strong id="selectedColorNameDisplay">Select a color</strong></div>
+              <div class="color-options-grid" id="colorOptionsGrid">
+                <!-- Color options will be dynamically loaded from Firebase -->
+              </div>
+            </div>
           </div>
           
           <div class="product-detail-info">
@@ -3667,6 +3956,7 @@
             <div class="product-detail-price" id="detailPrice"></div>
             <!-- Stock Status -->
             <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
+            
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
             
@@ -3777,12 +4067,12 @@
                 </div>
                 
                 <div class="selection-title" style="margin-top: 20px;">Select Color</div>
-                <div class="color-options" id="colorOptions">
-                  <div class="color-option selected" data-value="black" style="background-color: #000;"></div>
-                  <div class="color-option" data-value="white" style="background-color: #fff; border: 1px solid #ccc;"></div>
-                  <div class="color-option" data-value="blue" style="background-color: #2563eb;"></div>
-                  <div class="color-option" data-value="red" style="background-color: #ef4444;"></div>
-                  <div class="color-option" data-value="green" style="background-color: #22c55e;"></div>
+                <div class="color-options-grid" id="orderColorOptions">
+                  <!-- Color options will be dynamically loaded -->
+                </div>
+                
+                <div class="selected-color-display" style="margin-top: 10px;">
+                  Selected Color: <strong id="selectedOrderColorDisplay">Select a color</strong>
                 </div>
                 
                 <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
@@ -4285,24 +4575,66 @@
     </div>
   </div>
 
-  <!-- =============== FIREBASE SDK MOVED HERE =============== -->
+  <!-- Email Notification -->
+  <div class="email-notification" id="emailNotification"></div>
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js" defer></script>
+  <!-- EmailJS SDK - FIXED: Added with proper initialization -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" defer></script>
 
-  <!-- =============== CACHE-FIRST + INSTANT RENDER SYSTEM =============== -->
+  <!-- JavaScript -->
   <script>
-    // Cache Manager with 7-day TTL
+    // Global variables
+    let currentUser = null;
+    let currentProduct = null;
+    let userInfo = {};
+    let currentOrderId = null;
+    let products = [];
+    let categories = [];
+    let banners = [];
+    let recentlyViewed = [];
+    let currentImageIndex = 0;
+    let currentZoomLevel = 1;
+    let currentCategoryFilter = null;
+    let currentProductImages = [];
+    let currentProductModalIndex = 0;
+    let currentSelectedColor = null;
+    let currentSelectedColorName = null;
+    let productColorImages = {}; // Store color-wise images
+    let bannerStartX = 0;
+    let bannerCurrentX = 0;
+    let isBannerDragging = false;
+    let adminSettings = {
+      deliveryCharge: 50,
+      gatewayChargePercent: 2,
+      freeShippingOver: 999
+    };
+    let savedAddresses = [];
+
+    // EmailJS Configuration - FIXED: Add your actual EmailJS credentials here
+    const emailjsConfig = {
+      serviceId: 'YOUR_SERVICE_ID', // Add your EmailJS service ID
+      templateId: 'YOUR_TEMPLATE_ID', // Add your EmailJS template ID
+      publicKey: 'YOUR_PUBLIC_KEY' // Add your EmailJS public key
+    };
+
+    // Cache Manager with 7 days TTL
     const cacheManager = {
-      set: function(key, data, ttl = 7 * 24 * 60 * 60 * 1000) { // 7 days default
+      set: function(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
         const item = {
           data: data,
           timestamp: Date.now(),
           ttl: ttl
         };
-        localStorage.setItem(key, JSON.stringify(item));
+        try {
+          localStorage.setItem(key, JSON.stringify(item));
+        } catch (e) {
+          console.error('Error saving to localStorage:', e);
+        }
       },
       
       get: function(key) {
@@ -4327,248 +4659,431 @@
       
       remove: function(key) {
         localStorage.removeItem(key);
-      },
-      
-      clear: function() {
-        localStorage.clear();
       }
     };
 
-    // Global variables for caching system
-    let products = [];
-    let categories = [];
-    let banners = [];
-    let adminSettings = {};
-    let currentUser = null;
-    let firebaseApp = null;
-    let firebaseInitialized = false;
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
+      authDomain: "videomanager-23d98.firebaseapp.com",
+      databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
+      projectId: "videomanager-23d98",
+      storageBucket: "videomanager-23d98.firebasestorage.app",
+      messagingSenderId: "847321523576",
+      appId: "1:847321523576:web:bda3f5026e3e163603548d",
+      measurementId: "G-YBSJ1KMPV4"
+    };
 
-    // Skeleton Loader Functions
-    function showSkeleton(containerId, type = 'products') {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      
-      let skeletonHTML = '';
-      
-      switch(type) {
-        case 'products':
-          skeletonHTML = `
-            <div class="skeleton-product-card">
-              <div class="skeleton skeleton-product-image"></div>
-              <div class="skeleton-product-body">
-                <div class="skeleton skeleton-title"></div>
-                <div class="skeleton skeleton-text" style="width: 80%;"></div>
-                <div class="skeleton skeleton-text" style="width: 60%;"></div>
-                <div class="skeleton skeleton-price"></div>
-              </div>
-            </div>
-          `.repeat(6);
-          break;
-          
-        case 'categories':
-          skeletonHTML = `
-            <div class="skeleton-category-pill skeleton"></div>
-            <div class="skeleton-category-pill skeleton"></div>
-            <div class="skeleton-category-pill skeleton"></div>
-            <div class="skeleton-category-pill skeleton"></div>
-            <div class="skeleton-category-pill skeleton"></div>
-          `;
-          break;
-          
-        case 'banner':
-          skeletonHTML = `<div class="skeleton-banner skeleton"></div>`;
-          break;
-          
-        case 'slider':
-          skeletonHTML = `
-            <div class="skeleton-slider-item skeleton" style="margin-right: 16px;"></div>
-            <div class="skeleton-slider-item skeleton" style="margin-right: 16px;"></div>
-            <div class="skeleton-slider-item skeleton" style="margin-right: 16px;"></div>
-            <div class="skeleton-slider-item skeleton" style="margin-right: 16px;"></div>
-          `;
-          break;
-          
-        case 'category-circles':
-          skeletonHTML = `
-            <div class="category-circle">
-              <div class="category-circle-image skeleton" style="background: none;"></div>
-              <div class="skeleton skeleton-text" style="width: 50px; height: 10px; margin-top: 8px;"></div>
-            </div>
-          `.repeat(8);
-          break;
+    // Initialize Firebase when scripts are loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if Firebase is available
+      if (typeof firebase === 'undefined') {
+        console.error('Firebase SDK not loaded');
+        return;
       }
       
-      container.innerHTML = skeletonHTML;
-    }
-
-    // Initialize Firebase
-    function initializeFirebase() {
-      if (firebaseInitialized) return;
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const realtimeDb = firebase.database();
       
-      const firebaseConfig = {
-        apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
-        authDomain: "videomanager-23d98.firebaseapp.com",
-        databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
-        projectId: "videomanager-23d98",
-        storageBucket: "videomanager-23d98.firebasestorage.app",
-        messagingSenderId: "847321523576",
-        appId: "1:847321523576:web:bda3f5026e3e163603548d",
-        measurementId: "G-YBSJ1KMPV4"
-      };
-
-      try {
-        firebaseApp = firebase.initializeApp(firebaseConfig);
-        firebaseInitialized = true;
-        console.log('Firebase initialized successfully');
-        
-        // Initialize auth state listener
-        firebase.auth().onAuthStateChanged(user => {
+      // Initialize EmailJS - FIXED
+      if (typeof emailjs !== 'undefined') {
+        emailjs.init(emailjsConfig.publicKey);
+      } else {
+        console.warn('EmailJS not loaded');
+      }
+      
+      // Initialize app
+      initApp();
+      setupEventListeners();
+      
+      // Load cached data first
+      loadCachedData();
+      
+      // Then fetch live data
+      fetchLiveData();
+      
+      // Setup realtime listeners
+      setupRealtimeListeners();
+      
+      // Auth state listener
+      auth.onAuthStateChanged(user => {
+        if (user) {
           currentUser = user;
-          if (user) {
-            loadUserData(user.uid);
-            loadUserOrders(user.uid);
-            loadUserWishlist(user.uid);
-            loadUserAddresses(user.uid);
-          }
-        });
+          updateUIForUser(user);
+          loadUserData(user);
+          loadRecentlyViewed(user);
+          loadSavedAddresses();
+          // Send login notification email
+          sendLoginNotification(user);
+          authModal.classList.remove('active');
+        } else {
+          currentUser = null;
+          updateUIForGuest();
+        }
+      });
+    });
+
+    function initApp() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      
+      showPage('homePage');
+      
+      if (window.location.hash) {
+        const pageId = window.location.hash.replace('#', '');
+        if (document.getElementById(pageId)) {
+          showPage(pageId);
+        }
+      }
+      
+      updateProfileName();
+      setupHeroMessages();
+      updateStepPills();
+    }
+
+    // FIXED: Email notification functions
+    function showEmailNotification(message, type = 'success') {
+      const notification = document.getElementById('emailNotification');
+      notification.textContent = message;
+      notification.className = 'email-notification';
+      
+      if (type === 'error') {
+        notification.classList.add('error');
+      } else {
+        notification.classList.remove('error');
+      }
+      
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 5000);
+    }
+
+    async function sendLoginNotification(user) {
+      if (!user || !user.email) return;
+      
+      try {
+        const templateParams = {
+          to_email: user.email,
+          user_name: user.displayName || 'Customer',
+          login_time: new Date().toLocaleString(),
+          website_name: 'Buyzo Cart'
+        };
         
-        // Start realtime listeners
-        setupRealtimeListeners();
+        // FIXED: Check if EmailJS is properly initialized
+        if (typeof emailjs === 'undefined') {
+          console.warn('EmailJS not available for sending login notification');
+          return;
+        }
         
+        await emailjs.send(
+          emailjsConfig.serviceId,
+          emailjsConfig.templateId,
+          templateParams
+        );
+        
+        showEmailNotification('Login notification sent to your email!', 'success');
       } catch (error) {
-        console.error('Firebase initialization error:', error);
+        console.error('Error sending login notification:', error);
+        // Don't show error to user for login notification
       }
     }
 
-    // Load data with cache-first strategy
-    async function loadDataWithCache(dataType, firebasePath, containerId, renderFunction, skeletonType) {
-      // Show skeleton immediately
-      if (containerId && skeletonType) {
-        showSkeleton(containerId, skeletonType);
-      }
+    async function sendOrderNotification(orderData, user) {
+      if (!user || !user.email) return;
       
-      // Try to load from cache first
-      const cachedData = cacheManager.get(dataType);
-      
-      if (cachedData && cachedData.length > 0) {
-        console.log(`Loading ${dataType} from cache:`, cachedData.length, 'items');
+      try {
+        const templateParams = {
+          to_email: user.email,
+          user_name: user.displayName || 'Customer',
+          order_id: orderData.orderId,
+          order_date: new Date(orderData.orderDate).toLocaleString(),
+          product_name: orderData.productName,
+          quantity: orderData.quantity,
+          total_amount: orderData.totalAmount,
+          status: orderData.status,
+          website_name: 'Buyzo Cart'
+        };
         
-        // Update global variables
-        switch(dataType) {
-          case 'products': products = cachedData; break;
-          case 'categories': categories = cachedData; break;
-          case 'banners': banners = cachedData; break;
-          case 'adminSettings': adminSettings = cachedData; break;
+        // FIXED: Check if EmailJS is properly initialized
+        if (typeof emailjs === 'undefined') {
+          console.warn('EmailJS not available for sending order notification');
+          return;
         }
         
-        // Render cached data
-        if (renderFunction && containerId) {
-          renderFunction(cachedData, containerId);
-        }
+        await emailjs.send(
+          emailjsConfig.serviceId,
+          emailjsConfig.templateId,
+          templateParams
+        );
+        
+        showEmailNotification('Order confirmation sent to your email!', 'success');
+      } catch (error) {
+        console.error('Error sending order notification:', error);
+        showEmailNotification('Failed to send email notification', 'error');
       }
-      
-      // Fetch fresh data from Firebase in background
-      if (firebaseInitialized && firebasePath) {
-        try {
-          console.log(`Fetching fresh ${dataType} from Firebase...`);
-          const snapshot = await firebase.database().ref(firebasePath).once('value');
-          
-          if (snapshot.exists()) {
-            const dataObj = snapshot.val();
-            const freshData = Object.keys(dataObj).map(key => ({
-              id: key,
-              ...dataObj[key]
-            }));
-            
-            console.log(`Fresh ${dataType} loaded:`, freshData.length, 'items');
-            
-            // Update global variables
-            switch(dataType) {
-              case 'products': products = freshData; break;
-              case 'categories': categories = freshData; break;
-              case 'banners': banners = freshData; break;
-              case 'adminSettings': adminSettings = freshData; break;
-            }
-            
-            // Cache the fresh data
-            cacheManager.set(dataType, freshData);
-            
-            // Render fresh data if different from cache
-            if (renderFunction && containerId) {
-              const container = document.getElementById(containerId);
-              if (container && container.innerHTML.includes('skeleton')) {
-                renderFunction(freshData, containerId);
-              }
-            }
-            
-            return freshData;
-          }
-        } catch (error) {
-          console.error(`Error loading ${dataType} from Firebase:`, error);
-        }
-      }
-      
-      return cachedData || [];
     }
 
-    // Setup realtime Firebase listeners
-    function setupRealtimeListeners() {
-      if (!firebaseInitialized) return;
+    // Load cached data first
+    function loadCachedData() {
+      // Load products from cache
+      const cachedProducts = cacheManager.get('products');
+      if (cachedProducts && cachedProducts.length > 0) {
+        products = cachedProducts;
+        renderProducts(products, 'homeProductGrid');
+        renderProducts(products, 'productGrid');
+        
+        const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
+        renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+        
+        const featuredProducts = products.filter(p => p.isFeatured);
+        if (featuredProducts.length > 0) {
+          renderProducts(featuredProducts, 'homeProductGrid');
+        }
+      } else {
+        showSkeletonLoaders();
+      }
       
-      // Products listener
-      firebase.database().ref('products').on('value', snapshot => {
-        if (snapshot.exists()) {
-          const dataObj = snapshot.val();
-          const freshProducts = Object.keys(dataObj).map(key => ({
+      // Load categories from cache
+      const cachedCategories = cacheManager.get('categories');
+      if (cachedCategories && cachedCategories.length > 0) {
+        categories = cachedCategories;
+        renderCategories();
+        renderCategoryCircles();
+      }
+      
+      // Load banners from cache
+      const cachedBanners = cacheManager.get('banners');
+      if (cachedBanners && cachedBanners.length > 0) {
+        banners = cachedBanners;
+        renderBannerCarousel();
+      }
+      
+      // Load admin settings from cache
+      const cachedSettings = cacheManager.get('adminSettings');
+      if (cachedSettings) {
+        adminSettings = cachedSettings;
+        updateAdminSettingsUI();
+      }
+    }
+
+    function showSkeletonLoaders() {
+      // Home page products
+      const homeGrid = document.getElementById('homeProductGrid');
+      if (homeGrid) {
+        homeGrid.innerHTML = `
+          <div class="product-card skeleton">
+            <div class="product-card-image"></div>
+            <div class="product-card-body">
+              <div class="product-card-title"></div>
+              <div class="product-card-rating"></div>
+              <div class="product-card-price"></div>
+              <div class="product-card-actions"></div>
+            </div>
+          </div>
+        `.repeat(4);
+      }
+      
+      // Products page grid
+      const productGrid = document.getElementById('productGrid');
+      if (productGrid) {
+        productGrid.innerHTML = `
+          <div class="product-card skeleton">
+            <div class="product-card-image"></div>
+            <div class="product-card-body">
+              <div class="product-card-title"></div>
+              <div class="product-card-rating"></div>
+              <div class="product-card-price"></div>
+              <div class="product-card-actions"></div>
+            </div>
+          </div>
+        `.repeat(4);
+      }
+      
+      // Trending slider
+      const productSlider = document.getElementById('productSlider');
+      if (productSlider) {
+        productSlider.innerHTML = `
+          <div class="slider-item skeleton" style="height: 200px;"></div>
+        `.repeat(5);
+      }
+      
+      // Banner carousel
+      const bannerCarousel = document.getElementById('bannerCarousel');
+      if (bannerCarousel) {
+        bannerCarousel.classList.add('skeleton');
+      }
+      
+      // Category circles
+      const categoryCircles = document.getElementById('categoryCirclesContainer');
+      if (categoryCircles) {
+        categoryCircles.innerHTML = `
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
+          </div>
+        `.repeat(4);
+      }
+    }
+
+    // Fetch live data from Firebase
+    function fetchLiveData() {
+      const realtimeDb = firebase.database();
+      
+      // Fetch products
+      realtimeDb.ref('products').once('value').then(snapshot => {
+        const productsObj = snapshot.val();
+        if (productsObj) {
+          const newProducts = Object.keys(productsObj).map(key => ({
             id: key,
-            ...dataObj[key]
+            ...productsObj[key]
           }));
           
-          products = freshProducts;
-          cacheManager.set('products', freshProducts);
+          products = newProducts;
+          cacheManager.set('products', products);
           
           // Update UI if on relevant pages
-          if (document.getElementById('homePage').classList.contains('active')) {
-            renderProducts(freshProducts, 'homeProductGrid');
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
+            renderProducts(products, 'homeProductGrid');
+            renderProducts(products, 'productGrid');
+            
+            const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
+            renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+            
+            const featuredProducts = products.filter(p => p.isFeatured);
+            if (featuredProducts.length > 0) {
+              renderProducts(featuredProducts, 'homeProductGrid');
+            }
           }
-          if (document.getElementById('productsPage').classList.contains('active')) {
-            renderProducts(freshProducts, 'productGrid');
+        }
+      }).catch(error => {
+        console.error('Error fetching products:', error);
+      });
+      
+      // Fetch categories
+      realtimeDb.ref('categories').once('value').then(snapshot => {
+        const categoriesObj = snapshot.val();
+        if (categoriesObj) {
+          const newCategories = Object.keys(categoriesObj).map(key => ({
+            id: key,
+            ...categoriesObj[key]
+          }));
+          
+          categories = newCategories;
+          cacheManager.set('categories', categories);
+          
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
+            renderCategories();
+            renderCategoryCircles();
+          }
+        }
+      }).catch(error => {
+        console.error('Error fetching categories:', error);
+      });
+      
+      // Fetch banners
+      realtimeDb.ref('banners').once('value').then(snapshot => {
+        const bannersObj = snapshot.val();
+        if (bannersObj) {
+          const newBanners = Object.keys(bannersObj).map(key => ({
+            id: key,
+            ...bannersObj[key]
+          }));
+          
+          banners = newBanners;
+          cacheManager.set('banners', banners);
+          
+          if (document.getElementById('homePage').classList.contains('active')) {
+            renderBannerCarousel();
+          }
+        }
+      }).catch(error => {
+        console.error('Error fetching banners:', error);
+      });
+      
+      // Fetch admin settings
+      realtimeDb.ref('adminSettings').once('value').then(snapshot => {
+        const settingsObj = snapshot.val();
+        if (settingsObj) {
+          adminSettings = { ...adminSettings, ...settingsObj };
+          cacheManager.set('adminSettings', adminSettings);
+          updateAdminSettingsUI();
+        }
+      }).catch(error => {
+        console.error('Error fetching admin settings:', error);
+      });
+    }
+
+    // Setup realtime listeners
+    function setupRealtimeListeners() {
+      const realtimeDb = firebase.database();
+      
+      // Products listener
+      realtimeDb.ref('products').on('value', snapshot => {
+        const productsObj = snapshot.val();
+        if (productsObj) {
+          const newProducts = Object.keys(productsObj).map(key => ({
+            id: key,
+            ...productsObj[key]
+          }));
+          
+          products = newProducts;
+          cacheManager.set('products', products);
+          
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active') ||
+              document.getElementById('productDetailPage').classList.contains('active')) {
+            renderProducts(products, 'homeProductGrid');
+            renderProducts(products, 'productGrid');
+            
+            const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
+            renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+            
+            const featuredProducts = products.filter(p => p.isFeatured);
+            if (featuredProducts.length > 0) {
+              renderProducts(featuredProducts, 'homeProductGrid');
+            }
           }
         }
       });
       
       // Categories listener
-      firebase.database().ref('categories').on('value', snapshot => {
-        if (snapshot.exists()) {
-          const dataObj = snapshot.val();
-          const freshCategories = Object.keys(dataObj).map(key => ({
+      realtimeDb.ref('categories').on('value', snapshot => {
+        const categoriesObj = snapshot.val();
+        if (categoriesObj) {
+          const newCategories = Object.keys(categoriesObj).map(key => ({
             id: key,
-            ...dataObj[key]
+            ...categoriesObj[key]
           }));
           
-          categories = freshCategories;
-          cacheManager.set('categories', freshCategories);
+          categories = newCategories;
+          cacheManager.set('categories', categories);
           
-          // Update UI if on relevant pages
-          if (document.getElementById('productsPage').classList.contains('active')) {
+          if (document.getElementById('homePage').classList.contains('active') || 
+              document.getElementById('productsPage').classList.contains('active')) {
             renderCategories();
+            renderCategoryCircles();
           }
         }
       });
       
       // Banners listener
-      firebase.database().ref('banners').on('value', snapshot => {
-        if (snapshot.exists()) {
-          const dataObj = snapshot.val();
-          const freshBanners = Object.keys(dataObj).map(key => ({
+      realtimeDb.ref('banners').on('value', snapshot => {
+        const bannersObj = snapshot.val();
+        if (bannersObj) {
+          const newBanners = Object.keys(bannersObj).map(key => ({
             id: key,
-            ...dataObj[key]
+            ...bannersObj[key]
           }));
           
-          banners = freshBanners;
-          cacheManager.set('banners', freshBanners);
+          banners = newBanners;
+          cacheManager.set('banners', banners);
           
-          // Update UI if on relevant pages
           if (document.getElementById('homePage').classList.contains('active')) {
             renderBannerCarousel();
           }
@@ -4576,591 +5091,37 @@
       });
       
       // Admin settings listener
-      firebase.database().ref('adminSettings').on('value', snapshot => {
-        if (snapshot.exists()) {
-          const freshSettings = snapshot.val();
-          adminSettings = freshSettings;
-          cacheManager.set('adminSettings', freshSettings);
-          
-          // Update UI
+      realtimeDb.ref('adminSettings').on('value', snapshot => {
+        const settingsObj = snapshot.val();
+        if (settingsObj) {
+          adminSettings = { ...adminSettings, ...settingsObj };
+          cacheManager.set('adminSettings', adminSettings);
           updateAdminSettingsUI();
         }
       });
-    }
-
-    // User data loading functions
-    async function loadUserData(userId) {
-      try {
-        const cachedUser = cacheManager.get(`user_${userId}`);
-        if (cachedUser) {
-          // Update UI with cached user data
-          updateUserUI(cachedUser);
-        }
-        
-        const snapshot = await firebase.database().ref(`users/${userId}`).once('value');
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          cacheManager.set(`user_${userId}`, userData);
-          updateUserUI(userData);
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      }
-    }
-    
-    async function loadUserOrders(userId) {
-      try {
-        const cachedOrders = cacheManager.get(`orders_${userId}`);
-        if (cachedOrders && document.getElementById('myOrdersPage').classList.contains('active')) {
-          renderOrders(cachedOrders);
-        }
-        
-        const snapshot = await firebase.database().ref('orders').orderByChild('userId').equalTo(userId).once('value');
-        if (snapshot.exists()) {
-          const dataObj = snapshot.val();
-          const orders = Object.keys(dataObj).map(key => ({
-            id: key,
-            ...dataObj[key]
-          }));
-          
-          cacheManager.set(`orders_${userId}`, orders);
-          
-          if (document.getElementById('myOrdersPage').classList.contains('active')) {
-            renderOrders(orders);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user orders:', error);
-      }
-    }
-    
-    async function loadUserWishlist(userId) {
-      try {
-        const cachedWishlist = cacheManager.get(`wishlist_${userId}`);
-        if (cachedWishlist && document.getElementById('wishlistPage').classList.contains('active')) {
-          renderWishlistFromIds(cachedWishlist);
-        }
-        
-        const snapshot = await firebase.database().ref(`userWishlists/${userId}`).once('value');
-        if (snapshot.exists()) {
-          const wishlistIds = Object.keys(snapshot.val());
-          cacheManager.set(`wishlist_${userId}`, wishlistIds);
-          
-          if (document.getElementById('wishlistPage').classList.contains('active')) {
-            renderWishlistFromIds(wishlistIds);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user wishlist:', error);
-      }
-    }
-    
-    async function loadUserAddresses(userId) {
-      try {
-        const cachedAddresses = cacheManager.get(`addresses_${userId}`);
-        if (cachedAddresses && document.getElementById('userPage').classList.contains('active')) {
-          renderAddresses(cachedAddresses);
-        }
-        
-        const snapshot = await firebase.database().ref('addresses').orderByChild('userId').equalTo(userId).once('value');
-        if (snapshot.exists()) {
-          const dataObj = snapshot.val();
-          const addresses = Object.keys(dataObj).map(key => ({
-            id: key,
-            ...dataObj[key]
-          }));
-          
-          cacheManager.set(`addresses_${userId}`, addresses);
-          
-          if (document.getElementById('userPage').classList.contains('active')) {
-            renderAddresses(addresses);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user addresses:', error);
-      }
-    }
-
-    // UI update functions
-    function updateUserUI(userData) {
-      // Update user name in UI
-      const userNameElements = document.querySelectorAll('.user-name, #mobileUserName');
-      userNameElements.forEach(el => {
-        el.textContent = userData.name || 'User';
-      });
       
-      // Update user avatar if available
-      if (userData.photoURL) {
-        const avatarImg = document.getElementById('userAvatarImg');
-        if (avatarImg) {
-          avatarImg.src = userData.photoURL;
-          avatarImg.style.display = 'block';
-          document.getElementById('userAvatarInitial').style.display = 'none';
-        }
-      }
-    }
-    
-    function updateAdminSettingsUI() {
-      if (adminSettings.deliveryCharge) {
-        document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
-        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge}`;
-      }
-      
-      if (adminSettings.gatewayChargePercent) {
-        document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
-      }
-    }
-
-    // Render functions (simplified versions)
-    function renderProducts(productsArray, containerId) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      if (productsArray.length === 0) {
-        container.innerHTML = '<div class="card-panel center">No products found</div>';
-        return;
-      }
-      
-      // Render first 6 products for home page, all for products page
-      const productsToRender = containerId === 'homeProductGrid' ? 
-        productsArray.filter(p => p.isFeatured).slice(0, 6) : 
-        productsArray;
-      
-      productsToRender.forEach(product => {
-        const productCard = createProductCard(product);
-        container.appendChild(productCard);
-      });
-    }
-    
-    function renderCategories() {
-      const container = document.getElementById('categoriesContainer');
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      categories.forEach(category => {
-        const categoryPill = document.createElement('div');
-        categoryPill.className = 'category-pill';
-        categoryPill.textContent = category.name || 'Category';
-        categoryPill.addEventListener('click', () => filterByCategory(category.id));
-        container.appendChild(categoryPill);
-      });
-    }
-    
-    function renderBannerCarousel() {
-      const track = document.getElementById('bannerTrack');
-      const controls = document.getElementById('bannerControls');
-      
-      if (!track || !controls) return;
-      
-      track.innerHTML = '';
-      controls.innerHTML = '';
-      
-      banners.forEach((banner, index) => {
-        const slide = document.createElement('div');
-        slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${banner.imageUrl || banner.image || "https://via.placeholder.com/800x200"}')`;
-        track.appendChild(slide);
-        
-        const dot = document.createElement('div');
-        dot.className = `banner-dot ${index === 0 ? 'active' : ''}`;
-        controls.appendChild(dot);
-      });
-    }
-    
-    function createProductCard(product) {
-      const card = document.createElement('div');
-      card.className = 'product-card';
-      
-      card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${product.imageUrl || product.image || "https://via.placeholder.com/300x300"}')">
-          ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
-        </div>
-        <div class="product-card-body">
-          <div class="product-card-title">${product.name || 'Product Name'}</div>
-          <div class="product-card-price">
-            <div class="product-card-current-price">${product.price || '₹0'}</div>
-          </div>
-        </div>
-      `;
-      
-      card.addEventListener('click', () => {
-        // Your existing showProductDetail function
-        if (window.showProductDetail) {
-          window.showProductDetail(product);
+      // Reviews listener for real-time updates
+      realtimeDb.ref('reviews').on('value', snapshot => {
+        if (currentProduct && document.getElementById('productDetailPage').classList.contains('active')) {
+          loadProductReviews(currentProduct.id);
         }
       });
-      
-      return card;
     }
 
-    // Initialize everything when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM loaded, initializing cache-first system...');
-      
-      // Initialize Firebase
-      setTimeout(initializeFirebase, 100);
-      
-      // Load all data with cache-first strategy
-      loadDataWithCache('products', 'products', 'homeProductGrid', renderProducts, 'products');
-      loadDataWithCache('products', 'products', 'productGrid', renderProducts, 'products');
-      loadDataWithCache('categories', 'categories', 'categoriesContainer', renderCategories, 'categories');
-      loadDataWithCache('banners', 'banners', 'bannerCarousel', renderBannerCarousel, 'banner');
-      loadDataWithCache('adminSettings', 'adminSettings', null, null, null).then(settings => {
-        if (settings) updateAdminSettingsUI();
-      });
-      
-      // Load trending products slider
-      setTimeout(() => {
-        const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
-        if (trendingProducts.length > 0) {
-          renderProductSlider(trendingProducts, 'productSlider');
-        } else if (products.length > 0) {
-          renderProductSlider(products.slice(0, 10), 'productSlider');
-        }
-      }, 500);
-      
-      // Load category circles
-      setTimeout(() => {
-        if (categories.length > 0) {
-          renderCategoryCircles();
-        }
-      }, 500);
-    });
-
-    // Helper function for product slider
-    function renderProductSlider(productsArray, containerId) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      productsArray.forEach(product => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
-        sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${product.imageUrl || product.image || "https://via.placeholder.com/200x150"}')"></div>
-          <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || 'Product Name'}</div>
-            <div class="slider-item-price">${product.price || '₹0'}</div>
-          </div>
-        `;
-        
-        sliderItem.addEventListener('click', () => {
-          if (window.showProductDetail) {
-            window.showProductDetail(product);
-          }
-        });
-        container.appendChild(sliderItem);
-      });
-    }
-    
-    function renderCategoryCircles() {
-      const container = document.getElementById('categoryCirclesContainer');
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      categories.slice(0, 10).forEach(category => {
-        const circle = document.createElement('div');
-        circle.className = 'category-circle';
-        circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${category.imageUrl || category.image || "https://via.placeholder.com/70x70"}')"></div>
-          <div class="category-circle-name">${category.name || 'Category'}</div>
-        `;
-        
-        circle.addEventListener('click', () => {
-          if (window.filterByCategory) {
-            window.filterByCategory(category.id);
-          }
-        });
-        container.appendChild(circle);
-      });
-    }
-
-    // Make functions available globally for existing code
-    window.products = products;
-    window.categories = categories;
-    window.banners = banners;
-    window.adminSettings = adminSettings;
-    window.currentUser = currentUser;
-    window.firebaseApp = firebaseApp;
-    window.cacheManager = cacheManager;
-    window.showSkeleton = showSkeleton;
-    window.loadDataWithCache = loadDataWithCache;
-    window.renderProducts = renderProducts;
-    window.renderCategories = renderCategories;
-    window.renderBannerCarousel = renderBannerCarousel;
-  </script>
-
-  <!-- =============== EXISTING APPLICATION JAVASCRIPT =============== -->
-  <!-- Note: This script now runs AFTER the cache-first system initializes -->
-  <script>
-    // Global variables - now referencing the cache system variables
-    let currentProduct = null;
-    let userInfo = {};
-    let currentOrderId = null;
-    let recentlyViewed = [];
-    let currentImageIndex = 0;
-    let currentZoomLevel = 1;
-    let currentCategoryFilter = null;
-    let currentProductImages = [];
-    let currentProductModalIndex = 0;
-    let bannerStartX = 0;
-    let bannerCurrentX = 0;
-    let isBannerDragging = false;
-    let savedAddresses = [];
-
-    // =========================================================
-    // PART 1 — LOCAL STORAGE FUNCTIONS
-    // =========================================================
-
-    // 1) USER NAME LIVE UPDATE
-    function saveUserName(name) {
-      localStorage.setItem('userName', name);
-    }
-
-    function loadUserName() {
-      return localStorage.getItem('userName') || '';
-    }
-
-    function updateUserNameUI(name) {
-      document.querySelectorAll('.user-name').forEach(el => {
-        el.textContent = name;
-      });
-    }
-
-    function updateProfileName() {
-      const name = loadUserName();
-      if (name) {
-        updateUserNameUI(name);
-      }
-    }
-
-    // 2) BANNER LOCAL STORAGE
-    function saveBannerUrl(url) {
-      localStorage.setItem('mainBanner', url);
-    }
-
-    function loadBannerUrl() {
-      return localStorage.getItem('mainBanner') || '';
-    }
-
-    // 3) CATEGORY LOCAL STORAGE
-    function saveCategoriesToLocalStorage(categories) {
-      localStorage.setItem('categoryBox', JSON.stringify(categories));
-    }
-
-    function loadCategoriesFromLocalStorage() {
-      const cat = localStorage.getItem('categoryBox');
-      return cat ? JSON.parse(cat) : [];
-    }
-
-    // 4) CART LOCAL STORAGE
-    function saveCartToLocalStorage(cart) {
-      localStorage.setItem('cart', JSON.stringify(cart));
-    }
-
-    function loadCartFromLocalStorage() {
-      const cart = localStorage.getItem('cart');
-      return cart ? JSON.parse(cart) : null;
-    }
-
-    // 5) WISHLIST LOCAL STORAGE
-    function saveWishlistToLocalStorage(wishlist) {
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
-    }
-
-    function loadWishlistFromLocalStorage() {
-      const wishlist = localStorage.getItem('wishlist');
-      return wishlist ? JSON.parse(wishlist) : [];
-    }
-
-    // 6) THEME LOCAL STORAGE
-    function saveThemeToLocalStorage(theme) {
-      localStorage.setItem('theme', theme);
-    }
-
-    function loadThemeFromLocalStorage() {
-      return localStorage.getItem('theme') || 'light';
-    }
-
-    // =========================================================
-    // PART 2 — PAYMENT PAGE & ORDER PLACEMENT FIXES
-    // =========================================================
-
-    // SAFE PRICE PARSING FUNCTION
-    function parsePrice(p) {
-      return typeof p === "number" ? p : parseFloat(p.replace(/[₹,]/g, "")) || 0;
-    }
-
-    // Debounce function for search optimization
-    function debounce(func, wait) {
-      let timeout;
-      return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
-      };
-    }
-
-    // Logout with confirmation
-    function showLogoutConfirmation() {
-      document.getElementById('alertTitle').textContent = 'Logout Confirmation';
-      document.getElementById('alertMessage').textContent = 'Are you sure you want to logout?';
-      document.getElementById('alertModal').classList.add('active');
-    }
-
-    function confirmLogout() {
-      if (window.firebaseApp) {
-        firebase.auth().signOut().then(() => {
-          showToast('Logged out successfully', 'success');
-          document.getElementById('alertModal').classList.remove('active');
-          showPage('homePage');
-        });
-      }
-    }
-
-    // FIXED: Reset Password won't show login after sending
-    async function handleResetPassword() {
-      const email = document.getElementById('forgotPasswordEmail').value;
-      
-      if (!email) {
-        showToast('Please enter your email address', 'error');
-        return;
-      }
-      
-      try {
-        resetPasswordBtn.disabled = true;
-        resetPasswordBtn.innerHTML = '<div class="loading-spinner"></div> Sending...';
-        
-        await firebase.auth().sendPasswordResetEmail(email);
-        showToast('Password reset email sent! Check your inbox.', 'success');
-        
-        document.getElementById('forgotPasswordEmail').value = '';
-        
-        setTimeout(() => {
-          authModal.classList.remove('active');
-        }, 2000);
-        
-      } catch (err) {
-        console.error('Password reset error:', err);
-        showToast(err.message, 'error');
-      } finally {
-        resetPasswordBtn.disabled = false;
-        resetPasswordBtn.textContent = 'Send Reset Link';
-      }
-    }
-
-    // Address Management Functions
-    async function saveAddress(addressData, isDefault = false) {
-      if (!currentUser) return null;
-      
-      const isDuplicate = savedAddresses.some(addr => 
-        addr.name === addressData.name &&
-        addr.mobile === addressData.mobile &&
-        addr.pincode === addressData.pincode &&
-        addr.city === addressData.city &&
-        addr.state === addressData.state &&
-        addr.street === addressData.street
-      );
-      
-      if (isDuplicate) {
-        showToast('Address already exists', 'info');
-        return null;
-      }
-      
-      const addressId = 'address_' + Date.now();
-      const addressToSave = {
-        id: addressId,
-        userId: currentUser.uid,
-        name: addressData.name,
-        mobile: addressData.mobile,
-        pincode: addressData.pincode,
-        city: addressData.city,
-        state: addressData.state,
-        street: addressData.street,
-        type: addressData.type || 'home',
-        isDefault: isDefault,
-        createdAt: Date.now()
-      };
-      
-      try {
-        await firebase.database().ref('addresses/' + addressId).set(addressToSave);
-        showToast('Address saved successfully', 'success');
-        
-        savedAddresses.push(addressToSave);
-        cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
-        
-        return addressId;
-      } catch (error) {
-        console.error('Error saving address:', error);
-        showToast('Failed to save address', 'error');
-        return null;
-      }
-    }
-
-    async function deleteAddress(addressId) {
-      if (!currentUser) return;
-      
-      try {
-        await firebase.database().ref('addresses/' + addressId).remove();
-        
-        savedAddresses = savedAddresses.filter(addr => addr.id !== addressId);
-        cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
-        
-        showToast('Address deleted successfully', 'success');
-        loadSavedAddresses();
-      } catch (error) {
-        console.error('Error deleting address:', error);
-        showToast('Failed to delete address', 'error');
-      }
-    }
-
-    async function updateAddress(addressId, addressData) {
-      if (!currentUser) return;
-      
-      try {
-        await firebase.database().ref('addresses/' + addressId).update(addressData);
-        
-        const index = savedAddresses.findIndex(addr => addr.id === addressId);
-        if (index !== -1) {
-          savedAddresses[index] = { ...savedAddresses[index], ...addressData };
-          cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
-        }
-        
-        showToast('Address updated successfully', 'success');
-        loadSavedAddresses();
-      } catch (error) {
-        console.error('Error updating address:', error);
-        showToast('Failed to update address', 'error');
-      }
-    }
-
-    // FIXED: Address auto-save from user info
-    async function saveAddressFromUserInfo() {
-      if (!currentUser) return;
-      
-      const addressData = {
-        name: userInfo.fullName,
-        mobile: userInfo.mobile,
-        pincode: userInfo.pincode,
-        city: userInfo.city,
-        state: userInfo.state,
-        street: userInfo.house,
-        type: document.getElementById('addressType')?.value || 'home'
-      };
-      
-      const addressId = await saveAddress(addressData, true);
-      if (addressId) {
-        userInfo.addressId = addressId;
-      }
-    }
-
-    // Product Image Helper Function
-    function getProductImage(product, idx = 0) {
+    // Product Image Helper Function - UPDATED to handle color-based images
+    function getProductImage(product, color = null, idx = 0) {
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
+      
+      // If color is specified and product has color images, use that
+      if (color && product.colorImages && product.colorImages[color]) {
+        const colorImages = product.colorImages[color];
+        if (Array.isArray(colorImages) && colorImages.length > 0) {
+          if (idx < colorImages.length) return colorImages[idx];
+          return colorImages[0];
+        }
+      }
+      
+      // Fallback to regular images
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
@@ -5170,6 +5131,22 @@
       if (product.imageUrl) return product.imageUrl;
       if (product.photo) return product.photo;
       return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+    }
+
+    // Get all product images for a specific color
+    function getProductImagesByColor(product, color = null) {
+      if (!product) return [];
+      
+      if (color && product.colorImages && product.colorImages[color]) {
+        return product.colorImages[color];
+      }
+      
+      // Fallback to regular images
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        return product.images;
+      }
+      
+      return [getProductImage(product)];
     }
 
     // Order ID Generation Function
@@ -5184,12 +5161,12 @@
 
     // FIXED: Improved Wishlist Functions with Instant Like/Dislike
     function isInWishlist(productId) {
-      let wishlist = loadWishlistFromLocalStorage();
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
       return wishlist.includes(productId);
     }
 
     function toggleWishlist(productId) {
-      let wishlist = loadWishlistFromLocalStorage();
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
       const isWishlisted = wishlist.includes(productId);
 
       if (isWishlisted) {
@@ -5200,7 +5177,7 @@
         showToast('Added to wishlist', 'success');
       }
 
-      saveWishlistToLocalStorage(wishlist);
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
       updateWishlistButtons();
       
       if (currentUser) {
@@ -5215,14 +5192,15 @@
     async function updateWishlistInFirebase(productId, add) {
       if (!currentUser) return;
       
+      const realtimeDb = firebase.database();
       try {
         if (add) {
-          await firebase.database().ref('userWishlists/' + currentUser.uid + '/' + productId).set({
+          await realtimeDb.ref('userWishlists/' + currentUser.uid + '/' + productId).set({
             productId: productId,
             addedAt: Date.now()
           });
         } else {
-          await firebase.database().ref('userWishlists/' + currentUser.uid + '/' + productId).remove();
+          await realtimeDb.ref('userWishlists/' + currentUser.uid + '/' + productId).remove();
         }
       } catch (error) {
         console.error('Error updating wishlist in Firebase:', error);
@@ -5257,14 +5235,9 @@
 
     // Update admin settings in UI
     function updateAdminSettingsUI() {
-      if (adminSettings && adminSettings.deliveryCharge) {
-        document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
-        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge}`;
-      }
-      
-      if (adminSettings && adminSettings.gatewayChargePercent) {
-        document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
-      }
+      document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
+      document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge}`;
+      document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
     }
 
     // DOM Elements
@@ -5325,199 +5298,954 @@
     const submitReview = document.getElementById('submitReview');
     const reviewsList = document.getElementById('reviewsList');
 
-    // Password Reset Modal Elements
-    const passwordResetModal = document.getElementById('passwordResetModal');
-    const passwordResetEmail = document.getElementById('passwordResetEmail');
-    const cancelPasswordReset = document.getElementById('cancelPasswordReset');
-    const confirmPasswordReset = document.getElementById('confirmPasswordReset');
-
-    // Initialize the app
-    document.addEventListener('DOMContentLoaded', function() {
-      // Wait for cache system to initialize
-      setTimeout(() => {
-        initApp();
-        setupEventListeners();
-        updateStepPills();
-        
-        // Set up auth state listener
-        if (firebaseApp) {
-          firebase.auth().onAuthStateChanged(user => {
-            if (user) {
-              currentUser = user;
-              updateUIForUser(user);
-              loadUserData(user);
-              loadRecentlyViewed(user);
-              loadSavedAddresses();
-              authModal.classList.remove('active');
-            } else {
-              currentUser = null;
-              updateUIForGuest();
-            }
-          });
-        }
-        
-        setupHeroMessages();
-      }, 300);
-    });
-
-    function initApp() {
-      const savedTheme = loadThemeFromLocalStorage();
-      document.documentElement.setAttribute('data-theme', savedTheme);
+    function setupEventListeners() {
+      menuIcon.addEventListener('click', openMenu);
+      menuClose.addEventListener('click', closeMenu);
+      menuOverlay.addEventListener('click', closeMenu);
       
-      showPage('homePage');
+      themeToggle.addEventListener('click', toggleTheme);
       
-      if (window.location.hash) {
-        const pageId = window.location.hash.replace('#', '');
-        if (document.getElementById(pageId)) {
-          showPage(pageId);
-        }
+      authClose.addEventListener('click', () => authModal.classList.remove('active'));
+      openLoginTop.addEventListener('click', showLoginModal);
+      mobileLoginBtn.addEventListener('click', showLoginModal);
+      
+      loginTab.addEventListener('click', () => switchAuthTab('login'));
+      signupTab.addEventListener('click', () => switchAuthTab('signup'));
+      switchToLogin.addEventListener('click', () => switchAuthTab('login'));
+      
+      loginBtn.addEventListener('click', handleLogin);
+      signupBtn.addEventListener('click', handleSignup);
+      googleLoginBtn.addEventListener('click', handleGoogleLogin);
+      googleSignupBtn.addEventListener('click', handleGoogleLogin);
+      
+      forgotPasswordLink.addEventListener('click', () => {
+        loginForm.classList.remove('active');
+        forgotPasswordForm.classList.add('active');
+      });
+      backToLogin.addEventListener('click', () => {
+        forgotPasswordForm.classList.remove('active');
+        loginForm.classList.add('active');
+      });
+      resetPasswordBtn.addEventListener('click', handleResetPassword);
+      
+      userProfile.addEventListener('click', () => window.location.href = 'account.html');
+      
+      mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
+      
+      document.getElementById('alertCancelBtn').addEventListener('click', () => {
+        document.getElementById('alertModal').classList.remove('active');
+      });
+      document.getElementById('alertConfirmBtn').addEventListener('click', confirmLogout);
+      
+      openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+      
+      zoomClose.addEventListener('click', () => zoomModal.classList.remove('active'));
+      zoomIn.addEventListener('click', () => adjustZoom(0.2));
+      zoomOut.addEventListener('click', () => adjustZoom(-0.2));
+      zoomReset.addEventListener('click', resetZoom);
+      
+      productImageModalClose.addEventListener('click', () => productImageModal.classList.remove('active'));
+      productImageModalPrev.addEventListener('click', prevProductModalImage);
+      productImageModalNext.addEventListener('click', nextProductModalImage);
+      
+      const searchInput = document.getElementById('searchInput');
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      
+      if (searchInput) {
+        searchInput.addEventListener('input', debounce(handleSearch, 300));
       }
       
-      updateProfileName();
-      
-      // Load cart if exists
-      const cart = loadCartFromLocalStorage();
-      if (cart && cart.productId) {
-        const product = products.find(p => p.id === cart.productId);
-        if (product) {
-          currentProduct = product;
-        }
+      if (homeSearchInput) {
+        homeSearchInput.addEventListener('input', debounce(handleHomeSearch, 300));
       }
-    }
-
-    // UPDATED: Load saved addresses with edit/delete
-    async function loadSavedAddresses() {
-      if (!currentUser) return;
       
-      try {
-        const cachedAddresses = cacheManager.get('addresses_' + currentUser.uid);
-        if (cachedAddresses && cachedAddresses.length > 0) {
-          savedAddresses = cachedAddresses;
-          renderSavedAddresses();
-        }
-        
-        const snapshot = await firebase.database().ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value');
-        const addressesList = document.getElementById('savedAddressesList');
-        const savedAddressesSection = document.getElementById('savedAddressesSection');
-        
-        if (!snapshot.exists()) {
-          if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-          savedAddresses = [];
-          return;
-        }
-        
-        const addressesObj = snapshot.val();
-        const addresses = Object.keys(addressesObj).map(key => ({
-          id: key,
-          ...addressesObj[key]
-        }));
-        
-        savedAddresses = addresses;
-        cacheManager.set('addresses_' + currentUser.uid, addresses);
-        
-        if (addresses.length > 0 && savedAddressesSection) {
-          savedAddressesSection.style.display = 'block';
-          renderSavedAddresses();
-        } else if (savedAddressesSection) {
-          savedAddressesSection.style.display = 'none';
-        }
-      } catch (error) {
-        console.error('Error loading addresses:', error);
-      }
-    }
-
-    function renderSavedAddresses() {
-      const addressesList = document.getElementById('savedAddressesList');
-      if (!addressesList) return;
+      document.getElementById('backToProducts')?.addEventListener('click', () => showPage('productsPage'));
+      document.getElementById('toUserInfo')?.addEventListener('click', toUserInfo);
+      document.getElementById('editOrder')?.addEventListener('click', () => showPage('orderPage'));
+      document.getElementById('toPayment')?.addEventListener('click', toPayment);
+      document.getElementById('payBack')?.addEventListener('click', () => showPage('userPage'));
+      document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
+      document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
+      document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       
-      addressesList.innerHTML = '';
+      document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
+      document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       
-      savedAddresses.forEach(address => {
-        const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card';
-        addressCard.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
-            <div style="flex:1">
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}, ${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile} • Type: ${address.type}</div>
-            </div>
-          </div>
-          <div class="address-actions">
-            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
-          </div>
-        `;
-        
-        const radio = addressCard.querySelector('input[type="radio"]');
-        radio.addEventListener('click', function(e) {
-          e.stopPropagation();
-          fillAddressForm(address);
+      document.querySelectorAll('.size-option').forEach(option => {
+        option.addEventListener('click', function() {
+          document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('sizeValidationError').classList.remove('show');
         });
-        
-        addressCard.addEventListener('click', function(e) {
-          if (e.target.type !== 'radio') {
-            radio.checked = true;
-            fillAddressForm(address);
+      });
+      
+      document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
+      document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
+      
+      document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      
+      document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const platform = this.getAttribute('data-platform');
+          shareProduct(platform);
+        });
+      });
+      
+      document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      
+      document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
+      document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
+      
+      // FIXED: Add click event for product image to open full screen modal
+      document.getElementById('productDetailMainImage')?.addEventListener('click', openProductImageModal);
+      
+      document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
+      document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
+      
+      if (ratingInput) {
+        ratingInput.querySelectorAll('.rating-star').forEach(star => {
+          star.addEventListener('click', function() {
+            const rating = parseInt(this.getAttribute('data-rating'));
+            setRating(rating);
+          });
+        });
+      }
+      
+      if (submitReview) {
+        submitReview.addEventListener('click', submitProductReview);
+      }
+      
+      const bannerCarousel = document.getElementById('bannerCarousel');
+      if (bannerCarousel) {
+        bannerCarousel.addEventListener('touchstart', handleBannerTouchStart);
+        bannerCarousel.addEventListener('touchmove', handleBannerTouchMove);
+        bannerCarousel.addEventListener('touchend', handleBannerTouchEnd);
+      }
+      
+      window.addEventListener('popstate', function(event) {
+        const page = event.state ? event.state.page : 'homePage';
+        showPage(page);
+      });
+      
+      document.querySelector('.qty-minus')?.addEventListener('click', function() {
+        decreaseQuantity();
+        if (document.getElementById('paymentPage').classList.contains('active')) {
+          updatePaymentSummary();
+        }
+      });
+      
+      document.querySelector('.qty-plus')?.addEventListener('click', function() {
+        increaseQuantity();
+        if (document.getElementById('paymentPage').classList.contains('active')) {
+          updatePaymentSummary();
+        }
+      });
+      
+      document.querySelectorAll('input[name="pay"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+          if (document.getElementById('paymentPage').classList.contains('active')) {
+            updatePaymentSummary();
           }
         });
-        
-        const editBtn = addressCard.querySelector('.edit-address');
-        editBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          editAddress(address);
-        });
-        
-        const deleteBtn = addressCard.querySelector('.delete-address');
-        deleteBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          deleteAddressConfirmation(address);
-        });
-        
-        addressesList.appendChild(addressCard);
+      });
+      
+      document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
+      
+      // NEW: Color selection event listeners for product detail page
+      document.getElementById('colorOptionsGrid')?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('color-box')) {
+          handleColorSelection(e.target);
+        }
+      });
+      
+      // NEW: Color selection for order page
+      document.getElementById('orderColorOptions')?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('color-box')) {
+          handleOrderColorSelection(e.target);
+        }
+      });
+      
+      // NEW: Banner click event
+      document.getElementById('bannerTrack')?.addEventListener('click', function(e) {
+        const bannerIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => 
+          dot.classList.contains('active')
+        );
+        if (bannerIndex !== -1 && banners[bannerIndex] && banners[bannerIndex].link) {
+          window.open(banners[bannerIndex].link, '_blank');
+        }
       });
     }
 
-    function fillAddressForm(address) {
-      document.getElementById('fullname').value = address.name;
-      document.getElementById('mobile').value = address.mobile;
-      document.getElementById('pincode').value = address.pincode;
-      document.getElementById('city').value = address.city;
-      document.getElementById('state').value = address.state;
-      document.getElementById('house').value = address.street;
-      document.getElementById('addressType').value = address.type || 'home';
+    // NEW: Handle color selection for product detail page
+    function handleColorSelection(colorBox) {
+      if (colorBox.classList.contains('out-of-stock')) return;
+      
+      document.querySelectorAll('#colorOptionsGrid .color-box').forEach(b => b.classList.remove('selected'));
+      colorBox.classList.add('selected');
+      
+      const colorName = colorBox.getAttribute('data-color-name');
+      const colorValue = colorBox.getAttribute('data-color');
+      
+      currentSelectedColor = colorValue;
+      currentSelectedColorName = colorName;
+      
+      document.getElementById('selectedColorNameDisplay').textContent = colorName;
+      
+      // Update main product image based on selected color
+      if (currentProduct) {
+        updateProductImagesForColor(colorValue);
+      }
     }
 
-    function editAddress(address) {
-      fillAddressForm(address);
-      document.getElementById('savedAddressesSection').style.display = 'none';
-      document.getElementById('newAddressForm').style.display = 'block';
+    // NEW: Handle color selection for order page
+    function handleOrderColorSelection(colorBox) {
+      if (colorBox.classList.contains('out-of-stock')) return;
       
-      const saveBtn = document.getElementById('saveUserInfo');
-      saveBtn.textContent = 'Update Address';
-      saveBtn.onclick = function() {
-        updateAddress(address.id, {
-          name: document.getElementById('fullname').value,
-          mobile: document.getElementById('mobile').value,
-          pincode: document.getElementById('pincode').value,
-          city: document.getElementById('city').value,
-          state: document.getElementById('state').value,
-          street: document.getElementById('house').value,
-          type: document.getElementById('addressType').value
+      document.querySelectorAll('#orderColorOptions .color-box').forEach(b => b.classList.remove('selected'));
+      colorBox.classList.add('selected');
+      
+      const colorName = colorBox.getAttribute('data-color-name');
+      const colorValue = colorBox.getAttribute('data-color');
+      
+      document.getElementById('selectedOrderColorDisplay').textContent = colorName;
+      
+      // Update order page gallery based on selected color
+      if (currentProduct) {
+        updateOrderPageImagesForColor(colorValue);
+      }
+    }
+
+    // NEW: Update product images when color changes
+    function updateProductImagesForColor(color) {
+      if (!currentProduct) return;
+      
+      // Get images for selected color
+      const colorImages = getProductImagesByColor(currentProduct, color);
+      
+      if (colorImages.length === 0) return;
+      
+      // Update main image
+      const mainImage = document.getElementById('productDetailMainImage');
+      mainImage.style.backgroundImage = `url('${colorImages[0]}')`;
+      
+      // Update current product images array
+      currentProductImages = colorImages;
+      currentImageIndex = 0;
+      
+      // Update carousel dots
+      updateDetailCarouselDots();
+      
+      // Update image modal data
+      if (productImageModal.classList.contains('active')) {
+        currentProductModalIndex = 0;
+        updateProductModalImage();
+      }
+    }
+
+    // NEW: Update order page images when color changes
+    function updateOrderPageImagesForColor(color) {
+      if (!currentProduct) return;
+      
+      // Get images for selected color
+      const colorImages = getProductImagesByColor(currentProduct, color);
+      
+      if (colorImages.length === 0) return;
+      
+      // Update gallery main image
+      const galleryMain = document.getElementById('galleryMain');
+      galleryMain.style.backgroundImage = `url('${colorImages[0]}')`;
+      
+      // Update carousel dots
+      const dotsContainer = document.getElementById('orderCarouselDots');
+      dotsContainer.innerHTML = '';
+      
+      colorImages.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          setOrderPageImage(index, colorImages);
         });
-      };
+        dotsContainer.appendChild(dot);
+      });
+      
+      // Update carousel control functions
+      const prevBtn = galleryMain.querySelector('.carousel-control.prev');
+      const nextBtn = galleryMain.querySelector('.carousel-control.next');
+      
+      if (prevBtn) {
+        prevBtn.onclick = () => {
+          const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
+          const newIndex = (activeIndex - 1 + colorImages.length) % colorImages.length;
+          setOrderPageImage(newIndex, colorImages);
+        };
+      }
+      
+      if (nextBtn) {
+        nextBtn.onclick = () => {
+          const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
+          const newIndex = (activeIndex + 1) % colorImages.length;
+          setOrderPageImage(newIndex, colorImages);
+        };
+      }
     }
 
-    function deleteAddressConfirmation(address) {
-      document.getElementById('alertTitle').textContent = 'Delete Address';
-      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
-      document.getElementById('alertModal').classList.add('active');
+    function setOrderPageImage(index, images) {
+      const galleryMain = document.getElementById('galleryMain');
+      const dots = document.querySelectorAll('#orderCarouselDots .carousel-dot');
       
-      document.getElementById('alertConfirmBtn').onclick = function() {
-        deleteAddress(address.id);
-        document.getElementById('alertModal').classList.remove('active');
+      if (galleryMain && images[index]) {
+        galleryMain.style.backgroundImage = `url('${images[index]}')`;
+      }
+      
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+      });
+    }
+
+    // Banner touch handlers for mobile swipe
+    function handleBannerTouchStart(e) {
+      bannerStartX = e.touches[0].clientX;
+      isBannerDragging = true;
+    }
+
+    function handleBannerTouchMove(e) {
+      if (!isBannerDragging) return;
+      bannerCurrentX = e.touches[0].clientX;
+    }
+
+    function handleBannerTouchEnd() {
+      if (!isBannerDragging) return;
+      
+      const diff = bannerStartX - bannerCurrentX;
+      const bannerTrack = document.getElementById('bannerTrack');
+      const activeIndex = banners.findIndex((_, index) => 
+        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
+      );
+      
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          const nextIndex = (activeIndex + 1) % banners.length;
+          setBannerSlide(nextIndex);
+        } else {
+          const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+          setBannerSlide(prevIndex);
+        }
+      }
+      
+      isBannerDragging = false;
+    }
+
+    // Product Image Modal Functions - UPDATED with better functionality
+    function openProductImageModal() {
+      if (!currentProduct) return;
+      
+      currentProductImages = getProductImagesByColor(currentProduct, currentSelectedColor);
+      currentProductModalIndex = currentImageIndex;
+      
+      updateProductModalImage();
+      productImageModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function updateProductModalImage() {
+      if (currentProductImages.length === 0) return;
+      
+      productImageModalImage.src = currentProductImages[currentProductModalIndex];
+      
+      productImageModalDots.innerHTML = '';
+      currentProductImages.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = `product-image-modal-dot ${index === currentProductModalIndex ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          currentProductModalIndex = index;
+          updateProductModalImage();
+        });
+        productImageModalDots.appendChild(dot);
+      });
+    }
+
+    function prevProductModalImage() {
+      if (currentProductImages.length <= 1) return;
+      
+      currentProductModalIndex = (currentProductModalIndex - 1 + currentProductImages.length) % currentProductImages.length;
+      updateProductModalImage();
+    }
+
+    function nextProductModalImage() {
+      if (currentProductImages.length <= 1) return;
+      
+      currentProductModalIndex = (currentProductModalIndex + 1) % currentProductImages.length;
+      updateProductModalImage();
+    }
+
+    // Close product image modal
+    productImageModalClose.addEventListener('click', () => {
+      productImageModal.classList.remove('active');
+      document.body.style.overflow = '';
+    });
+
+    // Close modal when clicking outside
+    productImageModal.addEventListener('click', (e) => {
+      if (e.target === productImageModal) {
+        productImageModal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    });
+
+    // Rating and Review Functions
+    function setRating(rating) {
+      const stars = ratingInput.querySelectorAll('.rating-star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    async function submitProductReview() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      if (!currentProduct) {
+        showToast('No product selected', 'error');
+        return;
+      }
+      
+      const activeStars = ratingInput.querySelectorAll('.rating-star.active');
+      const rating = activeStars.length;
+      const reviewTextValue = reviewText.value.trim();
+      
+      if (rating === 0) {
+        showToast('Please select a rating', 'error');
+        return;
+      }
+      
+      if (!reviewTextValue) {
+        showToast('Please write a review', 'error');
+        return;
+      }
+      
+      const realtimeDb = firebase.database();
+      try {
+        const reviewId = 'review_' + Date.now();
+        const reviewData = {
+          id: reviewId,
+          productId: currentProduct.id,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || 'Anonymous',
+          rating: rating,
+          text: reviewTextValue,
+          date: Date.now()
+        };
+        
+        await realtimeDb.ref('reviews/' + reviewId).set(reviewData);
+        
+        showToast('Review submitted successfully', 'success');
+        
+        setRating(0);
+        reviewText.value = '';
+        
+        loadProductReviews(currentProduct.id);
+      } catch (error) {
+        console.error('Error submitting review:', error);
+        showToast('Failed to submit review', 'error');
+      }
+    }
+
+    async function loadProductReviews(productId) {
+      const realtimeDb = firebase.database();
+      try {
+        const snapshot = await realtimeDb.ref('reviews').orderByChild('productId').equalTo(productId).once('value');
+        const reviewsObj = snapshot.val();
+        
+        if (!reviewsObj) {
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          return;
+        }
+        
+        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
+        
+        reviews.sort((a, b) => b.date - a.date);
+        
+        renderReviews(reviews);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+        reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
+      }
+    }
+
+    function renderReviews(reviews) {
+      reviewsList.innerHTML = '';
+      
+      reviews.forEach(review => {
+        const reviewItem = document.createElement('div');
+        reviewItem.className = 'review-item';
+        
+        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+        const date = new Date(review.date).toLocaleDateString();
+        
+        reviewItem.innerHTML = `
+          <div class="review-header">
+            <div class="reviewer-name">${review.userName}</div>
+            <div class="review-date">${date}</div>
+          </div>
+          <div class="review-rating">${stars}</div>
+          <div class="review-text">${review.text}</div>
+          ${currentUser && review.userId === currentUser.uid ? 
+            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+        `;
+        
+        // Add delete event listener
+        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function() {
+            deleteReview(review.id);
+          });
+        }
+        
+        reviewsList.appendChild(reviewItem);
+      });
+    }
+
+    async function deleteReview(reviewId) {
+      if (!currentUser) return;
+      
+      if (!confirm('Are you sure you want to delete this review?')) return;
+      
+      const realtimeDb = firebase.database();
+      try {
+        await realtimeDb.ref('reviews/' + reviewId).remove();
+        showToast('Review deleted successfully', 'success');
+        loadProductReviews(currentProduct.id);
+      } catch (error) {
+        console.error('Error deleting review:', error);
+        showToast('Failed to delete review', 'error');
+      }
+    }
+
+    // Authentication Functions
+    async function handleLogin() {
+      const auth = firebase.auth();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      loginError.textContent = '';
+      
+      if (!email || !password) {
+        loginError.textContent = 'Please fill in all fields';
+        return;
+      }
+      
+      try {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<div class="loading-spinner"></div> Logging in...';
+        
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const realtimeDb = firebase.database();
+        
+        await realtimeDb.ref('users/' + userCredential.user.uid).update({
+          lastLoginAt: Date.now()
+        });
+        
+        showToast('Login successful!', 'success');
+        authModal.classList.remove('active');
+        
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+      } catch (err) {
+        console.error('Login error:', err);
+        loginError.textContent = err.message;
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+      }
+    }
+
+    async function handleSignup() {
+      const auth = firebase.auth();
+      const name = document.getElementById('signupName').value;
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+      
+      signupError.textContent = '';
+      
+      if (!name || !email || !password) {
+        signupError.textContent = 'Please fill in all fields';
+        return;
+      }
+      
+      if (password.length < 6) {
+        signupError.textContent = 'Password should be at least 6 characters';
+        return;
+      }
+      
+      try {
+        signupBtn.disabled = true;
+        signupBtn.innerHTML = '<div class="loading-spinner"></div> Creating account...';
+        
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        const realtimeDb = firebase.database();
+        
+        await realtimeDb.ref('users/' + user.uid).set({
+          name: name,
+          email: email,
+          createdAt: Date.now(),
+          lastLoginAt: Date.now()
+        });
+        
+        localStorage.setItem('userName', name);
+        updateUserNameUI(name);
+        
+        showToast('Account created successfully!', 'success');
+        authModal.classList.remove('active');
+        
+        document.getElementById('signupName').value = '';
+        document.getElementById('signupEmail').value = '';
+        document.getElementById('signupPassword').value = '';
+      } catch (err) {
+        console.error('Signup error:', err);
+        signupError.textContent = err.message;
+      } finally {
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Sign Up';
+      }
+    }
+
+    async function handleGoogleLogin() {
+      const auth = firebase.auth();
+      const provider = new firebase.auth.GoogleAuthProvider();
+      
+      try {
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+        const realtimeDb = firebase.database();
+        
+        const userSnapshot = await realtimeDb.ref('users/' + user.uid).once('value');
+        
+        if (!userSnapshot.exists()) {
+          await realtimeDb.ref('users/' + user.uid).set({
+            name: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            createdAt: Date.now(),
+            lastLoginAt: Date.now()
+          });
+        } else {
+          await realtimeDb.ref('users/' + user.uid).update({
+            lastLoginAt: Date.now()
+          });
+        }
+        
+        localStorage.setItem('userName', user.displayName || 'User');
+        updateUserNameUI(user.displayName || 'User');
+        
+        showToast('Login successful!', 'success');
+        authModal.classList.remove('active');
+      } catch (err) {
+        console.error('Google login error:', err);
+        if (loginForm.classList.contains('active')) {
+          loginError.textContent = err.message;
+        } else {
+          signupError.textContent = err.message;
+        }
+      }
+    }
+
+    // FIXED: Place Order Function with proper calculations and email notification
+    async function confirmOrder() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      if (!userInfo.fullName || !userInfo.mobile) {
+        showToast('Please complete your information first', 'error');
+        showPage('userPage');
+        return;
+      }
+      
+      if (!currentProduct) {
+        showToast('No product selected', 'error');
+        showPage('productsPage');
+        return;
+      }
+      
+      const orderId = generateOrderId();
+      currentOrderId = orderId;
+      
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
+      const color = currentSelectedColorName || document.querySelector('#orderColorOptions .color-box.selected')?.getAttribute('data-color-name') || 'Not specified';
+      
+      const productPrice = parsePrice(currentProduct.price);
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
+      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
+      const total = subtotal + deliveryCharge + gatewayCharge;
+      
+      const orderData = {
+        orderId: orderId,
+        userId: currentUser.uid,
+        username: userInfo.fullName,
+        userEmail: currentUser.email,
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        productPrice: productPrice,
+        quantity: quantity,
+        size: size,
+        color: color,
+        subtotal: subtotal,
+        deliveryCharge: deliveryCharge,
+        gatewayCharge: gatewayCharge,
+        totalAmount: total,
+        paymentMethod: paymentMethod,
+        status: 'confirmed',
+        orderDate: Date.now(),
+        userInfo: userInfo,
+        tracking: {
+          confirmed: Date.now(),
+          shipped: null,
+          delivered: null
+        }
       };
+      
+      const realtimeDb = firebase.database();
+      try {
+        await realtimeDb.ref('orders/' + orderId).set(orderData);
+        
+        document.getElementById('orderIdDisplay').textContent = orderId;
+        showPage('successPage');
+        
+        showToast('Order placed successfully!', 'success');
+        
+        // Send order notification email
+        sendOrderNotification(orderData, currentUser);
+        
+        localStorage.removeItem('cart');
+        
+      } catch (error) {
+        console.error('Error placing order:', error);
+        showToast('Failed to place order. Please try again.', 'error');
+      }
+    }
+
+    // SAFE PRICE PARSING FUNCTION
+    function parsePrice(p) {
+      if (typeof p === "number") return p;
+      if (typeof p === "string") {
+        const num = parseFloat(p.replace(/[₹,]/g, ""));
+        return isNaN(num) ? 0 : num;
+      }
+      return 0;
+    }
+
+    // Payment Calculation Function - FIXED
+    function updatePaymentSummary() {
+      if (!currentProduct) {
+        document.getElementById('sumProduct').textContent = '-';
+        document.getElementById('sumQty').textContent = '-';
+        document.getElementById('sumPrice').textContent = '-';
+        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
+        document.getElementById('sumGateway').textContent = '₹0';
+        document.getElementById('sumTotal').textContent = '-';
+        return;
+      }
+      
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      
+      const productPrice = parsePrice(currentProduct.price);
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
+      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
+      const total = subtotal + deliveryCharge + gatewayCharge;
+      
+      document.getElementById('sumProduct').textContent = currentProduct.name;
+      document.getElementById('sumQty').textContent = quantity;
+      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
+      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
+      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
+      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
+    }
+
+    // Page navigation
+    function showPage(pageId) {
+      window.history.pushState({ page: pageId }, '', `#${pageId}`);
+      
+      if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
+        window.location.href = 'account.html';
+        return;
+      }
+      
+      document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+      });
+      document.getElementById(pageId).classList.add('active');
+      
+      updateStepPills();
+      
+      window.scrollTo(0, 0);
+      
+      if (pageId === 'myOrdersPage' && currentUser) {
+        showMyOrders();
+      }
+      
+      if (pageId === 'wishlistPage') {
+        renderWishlist();
+      }
+      
+      if (pageId === 'productDetailPage' && currentProduct) {
+        loadProductReviews(currentProduct.id);
+      }
+      
+      if (pageId === 'paymentPage') {
+        updatePaymentSummary();
+      }
+      
+      if (pageId === 'userPage' && currentUser) {
+        loadSavedAddresses();
+      }
+      
+      if (pageId === 'orderPage' && currentProduct) {
+        initOrderPageGallery();
+      }
+      
+      // Reset color selection when leaving product detail page
+      if (pageId !== 'productDetailPage') {
+        currentSelectedColor = null;
+        currentSelectedColorName = null;
+      }
+    }
+
+    function checkAuthAndShowPage(pageId) {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      showPage(pageId);
+    }
+
+    function showLoginModal() {
+      authModal.classList.add('active');
+      switchAuthTab('login');
+    }
+
+    function switchAuthTab(tab) {
+      loginForm.classList.remove('active');
+      signupForm.classList.remove('active');
+      forgotPasswordForm.classList.remove('active');
+      
+      loginTab.classList.remove('active');
+      signupTab.classList.remove('active');
+      
+      loginError.textContent = '';
+      signupError.textContent = '';
+      
+      if (tab === 'login') {
+        loginTab.classList.add('active');
+        loginForm.classList.add('active');
+      } else {
+        signupTab.classList.add('active');
+        signupForm.classList.add('active');
+      }
+    }
+
+    function logout() {
+      const auth = firebase.auth();
+      auth.signOut().then(() => {
+        showToast('Logged out successfully', 'success');
+        showPage('homePage');
+      }).catch(error => {
+        console.error('Logout error:', error);
+        showToast('Error logging out', 'error');
+      });
+    }
+
+    // Mobile menu functions
+    function openMenu() {
+      mobileMenu.classList.add('active');
+      menuOverlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMenu() {
+      mobileMenu.classList.remove('active');
+      menuOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Theme functions
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      toast.textContent = message;
+      toast.className = 'toast ' + type;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // User interface updates
+    function updateUIForUser(user) {
+      userProfile.style.display = 'flex';
+      openLoginTop.style.display = 'none';
+      mobileLoginBtn.style.display = 'none';
+      mobileUserProfile.style.display = 'flex';
+      mobileLogoutBtn.style.display = 'flex';
+      
+      updateUserProfile(user);
+      
+      const realtimeDb = firebase.database();
+      realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          const name = userData.name || user.displayName || 'User';
+          localStorage.setItem('userName', name);
+          updateUserNameUI(name);
+          mobileUserName.textContent = name;
+        }
+      });
+    }
+
+    function updateUserProfile(user) {
+      if (user.photoURL) {
+        userAvatarImg.src = user.photoURL;
+        userAvatarImg.style.display = 'block';
+        userAvatarInitial.style.display = 'none';
+      } else {
+        userAvatarImg.style.display = 'none';
+        userAvatarInitial.style.display = 'block';
+        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
+      }
+      
+      const name = user.displayName || 'User';
+      userName.textContent = name;
+      mobileUserName.textContent = name;
+    }
+
+    function updateUIForGuest() {
+      userProfile.style.display = 'none';
+      openLoginTop.style.display = 'block';
+      mobileLoginBtn.style.display = 'flex';
+      mobileUserProfile.style.display = 'none';
+      mobileLogoutBtn.style.display = 'none';
     }
 
     // Product rendering functions
@@ -5661,6 +6389,15 @@
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
         slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        
+        // Add click event to open banner link
+        if (banner.link) {
+          slide.style.cursor = 'pointer';
+          slide.addEventListener('click', () => {
+            window.open(banner.link, '_blank');
+          });
+        }
+        
         track.appendChild(slide);
         
         const dot = document.createElement('div');
@@ -5669,13 +6406,22 @@
         controls.appendChild(dot);
       });
       
-      setInterval(() => {
-        const activeIndex = banners.findIndex((_, index) => 
-          document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
-        );
-        const nextIndex = (activeIndex + 1) % banners.length;
-        setBannerSlide(nextIndex);
-      }, 5000);
+      // Remove skeleton class
+      const bannerCarousel = document.getElementById('bannerCarousel');
+      if (bannerCarousel) {
+        bannerCarousel.classList.remove('skeleton');
+      }
+      
+      // Auto slide
+      if (banners.length > 1) {
+        setInterval(() => {
+          const activeIndex = banners.findIndex((_, index) => 
+            document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
+          );
+          const nextIndex = (activeIndex + 1) % banners.length;
+          setBannerSlide(nextIndex);
+        }, 5000);
+      }
     }
 
     function setBannerSlide(index) {
@@ -5691,7 +6437,95 @@
       });
     }
 
-    // Product detail functions
+    // NEW: Render color options for product detail
+    function renderColorOptions(product) {
+      const container = document.getElementById('colorOptionsGrid');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (!product.colors || !Array.isArray(product.colors) || product.colors.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);font-size:14px;">No color options available</p>';
+        return;
+      }
+      
+      product.colors.forEach((color, index) => {
+        const colorBox = document.createElement('div');
+        colorBox.className = `color-box ${color.outOfStock ? 'out-of-stock' : ''} ${index === 0 ? 'selected' : ''}`;
+        colorBox.setAttribute('data-color', color.value);
+        colorBox.setAttribute('data-color-name', color.name);
+        
+        // Use color image if available, otherwise use color value for background
+        if (color.image) {
+          colorBox.style.backgroundImage = `url('${color.image}')`;
+        } else {
+          colorBox.style.backgroundColor = color.value;
+        }
+        
+        // Add color label
+        const colorLabel = document.createElement('div');
+        colorLabel.className = 'color-label';
+        colorLabel.textContent = color.name;
+        
+        container.appendChild(colorBox);
+        
+        // Set first color as selected by default
+        if (index === 0 && !color.outOfStock) {
+          currentSelectedColor = color.value;
+          currentSelectedColorName = color.name;
+          document.getElementById('selectedColorNameDisplay').textContent = color.name;
+        }
+      });
+    }
+
+    // NEW: Render color options for order page
+    function renderOrderColorOptions(product) {
+      const container = document.getElementById('orderColorOptions');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (!product.colors || !Array.isArray(product.colors) || product.colors.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);font-size:14px;">No color options available</p>';
+        return;
+      }
+      
+      product.colors.forEach((color, index) => {
+        const colorBox = document.createElement('div');
+        colorBox.className = `color-box ${color.outOfStock ? 'out-of-stock' : ''} ${index === 0 ? 'selected' : ''}`;
+        colorBox.setAttribute('data-color', color.value);
+        colorBox.setAttribute('data-color-name', color.name);
+        
+        // Use color image if available, otherwise use color value for background
+        if (color.image) {
+          colorBox.style.backgroundImage = `url('${color.image}')`;
+        } else {
+          colorBox.style.backgroundColor = color.value;
+        }
+        
+        // Add color label
+        const colorLabel = document.createElement('div');
+        colorLabel.className = 'color-label';
+        colorLabel.textContent = color.name;
+        
+        const colorContainer = document.createElement('div');
+        colorContainer.style.display = 'flex';
+        colorContainer.style.flexDirection = 'column';
+        colorContainer.style.alignItems = 'center';
+        colorContainer.style.gap = '5px';
+        colorContainer.appendChild(colorBox);
+        colorContainer.appendChild(colorLabel);
+        
+        container.appendChild(colorContainer);
+        
+        // Set first color as selected by default
+        if (index === 0 && !color.outOfStock) {
+          document.getElementById('selectedOrderColorDisplay').textContent = color.name;
+        }
+      });
+    }
+
+    // Product detail functions - UPDATED with color selection
     function showProductDetail(product) {
       currentProduct = product;
       
@@ -5700,6 +6534,7 @@
       document.getElementById('detailDesc').textContent = product.description || '';
       document.getElementById('detailFullDesc').textContent = product.fullDescription || product.description || 'No description available.';
       document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
+      document.getElementById('breadcrumbProductName').textContent = product.name || 'Product';
       
       const stockStatus = document.getElementById('detailStockStatus');
       const stock = product.stock || 'in';
@@ -5714,6 +6549,10 @@
         stockStatus.className = 'stock-status out-of-stock';
       }
       
+      // Render color options
+      renderColorOptions(product);
+      
+      // Initialize product detail gallery with default color
       initProductDetailGallery(product);
       
       document.getElementById('productShareLink').value = window.location.origin + window.location.pathname + '?product=' + product.id;
@@ -5740,37 +6579,24 @@
     // Initialize product detail gallery
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('productDetailMainImage');
-      const thumbnails = document.getElementById('productDetailThumbnails');
       const dots = document.getElementById('detailCarouselDots');
       
-      if (!mainImage || !thumbnails || !dots) return;
+      if (!mainImage || !dots) return;
       
-      thumbnails.innerHTML = '';
       dots.innerHTML = '';
       
-      currentProductImages = getProductImages();
+      // Get images for selected color (or default)
+      currentProductImages = getProductImagesByColor(product, currentSelectedColor);
       
       currentImageIndex = 0;
       updateMainImage();
       
       currentProductImages.forEach((image, index) => {
-        const thumb = document.createElement('div');
-        thumb.className = `product-detail-thumbnail ${index === 0 ? 'active' : ''}`;
-        thumb.style.backgroundImage = `url('${image}')`;
-        thumb.addEventListener('click', () => {
-          currentImageIndex = index;
-          updateMainImage();
-          updateThumbnails();
-          updateDots();
-        });
-        thumbnails.appendChild(thumb);
-        
         const dot = document.createElement('div');
         dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
         dot.addEventListener('click', () => {
           currentImageIndex = index;
           updateMainImage();
-          updateThumbnails();
           updateDots();
         });
         dots.appendChild(dot);
@@ -5780,12 +6606,6 @@
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
       }
       
-      function updateThumbnails() {
-        document.querySelectorAll('.product-detail-thumbnail').forEach((thumb, index) => {
-          thumb.classList.toggle('active', index === currentImageIndex);
-        });
-      }
-      
       function updateDots() {
         document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentImageIndex);
@@ -5793,7 +6613,26 @@
       }
     }
 
-    // FIXED: Order page gallery initialization
+    // Update detail carousel dots
+    function updateDetailCarouselDots() {
+      const dots = document.getElementById('detailCarouselDots');
+      if (!dots) return;
+      
+      dots.innerHTML = '';
+      
+      currentProductImages.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = `detail-carousel-dot ${index === currentImageIndex ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          currentImageIndex = index;
+          updateProductDetailImage();
+          updateDots();
+        });
+        dots.appendChild(dot);
+      });
+    }
+
+    // FIXED: Order page gallery initialization with color options
     function initOrderPageGallery() {
       if (!currentProduct) return;
       
@@ -5802,7 +6641,12 @@
       
       if (!galleryMain || !dotsContainer) return;
       
-      const productImages = getProductImages();
+      // Render color options for order page
+      renderOrderColorOptions(currentProduct);
+      
+      // Get images for default color
+      const defaultColor = currentProduct.colors && currentProduct.colors[0] ? currentProduct.colors[0].value : null;
+      const productImages = getProductImagesByColor(currentProduct, defaultColor);
       
       galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
       dotsContainer.innerHTML = '';
@@ -5811,7 +6655,7 @@
         const dot = document.createElement('div');
         dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
         dot.addEventListener('click', () => {
-          setOrderPageImage(index);
+          setOrderPageImage(index, productImages);
         });
         dotsContainer.appendChild(dot);
       });
@@ -5823,7 +6667,7 @@
         prevBtn.onclick = () => {
           const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
           const newIndex = (activeIndex - 1 + productImages.length) % productImages.length;
-          setOrderPageImage(newIndex);
+          setOrderPageImage(newIndex, productImages);
         };
       }
       
@@ -5831,23 +6675,9 @@
         nextBtn.onclick = () => {
           const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
           const newIndex = (activeIndex + 1) % productImages.length;
-          setOrderPageImage(newIndex);
+          setOrderPageImage(newIndex, productImages);
         };
       }
-    }
-
-    function setOrderPageImage(index) {
-      const galleryMain = document.getElementById('galleryMain');
-      const dots = document.querySelectorAll('#orderCarouselDots .carousel-dot');
-      const productImages = getProductImages();
-      
-      if (galleryMain && productImages[index]) {
-        galleryMain.style.backgroundImage = `url('${productImages[index]}')`;
-      }
-      
-      dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-      });
     }
 
     function prevDetailImage() {
@@ -5864,25 +6694,11 @@
       updateProductDetailImage();
     }
 
-    function getProductImages() {
-      if (!currentProduct) return [];
-      
-      if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
-        return currentProduct.images;
-      } else {
-        return [getProductImage(currentProduct)];
-      }
-    }
-
     function updateProductDetailImage() {
       const mainImage = document.getElementById('productDetailMainImage');
       
       if (mainImage && currentProductImages[currentImageIndex]) {
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
-        
-        document.querySelectorAll('.product-detail-thumbnail').forEach((thumb, index) => {
-          thumb.classList.toggle('active', index === currentImageIndex);
-        });
         
         document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentImageIndex);
@@ -5901,14 +6717,21 @@
     // Order flow functions
     function toUserInfo() {
       const selectedSize = document.querySelector('.size-option.selected');
+      const selectedColor = document.querySelector('#orderColorOptions .color-box.selected');
+      
       if (!selectedSize) {
         document.getElementById('sizeValidationError').classList.add('show');
         return;
       }
       
+      if (!selectedColor) {
+        showToast('Please select a color', 'error');
+        return;
+      }
+      
       const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
       const size = selectedSize.getAttribute('data-value');
-      const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
+      const color = selectedColor.getAttribute('data-color-name') || 'Not specified';
       
       const cart = {
         productId: currentProduct.id,
@@ -5916,7 +6739,7 @@
         size: size,
         color: color
       };
-      saveCartToLocalStorage(cart);
+      localStorage.setItem('cart', JSON.stringify(cart));
       
       showPage('userPage');
     }
@@ -5937,6 +6760,151 @@
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
 
       showPage('paymentPage');
+    }
+
+    // Debounce function for search optimization
+    function debounce(func, wait) {
+      let timeout;
+      return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
+
+    // Logout with confirmation
+    function showLogoutConfirmation() {
+      document.getElementById('alertTitle').textContent = 'Logout Confirmation';
+      document.getElementById('alertMessage').textContent = 'Are you sure you want to logout?';
+      document.getElementById('alertModal').classList.add('active');
+    }
+
+    function confirmLogout() {
+      const auth = firebase.auth();
+      auth.signOut().then(() => {
+        showToast('Logged out successfully', 'success');
+        document.getElementById('alertModal').classList.remove('active');
+        showPage('homePage');
+      });
+    }
+
+    // FIXED: Reset Password won't show login after sending
+    async function handleResetPassword() {
+      const auth = firebase.auth();
+      const email = document.getElementById('forgotPasswordEmail').value;
+      
+      if (!email) {
+        showToast('Please enter your email address', 'error');
+        return;
+      }
+      
+      try {
+        resetPasswordBtn.disabled = true;
+        resetPasswordBtn.innerHTML = '<div class="loading-spinner"></div> Sending...';
+        
+        await auth.sendPasswordResetEmail(email);
+        showToast('Password reset email sent! Check your inbox.', 'success');
+        
+        document.getElementById('forgotPasswordEmail').value = '';
+        
+        setTimeout(() => {
+          authModal.classList.remove('active');
+        }, 2000);
+        
+      } catch (err) {
+        console.error('Password reset error:', err);
+        showToast(err.message, 'error');
+      } finally {
+        resetPasswordBtn.disabled = false;
+        resetPasswordBtn.textContent = 'Send Reset Link';
+      }
+    }
+
+    // Address Management Functions
+    async function saveAddress(addressData, isDefault = false) {
+      if (!currentUser) return null;
+      
+      const isDuplicate = savedAddresses.some(addr => 
+        addr.name === addressData.name &&
+        addr.mobile === addressData.mobile &&
+        addr.pincode === addressData.pincode &&
+        addr.city === addressData.city &&
+        addr.state === addressData.state &&
+        addr.street === addressData.street
+      );
+      
+      if (isDuplicate) {
+        showToast('Address already exists', 'info');
+        return null;
+      }
+      
+      const addressId = 'address_' + Date.now();
+      const addressToSave = {
+        id: addressId,
+        userId: currentUser.uid,
+        name: addressData.name,
+        mobile: addressData.mobile,
+        pincode: addressData.pincode,
+        city: addressData.city,
+        state: addressData.state,
+        street: addressData.street,
+        type: addressData.type || 'home',
+        isDefault: isDefault,
+        createdAt: Date.now()
+      };
+      
+      const realtimeDb = firebase.database();
+      try {
+        await realtimeDb.ref('addresses/' + addressId).set(addressToSave);
+        showToast('Address saved successfully', 'success');
+        
+        savedAddresses.push(addressToSave);
+        cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
+        
+        return addressId;
+      } catch (error) {
+        console.error('Error saving address:', error);
+        showToast('Failed to save address', 'error');
+        return null;
+      }
+    }
+
+    async function deleteAddress(addressId) {
+      if (!currentUser) return;
+      
+      const realtimeDb = firebase.database();
+      try {
+        await realtimeDb.ref('addresses/' + addressId).remove();
+        
+        savedAddresses = savedAddresses.filter(addr => addr.id !== addressId);
+        cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
+        
+        showToast('Address deleted successfully', 'success');
+        loadSavedAddresses();
+      } catch (error) {
+        console.error('Error deleting address:', error);
+        showToast('Failed to delete address', 'error');
+      }
+    }
+
+    async function updateAddress(addressId, addressData) {
+      if (!currentUser) return;
+      
+      const realtimeDb = firebase.database();
+      try {
+        await realtimeDb.ref('addresses/' + addressId).update(addressData);
+        
+        const index = savedAddresses.findIndex(addr => addr.id === addressId);
+        if (index !== -1) {
+          savedAddresses[index] = { ...savedAddresses[index], ...addressData };
+          cacheManager.set('addresses_' + currentUser.uid, savedAddresses);
+        }
+        
+        showToast('Address updated successfully', 'success');
+        loadSavedAddresses();
+      } catch (error) {
+        console.error('Error updating address:', error);
+        showToast('Failed to update address', 'error');
+      }
     }
 
     // UPDATED: Save user info and address
@@ -5970,6 +6938,142 @@
       loadSavedAddresses();
     }
 
+    // UPDATED: Load saved addresses with edit/delete
+    async function loadSavedAddresses() {
+      if (!currentUser) return;
+      
+      const realtimeDb = firebase.database();
+      try {
+        const cachedAddresses = cacheManager.get('addresses_' + currentUser.uid);
+        if (cachedAddresses && cachedAddresses.length > 0) {
+          savedAddresses = cachedAddresses;
+          renderSavedAddresses();
+        }
+        
+        const snapshot = await realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value');
+        const addressesList = document.getElementById('savedAddressesList');
+        const savedAddressesSection = document.getElementById('savedAddressesSection');
+        
+        if (!snapshot.exists()) {
+          savedAddressesSection.style.display = 'none';
+          savedAddresses = [];
+          return;
+        }
+        
+        const addressesObj = snapshot.val();
+        const addresses = Object.keys(addressesObj).map(key => ({
+          id: key,
+          ...addressesObj[key]
+        }));
+        
+        savedAddresses = addresses;
+        cacheManager.set('addresses_' + currentUser.uid, addresses);
+        
+        if (addresses.length > 0) {
+          savedAddressesSection.style.display = 'block';
+          renderSavedAddresses();
+        } else {
+          savedAddressesSection.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Error loading addresses:', error);
+      }
+    }
+
+    function renderSavedAddresses() {
+      const addressesList = document.getElementById('savedAddressesList');
+      if (!addressesList) return;
+      
+      addressesList.innerHTML = '';
+      
+      savedAddresses.forEach(address => {
+        const addressCard = document.createElement('div');
+        addressCard.className = 'saved-address-card';
+        addressCard.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
+            <div style="flex:1">
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}, ${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile} • Type: ${address.type}</div>
+            </div>
+          </div>
+          <div class="address-actions">
+            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
+          </div>
+        `;
+        
+        const radio = addressCard.querySelector('input[type="radio"]');
+        radio.addEventListener('click', function(e) {
+          e.stopPropagation();
+          fillAddressForm(address);
+        });
+        
+        addressCard.addEventListener('click', function(e) {
+          if (e.target.type !== 'radio') {
+            radio.checked = true;
+            fillAddressForm(address);
+          }
+        });
+        
+        const editBtn = addressCard.querySelector('.edit-address');
+        editBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          editAddress(address);
+        });
+        
+        const deleteBtn = addressCard.querySelector('.delete-address');
+        deleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteAddressConfirmation(address);
+        });
+        
+        addressesList.appendChild(addressCard);
+      });
+    }
+
+    function fillAddressForm(address) {
+      document.getElementById('fullname').value = address.name;
+      document.getElementById('mobile').value = address.mobile;
+      document.getElementById('pincode').value = address.pincode;
+      document.getElementById('city').value = address.city;
+      document.getElementById('state').value = address.state;
+      document.getElementById('house').value = address.street;
+      document.getElementById('addressType').value = address.type || 'home';
+    }
+
+    function editAddress(address) {
+      fillAddressForm(address);
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
+      
+      const saveBtn = document.getElementById('saveUserInfo');
+      saveBtn.textContent = 'Update Address';
+      saveBtn.onclick = function() {
+        updateAddress(address.id, {
+          name: document.getElementById('fullname').value,
+          mobile: document.getElementById('mobile').value,
+          pincode: document.getElementById('pincode').value,
+          city: document.getElementById('city').value,
+          state: document.getElementById('state').value,
+          street: document.getElementById('house').value,
+          type: document.getElementById('addressType').value
+        });
+      };
+    }
+
+    function deleteAddressConfirmation(address) {
+      document.getElementById('alertTitle').textContent = 'Delete Address';
+      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
+      document.getElementById('alertModal').classList.add('active');
+      
+      document.getElementById('alertConfirmBtn').onclick = function() {
+        deleteAddress(address.id);
+        document.getElementById('alertModal').classList.remove('active');
+      };
+    }
+
     function showNewAddressForm() {
       document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
@@ -5999,7 +7103,7 @@
       
       if (!container || !empty) return;
       
-      let wishlistProductIds = loadWishlistFromLocalStorage();
+      let wishlistProductIds = JSON.parse(localStorage.getItem('wishlist') || '[]');
       const wishlistProducts = products.filter(product => wishlistProductIds.includes(product.id));
       
       if (wishlistProducts.length === 0) {
@@ -6023,11 +7127,31 @@
     async function addToRecentlyViewed(productId) {
       if (!currentUser) return;
       
+      const realtimeDb = firebase.database();
       try {
-        await firebase.database().ref('recentlyViewed/' + currentUser.uid + '/' + productId).set(Date.now());
+        await realtimeDb.ref('recentlyViewed/' + currentUser.uid + '/' + productId).set(Date.now());
         loadRecentlyViewed(currentUser);
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
+      }
+    }
+
+    async function loadRecentlyViewed(user) {
+      const realtimeDb = firebase.database();
+      try {
+        const snapshot = await realtimeDb.ref('recentlyViewed/' + user.uid).once('value');
+        const recentlyViewedObj = snapshot.val();
+        if (recentlyViewedObj) {
+          recentlyViewed = Object.keys(recentlyViewedObj);
+        } else {
+          recentlyViewed = [];
+        }
+        
+        if (recentlyViewed.length > 0) {
+          renderRecentlyViewed();
+        }
+      } catch (error) {
+        console.error('Error loading recently viewed:', error);
       }
     }
 
@@ -6234,7 +7358,7 @@
     function openImageZoom() {
       if (!currentProduct) return;
       
-      const productImages = getProductImages();
+      const productImages = getProductImagesByColor(currentProduct, currentSelectedColor);
       const imageUrl = productImages[currentImageIndex];
       
       zoomImage.src = imageUrl;
@@ -6303,9 +7427,31 @@
       }, 3000);
     }
 
-    // Email sending function
-    function sendOrderConfirmationEmail(orderData) {
-      console.log('Order confirmation email would be sent for:', orderData);
+    // Load user data
+    function loadUserData(user) {
+      const realtimeDb = firebase.database();
+      realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          userInfo = { ...userInfo, ...userData };
+        }
+      }).catch(error => {
+        console.error('Error loading user data:', error);
+      });
+    }
+
+    // Update user name UI
+    function updateUserNameUI(name) {
+      document.querySelectorAll('.user-name').forEach(el => {
+        el.textContent = name;
+      });
+    }
+
+    function updateProfileName() {
+      const name = localStorage.getItem('userName') || '';
+      if (name) {
+        updateUserNameUI(name);
+      }
     }
 
     // Orders rendering function
@@ -6355,10 +7501,11 @@
       showPage('orderDetailPage');
     }
 
-    function showMyOrders() {
+    async function showMyOrders() {
       if (!currentUser) return;
       
-      firebase.database().ref('orders').orderByChild('userId').equalTo(currentUser.uid)
+      const realtimeDb = firebase.database();
+      realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
         .once('value')
         .then(snapshot => {
           if (snapshot.exists()) {
@@ -6378,786 +7525,6 @@
           console.error('Error loading orders:', error);
         });
     }
-
-    // Event Listeners Setup
-    function setupEventListeners() {
-      menuIcon.addEventListener('click', openMenu);
-      menuClose.addEventListener('click', closeMenu);
-      menuOverlay.addEventListener('click', closeMenu);
-      
-      themeToggle.addEventListener('click', toggleTheme);
-      
-      authClose.addEventListener('click', () => authModal.classList.remove('active'));
-      openLoginTop.addEventListener('click', showLoginModal);
-      mobileLoginBtn.addEventListener('click', showLoginModal);
-      
-      loginTab.addEventListener('click', () => switchAuthTab('login'));
-      signupTab.addEventListener('click', () => switchAuthTab('signup'));
-      switchToLogin.addEventListener('click', () => switchAuthTab('login'));
-      
-      loginBtn.addEventListener('click', handleLogin);
-      signupBtn.addEventListener('click', handleSignup);
-      googleLoginBtn.addEventListener('click', handleGoogleLogin);
-      googleSignupBtn.addEventListener('click', handleGoogleLogin);
-      
-      forgotPasswordLink.addEventListener('click', () => {
-        loginForm.classList.remove('active');
-        forgotPasswordForm.classList.add('active');
-      });
-      backToLogin.addEventListener('click', () => {
-        forgotPasswordForm.classList.remove('active');
-        loginForm.classList.add('active');
-      });
-      resetPasswordBtn.addEventListener('click', handleResetPassword);
-      
-      userProfile.addEventListener('click', () => window.location.href = 'account.html');
-      
-      mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
-      
-      document.getElementById('alertCancelBtn').addEventListener('click', () => {
-        document.getElementById('alertModal').classList.remove('active');
-      });
-      document.getElementById('alertConfirmBtn').addEventListener('click', confirmLogout);
-      
-      openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
-      
-      zoomClose.addEventListener('click', () => zoomModal.classList.remove('active'));
-      zoomIn.addEventListener('click', () => adjustZoom(0.2));
-      zoomOut.addEventListener('click', () => adjustZoom(-0.2));
-      zoomReset.addEventListener('click', resetZoom);
-      
-      productImageModalClose.addEventListener('click', () => productImageModal.classList.remove('active'));
-      productImageModalPrev.addEventListener('click', prevProductModalImage);
-      productImageModalNext.addEventListener('click', nextProductModalImage);
-      
-      const searchInput = document.getElementById('searchInput');
-      const homeSearchInput = document.getElementById('homeSearchInput');
-      
-      if (searchInput) {
-        searchInput.addEventListener('input', debounce(handleSearch, 300));
-      }
-      
-      if (homeSearchInput) {
-        homeSearchInput.addEventListener('input', debounce(handleHomeSearch, 300));
-      }
-      
-      document.getElementById('backToProducts')?.addEventListener('click', () => showPage('productsPage'));
-      document.getElementById('toUserInfo')?.addEventListener('click', toUserInfo);
-      document.getElementById('editOrder')?.addEventListener('click', () => showPage('orderPage'));
-      document.getElementById('toPayment')?.addEventListener('click', toPayment);
-      document.getElementById('payBack')?.addEventListener('click', () => showPage('userPage'));
-      document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
-      document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
-      document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
-      
-      document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
-      document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
-      
-      document.querySelectorAll('.size-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('sizeValidationError').classList.remove('show');
-        });
-      });
-      
-      document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-        });
-      });
-      
-      document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
-      document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
-      
-      document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
-      
-      document.querySelectorAll('.share-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const platform = this.getAttribute('data-platform');
-          shareProduct(platform);
-        });
-      });
-      
-      document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
-      
-      document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
-      document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
-      
-      document.getElementById('productDetailMainImage')?.addEventListener('click', openProductImageModal);
-      
-      document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
-      document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
-      
-      if (ratingInput) {
-        ratingInput.querySelectorAll('.rating-star').forEach(star => {
-          star.addEventListener('click', function() {
-            const rating = parseInt(this.getAttribute('data-rating'));
-            setRating(rating);
-          });
-        });
-      }
-      
-      if (submitReview) {
-        submitReview.addEventListener('click', submitProductReview);
-      }
-      
-      const bannerCarousel = document.getElementById('bannerCarousel');
-      if (bannerCarousel) {
-        bannerCarousel.addEventListener('touchstart', handleBannerTouchStart);
-        bannerCarousel.addEventListener('touchmove', handleBannerTouchMove);
-        bannerCarousel.addEventListener('touchend', handleBannerTouchEnd);
-      }
-      
-      window.addEventListener('popstate', function(event) {
-        const page = event.state ? event.state.page : 'homePage';
-        showPage(page);
-      });
-      
-      document.querySelector('.qty-minus')?.addEventListener('click', function() {
-        decreaseQuantity();
-        if (document.getElementById('paymentPage').classList.contains('active')) {
-          updatePaymentSummary();
-        }
-      });
-      
-      document.querySelector('.qty-plus')?.addEventListener('click', function() {
-        increaseQuantity();
-        if (document.getElementById('paymentPage').classList.contains('active')) {
-          updatePaymentSummary();
-        }
-      });
-      
-      document.querySelectorAll('input[name="pay"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-          if (document.getElementById('paymentPage').classList.contains('active')) {
-            updatePaymentSummary();
-          }
-        });
-      });
-      
-      document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
-    }
-
-    // Banner touch handlers for mobile swipe
-    function handleBannerTouchStart(e) {
-      bannerStartX = e.touches[0].clientX;
-      isBannerDragging = true;
-    }
-
-    function handleBannerTouchMove(e) {
-      if (!isBannerDragging) return;
-      bannerCurrentX = e.touches[0].clientX;
-    }
-
-    function handleBannerTouchEnd() {
-      if (!isBannerDragging) return;
-      
-      const diff = bannerStartX - bannerCurrentX;
-      const bannerTrack = document.getElementById('bannerTrack');
-      const activeIndex = banners.findIndex((_, index) => 
-        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
-      );
-      
-      if (Math.abs(diff) > 50) {
-        if (diff > 0) {
-          const nextIndex = (activeIndex + 1) % banners.length;
-          setBannerSlide(nextIndex);
-        } else {
-          const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-          setBannerSlide(prevIndex);
-        }
-      }
-      
-      isBannerDragging = false;
-    }
-
-    // Product Image Modal Functions
-    function openProductImageModal() {
-      if (!currentProduct) return;
-      
-      currentProductImages = getProductImages();
-      currentProductModalIndex = currentImageIndex;
-      
-      updateProductModalImage();
-      productImageModal.classList.add('active');
-    }
-
-    function updateProductModalImage() {
-      if (currentProductImages.length === 0) return;
-      
-      productImageModalImage.src = currentProductImages[currentProductModalIndex];
-      
-      productImageModalDots.innerHTML = '';
-      currentProductImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `product-image-modal-dot ${index === currentProductModalIndex ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          currentProductModalIndex = index;
-          updateProductModalImage();
-        });
-        productImageModalDots.appendChild(dot);
-      });
-    }
-
-    function prevProductModalImage() {
-      if (currentProductImages.length <= 1) return;
-      
-      currentProductModalIndex = (currentProductModalIndex - 1 + currentProductImages.length) % currentProductImages.length;
-      updateProductModalImage();
-    }
-
-    function nextProductModalImage() {
-      if (currentProductImages.length <= 1) return;
-      
-      currentProductModalIndex = (currentProductModalIndex + 1) % currentProductImages.length;
-      updateProductModalImage();
-    }
-
-    // Rating and Review Functions
-    function setRating(rating) {
-      const stars = ratingInput.querySelectorAll('.rating-star');
-      stars.forEach((star, index) => {
-        if (index < rating) {
-          star.classList.add('active');
-        } else {
-          star.classList.remove('active');
-        }
-      });
-    }
-
-    async function submitProductReview() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      
-      if (!currentProduct) {
-        showToast('No product selected', 'error');
-        return;
-      }
-      
-      const activeStars = ratingInput.querySelectorAll('.rating-star.active');
-      const rating = activeStars.length;
-      const reviewTextValue = reviewText.value.trim();
-      
-      if (rating === 0) {
-        showToast('Please select a rating', 'error');
-        return;
-      }
-      
-      if (!reviewTextValue) {
-        showToast('Please write a review', 'error');
-        return;
-      }
-      
-      try {
-        const reviewId = 'review_' + Date.now();
-        const reviewData = {
-          id: reviewId,
-          productId: currentProduct.id,
-          userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
-          rating: rating,
-          text: reviewTextValue,
-          date: Date.now()
-        };
-        
-        await firebase.database().ref('reviews/' + reviewId).set(reviewData);
-        
-        showToast('Review submitted successfully', 'success');
-        
-        setRating(0);
-        reviewText.value = '';
-        
-        loadProductReviews(currentProduct.id);
-      } catch (error) {
-        console.error('Error submitting review:', error);
-        showToast('Failed to submit review', 'error');
-      }
-    }
-
-    async function loadProductReviews(productId) {
-      try {
-        const snapshot = await firebase.database().ref('reviews').orderByChild('productId').equalTo(productId).once('value');
-        const reviewsObj = snapshot.val();
-        
-        if (!reviewsObj) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
-          return;
-        }
-        
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        reviews.sort((a, b) => b.date - a.date);
-        
-        renderReviews(reviews);
-      } catch (error) {
-        console.error('Error loading reviews:', error);
-        reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
-      }
-    }
-
-    function renderReviews(reviews) {
-      reviewsList.innerHTML = '';
-      
-      reviews.forEach(review => {
-        const reviewItem = document.createElement('div');
-        reviewItem.className = 'review-item';
-        
-        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
-        
-        reviewItem.innerHTML = `
-          <div class="review-header">
-            <div class="reviewer-name">${review.userName}</div>
-            <div class="review-date">${date}</div>
-          </div>
-          <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
-        `;
-        
-        reviewsList.appendChild(reviewItem);
-      });
-    }
-
-    // Authentication Functions
-    async function handleLogin() {
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-      
-      loginError.textContent = '';
-      
-      if (!email || !password) {
-        loginError.textContent = 'Please fill in all fields';
-        return;
-      }
-      
-      try {
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<div class="loading-spinner"></div> Logging in...';
-        
-        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-        
-        await firebase.database().ref('users/' + userCredential.user.uid).update({
-          lastLoginAt: Date.now()
-        });
-        
-        showToast('Login successful!', 'success');
-        authModal.classList.remove('active');
-        
-        document.getElementById('loginEmail').value = '';
-        document.getElementById('loginPassword').value = '';
-      } catch (err) {
-        console.error('Login error:', err);
-        loginError.textContent = err.message;
-      } finally {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Login';
-      }
-    }
-
-    async function handleSignup() {
-      const name = document.getElementById('signupName').value;
-      const email = document.getElementById('signupEmail').value;
-      const password = document.getElementById('signupPassword').value;
-      
-      signupError.textContent = '';
-      
-      if (!name || !email || !password) {
-        signupError.textContent = 'Please fill in all fields';
-        return;
-      }
-      
-      if (password.length < 6) {
-        signupError.textContent = 'Password should be at least 6 characters';
-        return;
-      }
-      
-      try {
-        signupBtn.disabled = true;
-        signupBtn.innerHTML = '<div class="loading-spinner"></div> Creating account...';
-        
-        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-        
-        await firebase.database().ref('users/' + user.uid).set({
-          name: name,
-          email: email,
-          createdAt: Date.now(),
-          lastLoginAt: Date.now()
-        });
-        
-        saveUserName(name);
-        updateUserNameUI(name);
-        
-        showToast('Account created successfully!', 'success');
-        authModal.classList.remove('active');
-        
-        document.getElementById('signupName').value = '';
-        document.getElementById('signupEmail').value = '';
-        document.getElementById('signupPassword').value = '';
-      } catch (err) {
-        console.error('Signup error:', err);
-        signupError.textContent = err.message;
-      } finally {
-        signupBtn.disabled = false;
-        signupBtn.textContent = 'Sign Up';
-      }
-    }
-
-    async function handleGoogleLogin() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      
-      try {
-        const result = await firebase.auth().signInWithPopup(provider);
-        const user = result.user;
-        
-        const userSnapshot = await firebase.database().ref('users/' + user.uid).once('value');
-        
-        if (!userSnapshot.exists()) {
-          await firebase.database().ref('users/' + user.uid).set({
-            name: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL,
-            createdAt: Date.now(),
-            lastLoginAt: Date.now()
-          });
-        } else {
-          await firebase.database().ref('users/' + user.uid).update({
-            lastLoginAt: Date.now()
-          });
-        }
-        
-        saveUserName(user.displayName || 'User');
-        updateUserNameUI(user.displayName || 'User');
-        
-        showToast('Login successful!', 'success');
-        authModal.classList.remove('active');
-      } catch (err) {
-        console.error('Google login error:', err);
-        if (loginForm.classList.contains('active')) {
-          loginError.textContent = err.message;
-        } else {
-          signupError.textContent = err.message;
-        }
-      }
-    }
-
-    // FIXED: Place Order Function with proper calculations
-    async function confirmOrder() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      
-      if (!userInfo.fullName || !userInfo.mobile) {
-        showToast('Please complete your information first', 'error');
-        showPage('userPage');
-        return;
-      }
-      
-      if (!currentProduct) {
-        showToast('No product selected', 'error');
-        showPage('productsPage');
-        return;
-      }
-      
-      const orderId = generateOrderId();
-      currentOrderId = orderId;
-      
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
-      const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
-      
-      const productPrice = parsePrice(currentProduct.price);
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      const orderData = {
-        orderId: orderId,
-        userId: currentUser.uid,
-        username: userInfo.fullName,
-        userEmail: currentUser.email,
-        productId: currentProduct.id,
-        productName: currentProduct.name,
-        productPrice: productPrice,
-        quantity: quantity,
-        size: size,
-        color: color,
-        subtotal: subtotal,
-        deliveryCharge: deliveryCharge,
-        gatewayCharge: gatewayCharge,
-        totalAmount: total,
-        paymentMethod: paymentMethod,
-        status: 'confirmed',
-        orderDate: Date.now(),
-        userInfo: userInfo,
-        tracking: {
-          confirmed: Date.now(),
-          shipped: null,
-          delivered: null
-        }
-      };
-      
-      try {
-        await firebase.database().ref('orders/' + orderId).set(orderData);
-        
-        document.getElementById('orderIdDisplay').textContent = orderId;
-        showPage('successPage');
-        
-        sendOrderConfirmationEmail(orderData);
-        
-        showToast('Order placed successfully!', 'success');
-        
-        localStorage.removeItem('cart');
-        
-      } catch (error) {
-        console.error('Error placing order:', error);
-        showToast('Failed to place order. Please try again.', 'error');
-      }
-    }
-
-    // Payment Calculation Function - FIXED
-    function updatePaymentSummary() {
-      if (!currentProduct) {
-        document.getElementById('sumProduct').textContent = '-';
-        document.getElementById('sumQty').textContent = '-';
-        document.getElementById('sumPrice').textContent = '-';
-        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
-        document.getElementById('sumGateway').textContent = '₹0';
-        document.getElementById('sumTotal').textContent = '-';
-        return;
-      }
-      
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      
-      const productPrice = parsePrice(currentProduct.price);
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      document.getElementById('sumProduct').textContent = currentProduct.name;
-      document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
-      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
-    }
-
-    // Page navigation
-    function showPage(pageId) {
-      window.history.pushState({ page: pageId }, '', `#${pageId}`);
-      
-      if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
-        window.location.href = 'account.html';
-        return;
-      }
-      
-      document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-      });
-      document.getElementById(pageId).classList.add('active');
-      
-      updateStepPills();
-      
-      window.scrollTo(0, 0);
-      
-      if (pageId === 'myOrdersPage' && currentUser) {
-        showMyOrders();
-      }
-      
-      if (pageId === 'wishlistPage') {
-        renderWishlist();
-      }
-      
-      if (pageId === 'productDetailPage' && currentProduct) {
-        loadProductReviews(currentProduct.id);
-      }
-      
-      if (pageId === 'paymentPage') {
-        updatePaymentSummary();
-      }
-      
-      if (pageId === 'userPage' && currentUser) {
-        loadSavedAddresses();
-      }
-      
-      if (pageId === 'orderPage' && currentProduct) {
-        initOrderPageGallery();
-      }
-    }
-
-    function checkAuthAndShowPage(pageId) {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      showPage(pageId);
-    }
-
-    function showLoginModal() {
-      authModal.classList.add('active');
-      switchAuthTab('login');
-    }
-
-    function switchAuthTab(tab) {
-      loginForm.classList.remove('active');
-      signupForm.classList.remove('active');
-      forgotPasswordForm.classList.remove('active');
-      
-      loginTab.classList.remove('active');
-      signupTab.classList.remove('active');
-      
-      loginError.textContent = '';
-      signupError.textContent = '';
-      
-      if (tab === 'login') {
-        loginTab.classList.add('active');
-        loginForm.classList.add('active');
-      } else {
-        signupTab.classList.add('active');
-        signupForm.classList.add('active');
-      }
-    }
-
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        showToast('Logged out successfully', 'success');
-        showPage('homePage');
-      }).catch(error => {
-        console.error('Logout error:', error);
-        showToast('Error logging out', 'error');
-      });
-    }
-
-    // Mobile menu functions
-    function openMenu() {
-      mobileMenu.classList.add('active');
-      menuOverlay.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeMenu() {
-      mobileMenu.classList.remove('active');
-      menuOverlay.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-
-    // Theme functions
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      saveThemeToLocalStorage(newTheme);
-    }
-
-    // Toast notification
-    function showToast(message, type = 'success') {
-      toast.textContent = message;
-      toast.className = 'toast ' + type;
-      toast.classList.add('show');
-      
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
-
-    // User interface updates
-    function updateUIForUser(user) {
-      userProfile.style.display = 'flex';
-      openLoginTop.style.display = 'none';
-      mobileLoginBtn.style.display = 'none';
-      mobileUserProfile.style.display = 'flex';
-      mobileLogoutBtn.style.display = 'flex';
-      
-      updateUserProfile(user);
-      
-      firebase.database().ref('users/' + user.uid).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          const name = userData.name || user.displayName || 'User';
-          saveUserName(name);
-          updateUserNameUI(name);
-          mobileUserName.textContent = name;
-        }
-      });
-    }
-
-    function updateUserProfile(user) {
-      if (user.photoURL) {
-        userAvatarImg.src = user.photoURL;
-        userAvatarImg.style.display = 'block';
-        userAvatarInitial.style.display = 'none';
-      } else {
-        userAvatarImg.style.display = 'none';
-        userAvatarInitial.style.display = 'block';
-        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
-      }
-      
-      const name = user.displayName || 'User';
-      userName.textContent = name;
-      mobileUserName.textContent = name;
-    }
-
-    function updateUIForGuest() {
-      userProfile.style.display = 'none';
-      openLoginTop.style.display = 'block';
-      mobileLoginBtn.style.display = 'flex';
-      mobileUserProfile.style.display = 'none';
-      mobileLogoutBtn.style.display = 'none';
-    }
-
-    // Load user data
-    function loadUserData(user) {
-      firebase.database().ref('users/' + user.uid).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          userInfo = { ...userInfo, ...userData };
-        }
-      }).catch(error => {
-        console.error('Error loading user data:', error);
-      });
-    }
-
-    async function loadRecentlyViewed(user) {
-      try {
-        const snapshot = await firebase.database().ref('recentlyViewed/' + user.uid).once('value');
-        const recentlyViewedObj = snapshot.val();
-        if (recentlyViewedObj) {
-          recentlyViewed = Object.keys(recentlyViewedObj);
-        } else {
-          recentlyViewed = [];
-        }
-        
-        if (recentlyViewed.length > 0) {
-          renderRecentlyViewed();
-        }
-      } catch (error) {
-        console.error('Error loading recently viewed:', error);
-      }
-    }
-
-    // Make functions available globally
-    window.showProductDetail = showProductDetail;
-    window.filterByCategory = filterByCategory;
-    window.showPage = showPage;
-    window.checkAuthAndShowPage = checkAuthAndShowPage;
-    window.showLoginModal = showLoginModal;
-    window.showLogoutConfirmation = showLogoutConfirmation;
-    window.confirmLogout = confirmLogout;
-    window.openMenu = openMenu;
-    window.closeMenu = closeMenu;
-    window.showMyOrders = showMyOrders;
   </script>
 </body>
 </html>
