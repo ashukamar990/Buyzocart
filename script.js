@@ -1,5 +1,4 @@
-
-    // Global variables
+// Global variables
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -618,6 +617,74 @@
       
       currentProductModalIndex = (currentProductModalIndex + 1) % currentProductImages.length;
       updateProductModalImage();
+    }
+
+    // =========================================================
+    // THUMBNAIL FUNCTIONALITY ADDITIONS
+    // =========================================================
+
+    // FIXED: Initialize thumbnail functionality
+    function initProductThumbnails(product) {
+        const thumbnailsContainer = document.getElementById('productThumbnails');
+        if (!thumbnailsContainer) return;
+        
+        thumbnailsContainer.innerHTML = '';
+        
+        currentProductImages = getProductImages();
+        
+        currentProductImages.forEach((image, index) => {
+            const thumbnail = document.createElement('div');
+            thumbnail.className = `product-thumbnail ${index === 0 ? 'active' : ''}`;
+            thumbnail.style.backgroundImage = `url('${image}')`;
+            thumbnail.setAttribute('data-index', index);
+            
+            thumbnail.addEventListener('click', function() {
+                setMainImageFromThumbnail(index);
+            });
+            
+            thumbnailsContainer.appendChild(thumbnail);
+        });
+    }
+
+    // FIXED: Set main image from thumbnail click
+    function setMainImageFromThumbnail(index) {
+        if (!currentProductImages || currentProductImages.length <= index) return;
+        
+        currentImageIndex = index;
+        
+        // Update main image
+        const mainImage = document.getElementById('productDetailMainImage');
+        if (mainImage) {
+            mainImage.style.backgroundImage = `url('${currentProductImages[index]}')`;
+        }
+        
+        // Update carousel dots
+        updateCarouselDots(index);
+        
+        // Update thumbnails
+        updateActiveThumbnail(index);
+    }
+
+    // FIXED: Update active thumbnail
+    function updateActiveThumbnail(index) {
+        document.querySelectorAll('.product-thumbnail').forEach((thumb, i) => {
+            if (i === index) {
+                thumb.classList.add('active');
+            } else {
+                thumb.classList.remove('active');
+            }
+        });
+    }
+
+    // FIXED: Update carousel dots (existing function enhanced)
+    function updateCarouselDots(index) {
+        document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+            if (i === index) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
     }
 
     // FIXED: Out of Stock System
@@ -1561,6 +1628,7 @@
       if (pageId === 'productDetailPage' && currentProduct) {
         loadProductReviews(currentProduct.id);
         initColorSwitcher(currentProduct);
+        initProductThumbnails(currentProduct); // ADDED: Initialize thumbnails
       }
       
       if (pageId === 'paymentPage') {
@@ -1913,6 +1981,7 @@
       }
       
       initProductDetailGallery(product);
+      initProductThumbnails(product); // ADDED: Initialize thumbnails
       initColorSwitcher(product);
       
       document.getElementById('productShareLink').value = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + product.id;
@@ -2053,15 +2122,18 @@
       }
     }
 
+    // FIXED: Update product detail image with thumbnail sync
     function updateProductDetailImage() {
       const mainImage = document.getElementById('productDetailMainImage');
       
       if (mainImage && currentProductImages[currentImageIndex]) {
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
         
-        document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
-          dot.classList.toggle('active', index === currentImageIndex);
-        });
+        // Update carousel dots
+        updateCarouselDots(currentImageIndex);
+        
+        // Update thumbnails
+        updateActiveThumbnail(currentImageIndex);
       }
     }
 
@@ -2763,4 +2835,3 @@
       initOrderPageGallery();
       showPage('orderPage');
     }
-  
