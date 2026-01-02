@@ -244,6 +244,13 @@ function fetchLiveData() {
         ...productsObj[key]
       }));
       
+      // Debug: Check if images are being loaded
+      console.log('Fetched products from Firebase:', newProducts);
+      newProducts.forEach(product => {
+        console.log(`Product "${product.name}" has images:`, product.images);
+        console.log(`Product "${product.name}" has image property:`, product.image);
+      });
+      
       products = newProducts;
       cacheManager.set('products', products);
       
@@ -524,6 +531,60 @@ function resetPriceFilter() {
 }
 
 // =========================================================
+// UPDATED: Get Product Images Function - Always use real product images
+// =========================================================
+
+function getProductImages() {
+  if (!currentProduct) return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
+  
+  // First priority: Use currentProductImages from color selection
+  if (currentProductImages && currentProductImages.length > 0) {
+    return currentProductImages;
+  }
+  
+  // Second priority: Use product's images array
+  if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
+    return currentProduct.images;
+  }
+  
+  // Third priority: Use any image property from product
+  const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
+  for (const prop of imageProperties) {
+    if (currentProduct[prop]) {
+      return [currentProduct[prop]];
+    }
+  }
+  
+  // Last resort: Default placeholder
+  return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
+}
+
+// =========================================================
+// UPDATED: Get single product image
+// =========================================================
+
+function getProductImage(product, idx = 0) {
+  if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
+  
+  // Try to get images array first
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    if (idx < product.images.length) return product.images[idx];
+    return product.images[0];
+  }
+  
+  // Try all possible image properties
+  const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
+  for (const prop of imageProperties) {
+    if (product[prop]) {
+      return product[prop];
+    }
+  }
+  
+  // Last resort
+  return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+}
+
+// =========================================================
 // UPDATED COLOR SWITCHER FUNCTION
 // =========================================================
 
@@ -612,23 +673,29 @@ function initColorSwitcher(product) {
       const colorImages = JSON.parse(this.getAttribute('data-images'));
       
       // Update color name display
-      document.getElementById('selectedColorNameDisplay').textContent = selectedColorName;
+      const colorNameDisplay = document.getElementById('selectedColorNameDisplay');
+      if (colorNameDisplay) {
+        colorNameDisplay.textContent = selectedColorName;
+      }
       
-      // Update product images array for all galleries
-      currentProductImages = colorImages;
+      // Update product images array
+      currentProductImages = colorImages || [getProductImage(currentProduct)];
       
-      // Update main product image (first image of selected color)
-      if (colorImages && colorImages.length > 0) {
+      // CRITICAL: Update main product image immediately
+      if (currentProductImages.length > 0) {
         const mainImage = document.getElementById('productDetailMainImage');
         if (mainImage) {
-          mainImage.style.backgroundImage = `url('${colorImages[0]}')`;
+          mainImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
         }
         
         // Update current image index
         currentImageIndex = 0;
         
         // Update image dots
-        updateDetailCarouselDots(colorImages.length);
+        updateDetailCarouselDots(currentProductImages.length);
+        
+        // Update product detail image
+        updateProductDetailImage();
       }
       
       // Update order page gallery if active
@@ -644,7 +711,11 @@ function initColorSwitcher(product) {
   if (firstAvailableColor) {
     selectedColor = firstAvailableColor.id;
     selectedColorName = firstAvailableColor.name;
-    document.getElementById('selectedColorNameDisplay').textContent = selectedColorName;
+    
+    const colorNameDisplay = document.getElementById('selectedColorNameDisplay');
+    if (colorNameDisplay) {
+      colorNameDisplay.textContent = selectedColorName;
+    }
     
     // Set initial images
     currentProductImages = firstAvailableColor.images || [firstAvailableColor.thumbnail];
@@ -720,6 +791,33 @@ function nextProductModalImage() {
   
   currentProductModalIndex = (currentProductModalIndex + 1) % currentProductImages.length;
   updateProductModalImage();
+}
+
+// =========================================================
+// NEW: Image load error handler
+// =========================================================
+
+function handleImageError(imgElement, fallbackUrl) {
+  imgElement.onerror = null;
+  if (imgElement.style.backgroundImage) {
+    imgElement.style.backgroundImage = `url('${fallbackUrl}')`;
+  } else if (imgElement.src) {
+    imgElement.src = fallbackUrl;
+  }
+}
+
+// =========================================================
+// NEW: Preload images to ensure they're available
+// =========================================================
+
+function preloadProductImages(images) {
+  images.forEach(imgUrl => {
+    const img = new Image();
+    img.src = imgUrl;
+    img.onerror = () => {
+      console.warn('Failed to load image:', imgUrl);
+    };
+  });
 }
 
 // FIXED: Out of Stock System
@@ -867,20 +965,6 @@ function checkAuthAndShowAccount() {
 // =========================================================
 // REMAINING FUNCTIONS
 // =========================================================
-
-// Product Image Helper Function
-function getProductImage(product, idx = 0) {
-  if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
-  if (Array.isArray(product.images) && product.images.length > 0) {
-    if (idx < product.images.length) return product.images[idx];
-    return product.images[0];
-  }
-  if (product.image) return product.image;
-  if (product.img) return product.img;
-  if (product.imageUrl) return product.imageUrl;
-  if (product.photo) return product.photo;
-  return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
-}
 
 // Order ID Generation Function
 function generateOrderId() {
@@ -1991,12 +2075,17 @@ function setBannerSlide(index) {
 }
 
 // =========================================================
-// UPDATED: Product Detail Functions
+// UPDATED: Show Product Detail with image loading
 // =========================================================
 
 function showProductDetail(product) {
   currentProduct = product;
   
+  console.log('Showing product detail:', product);
+  console.log('Product has images property:', product.images);
+  console.log('Product has image property:', product.image);
+  
+  // Update text content
   document.getElementById('detailTitle').textContent = product.name || 'Product Name';
   document.getElementById('detailPrice').textContent = product.price || '₹0';
   document.getElementById('detailDesc').textContent = product.description || '';
@@ -2004,6 +2093,7 @@ function showProductDetail(product) {
   document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
   document.getElementById('breadcrumbProductName').textContent = product.name || 'Product';
   
+  // Update stock status
   const stockStatus = document.getElementById('detailStockStatus');
   const stock = product.stock || 'in';
   if (stock === 'in' || product.quantity > 0) {
@@ -2017,11 +2107,16 @@ function showProductDetail(product) {
     stockStatus.className = 'stock-status out-of-stock';
   }
   
+  // CRITICAL FIX: Initialize gallery BEFORE color switcher
   initProductDetailGallery(product);
+  
+  // Then initialize color switcher
   initColorSwitcher(product);
   
+  // Update share link
   document.getElementById('productShareLink').value = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + product.id;
   
+  // Update wishlist button
   const wishlistBtn = document.getElementById('detailWishlistBtn');
   if (isInWishlist(product.id)) {
     wishlistBtn.textContent = 'Remove from Wishlist';
@@ -2031,13 +2126,16 @@ function showProductDetail(product) {
     wishlistBtn.classList.remove('active');
   }
   
+  // Load related content
   loadSimilarProducts(product);
   loadProductReviews(product.id);
   
+  // Add to recently viewed
   if (currentUser) {
     addToRecentlyViewed(product.id);
   }
   
+  // Show the page
   showPage('productDetailPage');
 }
 
@@ -2051,34 +2149,65 @@ function initProductDetailGallery(product) {
   
   if (!mainImage || !dots) return;
   
-  // Use currentProductImages (set by color switcher) or get default
-  if (!currentProductImages || currentProductImages.length === 0) {
-    currentProductImages = getProductImages();
+  console.log('Initializing gallery for product:', product.name);
+  console.log('Product images:', product.images);
+  console.log('Current product images:', currentProductImages);
+  
+  // Get images from product data
+  let images = [];
+  
+  // First try: Use product's images array
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    images = product.images;
+    console.log('Using product.images array:', images);
+  }
+  // Second try: Check for single image properties
+  else if (product.image) {
+    images = [product.image];
+    console.log('Using product.image:', images);
+  }
+  else if (product.img) {
+    images = [product.img];
+    console.log('Using product.img:', images);
+  }
+  else if (product.imageUrl) {
+    images = [product.imageUrl];
+    console.log('Using product.imageUrl:', images);
+  }
+  else if (product.photo) {
+    images = [product.photo];
+    console.log('Using product.photo:', images);
+  }
+  // Fallback to placeholder
+  else {
+    images = ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=Product+Image"];
+    console.log('Using placeholder image');
   }
   
+  // Set current images
+  currentProductImages = images;
+  
+  // Update main image immediately
+  if (images.length > 0 && mainImage) {
+    console.log('Setting main image to:', images[0]);
+    mainImage.style.backgroundImage = `url('${images[0]}')`;
+    mainImage.style.display = 'block'; // Ensure it's visible
+    
+    // Remove any placeholder text
+    const placeholderText = mainImage.querySelector('.placeholder-text');
+    if (placeholderText) {
+      placeholderText.style.display = 'none';
+    }
+  }
+  
+  // Reset index
   currentImageIndex = 0;
+  
+  // Update dots
+  updateDetailCarouselDots(images.length);
+  
+  // Also update any other image displays
   updateProductDetailImage();
-  updateDetailCarouselDots(currentProductImages.length);
-}
-
-// =========================================================
-// UPDATED: Get Product Images - Color Aware
-// =========================================================
-
-function getProductImages() {
-  if (!currentProduct) return [];
-  
-  // If we have currentProductImages from color selection, use them
-  if (currentProductImages && currentProductImages.length > 0) {
-    return currentProductImages;
-  }
-  
-  // Otherwise get default images
-  if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
-    return currentProduct.images;
-  } else {
-    return [getProductImage(currentProduct)];
-  }
 }
 
 function updateProductDetailImage() {
