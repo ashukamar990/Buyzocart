@@ -116,21 +116,15 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const realtimeDb = firebase.database();
+if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase?.auth?.();
+const realtimeDb = firebase?.database?.();
 
-// Initialize EmailJS
-emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
-
-// DEBUG MODE
-console.log("=== DEBUG MODE ENABLED ===");
-
-// Check Firebase connection
-if (firebase.apps.length) {
-  console.log("Firebase initialized successfully");
-} else {
-  console.error("Firebase not initialized");
+// Initialize EmailJS if available
+if (typeof emailjs !== 'undefined') {
+  emailjs.init("YOUR_PUBLIC_KEY");
 }
 
 // Initialize app
@@ -141,11 +135,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('product');
   console.log("URL Product ID:", productId);
-  
-  if (productId) {
-    // Load product from Firebase by ID
-    loadProductFromId(productId);
-  }
   
   initApp();
   setupEventListeners();
@@ -163,22 +152,30 @@ document.addEventListener('DOMContentLoaded', function() {
   updateRecentSearches();
   
   // Auth state listener
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      currentUser = user;
-      updateUIForUser(user);
-      loadUserData(user);
-      loadRecentlyViewed(user);
-      loadSavedAddresses();
-      authModal.classList.remove('active');
-      
-      // Send login notification email
-      sendLoginNotification(user);
-    } else {
-      currentUser = null;
-      updateUIForGuest();
-    }
-  });
+  if (auth) {
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        updateUIForUser(user);
+        loadUserData(user);
+        loadRecentlyViewed(user);
+        loadSavedAddresses();
+        const authModal = document.getElementById('authModal');
+        if (authModal) authModal.classList.remove('active');
+        
+        // Send login notification email
+        sendLoginNotification(user);
+      } else {
+        currentUser = null;
+        updateUIForGuest();
+      }
+    });
+  }
+  
+  // Load product from URL if available
+  if (productId) {
+    loadProductFromId(productId);
+  }
 });
 
 function initApp() {
@@ -192,13 +189,12 @@ function initApp() {
     window.history.replaceState({}, '', newUrl);
   }
   
-  showPage('homePage');
-  
-  if (window.location.hash) {
-    const pageId = window.location.hash.replace('#', '');
-    if (document.getElementById(pageId)) {
-      showPage(pageId);
-    }
+  // Show home page or page from hash
+  const pageFromHash = window.location.hash.replace('#', '');
+  if (pageFromHash && document.getElementById(pageFromHash)) {
+    showPage(pageFromHash);
+  } else {
+    showPage('homePage');
   }
   
   updateProfileName();
@@ -257,6 +253,8 @@ function loadCachedData() {
 
 // Fetch live data from Firebase
 function fetchLiveData() {
+  if (!realtimeDb) return;
+  
   // Fetch products
   realtimeDb.ref('products').once('value').then(snapshot => {
     const productsObj = snapshot.val();
@@ -266,21 +264,14 @@ function fetchLiveData() {
         ...productsObj[key]
       }));
       
-      // Debug: Log product structure
-      console.log('Fetched products from Firebase:', newProducts);
-      newProducts.forEach(product => {
-        console.log(`Product "${product.title || product.name}" keys:`, Object.keys(product));
-        console.log(`Has Images property:`, product.Images);
-        console.log(`Has images property:`, product.images);
-        console.log(`Has image property:`, product.image);
-      });
+      console.log('Fetched products from Firebase:', newProducts.length);
       
       products = newProducts;
       cacheManager.set('products', products);
       
       // Update UI if on relevant pages
-      if (document.getElementById('homePage').classList.contains('active') || 
-          document.getElementById('productsPage').classList.contains('active')) {
+      if (document.getElementById('homePage')?.classList.contains('active') || 
+          document.getElementById('productsPage')?.classList.contains('active')) {
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         
@@ -293,6 +284,8 @@ function fetchLiveData() {
         }
       }
     }
+  }).catch(error => {
+    console.error('Error fetching products:', error);
   });
   
   // Fetch categories
@@ -307,12 +300,14 @@ function fetchLiveData() {
       categories = newCategories;
       cacheManager.set('categories', categories);
       
-      if (document.getElementById('homePage').classList.contains('active') || 
-          document.getElementById('productsPage').classList.contains('active')) {
+      if (document.getElementById('homePage')?.classList.contains('active') || 
+          document.getElementById('productsPage')?.classList.contains('active')) {
         renderCategories();
         renderCategoryCircles();
       }
     }
+  }).catch(error => {
+    console.error('Error fetching categories:', error);
   });
   
   // Fetch banners
@@ -327,10 +322,12 @@ function fetchLiveData() {
       banners = newBanners;
       cacheManager.set('banners', banners);
       
-      if (document.getElementById('homePage').classList.contains('active')) {
+      if (document.getElementById('homePage')?.classList.contains('active')) {
         renderBannerCarousel();
       }
     }
+  }).catch(error => {
+    console.error('Error fetching banners:', error);
   });
   
   // Fetch admin settings
@@ -341,11 +338,15 @@ function fetchLiveData() {
       cacheManager.set('adminSettings', adminSettings);
       updateAdminSettingsUI();
     }
+  }).catch(error => {
+    console.error('Error fetching admin settings:', error);
   });
 }
 
 // Setup realtime listeners
 function setupRealtimeListeners() {
+  if (!realtimeDb) return;
+  
   // Products listener
   realtimeDb.ref('products').on('value', snapshot => {
     const productsObj = snapshot.val();
@@ -358,9 +359,9 @@ function setupRealtimeListeners() {
       products = newProducts;
       cacheManager.set('products', products);
       
-      if (document.getElementById('homePage').classList.contains('active') || 
-          document.getElementById('productsPage').classList.contains('active') ||
-          document.getElementById('productDetailPage').classList.contains('active')) {
+      if (document.getElementById('homePage')?.classList.contains('active') || 
+          document.getElementById('productsPage')?.classList.contains('active') ||
+          document.getElementById('productDetailPage')?.classList.contains('active')) {
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         
@@ -387,8 +388,8 @@ function setupRealtimeListeners() {
       categories = newCategories;
       cacheManager.set('categories', categories);
       
-      if (document.getElementById('homePage').classList.contains('active') || 
-          document.getElementById('productsPage').classList.contains('active')) {
+      if (document.getElementById('homePage')?.classList.contains('active') || 
+          document.getElementById('productsPage')?.classList.contains('active')) {
         renderCategories();
         renderCategoryCircles();
       }
@@ -407,7 +408,7 @@ function setupRealtimeListeners() {
       banners = newBanners;
       cacheManager.set('banners', banners);
       
-      if (document.getElementById('homePage').classList.contains('active')) {
+      if (document.getElementById('homePage')?.classList.contains('active')) {
         renderBannerCarousel();
       }
     }
@@ -424,19 +425,21 @@ function setupRealtimeListeners() {
   });
 }
 
-// =========================================================
-// NEW: Load Product from ID (URL parameter)
-// =========================================================
-
+// Load Product from ID (URL parameter)
 async function loadProductFromId(productId) {
   console.log("Loading product from ID:", productId);
+  
+  if (!realtimeDb) {
+    console.error('Firebase not initialized');
+    return;
+  }
   
   try {
     const snapshot = await realtimeDb.ref('products/' + productId).once('value');
     const product = snapshot.val();
     
     if (product) {
-      console.log("Product found:", product);
+      console.log("Product found:", product.title || product.name);
       product.id = productId;
       showProductDetail(product);
     } else {
@@ -449,13 +452,13 @@ async function loadProductFromId(productId) {
   }
 }
 
-// =========================================================
-// FIXED FUNCTIONS
-// =========================================================
+// Fixed Functions
 
-// FIXED: Search Function
 function handleSearch() {
-  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  const searchInput = document.getElementById('searchInput');
+  if (!searchInput) return;
+  
+  const query = searchInput.value.toLowerCase().trim();
   if (query) {
     addToRecentSearches(query);
     filterProducts(query, 'productGrid');
@@ -464,14 +467,19 @@ function handleSearch() {
   }
 }
 
-// FIXED: Home Search Function
 function handleHomeSearch() {
-  const query = document.getElementById('homeSearchInput').value.toLowerCase().trim();
+  const homeSearchInput = document.getElementById('homeSearchInput');
+  if (!homeSearchInput) return;
+  
+  const query = homeSearchInput.value.toLowerCase().trim();
   const resultsContainer = document.getElementById('homeSearchResults');
+  const homeProductGrid = document.getElementById('homeProductGrid');
+  
+  if (!resultsContainer || !homeProductGrid) return;
   
   if (query.length === 0) {
     resultsContainer.style.display = 'none';
-    document.getElementById('homeProductGrid').style.display = 'grid';
+    homeProductGrid.style.display = 'grid';
     return;
   }
   
@@ -492,10 +500,9 @@ function handleHomeSearch() {
   }
   
   resultsContainer.style.display = 'grid';
-  document.getElementById('homeProductGrid').style.display = 'none';
+  homeProductGrid.style.display = 'none';
 }
 
-// FIXED: Filter Products Function
 function filterProducts(query, containerId) {
   let filteredProducts = products;
   
@@ -529,7 +536,6 @@ function filterProducts(query, containerId) {
   renderProducts(filteredProducts, containerId);
 }
 
-// FIXED: Filter by Category
 function filterByCategory(categoryId) {
   currentCategoryFilter = categoryId;
   
@@ -554,53 +560,58 @@ function filterByCategory(categoryId) {
     }
   });
   
-  filterProducts(document.getElementById('searchInput')?.value || '', 'productGrid');
+  const searchInput = document.getElementById('searchInput');
+  filterProducts(searchInput?.value || '', 'productGrid');
 }
 
-// FIXED: Price Filter
 function applyPriceFilter() {
-  const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
-  const maxPrice = parseFloat(document.getElementById('maxPrice').value) || 100000;
+  const minPrice = parseFloat(document.getElementById('minPrice')?.value) || 0;
+  const maxPrice = parseFloat(document.getElementById('maxPrice')?.value) || 100000;
   
-  document.getElementById('minPriceSlider').value = minPrice;
-  document.getElementById('maxPriceSlider').value = maxPrice;
-  document.getElementById('minPriceValue').textContent = '₹' + minPrice;
-  document.getElementById('maxPriceValue').textContent = '₹' + maxPrice;
+  const minPriceSlider = document.getElementById('minPriceSlider');
+  const maxPriceSlider = document.getElementById('maxPriceSlider');
+  const minPriceValue = document.getElementById('minPriceValue');
+  const maxPriceValue = document.getElementById('maxPriceValue');
   
-  filterProducts(document.getElementById('searchInput')?.value || '', 'productGrid');
+  if (minPriceSlider) minPriceSlider.value = minPrice;
+  if (maxPriceSlider) maxPriceSlider.value = maxPrice;
+  if (minPriceValue) minPriceValue.textContent = '₹' + minPrice;
+  if (maxPriceValue) maxPriceValue.textContent = '₹' + maxPrice;
+  
+  const searchInput = document.getElementById('searchInput');
+  filterProducts(searchInput?.value || '', 'productGrid');
 }
 
 function resetPriceFilter() {
-  document.getElementById('minPrice').value = '';
-  document.getElementById('maxPrice').value = '';
-  document.getElementById('minPriceSlider').value = 0;
-  document.getElementById('maxPriceSlider').value = 5000;
-  document.getElementById('minPriceValue').textContent = '₹0';
-  document.getElementById('maxPriceValue').textContent = '₹5000';
+  const minPrice = document.getElementById('minPrice');
+  const maxPrice = document.getElementById('maxPrice');
+  const minPriceSlider = document.getElementById('minPriceSlider');
+  const maxPriceSlider = document.getElementById('maxPriceSlider');
+  const minPriceValue = document.getElementById('minPriceValue');
+  const maxPriceValue = document.getElementById('maxPriceValue');
   
-  filterProducts(document.getElementById('searchInput')?.value || '', 'productGrid');
+  if (minPrice) minPrice.value = '';
+  if (maxPrice) maxPrice.value = '';
+  if (minPriceSlider) minPriceSlider.value = 0;
+  if (maxPriceSlider) maxPriceSlider.value = 5000;
+  if (minPriceValue) minPriceValue.textContent = '₹0';
+  if (maxPriceValue) maxPriceValue.textContent = '₹5000';
+  
+  const searchInput = document.getElementById('searchInput');
+  filterProducts(searchInput?.value || '', 'productGrid');
 }
 
-// =========================================================
-// FIXED: Get Product Image - Handle Firebase structure
-// =========================================================
-
+// Get Product Image - Handle Firebase structure
 function getProductImage(product, idx = 0) {
   if (!product) {
     return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
   }
   
-  console.log("DEBUG: Getting image for product:", product.title || product.name);
-  
   // 1. First check for "Images" (capital I) - Firebase structure
   if (product.Images && typeof product.Images === 'object') {
-    console.log("Found Images object:", product.Images);
-    
-    // Get all image URLs from Images object
     const imageUrls = Object.values(product.Images);
     if (imageUrls.length > 0) {
       const imageUrl = imageUrls[idx] || imageUrls[0];
-      console.log("Using Images object URL:", imageUrl);
       return imageUrl;
     }
   }
@@ -608,10 +619,8 @@ function getProductImage(product, idx = 0) {
   // 2. Check for "images" (small i) array
   if (product.images && Array.isArray(product.images) && product.images.length > 0) {
     if (idx < product.images.length) {
-      console.log("Using images array URL:", product.images[idx]);
       return product.images[idx];
     }
-    console.log("Using images array first URL:", product.images[0]);
     return product.images[0];
   }
   
@@ -619,28 +628,20 @@ function getProductImage(product, idx = 0) {
   const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
   for (const prop of imageProperties) {
     if (product[prop]) {
-      console.log(`Using ${prop} property:`, product[prop]);
       return product[prop];
     }
   }
   
   // 4. Last resort: placeholder
-  console.log("No image found, using placeholder");
   return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
 }
 
-// =========================================================
-// FIXED: Get Product Images Array - Handle Firebase structure
-// =========================================================
-
+// Get Product Images Array - Handle Firebase structure
 function getProductImages() {
   if (!currentProduct) return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
   
-  console.log("Getting images for current product:", currentProduct.title || currentProduct.name);
-  
   // 1. First priority: Use currentProductImages from color selection
   if (currentProductImages && currentProductImages.length > 0) {
-    console.log("Using currentProductImages:", currentProductImages);
     return currentProductImages;
   }
   
@@ -648,14 +649,12 @@ function getProductImages() {
   if (currentProduct.Images && typeof currentProduct.Images === 'object') {
     const imagesFromObject = Object.values(currentProduct.Images);
     if (imagesFromObject.length > 0) {
-      console.log("Using Images object values:", imagesFromObject);
       return imagesFromObject;
     }
   }
   
   // 3. Check for "images" (small i) array
   if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
-    console.log("Using images array:", currentProduct.images);
     return currentProduct.images;
   }
   
@@ -663,20 +662,15 @@ function getProductImages() {
   const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
   for (const prop of imageProperties) {
     if (currentProduct[prop]) {
-      console.log(`Using ${prop} property as array:`, [currentProduct[prop]]);
       return [currentProduct[prop]];
     }
   }
   
   // 5. Last resort: Default placeholder
-  console.log("No images found, using placeholder");
   return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
 }
 
-// =========================================================
-// UPDATED COLOR SWITCHER FUNCTION
-// =========================================================
-
+// Color Switcher Function
 function initColorSwitcher(product) {
   const colorOptionsGrid = document.getElementById('colorOptionsGrid');
   if (!colorOptionsGrid) return;
@@ -706,28 +700,6 @@ function initColorSwitcher(product) {
       ],
       thumbnail: 'https://via.placeholder.com/300x300/2563eb/FFFFFF?text=Blue',
       available: true
-    },
-    { 
-      id: 'red', 
-      name: 'Red', 
-      images: [
-        'https://via.placeholder.com/600x600/ef4444/FFFFFF?text=Red+1',
-        'https://via.placeholder.com/600x600/d12f2f/FFFFFF?text=Red+2',
-        'https://via.placeholder.com/600x600/b32424/FFFFFF?text=Red+3'
-      ],
-      thumbnail: 'https://via.placeholder.com/300x300/ef4444/FFFFFF?text=Red',
-      available: true
-    },
-    { 
-      id: 'green', 
-      name: 'Green', 
-      images: [
-        'https://via.placeholder.com/600x600/22c55e/FFFFFF?text=Green+1',
-        'https://via.placeholder.com/600x600/16a34a/FFFFFF?text=Green+2',
-        'https://via.placeholder.com/600x600/15803d/FFFFFF?text=Green+3'
-      ],
-      thumbnail: 'https://via.placeholder.com/300x300/22c55e/FFFFFF?text=Green',
-      available: false // Out of stock
     }
   ];
   
@@ -770,7 +742,7 @@ function initColorSwitcher(product) {
       // Update product images array
       currentProductImages = colorImages || [getProductImage(currentProduct)];
       
-      // CRITICAL: Update main product image immediately
+      // Update main product image immediately
       if (currentProductImages.length > 0) {
         const mainImage = document.getElementById('productDetailMainImage');
         if (mainImage) {
@@ -813,10 +785,7 @@ function initColorSwitcher(product) {
   }
 }
 
-// =========================================================
-// NEW: Update Detail Carousel Dots Function
-// =========================================================
-
+// Update Detail Carousel Dots Function
 function updateDetailCarouselDots(totalImages) {
   const dots = document.getElementById('detailCarouselDots');
   if (!dots) return;
@@ -841,13 +810,9 @@ function updateDots() {
   });
 }
 
-// =========================================================
-// FIXED: Enhanced Show Product Detail Function
-// =========================================================
-
+// Enhanced Show Product Detail Function
 function showProductDetail(product) {
-  console.log("=== SHOW PRODUCT DETAIL FUNCTION CALLED ===");
-  console.log("Product:", product);
+  console.log("Showing product detail for:", product?.title || product?.name);
   
   if (!product) {
     console.error("No product provided to showProductDetail");
@@ -857,17 +822,20 @@ function showProductDetail(product) {
   
   currentProduct = product;
   
-  // Debug Firebase structure
-  console.log("Firebase Images property (capital I):", product.Images);
-  console.log("Images array (small i):", product.images);
-  
   // Update text content with fallbacks
-  document.getElementById('detailTitle').textContent = product.title || product.name || 'Product Name';
-  document.getElementById('detailPrice').textContent = product.price || '₹0';
-  document.getElementById('detailDesc').textContent = product.desc || product.description || 'No description available';
-  document.getElementById('detailFullDesc').textContent = product.fulLDesc || product.fullDescription || product.desc || product.description || 'No detailed description available';
-  document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
-  document.getElementById('breadcrumbProductName').textContent = product.title || product.name || 'Product';
+  const detailTitle = document.getElementById('detailTitle');
+  const detailPrice = document.getElementById('detailPrice');
+  const detailDesc = document.getElementById('detailDesc');
+  const detailFullDesc = document.getElementById('detailFullDesc');
+  const detailSku = document.getElementById('detailSku');
+  const breadcrumbProductName = document.getElementById('breadcrumbProductName');
+  
+  if (detailTitle) detailTitle.textContent = product.title || product.name || 'Product Name';
+  if (detailPrice) detailPrice.textContent = product.price || '₹0';
+  if (detailDesc) detailDesc.textContent = product.desc || product.description || 'No description available';
+  if (detailFullDesc) detailFullDesc.textContent = product.fulLDesc || product.fullDescription || product.desc || product.description || 'No detailed description available';
+  if (detailSku) detailSku.textContent = `SKU: ${product.sku || 'N/A'}`;
+  if (breadcrumbProductName) breadcrumbProductName.textContent = product.title || product.name || 'Product';
   
   // Update stock status
   const stockStatus = document.getElementById('detailStockStatus');
@@ -923,10 +891,7 @@ function showProductDetail(product) {
   showPageWithProduct('productDetailPage', product.id);
 }
 
-// =========================================================
-// NEW: Show Page with Product URL Update
-// =========================================================
-
+// Show Page with Product URL Update
 function showPageWithProduct(pageId, productId = null) {
   // Update URL with product parameter
   let newUrl = window.location.origin + window.location.pathname.replace('index.html', '');
@@ -956,30 +921,36 @@ function showPageWithProduct(pageId, productId = null) {
   window.scrollTo(0, 0);
 }
 
-// =========================================================
-// FIXED: Page navigation
-// =========================================================
-
+// Page navigation
 function showPage(pageId) {
   // Update URL without index.html
   const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
   window.history.pushState({ page: pageId }, '', newUrl);
   
+  // Handle special pages
   if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
     window.location.href = 'account.html';
     return;
   }
   
+  // Show the page
   document.querySelectorAll('.page').forEach(page => {
     page.classList.remove('active');
   });
-  document.getElementById(pageId).classList.add('active');
+  
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) {
+    targetPage.classList.add('active');
+  } else {
+    console.error('Page not found:', pageId);
+    return;
+  }
   
   updateStepPills();
   updateBottomNav();
-  
   window.scrollTo(0, 0);
   
+  // Page-specific actions
   if (pageId === 'myOrdersPage' && currentUser) {
     showMyOrders();
   }
@@ -1014,10 +985,7 @@ function checkAuthAndShowPage(pageId) {
   showPage(pageId);
 }
 
-// =========================================================
-// FIXED: Enhanced Product Detail Gallery with Click-to-Zoom
-// =========================================================
-
+// Enhanced Product Detail Gallery
 function initProductDetailGallery(product) {
   const mainImage = document.getElementById('productDetailMainImage');
   const dots = document.getElementById('detailCarouselDots');
@@ -1027,42 +995,33 @@ function initProductDetailGallery(product) {
     return;
   }
   
-  console.log('Initializing gallery for product:', product.title || product.name);
-  
   // Get images from Firebase structure
   let images = [];
   
   // 1. First try: Use "Images" (capital I) object from Firebase
   if (product.Images && typeof product.Images === 'object') {
     images = Object.values(product.Images);
-    console.log('Using Images object values:', images);
   }
   // 2. Second try: Use "images" (small i) array
   else if (Array.isArray(product.images) && product.images.length > 0) {
     images = product.images;
-    console.log('Using images array:', images);
   }
   // 3. Third try: Check for single image properties
   else if (product.image) {
     images = [product.image];
-    console.log('Using image property:', images);
   }
   else if (product.img) {
     images = [product.img];
-    console.log('Using img property:', images);
   }
   else if (product.imageUrl) {
     images = [product.imageUrl];
-    console.log('Using imageUrl property:', images);
   }
   else if (product.photo) {
     images = [product.photo];
-    console.log('Using photo property:', images);
   }
   // Fallback to placeholder
   else {
     images = ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=Product+Image"];
-    console.log('Using placeholder image');
   }
   
   // Set current images
@@ -1070,7 +1029,6 @@ function initProductDetailGallery(product) {
   
   // Update main image immediately
   if (images.length > 0 && mainImage) {
-    console.log('Setting main image to:', images[0]);
     mainImage.style.backgroundImage = `url('${images[0]}')`;
     mainImage.style.display = 'block';
     mainImage.style.backgroundSize = 'cover';
@@ -1120,10 +1078,7 @@ function nextDetailImage() {
   updateProductDetailImage();
 }
 
-// =========================================================
-// NEW: Zoom Modal Functions
-// =========================================================
-
+// Zoom Modal Functions
 function openZoomModal() {
   if (!currentProduct) return;
   
@@ -1179,10 +1134,7 @@ function updateModalDots() {
   });
 }
 
-// =========================================================
-// FIXED: UPDATED Product Card Creation with Proper Click Events
-// =========================================================
-
+// UPDATED Product Card Creation with Proper Click Events
 function createProductCard(product) {
   const card = document.createElement('div');
   card.className = 'product-card';
@@ -1223,58 +1175,68 @@ function createProductCard(product) {
     </div>
   `;
   
-  // FIXED: Add proper click event to product card
+  // Add proper click event to product card
   card.addEventListener('click', function(e) {
     // Don't trigger if clicking on buttons inside
     if (e.target.closest('.action-btn')) {
       return;
     }
-    console.log("Product card clicked, showing detail for:", product.id);
     showProductDetail(product);
   });
   
   // Wishlist button event
-  card.querySelector('.wishlist-btn').addEventListener('click', function(e) {
-    e.stopPropagation();
-    toggleWishlist(product.id);
-  });
+  const wishlistBtn = card.querySelector('.wishlist-btn');
+  if (wishlistBtn) {
+    wishlistBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleWishlist(product.id);
+    });
+  }
   
   // Share button event
-  card.querySelector('.share-btn').addEventListener('click', function(e) {
-    e.stopPropagation();
-    shareProduct('default', product);
-  });
+  const shareBtn = card.querySelector('.share-btn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      shareProduct('default', product);
+    });
+  }
   
   return card;
 }
 
-// =========================================================
-// FIXED: Product Image Full Screen View (OLD - keep for compatibility)
-// =========================================================
-
+// Fixed: Product Image Full Screen View
 function openProductImageModal() {
   if (!currentProduct) return;
   
   currentProductModalIndex = 0;
   updateProductModalImage();
-  productImageModal.classList.add('active');
+  const productImageModal = document.getElementById('productImageModal');
+  if (productImageModal) productImageModal.classList.add('active');
 }
 
 function updateProductModalImage() {
   if (currentProductImages.length === 0) return;
   
-  productImageModalImage.src = currentProductImages[currentProductModalIndex];
+  const productImageModalImage = document.getElementById('productImageModalImage');
+  const productImageModalDots = document.getElementById('productImageModalDots');
   
-  productImageModalDots.innerHTML = '';
-  currentProductImages.forEach((_, index) => {
-    const dot = document.createElement('div');
-    dot.className = `product-image-modal-dot ${index === currentProductModalIndex ? 'active' : ''}`;
-    dot.addEventListener('click', () => {
-      currentProductModalIndex = index;
-      updateProductModalImage();
+  if (productImageModalImage) {
+    productImageModalImage.src = currentProductImages[currentProductModalIndex];
+  }
+  
+  if (productImageModalDots) {
+    productImageModalDots.innerHTML = '';
+    currentProductImages.forEach((_, index) => {
+      const dot = document.createElement('div');
+      dot.className = `product-image-modal-dot ${index === currentProductModalIndex ? 'active' : ''}`;
+      dot.addEventListener('click', () => {
+        currentProductModalIndex = index;
+        updateProductModalImage();
+      });
+      productImageModalDots.appendChild(dot);
     });
-    productImageModalDots.appendChild(dot);
-  });
+  }
 }
 
 function prevProductModalImage() {
@@ -1291,11 +1253,8 @@ function nextProductModalImage() {
   updateProductModalImage();
 }
 
-// =========================================================
-// REMAINING FUNCTIONS (unchanged but essential)
-// =========================================================
+// Remaining Functions
 
-// FIXED: Out of Stock System
 function updateOutOfStockStatus() {
   document.querySelectorAll('.color-box').forEach(box => {
     const color = box.getAttribute('data-color');
@@ -1308,33 +1267,34 @@ function updateOutOfStockStatus() {
   });
 }
 
-// FIXED: Rating Delete Option
-function deleteReview(reviewId) {
-  if (!currentUser) return;
+async function deleteReview(reviewId) {
+  if (!currentUser || !realtimeDb) return;
   
   const isAdmin = currentUser.email === 'admin@buyzocart.com';
   
   if (!confirm('Are you sure you want to delete this review?')) return;
   
-  realtimeDb.ref('reviews/' + reviewId).once('value').then(snapshot => {
+  try {
+    const snapshot = await realtimeDb.ref('reviews/' + reviewId).once('value');
     const review = snapshot.val();
     if (review && (review.userId === currentUser.uid || isAdmin)) {
-      realtimeDb.ref('reviews/' + reviewId).remove().then(() => {
-        showToast('Review deleted successfully', 'success');
-        loadProductReviews(currentProduct.id);
-      }).catch(error => {
-        console.error('Error deleting review:', error);
-        showToast('Failed to delete review', 'error');
-      });
+      await realtimeDb.ref('reviews/' + reviewId).remove();
+      showToast('Review deleted successfully', 'success');
+      loadProductReviews(currentProduct.id);
     } else {
       showToast('You can only delete your own reviews', 'error');
     }
-  });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    showToast('Failed to delete review', 'error');
+  }
 }
 
-// FIXED: Email Notification System
+// Email Notification System
 async function sendLoginNotification(user) {
   try {
+    if (typeof emailjs === 'undefined') return;
+    
     const templateParams = {
       to_email: user.email,
       user_name: user.displayName || 'User',
@@ -1351,6 +1311,8 @@ async function sendLoginNotification(user) {
 
 async function sendOrderNotification(orderData) {
   try {
+    if (typeof emailjs === 'undefined') return;
+    
     const templateParams = {
       to_email: orderData.userEmail,
       user_name: orderData.username,
@@ -1367,7 +1329,7 @@ async function sendOrderNotification(orderData) {
   }
 }
 
-// FIXED: Advanced Search Features
+// Advanced Search Features
 function addToRecentSearches(query) {
   if (!query.trim()) return;
   
@@ -1393,10 +1355,13 @@ function updateRecentSearches() {
     searchTag.className = 'search-tag';
     searchTag.textContent = search;
     searchTag.addEventListener('click', () => {
-      document.getElementById('homeSearchInput').value = search;
-      document.getElementById('homeSearchInput').focus();
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      const advancedSearchPanel = document.getElementById('advancedSearchPanel');
+      
+      if (homeSearchInput) homeSearchInput.value = search;
+      if (homeSearchInput) homeSearchInput.focus();
       handleHomeSearch();
-      document.getElementById('advancedSearchPanel').classList.remove('active');
+      if (advancedSearchPanel) advancedSearchPanel.classList.remove('active');
     });
     recentSearchesContainer.appendChild(searchTag);
   });
@@ -1408,17 +1373,22 @@ function clearRecentSearches() {
   updateRecentSearches();
 }
 
-// FIXED: Bottom Navigation
+// Bottom Navigation
 function updateBottomNav() {
-  const currentPage = document.querySelector('.page.active').id;
+  const currentPage = document.querySelector('.page.active');
+  if (!currentPage) return;
+  
+  const currentPageId = currentPage.id;
   document.querySelectorAll('.bottom-nav-item').forEach(item => {
     item.classList.remove('active');
   });
   
-  if (currentPage === 'homePage') {
-    document.querySelector('.bottom-nav-item:nth-child(1)').classList.add('active');
-  } else if (currentPage === 'productsPage') {
-    document.querySelector('.bottom-nav-item:nth-child(2)').classList.add('active');
+  if (currentPageId === 'homePage') {
+    const firstNavItem = document.querySelector('.bottom-nav-item:nth-child(1)');
+    if (firstNavItem) firstNavItem.classList.add('active');
+  } else if (currentPageId === 'productsPage') {
+    const secondNavItem = document.querySelector('.bottom-nav-item:nth-child(2)');
+    if (secondNavItem) secondNavItem.classList.add('active');
   }
 }
 
@@ -1440,7 +1410,7 @@ function generateOrderId() {
     return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
 }
 
-// FIXED: Improved Wishlist Functions
+// Improved Wishlist Functions
 function isInWishlist(productId) {
   let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
   return wishlist.includes(productId);
@@ -1465,13 +1435,13 @@ function toggleWishlist(productId) {
     updateWishlistInFirebase(productId, !isWishlisted);
   }
   
-  if (document.getElementById('wishlistPage').classList.contains('active')) {
+  if (document.getElementById('wishlistPage')?.classList.contains('active')) {
     renderWishlist();
   }
 }
 
 async function updateWishlistInFirebase(productId, add) {
-  if (!currentUser) return;
+  if (!currentUser || !realtimeDb) return;
   
   try {
     if (add) {
@@ -1515,152 +1485,162 @@ function updateWishlistButtons() {
 
 // Update admin settings in UI
 function updateAdminSettingsUI() {
-  document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
-  document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge}`;
-  document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
+  const deliveryCharge = document.getElementById('deliveryCharge');
+  const sumDel = document.getElementById('sumDel');
+  const gatewayChargePercent = document.getElementById('gatewayChargePercent');
+  
+  if (deliveryCharge) deliveryCharge.textContent = adminSettings.deliveryCharge;
+  if (sumDel) sumDel.textContent = `₹${adminSettings.deliveryCharge}`;
+  if (gatewayChargePercent) gatewayChargePercent.textContent = `${adminSettings.gatewayChargePercent}%`;
 }
 
-// DOM Elements
-const menuIcon = document.getElementById('menuIcon');
-const mobileMenu = document.getElementById('mobileMenu');
-const menuOverlay = document.getElementById('menuOverlay');
-const menuClose = document.getElementById('menuClose');
-const themeToggle = document.getElementById('themeToggle');
-const toast = document.getElementById('toast');
-const authModal = document.getElementById('authModal');
-const authClose = document.getElementById('authClose');
-const loginTab = document.getElementById('loginTab');
-const signupTab = document.getElementById('signupTab');
-const loginForm = document.getElementById('loginForm');
-const signupForm = document.getElementById('signupForm');
-const loginBtn = document.getElementById('loginBtn');
-const signupBtn = document.getElementById('signupBtn');
-const googleLoginBtn = document.getElementById('googleLoginBtn');
-const googleSignupBtn = document.getElementById('googleSignupBtn');
-const switchToLogin = document.getElementById('switchToLogin');
-const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-const backToLogin = document.getElementById('backToLogin');
-const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-const openLoginTop = document.getElementById('openLoginTop');
-const userProfile = document.getElementById('userProfile');
-const userAvatar = document.getElementById('userAvatar');
-const userAvatarImg = document.getElementById('userAvatarImg');
-const userAvatarInitial = document.getElementById('userAvatarInitial');
-const userName = document.getElementById('userName');
-const mobileLoginBtn = document.getElementById('mobileLoginBtn');
-const mobileUserProfile = document.getElementById('mobileUserProfile');
-const mobileUserName = document.getElementById('mobileUserName');
-const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
-const openMyOrdersTop = document.getElementById('openMyOrdersTop');
-const zoomModal = document.getElementById('zoomModal');
-const zoomClose = document.getElementById('zoomClose');
-const zoomImage = document.getElementById('zoomImage');
-const zoomIn = document.getElementById('zoomIn');
-const zoomOut = document.getElementById('zoomOut');
-const zoomReset = document.getElementById('zoomReset');
-
-// Product Image Modal Elements
-const productImageModal = document.getElementById('productImageModal');
-const productImageModalClose = document.getElementById('productImageModalClose');
-const productImageModalImage = document.getElementById('productImageModalImage');
-const productImageModalPrev = document.getElementById('productImageModalPrev');
-const productImageModalNext = document.getElementById('productImageModalNext');
-const productImageModalDots = document.getElementById('productImageModalDots');
-
-// Error Display Elements
-const loginError = document.getElementById('loginError');
-const signupError = document.getElementById('signupError');
-
-// Rating Elements
-const ratingInput = document.getElementById('ratingInput');
-const reviewText = document.getElementById('reviewText');
-const submitReview = document.getElementById('submitReview');
-const reviewsList = document.getElementById('reviewsList');
-
-// Password Reset Modal Elements
-const passwordResetModal = document.getElementById('passwordResetModal');
-const passwordResetEmail = document.getElementById('passwordResetEmail');
-const cancelPasswordReset = document.getElementById('cancelPasswordReset');
-const confirmPasswordReset = document.getElementById('confirmPasswordReset');
-
-// Search Elements
-const searchIcon = document.getElementById('searchIcon');
-const advancedSearchPanel = document.getElementById('advancedSearchPanel');
-const clearRecentSearchesBtn = document.getElementById('clearRecentSearches');
-const homeSearchInput = document.getElementById('homeSearchInput');
-
-// =========================================================
-// FIXED: Setup Event Listeners with New Functions
-// =========================================================
-
+// Setup Event Listeners
 function setupEventListeners() {
-  menuIcon.addEventListener('click', openMenu);
-  menuClose.addEventListener('click', closeMenu);
-  menuOverlay.addEventListener('click', closeMenu);
+  // Menu
+  const menuIcon = document.getElementById('menuIcon');
+  const menuClose = document.getElementById('menuClose');
+  const menuOverlay = document.getElementById('menuOverlay');
   
-  themeToggle.addEventListener('click', toggleTheme);
+  if (menuIcon) menuIcon.addEventListener('click', openMenu);
+  if (menuClose) menuClose.addEventListener('click', closeMenu);
+  if (menuOverlay) menuOverlay.addEventListener('click', closeMenu);
   
-  authClose.addEventListener('click', () => authModal.classList.remove('active'));
-  openLoginTop.addEventListener('click', showLoginModal);
-  mobileLoginBtn.addEventListener('click', showLoginModal);
+  // Theme
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
   
-  loginTab.addEventListener('click', () => switchAuthTab('login'));
-  signupTab.addEventListener('click', () => switchAuthTab('signup'));
-  switchToLogin.addEventListener('click', () => switchAuthTab('login'));
-  
-  loginBtn.addEventListener('click', handleLogin);
-  signupBtn.addEventListener('click', handleSignup);
-  googleLoginBtn.addEventListener('click', handleGoogleLogin);
-  googleSignupBtn.addEventListener('click', handleGoogleLogin);
-  
-  forgotPasswordLink.addEventListener('click', () => {
-    loginForm.classList.remove('active');
-    forgotPasswordForm.classList.add('active');
+  // Auth Modal
+  const authModal = document.getElementById('authModal');
+  const authClose = document.getElementById('authClose');
+  if (authClose) authClose.addEventListener('click', () => {
+    if (authModal) authModal.classList.remove('active');
   });
-  backToLogin.addEventListener('click', () => {
-    forgotPasswordForm.classList.remove('active');
-    loginForm.classList.add('active');
+  
+  const openLoginTop = document.getElementById('openLoginTop');
+  if (openLoginTop) openLoginTop.addEventListener('click', showLoginModal);
+  
+  const mobileLoginBtn = document.getElementById('mobileLoginBtn');
+  if (mobileLoginBtn) mobileLoginBtn.addEventListener('click', showLoginModal);
+  
+  // Auth Tabs
+  const loginTab = document.getElementById('loginTab');
+  const signupTab = document.getElementById('signupTab');
+  const switchToLogin = document.getElementById('switchToLogin');
+  
+  if (loginTab) loginTab.addEventListener('click', () => switchAuthTab('login'));
+  if (signupTab) signupTab.addEventListener('click', () => switchAuthTab('signup'));
+  if (switchToLogin) switchToLogin.addEventListener('click', () => switchAuthTab('login'));
+  
+  // Auth Buttons
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
+  const googleSignupBtn = document.getElementById('googleSignupBtn');
+  
+  if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+  if (signupBtn) signupBtn.addEventListener('click', handleSignup);
+  if (googleLoginBtn) googleLoginBtn.addEventListener('click', handleGoogleLogin);
+  if (googleSignupBtn) googleSignupBtn.addEventListener('click', handleGoogleLogin);
+  
+  // Forgot Password
+  const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+  const backToLogin = document.getElementById('backToLogin');
+  const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+  
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener('click', () => {
+      const loginForm = document.getElementById('loginForm');
+      const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+      if (loginForm) loginForm.classList.remove('active');
+      if (forgotPasswordForm) forgotPasswordForm.classList.add('active');
+    });
+  }
+  
+  if (backToLogin) {
+    backToLogin.addEventListener('click', () => {
+      const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+      const loginForm = document.getElementById('loginForm');
+      if (forgotPasswordForm) forgotPasswordForm.classList.remove('active');
+      if (loginForm) loginForm.classList.add('active');
+    });
+  }
+  
+  if (resetPasswordBtn) resetPasswordBtn.addEventListener('click', handleResetPassword);
+  
+  // User Profile
+  const userProfile = document.getElementById('userProfile');
+  if (userProfile) userProfile.addEventListener('click', () => window.location.href = 'account.html');
+  
+  // Mobile Logout
+  const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+  if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
+  
+  // Alert Modal
+  const alertCancelBtn = document.getElementById('alertCancelBtn');
+  const alertConfirmBtn = document.getElementById('alertConfirmBtn');
+  
+  if (alertCancelBtn) alertCancelBtn.addEventListener('click', () => {
+    const alertModal = document.getElementById('alertModal');
+    if (alertModal) alertModal.classList.remove('active');
   });
-  resetPasswordBtn.addEventListener('click', handleResetPassword);
   
-  userProfile.addEventListener('click', () => window.location.href = 'account.html');
+  if (alertConfirmBtn) alertConfirmBtn.addEventListener('click', confirmLogout);
   
-  mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
+  // My Orders
+  const openMyOrdersTop = document.getElementById('openMyOrdersTop');
+  if (openMyOrdersTop) openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
   
-  document.getElementById('alertCancelBtn').addEventListener('click', () => {
-    document.getElementById('alertModal').classList.remove('active');
+  // Zoom Modal (old)
+  const zoomClose = document.getElementById('zoomClose');
+  const zoomIn = document.getElementById('zoomIn');
+  const zoomOut = document.getElementById('zoomOut');
+  const zoomReset = document.getElementById('zoomReset');
+  
+  if (zoomClose) zoomClose.addEventListener('click', () => {
+    const zoomModal = document.getElementById('zoomModal');
+    if (zoomModal) zoomModal.classList.remove('active');
   });
-  document.getElementById('alertConfirmBtn').addEventListener('click', confirmLogout);
   
-  openMyOrdersTop.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+  if (zoomIn) zoomIn.addEventListener('click', () => adjustZoom(0.2));
+  if (zoomOut) zoomOut.addEventListener('click', () => adjustZoom(-0.2));
+  if (zoomReset) zoomReset.addEventListener('click', resetZoom);
   
-  zoomClose.addEventListener('click', () => zoomModal.classList.remove('active'));
-  zoomIn.addEventListener('click', () => adjustZoom(0.2));
-  zoomOut.addEventListener('click', () => adjustZoom(-0.2));
-  zoomReset.addEventListener('click', resetZoom);
+  // Product Image Modal (old)
+  const productImageModalClose = document.getElementById('productImageModalClose');
+  const productImageModalPrev = document.getElementById('productImageModalPrev');
+  const productImageModalNext = document.getElementById('productImageModalNext');
   
-  productImageModalClose.addEventListener('click', () => productImageModal.classList.remove('active'));
-  productImageModalPrev.addEventListener('click', prevProductModalImage);
-  productImageModalNext.addEventListener('click', nextProductModalImage);
+  if (productImageModalClose) productImageModalClose.addEventListener('click', () => {
+    const productImageModal = document.getElementById('productImageModal');
+    if (productImageModal) productImageModal.classList.remove('active');
+  });
   
+  if (productImageModalPrev) productImageModalPrev.addEventListener('click', prevProductModalImage);
+  if (productImageModalNext) productImageModalNext.addEventListener('click', nextProductModalImage);
+  
+  // Search
   const searchInput = document.getElementById('searchInput');
-  
   if (searchInput) {
     searchInput.addEventListener('input', debounce(handleSearch, 300));
   }
   
+  const homeSearchInput = document.getElementById('homeSearchInput');
   if (homeSearchInput) {
     homeSearchInput.addEventListener('input', debounce(handleHomeSearch, 300));
     homeSearchInput.addEventListener('focus', () => {
-      advancedSearchPanel.classList.add('active');
+      const advancedSearchPanel = document.getElementById('advancedSearchPanel');
+      if (advancedSearchPanel) advancedSearchPanel.classList.add('active');
     });
   }
   
-  searchIcon.addEventListener('click', () => {
-    handleHomeSearch();
-  });
+  const searchIcon = document.getElementById('searchIcon');
+  if (searchIcon) {
+    searchIcon.addEventListener('click', () => {
+      handleHomeSearch();
+    });
+  }
   
+  const clearRecentSearchesBtn = document.getElementById('clearRecentSearches');
   if (clearRecentSearchesBtn) {
     clearRecentSearchesBtn.addEventListener('click', clearRecentSearches);
   }
@@ -1668,30 +1648,54 @@ function setupEventListeners() {
   // Close advanced search panel when clicking outside
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.search-wrap') && !e.target.closest('.advanced-search-panel')) {
-      advancedSearchPanel.classList.remove('active');
+      const advancedSearchPanel = document.getElementById('advancedSearchPanel');
+      if (advancedSearchPanel) advancedSearchPanel.classList.remove('active');
     }
   });
   
-  document.getElementById('backToProducts')?.addEventListener('click', () => showPage('productsPage'));
-  document.getElementById('toUserInfo')?.addEventListener('click', toUserInfo);
-  document.getElementById('editOrder')?.addEventListener('click', () => showPage('orderPage'));
-  document.getElementById('toPayment')?.addEventListener('click', toPayment);
-  document.getElementById('payBack')?.addEventListener('click', () => showPage('userPage'));
-  document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
-  document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
-  document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+  // Navigation buttons
+  const backToProducts = document.getElementById('backToProducts');
+  if (backToProducts) backToProducts.addEventListener('click', () => showPage('productsPage'));
   
-  document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
-  document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
+  const toUserInfo = document.getElementById('toUserInfo');
+  if (toUserInfo) toUserInfo.addEventListener('click', toUserInfo);
   
+  const editOrder = document.getElementById('editOrder');
+  if (editOrder) editOrder.addEventListener('click', () => showPage('orderPage'));
+  
+  const toPayment = document.getElementById('toPayment');
+  if (toPayment) toPayment.addEventListener('click', toPayment);
+  
+  const payBack = document.getElementById('payBack');
+  if (payBack) payBack.addEventListener('click', () => showPage('userPage'));
+  
+  const confirmOrder = document.getElementById('confirmOrder');
+  if (confirmOrder) confirmOrder.addEventListener('click', confirmOrder);
+  
+  const goHome = document.getElementById('goHome');
+  if (goHome) goHome.addEventListener('click', () => showPage('homePage'));
+  
+  const viewOrders = document.getElementById('viewOrders');
+  if (viewOrders) viewOrders.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+  
+  // Quantity buttons
+  const qtyMinus = document.querySelector('.qty-minus');
+  const qtyPlus = document.querySelector('.qty-plus');
+  
+  if (qtyMinus) qtyMinus.addEventListener('click', decreaseQuantity);
+  if (qtyPlus) qtyPlus.addEventListener('click', increaseQuantity);
+  
+  // Size options
   document.querySelectorAll('.size-option').forEach(option => {
     option.addEventListener('click', function() {
       document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
       this.classList.add('selected');
-      document.getElementById('sizeValidationError').classList.remove('show');
+      const sizeValidationError = document.getElementById('sizeValidationError');
+      if (sizeValidationError) sizeValidationError.classList.remove('show');
     });
   });
   
+  // Color options
   document.querySelectorAll('.color-option').forEach(option => {
     option.addEventListener('click', function() {
       document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
@@ -1699,11 +1703,18 @@ function setupEventListeners() {
     });
   });
   
-  document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
-  document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
+  // Price filter
+  const applyPriceFilterBtn = document.getElementById('applyPriceFilter');
+  const resetPriceFilterBtn = document.getElementById('resetPriceFilter');
   
-  document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+  if (applyPriceFilterBtn) applyPriceFilterBtn.addEventListener('click', applyPriceFilter);
+  if (resetPriceFilterBtn) resetPriceFilterBtn.addEventListener('click', resetPriceFilter);
   
+  // Newsletter
+  const subscribeBtn = document.getElementById('subscribeBtn');
+  if (subscribeBtn) subscribeBtn.addEventListener('click', handleNewsletterSubscription);
+  
+  // Share buttons
   document.querySelectorAll('.share-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const platform = this.getAttribute('data-platform');
@@ -1711,22 +1722,31 @@ function setupEventListeners() {
     });
   });
   
-  document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+  const copyShareLinkBtn = document.getElementById('copyShareLink');
+  if (copyShareLinkBtn) copyShareLinkBtn.addEventListener('click', copyShareLink);
   
-  document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
-  document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
+  // Product detail buttons
+  const detailOrderBtn = document.getElementById('detailOrderBtn');
+  if (detailOrderBtn) detailOrderBtn.addEventListener('click', orderProductFromDetail);
+  
+  const detailWishlistBtn = document.getElementById('detailWishlistBtn');
+  if (detailWishlistBtn) detailWishlistBtn.addEventListener('click', toggleWishlistFromDetail);
   
   // Image Gallery Navigation
-  document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
-  document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
+  const prevDetailBtn = document.querySelector('.detail-carousel-control.prev');
+  const nextDetailBtn = document.querySelector('.detail-carousel-control.next');
   
-  // Zoom Modal Events
+  if (prevDetailBtn) prevDetailBtn.addEventListener('click', prevDetailImage);
+  if (nextDetailBtn) nextDetailBtn.addEventListener('click', nextDetailImage);
+  
+  // Zoom Modal Events (new)
   const closeZoomModalBtn = document.getElementById('closeZoomModalBtn');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
   
   if (closeZoomModalBtn) {
     closeZoomModalBtn.addEventListener('click', () => {
+      const zoomModal = document.getElementById('zoomModal');
       if (zoomModal) zoomModal.classList.remove('active');
     });
   }
@@ -1739,6 +1759,7 @@ function setupEventListeners() {
     nextBtn.addEventListener('click', nextZoomImage);
   }
   
+  const zoomModal = document.getElementById('zoomModal');
   if (zoomModal) {
     zoomModal.addEventListener('click', function(e) {
       if (e.target === this) {
@@ -1753,6 +1774,8 @@ function setupEventListeners() {
     mainImage.addEventListener('click', openZoomModal);
   }
   
+  // Rating and Review
+  const ratingInput = document.getElementById('ratingInput');
   if (ratingInput) {
     ratingInput.querySelectorAll('.rating-star').forEach(star => {
       star.addEventListener('click', function() {
@@ -1762,10 +1785,12 @@ function setupEventListeners() {
     });
   }
   
+  const submitReview = document.getElementById('submitReview');
   if (submitReview) {
     submitReview.addEventListener('click', submitProductReview);
   }
   
+  // Banner touch handlers
   const bannerCarousel = document.getElementById('bannerCarousel');
   if (bannerCarousel) {
     bannerCarousel.addEventListener('touchstart', handleBannerTouchStart);
@@ -1773,7 +1798,7 @@ function setupEventListeners() {
     bannerCarousel.addEventListener('touchend', handleBannerTouchEnd);
   }
   
-  // FIXED: Popstate Event Listener for Back/Forward Navigation
+  // Popstate Event Listener for Back/Forward Navigation
   window.addEventListener('popstate', function(event) {
     console.log("Popstate event, location:", window.location.href);
     
@@ -1791,37 +1816,47 @@ function setupEventListeners() {
     }
   });
   
-  document.querySelector('.qty-minus')?.addEventListener('click', function() {
-    decreaseQuantity();
-    if (document.getElementById('paymentPage').classList.contains('active')) {
-      updatePaymentSummary();
-    }
-  });
+  // Payment summary updates
+  if (qtyMinus) {
+    qtyMinus.addEventListener('click', function() {
+      decreaseQuantity();
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
+      }
+    });
+  }
   
-  document.querySelector('.qty-plus')?.addEventListener('click', function() {
-    increaseQuantity();
-    if (document.getElementById('paymentPage').classList.contains('active')) {
-      updatePaymentSummary();
-    }
-  });
+  if (qtyPlus) {
+    qtyPlus.addEventListener('click', function() {
+      increaseQuantity();
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
+      }
+    });
+  }
   
   document.querySelectorAll('input[name="pay"]').forEach(radio => {
     radio.addEventListener('change', function() {
-      if (document.getElementById('paymentPage').classList.contains('active')) {
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
         updatePaymentSummary();
       }
     });
   });
   
-  document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
+  // Save user info
+  const saveUserInfoBtn = document.getElementById('saveUserInfo');
+  if (saveUserInfoBtn) saveUserInfoBtn.addEventListener('click', saveUserInfoAndAddress);
   
   // Popular search tags
   document.querySelectorAll('.popular-tag').forEach(tag => {
     tag.addEventListener('click', function() {
       const searchText = this.textContent;
-      document.getElementById('homeSearchInput').value = searchText;
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      const advancedSearchPanel = document.getElementById('advancedSearchPanel');
+      
+      if (homeSearchInput) homeSearchInput.value = searchText;
       handleHomeSearch();
-      advancedSearchPanel.classList.remove('active');
+      if (advancedSearchPanel) advancedSearchPanel.classList.remove('active');
     });
   });
   
@@ -1829,9 +1864,12 @@ function setupEventListeners() {
   document.querySelectorAll('.search-tag').forEach(tag => {
     tag.addEventListener('click', function() {
       const searchText = this.textContent;
-      document.getElementById('homeSearchInput').value = searchText;
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      const advancedSearchPanel = document.getElementById('advancedSearchPanel');
+      
+      if (homeSearchInput) homeSearchInput.value = searchText;
       handleHomeSearch();
-      advancedSearchPanel.classList.remove('active');
+      if (advancedSearchPanel) advancedSearchPanel.classList.remove('active');
     });
   });
 }
@@ -1851,10 +1889,10 @@ function handleBannerTouchEnd() {
   if (!isBannerDragging) return;
   
   const diff = bannerStartX - bannerCurrentX;
-  const bannerTrack = document.getElementById('bannerTrack');
-  const activeIndex = banners.findIndex((_, index) => 
-    document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
-  );
+  const activeIndex = banners.findIndex((_, index) => {
+    const dot = document.querySelector(`.banner-dot:nth-child(${index + 1})`);
+    return dot && dot.classList.contains('active');
+  });
   
   if (Math.abs(diff) > 50) {
     if (diff > 0) {
@@ -1871,6 +1909,9 @@ function handleBannerTouchEnd() {
 
 // Rating and Review Functions
 function setRating(rating) {
+  const ratingInput = document.getElementById('ratingInput');
+  if (!ratingInput) return;
+  
   const stars = ratingInput.querySelectorAll('.rating-star');
   stars.forEach((star, index) => {
     if (index < rating) {
@@ -1887,10 +1928,15 @@ async function submitProductReview() {
     return;
   }
   
-  if (!currentProduct) {
+  if (!currentProduct || !realtimeDb) {
     showToast('No product selected', 'error');
     return;
   }
+  
+  const ratingInput = document.getElementById('ratingInput');
+  const reviewText = document.getElementById('reviewText');
+  
+  if (!ratingInput || !reviewText) return;
   
   const activeStars = ratingInput.querySelectorAll('.rating-star.active');
   const rating = activeStars.length;
@@ -1933,9 +1979,14 @@ async function submitProductReview() {
 }
 
 async function loadProductReviews(productId) {
+  if (!realtimeDb) return;
+  
   try {
     const snapshot = await realtimeDb.ref('reviews').orderByChild('productId').equalTo(productId).once('value');
     const reviewsObj = snapshot.val();
+    const reviewsList = document.getElementById('reviewsList');
+    
+    if (!reviewsList) return;
     
     if (!reviewsObj) {
       reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
@@ -1949,11 +2000,17 @@ async function loadProductReviews(productId) {
     renderReviews(reviews);
   } catch (error) {
     console.error('Error loading reviews:', error);
-    reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
+    const reviewsList = document.getElementById('reviewsList');
+    if (reviewsList) {
+      reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
+    }
   }
 }
 
 function renderReviews(reviews) {
+  const reviewsList = document.getElementById('reviewsList');
+  if (!reviewsList) return;
+  
   reviewsList.innerHTML = '';
   
   reviews.forEach(review => {
@@ -1988,8 +2045,15 @@ function renderReviews(reviews) {
 
 // Authentication Functions
 async function handleLogin() {
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginError = document.getElementById('loginError');
+  const loginBtn = document.getElementById('loginBtn');
+  
+  if (!loginEmail || !loginPassword || !loginError || !loginBtn || !auth) return;
+  
+  const email = loginEmail.value;
+  const password = loginPassword.value;
   
   loginError.textContent = '';
   
@@ -2004,15 +2068,18 @@ async function handleLogin() {
     
     const userCredential = await auth.signInWithEmailAndPassword(email, password);
     
-    await realtimeDb.ref('users/' + userCredential.user.uid).update({
-      lastLoginAt: Date.now()
-    });
+    if (realtimeDb) {
+      await realtimeDb.ref('users/' + userCredential.user.uid).update({
+        lastLoginAt: Date.now()
+      });
+    }
     
     showToast('Login successful!', 'success');
-    authModal.classList.remove('active');
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.classList.remove('active');
     
-    document.getElementById('loginEmail').value = '';
-    document.getElementById('loginPassword').value = '';
+    loginEmail.value = '';
+    loginPassword.value = '';
   } catch (err) {
     console.error('Login error:', err);
     loginError.textContent = err.message;
@@ -2023,9 +2090,17 @@ async function handleLogin() {
 }
 
 async function handleSignup() {
-  const name = document.getElementById('signupName').value;
-  const email = document.getElementById('signupEmail').value;
-  const password = document.getElementById('signupPassword').value;
+  const signupName = document.getElementById('signupName');
+  const signupEmail = document.getElementById('signupEmail');
+  const signupPassword = document.getElementById('signupPassword');
+  const signupError = document.getElementById('signupError');
+  const signupBtn = document.getElementById('signupBtn');
+  
+  if (!signupName || !signupEmail || !signupPassword || !signupError || !signupBtn || !auth) return;
+  
+  const name = signupName.value;
+  const email = signupEmail.value;
+  const password = signupPassword.value;
   
   signupError.textContent = '';
   
@@ -2046,22 +2121,25 @@ async function handleSignup() {
     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
     const user = userCredential.user;
     
-    await realtimeDb.ref('users/' + user.uid).set({
-      name: name,
-      email: email,
-      createdAt: Date.now(),
-      lastLoginAt: Date.now()
-    });
+    if (realtimeDb) {
+      await realtimeDb.ref('users/' + user.uid).set({
+        name: name,
+        email: email,
+        createdAt: Date.now(),
+        lastLoginAt: Date.now()
+      });
+    }
     
     localStorage.setItem('userName', name);
     updateUserNameUI(name);
     
     showToast('Account created successfully!', 'success');
-    authModal.classList.remove('active');
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.classList.remove('active');
     
-    document.getElementById('signupName').value = '';
-    document.getElementById('signupEmail').value = '';
-    document.getElementById('signupPassword').value = '';
+    signupName.value = '';
+    signupEmail.value = '';
+    signupPassword.value = '';
   } catch (err) {
     console.error('Signup error:', err);
     signupError.textContent = err.message;
@@ -2072,44 +2150,54 @@ async function handleSignup() {
 }
 
 async function handleGoogleLogin() {
+  if (!auth) return;
+  
   const provider = new firebase.auth.GoogleAuthProvider();
   
   try {
     const result = await auth.signInWithPopup(provider);
     const user = result.user;
     
-    const userSnapshot = await realtimeDb.ref('users/' + user.uid).once('value');
-    
-    if (!userSnapshot.exists()) {
-      await realtimeDb.ref('users/' + user.uid).set({
-        name: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-        createdAt: Date.now(),
-        lastLoginAt: Date.now()
-      });
-    } else {
-      await realtimeDb.ref('users/' + user.uid).update({
-        lastLoginAt: Date.now()
-      });
+    if (realtimeDb) {
+      const userSnapshot = await realtimeDb.ref('users/' + user.uid).once('value');
+      
+      if (!userSnapshot.exists()) {
+        await realtimeDb.ref('users/' + user.uid).set({
+          name: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          createdAt: Date.now(),
+          lastLoginAt: Date.now()
+        });
+      } else {
+        await realtimeDb.ref('users/' + user.uid).update({
+          lastLoginAt: Date.now()
+        });
+      }
     }
     
     localStorage.setItem('userName', user.displayName || 'User');
     updateUserNameUI(user.displayName || 'User');
     
     showToast('Login successful!', 'success');
-    authModal.classList.remove('active');
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.classList.remove('active');
   } catch (err) {
     console.error('Google login error:', err);
-    if (loginForm.classList.contains('active')) {
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const loginError = document.getElementById('loginError');
+    const signupError = document.getElementById('signupError');
+    
+    if (loginForm?.classList.contains('active') && loginError) {
       loginError.textContent = err.message;
-    } else {
+    } else if (signupForm?.classList.contains('active') && signupError) {
       signupError.textContent = err.message;
     }
   }
 }
 
-// FIXED: Place Order Function with proper calculations
+// Place Order Function with proper calculations
 async function confirmOrder() {
   if (!currentUser) {
     showLoginModal();
@@ -2131,10 +2219,21 @@ async function confirmOrder() {
   const orderId = generateOrderId();
   currentOrderId = orderId;
   
-  const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-  const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-  const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
-  const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
+  const paymentMethodRadio = document.querySelector('input[name="pay"]:checked');
+  if (!paymentMethodRadio) {
+    showToast('Please select a payment method', 'error');
+    return;
+  }
+  
+  const paymentMethod = paymentMethodRadio.value;
+  const qtySelect = document.getElementById('qtySelect');
+  const quantity = qtySelect ? parseInt(qtySelect.value) || 1 : 1;
+  
+  const selectedSize = document.querySelector('.size-option.selected');
+  const size = selectedSize?.getAttribute('data-value') || 'Not specified';
+  
+  const selectedColor = document.querySelector('.color-option.selected');
+  const color = selectedColor?.getAttribute('data-value') || 'Not specified';
   
   const productPrice = parsePrice(currentProduct.price);
   const subtotal = productPrice * quantity;
@@ -2170,14 +2269,17 @@ async function confirmOrder() {
   };
   
   try {
-    await realtimeDb.ref('orders/' + orderId).set(orderData);
+    if (realtimeDb) {
+      await realtimeDb.ref('orders/' + orderId).set(orderData);
+    }
     
     // Send order notification email
     sendOrderNotification(orderData);
     
-    document.getElementById('orderIdDisplay').textContent = orderId;
-    showPage('successPage');
+    const orderIdDisplay = document.getElementById('orderIdDisplay');
+    if (orderIdDisplay) orderIdDisplay.textContent = orderId;
     
+    showPage('successPage');
     showToast('Order placed successfully!', 'success');
     
     localStorage.removeItem('cart');
@@ -2198,20 +2300,30 @@ function parsePrice(p) {
   return 0;
 }
 
-// Payment Calculation Function - FIXED
+// Payment Calculation Function
 function updatePaymentSummary() {
   if (!currentProduct) {
-    document.getElementById('sumProduct').textContent = '-';
-    document.getElementById('sumQty').textContent = '-';
-    document.getElementById('sumPrice').textContent = '-';
-    document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
-    document.getElementById('sumGateway').textContent = '₹0';
-    document.getElementById('sumTotal').textContent = '-';
+    const sumProduct = document.getElementById('sumProduct');
+    const sumQty = document.getElementById('sumQty');
+    const sumPrice = document.getElementById('sumPrice');
+    const sumDel = document.getElementById('sumDel');
+    const sumGateway = document.getElementById('sumGateway');
+    const sumTotal = document.getElementById('sumTotal');
+    
+    if (sumProduct) sumProduct.textContent = '-';
+    if (sumQty) sumQty.textContent = '-';
+    if (sumPrice) sumPrice.textContent = '-';
+    if (sumDel) sumDel.textContent = `₹${adminSettings.deliveryCharge || 50}`;
+    if (sumGateway) sumGateway.textContent = '₹0';
+    if (sumTotal) sumTotal.textContent = '-';
     return;
   }
   
-  const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-  const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+  const qtySelect = document.getElementById('qtySelect');
+  const quantity = qtySelect ? parseInt(qtySelect.value) || 1 : 1;
+  
+  const paymentMethodRadio = document.querySelector('input[name="pay"]:checked');
+  const paymentMethod = paymentMethodRadio ? paymentMethodRadio.value : 'cod';
   
   const productPrice = parsePrice(currentProduct.price);
   const subtotal = productPrice * quantity;
@@ -2220,40 +2332,58 @@ function updatePaymentSummary() {
   const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
   const total = subtotal + deliveryCharge + gatewayCharge;
   
-  document.getElementById('sumProduct').textContent = currentProduct.title || currentProduct.name;
-  document.getElementById('sumQty').textContent = quantity;
-  document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-  document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-  document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
-  document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
+  const sumProduct = document.getElementById('sumProduct');
+  const sumQty = document.getElementById('sumQty');
+  const sumPrice = document.getElementById('sumPrice');
+  const sumDel = document.getElementById('sumDel');
+  const sumGateway = document.getElementById('sumGateway');
+  const sumTotal = document.getElementById('sumTotal');
+  
+  if (sumProduct) sumProduct.textContent = currentProduct.title || currentProduct.name;
+  if (sumQty) sumQty.textContent = quantity;
+  if (sumPrice) sumPrice.textContent = `₹${subtotal.toLocaleString()}`;
+  if (sumDel) sumDel.textContent = `₹${deliveryCharge}`;
+  if (sumGateway) sumGateway.textContent = `₹${gatewayCharge.toFixed(2)}`;
+  if (sumTotal) sumTotal.textContent = `₹${total.toLocaleString()}`;
 }
 
 function showLoginModal() {
-  authModal.classList.add('active');
+  const authModal = document.getElementById('authModal');
+  if (authModal) authModal.classList.add('active');
   switchAuthTab('login');
 }
 
 function switchAuthTab(tab) {
-  loginForm.classList.remove('active');
-  signupForm.classList.remove('active');
-  forgotPasswordForm.classList.remove('active');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+  const loginTab = document.getElementById('loginTab');
+  const signupTab = document.getElementById('signupTab');
+  const loginError = document.getElementById('loginError');
+  const signupError = document.getElementById('signupError');
   
-  loginTab.classList.remove('active');
-  signupTab.classList.remove('active');
+  if (loginForm) loginForm.classList.remove('active');
+  if (signupForm) signupForm.classList.remove('active');
+  if (forgotPasswordForm) forgotPasswordForm.classList.remove('active');
   
-  loginError.textContent = '';
-  signupError.textContent = '';
+  if (loginTab) loginTab.classList.remove('active');
+  if (signupTab) signupTab.classList.remove('active');
+  
+  if (loginError) loginError.textContent = '';
+  if (signupError) signupError.textContent = '';
   
   if (tab === 'login') {
-    loginTab.classList.add('active');
-    loginForm.classList.add('active');
+    if (loginTab) loginTab.classList.add('active');
+    if (loginForm) loginForm.classList.add('active');
   } else {
-    signupTab.classList.add('active');
-    signupForm.classList.add('active');
+    if (signupTab) signupTab.classList.add('active');
+    if (signupForm) signupForm.classList.add('active');
   }
 }
 
 function logout() {
+  if (!auth) return;
+  
   auth.signOut().then(() => {
     showToast('Logged out successfully', 'success');
     showPage('homePage');
@@ -2265,14 +2395,20 @@ function logout() {
 
 // Mobile menu functions
 function openMenu() {
-  mobileMenu.classList.add('active');
-  menuOverlay.classList.add('active');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const menuOverlay = document.getElementById('menuOverlay');
+  
+  if (mobileMenu) mobileMenu.classList.add('active');
+  if (menuOverlay) menuOverlay.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
 
 function closeMenu() {
-  mobileMenu.classList.remove('active');
-  menuOverlay.classList.remove('active');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const menuOverlay = document.getElementById('menuOverlay');
+  
+  if (mobileMenu) mobileMenu.classList.remove('active');
+  if (menuOverlay) menuOverlay.classList.remove('active');
   document.body.style.overflow = '';
 }
 
@@ -2287,6 +2423,9 @@ function toggleTheme() {
 
 // Toast notification
 function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  
   toast.textContent = message;
   toast.className = 'toast ' + type;
   toast.classList.add('show');
@@ -2298,47 +2437,67 @@ function showToast(message, type = 'success') {
 
 // User interface updates
 function updateUIForUser(user) {
-  userProfile.style.display = 'flex';
-  openLoginTop.style.display = 'none';
-  mobileLoginBtn.style.display = 'none';
-  mobileUserProfile.style.display = 'flex';
-  mobileLogoutBtn.style.display = 'flex';
+  const userProfile = document.getElementById('userProfile');
+  const openLoginTop = document.getElementById('openLoginTop');
+  const mobileLoginBtn = document.getElementById('mobileLoginBtn');
+  const mobileUserProfile = document.getElementById('mobileUserProfile');
+  const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+  
+  if (userProfile) userProfile.style.display = 'flex';
+  if (openLoginTop) openLoginTop.style.display = 'none';
+  if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
+  if (mobileUserProfile) mobileUserProfile.style.display = 'flex';
+  if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'flex';
   
   updateUserProfile(user);
   
-  realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
-    if (snapshot.exists()) {
-      const userData = snapshot.val();
-      const name = userData.name || user.displayName || 'User';
-      localStorage.setItem('userName', name);
-      updateUserNameUI(name);
-      mobileUserName.textContent = name;
-    }
-  });
+  if (realtimeDb) {
+    realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        const name = userData.name || user.displayName || 'User';
+        localStorage.setItem('userName', name);
+        updateUserNameUI(name);
+        const mobileUserName = document.getElementById('mobileUserName');
+        if (mobileUserName) mobileUserName.textContent = name;
+      }
+    });
+  }
 }
 
 function updateUserProfile(user) {
-  if (user.photoURL) {
+  const userAvatarImg = document.getElementById('userAvatarImg');
+  const userAvatarInitial = document.getElementById('userAvatarInitial');
+  const userName = document.getElementById('userName');
+  const mobileUserName = document.getElementById('mobileUserName');
+  
+  if (user.photoURL && userAvatarImg) {
     userAvatarImg.src = user.photoURL;
     userAvatarImg.style.display = 'block';
-    userAvatarInitial.style.display = 'none';
-  } else {
+    if (userAvatarInitial) userAvatarInitial.style.display = 'none';
+  } else if (userAvatarImg && userAvatarInitial) {
     userAvatarImg.style.display = 'none';
     userAvatarInitial.style.display = 'block';
     userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
   }
   
   const name = user.displayName || 'User';
-  userName.textContent = name;
-  mobileUserName.textContent = name;
+  if (userName) userName.textContent = name;
+  if (mobileUserName) mobileUserName.textContent = name;
 }
 
 function updateUIForGuest() {
-  userProfile.style.display = 'none';
-  openLoginTop.style.display = 'block';
-  mobileLoginBtn.style.display = 'flex';
-  mobileUserProfile.style.display = 'none';
-  mobileLogoutBtn.style.display = 'none';
+  const userProfile = document.getElementById('userProfile');
+  const openLoginTop = document.getElementById('openLoginTop');
+  const mobileLoginBtn = document.getElementById('mobileLoginBtn');
+  const mobileUserProfile = document.getElementById('mobileUserProfile');
+  const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+  
+  if (userProfile) userProfile.style.display = 'none';
+  if (openLoginTop) openLoginTop.style.display = 'block';
+  if (mobileLoginBtn) mobileLoginBtn.style.display = 'flex';
+  if (mobileUserProfile) mobileUserProfile.style.display = 'none';
+  if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'none';
 }
 
 // Product rendering functions
@@ -2456,9 +2615,10 @@ function renderBannerCarousel() {
   // Auto slide
   if (banners.length > 1) {
     setInterval(() => {
-      const activeIndex = banners.findIndex((_, index) => 
-        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
-      );
+      const activeIndex = banners.findIndex((_, index) => {
+        const dot = document.querySelector(`.banner-dot:nth-child(${index + 1})`);
+        return dot && dot.classList.contains('active');
+      });
       const nextIndex = (activeIndex + 1) % banners.length;
       setBannerSlide(nextIndex);
     }, 5000);
@@ -2486,10 +2646,7 @@ function loadSimilarProducts(product) {
   renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
 }
 
-// =========================================================
-// FIXED: Order Page Gallery Initialization for Firebase
-// =========================================================
-
+// Order Page Gallery Initialization
 function initOrderPageGallery() {
   if (!currentProduct) return;
   
@@ -2497,8 +2654,6 @@ function initOrderPageGallery() {
   const dotsContainer = document.getElementById('orderCarouselDots');
   
   if (!galleryMain || !dotsContainer) return;
-  
-  console.log("Initializing order page gallery for:", currentProduct.title || currentProduct.name);
   
   // Use currentProductImages or get from Firebase
   let productImages = [];
@@ -2579,13 +2734,17 @@ function setOrderPageImage(index) {
 function toUserInfo() {
   const selectedSize = document.querySelector('.size-option.selected');
   if (!selectedSize) {
-    document.getElementById('sizeValidationError').classList.add('show');
+    const sizeValidationError = document.getElementById('sizeValidationError');
+    if (sizeValidationError) sizeValidationError.classList.add('show');
     return;
   }
   
-  const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+  const qtySelect = document.getElementById('qtySelect');
+  const quantity = qtySelect ? parseInt(qtySelect.value) || 1 : 1;
   const size = selectedSize.getAttribute('data-value');
-  const color = document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
+  
+  const selectedColor = document.querySelector('.color-option.selected');
+  const color = selectedColor?.getAttribute('data-value') || 'Not specified';
   
   const cart = {
     productId: currentProduct.id,
@@ -2599,19 +2758,31 @@ function toUserInfo() {
 }
 
 function toPayment() {
-  const fullname = document.getElementById('fullname').value;
-  const mobile = document.getElementById('mobile').value;
-  const pincode = document.getElementById('pincode').value;
-  const city = document.getElementById('city').value;
-  const state = document.getElementById('state').value;
-  const house = document.getElementById('house').value;
+  const fullname = document.getElementById('fullname');
+  const mobile = document.getElementById('mobile');
+  const pincode = document.getElementById('pincode');
+  const city = document.getElementById('city');
+  const state = document.getElementById('state');
+  const house = document.getElementById('house');
 
   if (!fullname || !mobile || !pincode || !city || !state || !house) {
     showToast('Please fill in all required fields', 'error');
     return;
   }
 
-  userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+  if (!fullname.value || !mobile.value || !pincode.value || !city.value || !state.value || !house.value) {
+    showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  userInfo = { 
+    fullName: fullname.value, 
+    mobile: mobile.value, 
+    pincode: pincode.value, 
+    city: city.value, 
+    state: state.value, 
+    house: house.value 
+  };
 
   showPage('paymentPage');
 }
@@ -2627,22 +2798,29 @@ function debounce(func, wait) {
 
 // Logout with confirmation
 function showLogoutConfirmation() {
-  document.getElementById('alertTitle').textContent = 'Logout Confirmation';
-  document.getElementById('alertMessage').textContent = 'Are you sure you want to logout?';
-  document.getElementById('alertModal').classList.add('active');
+  const alertTitle = document.getElementById('alertTitle');
+  const alertMessage = document.getElementById('alertMessage');
+  const alertModal = document.getElementById('alertModal');
+  
+  if (alertTitle) alertTitle.textContent = 'Logout Confirmation';
+  if (alertMessage) alertMessage.textContent = 'Are you sure you want to logout?';
+  if (alertModal) alertModal.classList.add('active');
 }
 
 function confirmLogout() {
-  auth.signOut().then(() => {
-    showToast('Logged out successfully', 'success');
-    document.getElementById('alertModal').classList.remove('active');
-    showPage('homePage');
-  });
+  logout();
+  const alertModal = document.getElementById('alertModal');
+  if (alertModal) alertModal.classList.remove('active');
 }
 
-// FIXED: Reset Password won't show login after sending
+// Reset Password
 async function handleResetPassword() {
-  const email = document.getElementById('forgotPasswordEmail').value;
+  const forgotPasswordEmail = document.getElementById('forgotPasswordEmail');
+  const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+  
+  if (!forgotPasswordEmail || !resetPasswordBtn || !auth) return;
+  
+  const email = forgotPasswordEmail.value;
   
   if (!email) {
     showToast('Please enter your email address', 'error');
@@ -2656,10 +2834,11 @@ async function handleResetPassword() {
     await auth.sendPasswordResetEmail(email);
     showToast('Password reset email sent! Check your inbox.', 'success');
     
-    document.getElementById('forgotPasswordEmail').value = '';
+    forgotPasswordEmail.value = '';
     
     setTimeout(() => {
-      authModal.classList.remove('active');
+      const authModal = document.getElementById('authModal');
+      if (authModal) authModal.classList.remove('active');
     }, 2000);
     
   } catch (err) {
@@ -2673,7 +2852,7 @@ async function handleResetPassword() {
 
 // Address Management Functions
 async function saveAddress(addressData, isDefault = false) {
-  if (!currentUser) return null;
+  if (!currentUser || !realtimeDb) return null;
   
   const isDuplicate = savedAddresses.some(addr => 
     addr.name === addressData.name &&
@@ -2720,7 +2899,7 @@ async function saveAddress(addressData, isDefault = false) {
 }
 
 async function deleteAddress(addressId) {
-  if (!currentUser) return;
+  if (!currentUser || !realtimeDb) return;
   
   try {
     await realtimeDb.ref('addresses/' + addressId).remove();
@@ -2737,7 +2916,7 @@ async function deleteAddress(addressId) {
 }
 
 async function updateAddress(addressId, addressData) {
-  if (!currentUser) return;
+  if (!currentUser || !realtimeDb) return;
   
   try {
     await realtimeDb.ref('addresses/' + addressId).update(addressData);
@@ -2756,38 +2935,50 @@ async function updateAddress(addressId, addressData) {
   }
 }
 
-// UPDATED: Save user info and address
+// Save user info and address
 async function saveUserInfoAndAddress() {
-  const fullname = document.getElementById('fullname').value;
-  const mobile = document.getElementById('mobile').value;
-  const pincode = document.getElementById('pincode').value;
-  const city = document.getElementById('city').value;
-  const state = document.getElementById('state').value;
-  const house = document.getElementById('house').value;
-  const addressType = document.getElementById('addressType').value;
+  const fullname = document.getElementById('fullname');
+  const mobile = document.getElementById('mobile');
+  const pincode = document.getElementById('pincode');
+  const city = document.getElementById('city');
+  const state = document.getElementById('state');
+  const house = document.getElementById('house');
+  const addressType = document.getElementById('addressType');
 
-  if (!fullname || !mobile || !pincode || !city || !state || !house) {
+  if (!fullname || !mobile || !pincode || !city || !state || !house || !addressType) {
     showToast('Please fill in all required fields', 'error');
     return;
   }
 
-  userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+  if (!fullname.value || !mobile.value || !pincode.value || !city.value || !state.value || !house.value) {
+    showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  userInfo = { 
+    fullName: fullname.value, 
+    mobile: mobile.value, 
+    pincode: pincode.value, 
+    city: city.value, 
+    state: state.value, 
+    house: house.value 
+  };
   
   const addressData = {
-    name: fullname,
-    mobile: mobile,
-    pincode: pincode,
-    city: city,
-    state: state,
-    street: house,
-    type: addressType
+    name: fullname.value,
+    mobile: mobile.value,
+    pincode: pincode.value,
+    city: city.value,
+    state: state.value,
+    street: house.value,
+    type: addressType.value
   };
   
   await saveAddress(addressData, true);
   loadSavedAddresses();
 }
 
-// UPDATED: Load saved addresses with edit/delete
+// Load saved addresses with edit/delete
 async function loadSavedAddresses() {
   if (!currentUser) return;
   
@@ -2798,30 +2989,32 @@ async function loadSavedAddresses() {
       renderSavedAddresses();
     }
     
-    const snapshot = await realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value');
-    const addressesList = document.getElementById('savedAddressesList');
-    const savedAddressesSection = document.getElementById('savedAddressesSection');
-    
-    if (!snapshot.exists()) {
-      savedAddressesSection.style.display = 'none';
-      savedAddresses = [];
-      return;
-    }
-    
-    const addressesObj = snapshot.val();
-    const addresses = Object.keys(addressesObj).map(key => ({
-      id: key,
-      ...addressesObj[key]
-    }));
-    
-    savedAddresses = addresses;
-    cacheManager.set('addresses_' + currentUser.uid, addresses);
-    
-    if (addresses.length > 0) {
-      savedAddressesSection.style.display = 'block';
-      renderSavedAddresses();
-    } else {
-      savedAddressesSection.style.display = 'none';
+    if (realtimeDb) {
+      const snapshot = await realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value');
+      const addressesList = document.getElementById('savedAddressesList');
+      const savedAddressesSection = document.getElementById('savedAddressesSection');
+      
+      if (!snapshot.exists()) {
+        if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+        savedAddresses = [];
+        return;
+      }
+      
+      const addressesObj = snapshot.val();
+      const addresses = Object.keys(addressesObj).map(key => ({
+        id: key,
+        ...addressesObj[key]
+      }));
+      
+      savedAddresses = addresses;
+      cacheManager.set('addresses_' + currentUser.uid, addresses);
+      
+      if (addresses.length > 0) {
+        if (savedAddressesSection) savedAddressesSection.style.display = 'block';
+        renderSavedAddresses();
+      } else {
+        if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+      }
     }
   } catch (error) {
     console.error('Error loading addresses:', error);
@@ -2882,61 +3075,94 @@ function renderSavedAddresses() {
 }
 
 function fillAddressForm(address) {
-  document.getElementById('fullname').value = address.name;
-  document.getElementById('mobile').value = address.mobile;
-  document.getElementById('pincode').value = address.pincode;
-  document.getElementById('city').value = address.city;
-  document.getElementById('state').value = address.state;
-  document.getElementById('house').value = address.street;
-  document.getElementById('addressType').value = address.type || 'home';
+  const fullname = document.getElementById('fullname');
+  const mobile = document.getElementById('mobile');
+  const pincode = document.getElementById('pincode');
+  const city = document.getElementById('city');
+  const state = document.getElementById('state');
+  const house = document.getElementById('house');
+  const addressType = document.getElementById('addressType');
+  
+  if (fullname) fullname.value = address.name;
+  if (mobile) mobile.value = address.mobile;
+  if (pincode) pincode.value = address.pincode;
+  if (city) city.value = address.city;
+  if (state) state.value = address.state;
+  if (house) house.value = address.street;
+  if (addressType) addressType.value = address.type || 'home';
 }
 
 function editAddress(address) {
   fillAddressForm(address);
-  document.getElementById('savedAddressesSection').style.display = 'none';
-  document.getElementById('newAddressForm').style.display = 'block';
+  const savedAddressesSection = document.getElementById('savedAddressesSection');
+  const newAddressForm = document.getElementById('newAddressForm');
+  
+  if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+  if (newAddressForm) newAddressForm.style.display = 'block';
   
   const saveBtn = document.getElementById('saveUserInfo');
-  saveBtn.textContent = 'Update Address';
-  saveBtn.onclick = function() {
-    updateAddress(address.id, {
-      name: document.getElementById('fullname').value,
-      mobile: document.getElementById('mobile').value,
-      pincode: document.getElementById('pincode').value,
-      city: document.getElementById('city').value,
-      state: document.getElementById('state').value,
-      street: document.getElementById('house').value,
-      type: document.getElementById('addressType').value
-    });
-  };
+  if (saveBtn) {
+    saveBtn.textContent = 'Update Address';
+    saveBtn.onclick = function() {
+      updateAddress(address.id, {
+        name: document.getElementById('fullname')?.value || '',
+        mobile: document.getElementById('mobile')?.value || '',
+        pincode: document.getElementById('pincode')?.value || '',
+        city: document.getElementById('city')?.value || '',
+        state: document.getElementById('state')?.value || '',
+        street: document.getElementById('house')?.value || '',
+        type: document.getElementById('addressType')?.value || 'home'
+      });
+    };
+  }
 }
 
 function deleteAddressConfirmation(address) {
-  document.getElementById('alertTitle').textContent = 'Delete Address';
-  document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
-  document.getElementById('alertModal').classList.add('active');
+  const alertTitle = document.getElementById('alertTitle');
+  const alertMessage = document.getElementById('alertMessage');
+  const alertModal = document.getElementById('alertModal');
+  const alertConfirmBtn = document.getElementById('alertConfirmBtn');
   
-  document.getElementById('alertConfirmBtn').onclick = function() {
-    deleteAddress(address.id);
-    document.getElementById('alertModal').classList.remove('active');
-  };
+  if (alertTitle) alertTitle.textContent = 'Delete Address';
+  if (alertMessage) alertMessage.textContent = `Are you sure you want to delete address for ${address.name}?`;
+  if (alertModal) alertModal.classList.add('active');
+  
+  if (alertConfirmBtn) {
+    alertConfirmBtn.onclick = function() {
+      deleteAddress(address.id);
+      if (alertModal) alertModal.classList.remove('active');
+    };
+  }
 }
 
 function showNewAddressForm() {
-  document.getElementById('savedAddressesSection').style.display = 'none';
-  document.getElementById('newAddressForm').style.display = 'block';
+  const savedAddressesSection = document.getElementById('savedAddressesSection');
+  const newAddressForm = document.getElementById('newAddressForm');
   
-  document.getElementById('fullname').value = '';
-  document.getElementById('mobile').value = '';
-  document.getElementById('pincode').value = '';
-  document.getElementById('city').value = '';
-  document.getElementById('state').value = '';
-  document.getElementById('house').value = '';
-  document.getElementById('addressType').value = 'home';
+  if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+  if (newAddressForm) newAddressForm.style.display = 'block';
+  
+  const fullname = document.getElementById('fullname');
+  const mobile = document.getElementById('mobile');
+  const pincode = document.getElementById('pincode');
+  const city = document.getElementById('city');
+  const state = document.getElementById('state');
+  const house = document.getElementById('house');
+  const addressType = document.getElementById('addressType');
+  
+  if (fullname) fullname.value = '';
+  if (mobile) mobile.value = '';
+  if (pincode) pincode.value = '';
+  if (city) city.value = '';
+  if (state) state.value = '';
+  if (house) house.value = '';
+  if (addressType) addressType.value = 'home';
   
   const saveBtn = document.getElementById('saveUserInfo');
-  saveBtn.textContent = 'Save This Address';
-  saveBtn.onclick = saveUserInfoAndAddress;
+  if (saveBtn) {
+    saveBtn.textContent = 'Save This Address';
+    saveBtn.onclick = saveUserInfoAndAddress;
+  }
 }
 
 // Wishlist functions
@@ -2973,7 +3199,7 @@ function renderWishlist() {
 
 // Recently viewed functions
 async function addToRecentlyViewed(productId) {
-  if (!currentUser) return;
+  if (!currentUser || !realtimeDb) return;
   
   try {
     await realtimeDb.ref('recentlyViewed/' + currentUser.uid + '/' + productId).set(Date.now());
@@ -2984,6 +3210,8 @@ async function addToRecentlyViewed(productId) {
 }
 
 async function loadRecentlyViewed(user) {
+  if (!realtimeDb) return;
+  
   try {
     const snapshot = await realtimeDb.ref('recentlyViewed/' + user.uid).once('value');
     const recentlyViewedObj = snapshot.val();
@@ -3059,6 +3287,8 @@ function shareProduct(platform, product = null) {
 
 function copyShareLink() {
   const shareLink = document.getElementById('productShareLink');
+  if (!shareLink) return;
+  
   shareLink.select();
   document.execCommand('copy');
   showToast('Link copied to clipboard', 'success');
@@ -3070,26 +3300,35 @@ function openImageZoom() {
   
   const productImages = getProductImages();
   const imageUrl = productImages[currentImageIndex];
+  const zoomImage = document.getElementById('zoomImage');
+  const zoomModal = document.getElementById('zoomModal');
   
-  zoomImage.src = imageUrl;
-  zoomModal.classList.add('active');
-  resetZoom();
+  if (zoomImage && zoomModal && imageUrl) {
+    zoomImage.src = imageUrl;
+    zoomModal.classList.add('active');
+    resetZoom();
+  }
 }
 
 function adjustZoom(delta) {
   currentZoomLevel += delta;
   currentZoomLevel = Math.max(0.5, Math.min(3, currentZoomLevel));
-  zoomImage.style.transform = `scale(${currentZoomLevel})`;
+  const zoomImage = document.getElementById('zoomImage');
+  if (zoomImage) zoomImage.style.transform = `scale(${currentZoomLevel})`;
 }
 
 function resetZoom() {
   currentZoomLevel = 1;
-  zoomImage.style.transform = 'scale(1)';
+  const zoomImage = document.getElementById('zoomImage');
+  if (zoomImage) zoomImage.style.transform = 'scale(1)';
 }
 
 // Newsletter subscription
 function handleNewsletterSubscription() {
-  const email = document.getElementById('newsletterEmail').value;
+  const newsletterEmail = document.getElementById('newsletterEmail');
+  if (!newsletterEmail) return;
+  
+  const email = newsletterEmail.value;
   
   if (!email) {
     showToast('Please enter your email address', 'error');
@@ -3097,30 +3336,37 @@ function handleNewsletterSubscription() {
   }
   
   showToast('Thank you for subscribing!', 'success');
-  document.getElementById('newsletterEmail').value = '';
+  newsletterEmail.value = '';
 }
 
 // Step pills update
 function updateStepPills() {
-  const currentPage = document.querySelector('.page.active').id;
+  const currentPage = document.querySelector('.page.active');
+  if (!currentPage) return;
+  
+  const currentPageId = currentPage.id;
   
   document.querySelectorAll('.step-pill').forEach(pill => {
     pill.classList.remove('disabled');
   });
   
-  switch (currentPage) {
+  const pillOrder = document.getElementById('pill-order');
+  const pillUser = document.getElementById('pill-user');
+  const pillPay = document.getElementById('pill-pay');
+  
+  switch (currentPageId) {
     case 'homePage':
     case 'productsPage':
-      document.getElementById('pill-order').classList.add('disabled');
-      document.getElementById('pill-user').classList.add('disabled');
-      document.getElementById('pill-pay').classList.add('disabled');
+      if (pillOrder) pillOrder.classList.add('disabled');
+      if (pillUser) pillUser.classList.add('disabled');
+      if (pillPay) pillPay.classList.add('disabled');
       break;
     case 'orderPage':
-      document.getElementById('pill-user').classList.add('disabled');
-      document.getElementById('pill-pay').classList.add('disabled');
+      if (pillUser) pillUser.classList.add('disabled');
+      if (pillPay) pillPay.classList.add('disabled');
       break;
     case 'userPage':
-      document.getElementById('pill-pay').classList.add('disabled');
+      if (pillPay) pillPay.classList.add('disabled');
       break;
   }
 }
@@ -3128,6 +3374,8 @@ function updateStepPills() {
 // Hero messages rotation
 function setupHeroMessages() {
   const messages = document.querySelectorAll('#heroMessages span');
+  if (messages.length === 0) return;
+  
   let currentIndex = 0;
   
   setInterval(() => {
@@ -3139,6 +3387,8 @@ function setupHeroMessages() {
 
 // Load user data
 function loadUserData(user) {
+  if (!realtimeDb) return;
+  
   realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
     if (snapshot.exists()) {
       const userData = snapshot.val();
@@ -3183,6 +3433,10 @@ function renderOrders(orders) {
   orders.forEach(order => {
     const orderCard = document.createElement('div');
     orderCard.className = 'order-card';
+    
+    const product = products.find(p => p.id === order.productId);
+    const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/100x100/f3f4f6/64748b?text=Product';
+    
     orderCard.innerHTML = `
       <div class="order-header">
         <div>
@@ -3192,7 +3446,7 @@ function renderOrders(orders) {
         <div class="order-status status-${order.status}">${order.status}</div>
       </div>
       <div class="order-details">
-        <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+        <div class="order-product-image" style="background-image: url('${productImage}')"></div>
         <div class="order-product-info">
           <div class="order-product-title">${order.productName}</div>
           <div class="order-product-price">₹${order.totalAmount}</div>
@@ -3211,7 +3465,7 @@ function showOrderDetail(order) {
 }
 
 async function showMyOrders() {
-  if (!currentUser) return;
+  if (!currentUser || !realtimeDb) return;
   
   realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
     .once('value')
@@ -3237,6 +3491,8 @@ async function showMyOrders() {
 // Quantity functions
 function decreaseQuantity() {
   const qtyInput = document.getElementById('qtySelect');
+  if (!qtyInput) return;
+  
   let value = parseInt(qtyInput.value);
   if (value > 1) {
     qtyInput.value = value - 1;
@@ -3245,6 +3501,8 @@ function decreaseQuantity() {
 
 function increaseQuantity() {
   const qtyInput = document.getElementById('qtySelect');
+  if (!qtyInput) return;
+  
   let value = parseInt(qtyInput.value);
   if (value < 10) {
     qtyInput.value = value + 1;
@@ -3257,10 +3515,15 @@ function orderProductFromDetail() {
   
   currentProduct = currentProduct;
   
-  document.getElementById('spTitle').textContent = currentProduct.title || currentProduct.name;
-  document.getElementById('spPrice').textContent = currentProduct.price;
-  document.getElementById('spDesc').textContent = currentProduct.desc || currentProduct.description || '';
-  document.getElementById('spFullDesc').textContent = currentProduct.fulLDesc || currentProduct.fullDescription || currentProduct.desc || currentProduct.description || '';
+  const spTitle = document.getElementById('spTitle');
+  const spPrice = document.getElementById('spPrice');
+  const spDesc = document.getElementById('spDesc');
+  const spFullDesc = document.getElementById('spFullDesc');
+  
+  if (spTitle) spTitle.textContent = currentProduct.title || currentProduct.name;
+  if (spPrice) spPrice.textContent = currentProduct.price;
+  if (spDesc) spDesc.textContent = currentProduct.desc || currentProduct.description || '';
+  if (spFullDesc) spFullDesc.textContent = currentProduct.fulLDesc || currentProduct.fullDescription || currentProduct.desc || currentProduct.description || '';
   
   initOrderPageGallery();
   showPage('orderPage');
