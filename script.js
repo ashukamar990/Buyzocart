@@ -123,8 +123,30 @@ const realtimeDb = firebase.database();
 // Initialize EmailJS
 emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
 
+// DEBUG MODE
+console.log("=== DEBUG MODE ENABLED ===");
+
+// Check Firebase connection
+if (firebase.apps.length) {
+  console.log("Firebase initialized successfully");
+} else {
+  console.error("Firebase not initialized");
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+  console.log("Script loaded");
+  
+  // Check for product in URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const productId = urlParams.get('product');
+  console.log("URL Product ID:", productId);
+  
+  if (productId) {
+    // Load product from Firebase by ID
+    loadProductFromId(productId);
+  }
+  
   initApp();
   setupEventListeners();
   
@@ -400,6 +422,31 @@ function setupRealtimeListeners() {
       updateAdminSettingsUI();
     }
   });
+}
+
+// =========================================================
+// NEW: Load Product from ID (URL parameter)
+// =========================================================
+
+async function loadProductFromId(productId) {
+  console.log("Loading product from ID:", productId);
+  
+  try {
+    const snapshot = await realtimeDb.ref('products/' + productId).once('value');
+    const product = snapshot.val();
+    
+    if (product) {
+      console.log("Product found:", product);
+      product.id = productId;
+      showProductDetail(product);
+    } else {
+      console.error("Product not found for ID:", productId);
+      showToast('Product not found', 'error');
+    }
+  } catch (error) {
+    console.error('Error loading product:', error);
+    showToast('Error loading product details', 'error');
+  }
 }
 
 // =========================================================
@@ -795,7 +842,414 @@ function updateDots() {
 }
 
 // =========================================================
-// UPDATED: Product Image Full Screen View
+// FIXED: Enhanced Show Product Detail Function
+// =========================================================
+
+function showProductDetail(product) {
+  console.log("=== SHOW PRODUCT DETAIL FUNCTION CALLED ===");
+  console.log("Product:", product);
+  
+  if (!product) {
+    console.error("No product provided to showProductDetail");
+    showToast('Product data not available', 'error');
+    return;
+  }
+  
+  currentProduct = product;
+  
+  // Debug Firebase structure
+  console.log("Firebase Images property (capital I):", product.Images);
+  console.log("Images array (small i):", product.images);
+  
+  // Update text content with fallbacks
+  document.getElementById('detailTitle').textContent = product.title || product.name || 'Product Name';
+  document.getElementById('detailPrice').textContent = product.price || '₹0';
+  document.getElementById('detailDesc').textContent = product.desc || product.description || 'No description available';
+  document.getElementById('detailFullDesc').textContent = product.fulLDesc || product.fullDescription || product.desc || product.description || 'No detailed description available';
+  document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
+  document.getElementById('breadcrumbProductName').textContent = product.title || product.name || 'Product';
+  
+  // Update stock status
+  const stockStatus = document.getElementById('detailStockStatus');
+  if (stockStatus) {
+    const stock = product.stock || 'in';
+    if (stock === 'in' || product.quantity > 0) {
+      stockStatus.textContent = 'In Stock';
+      stockStatus.className = 'stock-status in-stock';
+    } else if (stock === 'low' || (product.quantity > 0 && product.quantity < 10)) {
+      stockStatus.textContent = 'Low Stock';
+      stockStatus.className = 'stock-status low-stock';
+    } else {
+      stockStatus.textContent = 'Out of Stock';
+      stockStatus.className = 'stock-status out-of-stock';
+    }
+  }
+  
+  // Initialize gallery with Firebase Images
+  initProductDetailGallery(product);
+  
+  // Initialize color switcher
+  initColorSwitcher(product);
+  
+  // Update share link
+  const productShareLink = document.getElementById('productShareLink');
+  if (productShareLink) {
+    const shareUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + product.id;
+    productShareLink.value = shareUrl;
+  }
+  
+  // Update wishlist button
+  const wishlistBtn = document.getElementById('detailWishlistBtn');
+  if (wishlistBtn) {
+    if (isInWishlist(product.id)) {
+      wishlistBtn.textContent = 'Remove from Wishlist';
+      wishlistBtn.classList.add('active');
+    } else {
+      wishlistBtn.textContent = 'Add to Wishlist';
+      wishlistBtn.classList.remove('active');
+    }
+  }
+  
+  // Load related content
+  loadSimilarProducts(product);
+  loadProductReviews(product.id);
+  
+  // Add to recently viewed
+  if (currentUser) {
+    addToRecentlyViewed(product.id);
+  }
+  
+  // Show the page with updated URL
+  showPageWithProduct('productDetailPage', product.id);
+}
+
+// =========================================================
+// NEW: Show Page with Product URL Update
+// =========================================================
+
+function showPageWithProduct(pageId, productId = null) {
+  // Update URL with product parameter
+  let newUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+  
+  if (pageId === 'productDetailPage' && productId) {
+    newUrl += '?product=' + productId + '#productDetailPage';
+  } else {
+    newUrl += '#' + pageId;
+  }
+  
+  window.history.pushState({ page: pageId, productId: productId }, '', newUrl);
+  
+  // Show the page
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+  });
+  
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) {
+    targetPage.classList.add('active');
+  } else {
+    console.error('Page not found:', pageId);
+  }
+  
+  updateStepPills();
+  updateBottomNav();
+  window.scrollTo(0, 0);
+}
+
+// =========================================================
+// FIXED: Page navigation
+// =========================================================
+
+function showPage(pageId) {
+  // Update URL without index.html
+  const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
+  window.history.pushState({ page: pageId }, '', newUrl);
+  
+  if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
+    window.location.href = 'account.html';
+    return;
+  }
+  
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+  });
+  document.getElementById(pageId).classList.add('active');
+  
+  updateStepPills();
+  updateBottomNav();
+  
+  window.scrollTo(0, 0);
+  
+  if (pageId === 'myOrdersPage' && currentUser) {
+    showMyOrders();
+  }
+  
+  if (pageId === 'wishlistPage') {
+    renderWishlist();
+  }
+  
+  if (pageId === 'productDetailPage' && currentProduct) {
+    loadProductReviews(currentProduct.id);
+    initColorSwitcher(currentProduct);
+  }
+  
+  if (pageId === 'paymentPage') {
+    updatePaymentSummary();
+  }
+  
+  if (pageId === 'userPage' && currentUser) {
+    loadSavedAddresses();
+  }
+  
+  if (pageId === 'orderPage' && currentProduct) {
+    initOrderPageGallery();
+  }
+}
+
+function checkAuthAndShowPage(pageId) {
+  if (!currentUser) {
+    showLoginModal();
+    return;
+  }
+  showPage(pageId);
+}
+
+// =========================================================
+// FIXED: Enhanced Product Detail Gallery with Click-to-Zoom
+// =========================================================
+
+function initProductDetailGallery(product) {
+  const mainImage = document.getElementById('productDetailMainImage');
+  const dots = document.getElementById('detailCarouselDots');
+  
+  if (!mainImage) {
+    console.error('Main image element not found');
+    return;
+  }
+  
+  console.log('Initializing gallery for product:', product.title || product.name);
+  
+  // Get images from Firebase structure
+  let images = [];
+  
+  // 1. First try: Use "Images" (capital I) object from Firebase
+  if (product.Images && typeof product.Images === 'object') {
+    images = Object.values(product.Images);
+    console.log('Using Images object values:', images);
+  }
+  // 2. Second try: Use "images" (small i) array
+  else if (Array.isArray(product.images) && product.images.length > 0) {
+    images = product.images;
+    console.log('Using images array:', images);
+  }
+  // 3. Third try: Check for single image properties
+  else if (product.image) {
+    images = [product.image];
+    console.log('Using image property:', images);
+  }
+  else if (product.img) {
+    images = [product.img];
+    console.log('Using img property:', images);
+  }
+  else if (product.imageUrl) {
+    images = [product.imageUrl];
+    console.log('Using imageUrl property:', images);
+  }
+  else if (product.photo) {
+    images = [product.photo];
+    console.log('Using photo property:', images);
+  }
+  // Fallback to placeholder
+  else {
+    images = ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=Product+Image"];
+    console.log('Using placeholder image');
+  }
+  
+  // Set current images
+  currentProductImages = images;
+  
+  // Update main image immediately
+  if (images.length > 0 && mainImage) {
+    console.log('Setting main image to:', images[0]);
+    mainImage.style.backgroundImage = `url('${images[0]}')`;
+    mainImage.style.display = 'block';
+    mainImage.style.backgroundSize = 'cover';
+    mainImage.style.backgroundPosition = 'center';
+    
+    // Add click event for zoom
+    mainImage.addEventListener('click', openZoomModal);
+  }
+  
+  // Reset index
+  currentImageIndex = 0;
+  
+  // Update dots
+  if (dots) {
+    updateDetailCarouselDots(images.length);
+  }
+  
+  // Also update any other image displays
+  updateProductDetailImage();
+}
+
+function updateProductDetailImage() {
+  const mainImage = document.getElementById('productDetailMainImage');
+  
+  if (mainImage && currentProductImages[currentImageIndex]) {
+    mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
+    mainImage.style.backgroundSize = 'cover';
+    mainImage.style.backgroundPosition = 'center';
+    
+    document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+      dot.classList.toggle('active', index === currentImageIndex);
+    });
+  }
+}
+
+function prevDetailImage() {
+  if (currentProductImages.length <= 1) return;
+  
+  currentImageIndex = (currentImageIndex - 1 + currentProductImages.length) % currentProductImages.length;
+  updateProductDetailImage();
+}
+
+function nextDetailImage() {
+  if (currentProductImages.length <= 1) return;
+  
+  currentImageIndex = (currentImageIndex + 1) % currentProductImages.length;
+  updateProductDetailImage();
+}
+
+// =========================================================
+// NEW: Zoom Modal Functions
+// =========================================================
+
+function openZoomModal() {
+  if (!currentProduct) return;
+  
+  const productImages = getProductImages();
+  const modalImage = document.getElementById('modalZoomImage');
+  const modal = document.getElementById('zoomModal');
+  
+  if (productImages[currentImageIndex] && modalImage && modal) {
+    modalImage.src = productImages[currentImageIndex];
+    modal.classList.add('active');
+    
+    // Update modal dots
+    updateModalDots();
+  }
+}
+
+function prevZoomImage() {
+  if (currentProductImages.length <= 1) return;
+  
+  currentImageIndex = (currentImageIndex - 1 + currentProductImages.length) % currentProductImages.length;
+  updateZoomModalImage();
+}
+
+function nextZoomImage() {
+  if (currentProductImages.length <= 1) return;
+  
+  currentImageIndex = (currentImageIndex + 1) % currentProductImages.length;
+  updateZoomModalImage();
+}
+
+function updateZoomModalImage() {
+  const modalImage = document.getElementById('modalZoomImage');
+  if (modalImage && currentProductImages[currentImageIndex]) {
+    modalImage.src = currentProductImages[currentImageIndex];
+    updateModalDots();
+  }
+}
+
+function updateModalDots() {
+  const modalDots = document.getElementById('modalDots');
+  if (!modalDots) return;
+  
+  modalDots.innerHTML = '';
+  
+  currentProductImages.forEach((_, index) => {
+    const dot = document.createElement('div');
+    dot.className = `modal-dot ${index === currentImageIndex ? 'active' : ''}`;
+    dot.addEventListener('click', () => {
+      currentImageIndex = index;
+      updateZoomModalImage();
+    });
+    modalDots.appendChild(dot);
+  });
+}
+
+// =========================================================
+// FIXED: UPDATED Product Card Creation with Proper Click Events
+// =========================================================
+
+function createProductCard(product) {
+  const card = document.createElement('div');
+  card.className = 'product-card';
+  const isWishlisted = isInWishlist(product.id);
+  
+  card.innerHTML = `
+    <div class="product-card-image" style="background-image: url('${getProductImage(product)}')">
+      ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
+      ${product.isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
+      ${product.isFeatured ? `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>` : ''}
+    </div>
+    <div class="product-card-body">
+      <div class="product-card-title">${product.title || product.name || 'Product Name'}</div>
+      <div class="product-card-rating">
+        <div class="product-card-stars">★★★★★</div>
+        <div class="product-card-review-count">(${product.reviews || '0'})</div>
+      </div>
+      <div class="product-card-price">
+        <div class="product-card-current-price">${product.price || '₹0'}</div>
+        ${product.originalPrice ? `<div class="product-card-original-price">${product.originalPrice}</div>` : ''}
+      </div>
+      <div class="product-card-actions">
+        <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${product.id}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+        </button>
+        <button class="action-btn share-btn" data-product-id="${product.id}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // FIXED: Add proper click event to product card
+  card.addEventListener('click', function(e) {
+    // Don't trigger if clicking on buttons inside
+    if (e.target.closest('.action-btn')) {
+      return;
+    }
+    console.log("Product card clicked, showing detail for:", product.id);
+    showProductDetail(product);
+  });
+  
+  // Wishlist button event
+  card.querySelector('.wishlist-btn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    toggleWishlist(product.id);
+  });
+  
+  // Share button event
+  card.querySelector('.share-btn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    shareProduct('default', product);
+  });
+  
+  return card;
+}
+
+// =========================================================
+// FIXED: Product Image Full Screen View (OLD - keep for compatibility)
 // =========================================================
 
 function openProductImageModal() {
@@ -838,40 +1292,14 @@ function nextProductModalImage() {
 }
 
 // =========================================================
-// NEW: Image load error handler
+// REMAINING FUNCTIONS (unchanged but essential)
 // =========================================================
-
-function handleImageError(imgElement, fallbackUrl) {
-  imgElement.onerror = null;
-  if (imgElement.style.backgroundImage) {
-    imgElement.style.backgroundImage = `url('${fallbackUrl}')`;
-  } else if (imgElement.src) {
-    imgElement.src = fallbackUrl;
-  }
-}
-
-// =========================================================
-// NEW: Preload images to ensure they're available
-// =========================================================
-
-function preloadProductImages(images) {
-  images.forEach(imgUrl => {
-    const img = new Image();
-    img.src = imgUrl;
-    img.onerror = () => {
-      console.warn('Failed to load image:', imgUrl);
-    };
-  });
-}
 
 // FIXED: Out of Stock System
 function updateOutOfStockStatus() {
-  // This would be called from admin panel updates
-  // For now, we'll simulate it
   document.querySelectorAll('.color-box').forEach(box => {
     const color = box.getAttribute('data-color');
-    // Check if color is out of stock (this would come from Firebase)
-    const isOutOfStock = Math.random() > 0.7; // 30% chance for demo
+    const isOutOfStock = Math.random() > 0.7;
     if (isOutOfStock) {
       box.classList.add('out-of-stock');
     } else {
@@ -884,7 +1312,7 @@ function updateOutOfStockStatus() {
 function deleteReview(reviewId) {
   if (!currentUser) return;
   
-  const isAdmin = currentUser.email === 'admin@buyzocart.com'; // Example admin check
+  const isAdmin = currentUser.email === 'admin@buyzocart.com';
   
   if (!confirm('Are you sure you want to delete this review?')) return;
   
@@ -943,13 +1371,9 @@ async function sendOrderNotification(orderData) {
 function addToRecentSearches(query) {
   if (!query.trim()) return;
   
-  // Remove if already exists
   recentSearches = recentSearches.filter(item => item !== query);
-  
-  // Add to beginning
   recentSearches.unshift(query);
   
-  // Keep only last 10 searches
   if (recentSearches.length > 10) {
     recentSearches = recentSearches.slice(0, 10);
   }
@@ -1006,10 +1430,6 @@ function checkAuthAndShowAccount() {
   }
 }
 
-// =========================================================
-// REMAINING FUNCTIONS
-// =========================================================
-
 // Order ID Generation Function
 function generateOrderId() {
     const date = new Date();
@@ -1020,7 +1440,7 @@ function generateOrderId() {
     return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
 }
 
-// FIXED: Improved Wishlist Functions with Instant Like/Dislike
+// FIXED: Improved Wishlist Functions
 function isInWishlist(productId) {
   let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
   return wishlist.includes(productId);
@@ -1170,6 +1590,10 @@ const advancedSearchPanel = document.getElementById('advancedSearchPanel');
 const clearRecentSearchesBtn = document.getElementById('clearRecentSearches');
 const homeSearchInput = document.getElementById('homeSearchInput');
 
+// =========================================================
+// FIXED: Setup Event Listeners with New Functions
+// =========================================================
+
 function setupEventListeners() {
   menuIcon.addEventListener('click', openMenu);
   menuClose.addEventListener('click', closeMenu);
@@ -1292,10 +1716,42 @@ function setupEventListeners() {
   document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
   document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
   
-  document.getElementById('productDetailMainImage')?.addEventListener('click', openProductImageModal);
-  
+  // Image Gallery Navigation
   document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
   document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
+  
+  // Zoom Modal Events
+  const closeZoomModalBtn = document.getElementById('closeZoomModalBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  if (closeZoomModalBtn) {
+    closeZoomModalBtn.addEventListener('click', () => {
+      if (zoomModal) zoomModal.classList.remove('active');
+    });
+  }
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', prevZoomImage);
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener('click', nextZoomImage);
+  }
+  
+  if (zoomModal) {
+    zoomModal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.remove('active');
+      }
+    });
+  }
+  
+  // Main image click for zoom
+  const mainImage = document.getElementById('productDetailMainImage');
+  if (mainImage) {
+    mainImage.addEventListener('click', openZoomModal);
+  }
   
   if (ratingInput) {
     ratingInput.querySelectorAll('.rating-star').forEach(star => {
@@ -1317,9 +1773,22 @@ function setupEventListeners() {
     bannerCarousel.addEventListener('touchend', handleBannerTouchEnd);
   }
   
+  // FIXED: Popstate Event Listener for Back/Forward Navigation
   window.addEventListener('popstate', function(event) {
-    const page = event.state ? event.state.page : 'homePage';
-    showPage(page);
+    console.log("Popstate event, location:", window.location.href);
+    
+    // Check for product in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('product');
+    
+    if (productId && productId !== currentProduct?.id) {
+      loadProductFromId(productId);
+    } else {
+      const page = window.location.hash.replace('#', '') || 'homePage';
+      if (document.getElementById(page)) {
+        showPage(page);
+      }
+    }
   });
   
   document.querySelector('.qty-minus')?.addEventListener('click', function() {
@@ -1759,61 +2228,6 @@ function updatePaymentSummary() {
   document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
 }
 
-// Page navigation
-function showPage(pageId) {
-  // Update URL without index.html
-  const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
-  window.history.pushState({ page: pageId }, '', newUrl);
-  
-  if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
-    window.location.href = 'account.html';
-    return;
-  }
-  
-  document.querySelectorAll('.page').forEach(page => {
-    page.classList.remove('active');
-  });
-  document.getElementById(pageId).classList.add('active');
-  
-  updateStepPills();
-  updateBottomNav();
-  
-  window.scrollTo(0, 0);
-  
-  if (pageId === 'myOrdersPage' && currentUser) {
-    showMyOrders();
-  }
-  
-  if (pageId === 'wishlistPage') {
-    renderWishlist();
-  }
-  
-  if (pageId === 'productDetailPage' && currentProduct) {
-    loadProductReviews(currentProduct.id);
-    initColorSwitcher(currentProduct);
-  }
-  
-  if (pageId === 'paymentPage') {
-    updatePaymentSummary();
-  }
-  
-  if (pageId === 'userPage' && currentUser) {
-    loadSavedAddresses();
-  }
-  
-  if (pageId === 'orderPage' && currentProduct) {
-    initOrderPageGallery();
-  }
-}
-
-function checkAuthAndShowPage(pageId) {
-  if (!currentUser) {
-    showLoginModal();
-    return;
-  }
-  showPage(pageId);
-}
-
 function showLoginModal() {
   authModal.classList.add('active');
   switchAuthTab('login');
@@ -1945,60 +2359,6 @@ function renderProducts(productsToRender, containerId) {
   });
 }
 
-// UPDATED: Product card creation with instant wishlist
-function createProductCard(product) {
-  const card = document.createElement('div');
-  card.className = 'product-card';
-  const isWishlisted = isInWishlist(product.id);
-  
-  card.innerHTML = `
-    <div class="product-card-image" style="background-image: url('${getProductImage(product)}')">
-      ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
-      ${product.isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
-      ${product.isFeatured ? `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>` : ''}
-    </div>
-    <div class="product-card-body">
-      <div class="product-card-title">${product.title || product.name || 'Product Name'}</div>
-      <div class="product-card-rating">
-        <div class="product-card-stars">★★★★★</div>
-        <div class="product-card-review-count">(${product.reviews || '0'})</div>
-      </div>
-      <div class="product-card-price">
-        <div class="product-card-current-price">${product.price || '₹0'}</div>
-        ${product.originalPrice ? `<div class="product-card-original-price">${product.originalPrice}</div>` : ''}
-      </div>
-      <div class="product-card-actions">
-        <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${product.id}">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-          </svg>
-        </button>
-        <button class="action-btn share-btn" data-product-id="${product.id}">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-        </button>
-      </div>
-    </div>
-  `;
-  
-  card.querySelector('.product-card-image').addEventListener('click', () => showProductDetail(product));
-  card.querySelector('.wishlist-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleWishlist(product.id);
-  });
-  card.querySelector('.share-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    shareProduct('default', product);
-  });
-  
-  return card;
-}
-
 function renderProductSlider(productsToRender, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -2116,179 +2476,6 @@ function setBannerSlide(index) {
   dots.forEach((dot, i) => {
     dot.classList.toggle('active', i === index);
   });
-}
-
-// =========================================================
-// FIXED: Show Product Detail with Firebase Images
-// =========================================================
-
-function showProductDetail(product) {
-  currentProduct = product;
-  
-  console.log("=== SHOW PRODUCT DETAIL ===");
-  console.log("Product:", product);
-  console.log("Product title:", product.title || product.name);
-  console.log("Product has Images (capital I):", product.Images);
-  console.log("Product has images (small i):", product.images);
-  console.log("Product has image property:", product.image);
-  console.log("Product has img property:", product.img);
-  
-  // Update text content
-  document.getElementById('detailTitle').textContent = product.title || product.name || 'Product Name';
-  document.getElementById('detailPrice').textContent = product.price || '₹0';
-  document.getElementById('detailDesc').textContent = product.desc || product.description || '';
-  document.getElementById('detailFullDesc').textContent = product.fulLDesc || product.fullDescription || product.desc || product.description || 'No description available.';
-  document.getElementById('detailSku').textContent = `SKU: ${product.sku || 'N/A'}`;
-  document.getElementById('breadcrumbProductName').textContent = product.title || product.name || 'Product';
-  
-  // Update stock status
-  const stockStatus = document.getElementById('detailStockStatus');
-  const stock = product.stock || 'in';
-  if (stock === 'in' || product.quantity > 0) {
-    stockStatus.textContent = 'In Stock';
-    stockStatus.className = 'stock-status in-stock';
-  } else if (stock === 'low' || (product.quantity > 0 && product.quantity < 10)) {
-    stockStatus.textContent = 'Low Stock';
-    stockStatus.className = 'stock-status low-stock';
-  } else {
-    stockStatus.textContent = 'Out of Stock';
-    stockStatus.className = 'stock-status out-of-stock';
-  }
-  
-  // Initialize gallery with Firebase Images
-  initProductDetailGallery(product);
-  
-  // Then initialize color switcher
-  initColorSwitcher(product);
-  
-  // Update share link
-  document.getElementById('productShareLink').value = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + product.id;
-  
-  // Update wishlist button
-  const wishlistBtn = document.getElementById('detailWishlistBtn');
-  if (isInWishlist(product.id)) {
-    wishlistBtn.textContent = 'Remove from Wishlist';
-    wishlistBtn.classList.add('active');
-  } else {
-    wishlistBtn.textContent = 'Add to Wishlist';
-    wishlistBtn.classList.remove('active');
-  }
-  
-  // Load related content
-  loadSimilarProducts(product);
-  loadProductReviews(product.id);
-  
-  // Add to recently viewed
-  if (currentUser) {
-    addToRecentlyViewed(product.id);
-  }
-  
-  // Show the page
-  showPage('productDetailPage');
-}
-
-// =========================================================
-// FIXED: Product Detail Gallery Initialization for Firebase
-// =========================================================
-
-function initProductDetailGallery(product) {
-  const mainImage = document.getElementById('productDetailMainImage');
-  const dots = document.getElementById('detailCarouselDots');
-  
-  if (!mainImage || !dots) return;
-  
-  console.log('Initializing gallery for product:', product.title || product.name);
-  
-  // Get images from Firebase structure
-  let images = [];
-  
-  // 1. First try: Use "Images" (capital I) object from Firebase
-  if (product.Images && typeof product.Images === 'object') {
-    images = Object.values(product.Images);
-    console.log('Using Images object values:', images);
-  }
-  // 2. Second try: Use "images" (small i) array
-  else if (Array.isArray(product.images) && product.images.length > 0) {
-    images = product.images;
-    console.log('Using images array:', images);
-  }
-  // 3. Third try: Check for single image properties
-  else if (product.image) {
-    images = [product.image];
-    console.log('Using image property:', images);
-  }
-  else if (product.img) {
-    images = [product.img];
-    console.log('Using img property:', images);
-  }
-  else if (product.imageUrl) {
-    images = [product.imageUrl];
-    console.log('Using imageUrl property:', images);
-  }
-  else if (product.photo) {
-    images = [product.photo];
-    console.log('Using photo property:', images);
-  }
-  // Fallback to placeholder
-  else {
-    images = ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=Product+Image"];
-    console.log('Using placeholder image');
-  }
-  
-  // Set current images
-  currentProductImages = images;
-  
-  // Update main image immediately
-  if (images.length > 0 && mainImage) {
-    console.log('Setting main image to:', images[0]);
-    mainImage.style.backgroundImage = `url('${images[0]}')`;
-    mainImage.style.display = 'block';
-    mainImage.style.backgroundSize = 'cover';
-    mainImage.style.backgroundPosition = 'center';
-    
-    // Remove any placeholder text
-    const placeholderText = mainImage.querySelector('.placeholder-text');
-    if (placeholderText) {
-      placeholderText.style.display = 'none';
-    }
-  }
-  
-  // Reset index
-  currentImageIndex = 0;
-  
-  // Update dots
-  updateDetailCarouselDots(images.length);
-  
-  // Also update any other image displays
-  updateProductDetailImage();
-}
-
-function updateProductDetailImage() {
-  const mainImage = document.getElementById('productDetailMainImage');
-  
-  if (mainImage && currentProductImages[currentImageIndex]) {
-    mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
-    mainImage.style.backgroundSize = 'cover';
-    mainImage.style.backgroundPosition = 'center';
-    
-    document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
-      dot.classList.toggle('active', index === currentImageIndex);
-    });
-  }
-}
-
-function prevDetailImage() {
-  if (currentProductImages.length <= 1) return;
-  
-  currentImageIndex = (currentImageIndex - 1 + currentProductImages.length) % currentProductImages.length;
-  updateProductDetailImage();
-}
-
-function nextDetailImage() {
-  if (currentProductImages.length <= 1) return;
-  
-  currentImageIndex = (currentImageIndex + 1) % currentProductImages.length;
-  updateProductDetailImage();
 }
 
 function loadSimilarProducts(product) {
@@ -2877,7 +3064,7 @@ function copyShareLink() {
   showToast('Link copied to clipboard', 'success');
 }
 
-// Image zoom functions
+// Image zoom functions (old)
 function openImageZoom() {
   if (!currentProduct) return;
   
