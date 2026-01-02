@@ -673,6 +673,12 @@ function updateDetailCarouselDots(totalImages) {
   }
 }
 
+function updateDots() {
+  document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+    dot.classList.toggle('active', index === currentImageIndex);
+  });
+}
+
 // =========================================================
 // UPDATED: Product Image Full Screen View
 // =========================================================
