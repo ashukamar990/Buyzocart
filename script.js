@@ -259,10 +259,21 @@ function fetchLiveData() {
   realtimeDb.ref('products').once('value').then(snapshot => {
     const productsObj = snapshot.val();
     if (productsObj) {
-      const newProducts = Object.keys(productsObj).map(key => ({
-        id: key,
-        ...productsObj[key]
-      }));
+      const newProducts = Object.keys(productsObj).map(key => {
+        const product = {
+          id: key,
+          ...productsObj[key]
+        };
+        
+        // Convert Firebase Images object to array if needed
+        if (product.Images && typeof product.Images === 'object' && !Array.isArray(product.Images)) {
+          const imagesArray = Object.values(product.Images).filter(img => img && img.trim() !== '');
+          product.Images = imagesArray;
+          product.images = imagesArray; // Add lowercase version for compatibility
+        }
+        
+        return product;
+      });
       
       console.log('Fetched products from Firebase:', newProducts.length);
       
@@ -351,10 +362,21 @@ function setupRealtimeListeners() {
   realtimeDb.ref('products').on('value', snapshot => {
     const productsObj = snapshot.val();
     if (productsObj) {
-      const newProducts = Object.keys(productsObj).map(key => ({
-        id: key,
-        ...productsObj[key]
-      }));
+      const newProducts = Object.keys(productsObj).map(key => {
+        const product = {
+          id: key,
+          ...productsObj[key]
+        };
+        
+        // Convert Firebase Images object to array if needed
+        if (product.Images && typeof product.Images === 'object' && !Array.isArray(product.Images)) {
+          const imagesArray = Object.values(product.Images).filter(img => img && img.trim() !== '');
+          product.Images = imagesArray;
+          product.images = imagesArray; // Add lowercase version for compatibility
+        }
+        
+        return product;
+      });
       
       products = newProducts;
       cacheManager.set('products', products);
@@ -441,6 +463,14 @@ async function loadProductFromId(productId) {
     if (product) {
       console.log("Product found:", product.title || product.name);
       product.id = productId;
+      
+      // Convert Firebase Images object to array if needed
+      if (product.Images && typeof product.Images === 'object' && !Array.isArray(product.Images)) {
+        const imagesArray = Object.values(product.Images).filter(img => img && img.trim() !== '');
+        product.Images = imagesArray;
+        product.images = imagesArray; // Add lowercase version for compatibility
+      }
+      
       showProductDetail(product);
     } else {
       console.error("Product not found for ID:", productId);
@@ -601,33 +631,43 @@ function resetPriceFilter() {
   filterProducts(searchInput?.value || '', 'productGrid');
 }
 
-// Get Product Image - Handle Firebase structure
+// PERMANENT FIX: Get Product Image - Handle Firebase structure properly
 function getProductImage(product, idx = 0) {
   if (!product) {
     return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
   }
   
-  // 1. First check for "Images" (capital I) - Firebase structure
-  if (product.Images && typeof product.Images === 'object') {
-    const imageUrls = Object.values(product.Images);
-    if (imageUrls.length > 0) {
-      const imageUrl = imageUrls[idx] || imageUrls[0];
-      return imageUrl;
+  // 1. Handle Firebase Images (capital I) - could be array or object
+  if (product.Images) {
+    let images = [];
+    
+    if (Array.isArray(product.Images)) {
+      // Already an array
+      images = product.Images.filter(img => img && img.trim() !== '');
+    } else if (typeof product.Images === 'object') {
+      // Convert object to array
+      images = Object.values(product.Images).filter(img => img && img.trim() !== '');
+    }
+    
+    if (images.length > 0) {
+      const selectedIdx = idx < images.length ? idx : 0;
+      return images[selectedIdx];
     }
   }
   
-  // 2. Check for "images" (small i) array
-  if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-    if (idx < product.images.length) {
-      return product.images[idx];
+  // 2. Check for lowercase "images" array
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    const validImages = product.images.filter(img => img && img.trim() !== '');
+    if (validImages.length > 0) {
+      const selectedIdx = idx < validImages.length ? idx : 0;
+      return validImages[selectedIdx];
     }
-    return product.images[0];
   }
   
   // 3. Check for single image properties
   const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
   for (const prop of imageProperties) {
-    if (product[prop]) {
+    if (product[prop] && product[prop].trim() !== '') {
       return product[prop];
     }
   }
@@ -636,32 +676,46 @@ function getProductImage(product, idx = 0) {
   return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
 }
 
-// Get Product Images Array - Handle Firebase structure
+// PERMANENT FIX: Get Product Images Array - Handle Firebase structure properly
 function getProductImages() {
-  if (!currentProduct) return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
+  if (!currentProduct) {
+    return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
+  }
   
   // 1. First priority: Use currentProductImages from color selection
   if (currentProductImages && currentProductImages.length > 0) {
     return currentProductImages;
   }
   
-  // 2. Check for "Images" (capital I) object from Firebase
-  if (currentProduct.Images && typeof currentProduct.Images === 'object') {
-    const imagesFromObject = Object.values(currentProduct.Images);
-    if (imagesFromObject.length > 0) {
-      return imagesFromObject;
+  // 2. Check for "Images" (capital I) from Firebase
+  if (currentProduct.Images) {
+    let images = [];
+    
+    if (Array.isArray(currentProduct.Images)) {
+      // Already an array
+      images = currentProduct.Images.filter(img => img && img.trim() !== '');
+    } else if (typeof currentProduct.Images === 'object') {
+      // Convert object to array
+      images = Object.values(currentProduct.Images).filter(img => img && img.trim() !== '');
+    }
+    
+    if (images.length > 0) {
+      return images;
     }
   }
   
   // 3. Check for "images" (small i) array
   if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
-    return currentProduct.images;
+    const validImages = currentProduct.images.filter(img => img && img.trim() !== '');
+    if (validImages.length > 0) {
+      return validImages;
+    }
   }
   
   // 4. Check for single image properties
   const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
   for (const prop of imageProperties) {
-    if (currentProduct[prop]) {
+    if (currentProduct[prop] && currentProduct[prop].trim() !== '') {
       return [currentProduct[prop]];
     }
   }
@@ -747,8 +801,10 @@ function initColorSwitcher(product) {
         const mainImage = document.getElementById('productDetailMainImage');
         if (mainImage) {
           mainImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
-          mainImage.style.backgroundSize = 'cover';
+          mainImage.style.backgroundSize = 'contain';
           mainImage.style.backgroundPosition = 'center';
+          mainImage.style.backgroundRepeat = 'no-repeat';
+          mainImage.style.backgroundColor = '#f3f4f6';
         }
         
         // Update current image index
@@ -810,7 +866,7 @@ function updateDots() {
   });
 }
 
-// Enhanced Show Product Detail Function
+// PERMANENT FIX: Enhanced Show Product Detail Function
 function showProductDetail(product) {
   console.log("Showing product detail for:", product?.title || product?.name);
   
@@ -818,6 +874,13 @@ function showProductDetail(product) {
     console.error("No product provided to showProductDetail");
     showToast('Product data not available', 'error');
     return;
+  }
+  
+  // Ensure product has proper images structure
+  if (product.Images && typeof product.Images === 'object' && !Array.isArray(product.Images)) {
+    const imagesArray = Object.values(product.Images).filter(img => img && img.trim() !== '');
+    product.Images = imagesArray;
+    product.images = imagesArray; // Add lowercase version for compatibility
   }
   
   currentProduct = product;
@@ -985,7 +1048,7 @@ function checkAuthAndShowPage(pageId) {
   showPage(pageId);
 }
 
-// Enhanced Product Detail Gallery
+// PERMANENT FIX: Enhanced Product Detail Gallery
 function initProductDetailGallery(product) {
   const mainImage = document.getElementById('productDetailMainImage');
   const dots = document.getElementById('detailCarouselDots');
@@ -995,44 +1058,24 @@ function initProductDetailGallery(product) {
     return;
   }
   
-  // Get images from Firebase structure
-  let images = [];
+  // Get all product images
+  let images = getProductImages();
   
-  // 1. First try: Use "Images" (capital I) object from Firebase
-  if (product.Images && typeof product.Images === 'object') {
-    images = Object.values(product.Images);
-  }
-  // 2. Second try: Use "images" (small i) array
-  else if (Array.isArray(product.images) && product.images.length > 0) {
-    images = product.images;
-  }
-  // 3. Third try: Check for single image properties
-  else if (product.image) {
-    images = [product.image];
-  }
-  else if (product.img) {
-    images = [product.img];
-  }
-  else if (product.imageUrl) {
-    images = [product.imageUrl];
-  }
-  else if (product.photo) {
-    images = [product.photo];
-  }
-  // Fallback to placeholder
-  else {
-    images = ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=Product+Image"];
-  }
+  console.log("Gallery images loaded:", images.length);
   
   // Set current images
   currentProductImages = images;
   
   // Update main image immediately
   if (images.length > 0 && mainImage) {
-    mainImage.style.backgroundImage = `url('${images[0]}')`;
+    const imageUrl = images[0];
+    
+    mainImage.style.backgroundImage = `url('${imageUrl}')`;
     mainImage.style.display = 'block';
-    mainImage.style.backgroundSize = 'cover';
+    mainImage.style.backgroundSize = 'contain';
     mainImage.style.backgroundPosition = 'center';
+    mainImage.style.backgroundRepeat = 'no-repeat';
+    mainImage.style.backgroundColor = '#f3f4f6';
     
     // Add click event for zoom
     mainImage.addEventListener('click', openZoomModal);
@@ -1055,8 +1098,10 @@ function updateProductDetailImage() {
   
   if (mainImage && currentProductImages[currentImageIndex]) {
     mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
-    mainImage.style.backgroundSize = 'cover';
+    mainImage.style.backgroundSize = 'contain';
     mainImage.style.backgroundPosition = 'center';
+    mainImage.style.backgroundRepeat = 'no-repeat';
+    mainImage.style.backgroundColor = '#f3f4f6';
     
     document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
       dot.classList.toggle('active', index === currentImageIndex);
@@ -1252,8 +1297,6 @@ function nextProductModalImage() {
   currentProductModalIndex = (currentProductModalIndex + 1) % currentProductImages.length;
   updateProductModalImage();
 }
-
-// Remaining Functions
 
 function updateOutOfStockStatus() {
   document.querySelectorAll('.color-box').forEach(box => {
@@ -2646,7 +2689,7 @@ function loadSimilarProducts(product) {
   renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
 }
 
-// Order Page Gallery Initialization
+// PERMANENT FIX: Order Page Gallery Initialization
 function initOrderPageGallery() {
   if (!currentProduct) return;
   
@@ -2660,10 +2703,14 @@ function initOrderPageGallery() {
   
   if (currentProductImages && currentProductImages.length > 0) {
     productImages = currentProductImages;
-  } else if (currentProduct.Images && typeof currentProduct.Images === 'object') {
-    productImages = Object.values(currentProduct.Images);
+  } else if (currentProduct.Images) {
+    if (Array.isArray(currentProduct.Images)) {
+      productImages = currentProduct.Images.filter(img => img && img.trim() !== '');
+    } else if (typeof currentProduct.Images === 'object') {
+      productImages = Object.values(currentProduct.Images).filter(img => img && img.trim() !== '');
+    }
   } else if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
-    productImages = currentProduct.images;
+    productImages = currentProduct.images.filter(img => img && img.trim() !== '');
   } else if (currentProduct.image) {
     productImages = [currentProduct.image];
   } else if (currentProduct.img) {
@@ -2675,8 +2722,10 @@ function initOrderPageGallery() {
   // Apply the image
   if (productImages.length > 0) {
     galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
-    galleryMain.style.backgroundSize = 'cover';
+    galleryMain.style.backgroundSize = 'contain';
     galleryMain.style.backgroundPosition = 'center';
+    galleryMain.style.backgroundRepeat = 'no-repeat';
+    galleryMain.style.backgroundColor = '#f3f4f6';
     galleryMain.style.display = 'block';
   }
   
@@ -2721,8 +2770,10 @@ function setOrderPageImage(index) {
   
   if (galleryMain && productImages[index]) {
     galleryMain.style.backgroundImage = `url('${productImages[index]}')`;
-    galleryMain.style.backgroundSize = 'cover';
+    galleryMain.style.backgroundSize = 'contain';
     galleryMain.style.backgroundPosition = 'center';
+    galleryMain.style.backgroundRepeat = 'no-repeat';
+    galleryMain.style.backgroundColor = '#f3f4f6';
   }
   
   dots.forEach((dot, i) => {
