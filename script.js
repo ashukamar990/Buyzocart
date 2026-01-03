@@ -24,6 +24,7 @@ let savedAddresses = [];
 let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
 let selectedColor = 'black';
 let selectedColorName = 'Black';
+let productImageCache = {};
 
 // Cache Manager with 7 days TTL
 const cacheManager = {
@@ -271,8 +272,18 @@ function fetchLiveData() {
             // Already an array
             product.Images = product.Images.filter(img => img && img.trim() !== '');
           } else {
-            // Convert object to array
-            product.Images = Object.values(product.Images).filter(img => img && img.trim() !== '');
+            // Convert object to array - FIX FOR FIREBASE STRUCTURE
+            const imagesArray = [];
+            const keys = Object.keys(product.Images).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            for (const key of keys) {
+              const img = product.Images[key];
+              if (img && img.trim() !== '') {
+                imagesArray.push(img);
+              }
+            }
+            
+            product.Images = imagesArray;
           }
           product.images = product.Images; // Add lowercase version
         }
@@ -378,7 +389,18 @@ function setupRealtimeListeners() {
           if (Array.isArray(product.Images)) {
             product.Images = product.Images.filter(img => img && img.trim() !== '');
           } else {
-            product.Images = Object.values(product.Images).filter(img => img && img.trim() !== '');
+            // Convert object to array
+            const imagesArray = [];
+            const keys = Object.keys(product.Images).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            for (const key of keys) {
+              const img = product.Images[key];
+              if (img && img.trim() !== '') {
+                imagesArray.push(img);
+              }
+            }
+            
+            product.Images = imagesArray;
           }
           product.images = product.Images;
         }
@@ -457,6 +479,7 @@ function setupRealtimeListeners() {
 
 // Load Product from ID (URL parameter)
 async function loadProductFromId(productId) {
+  console.log("=== LOAD PRODUCT FROM ID ===");
   console.log("Loading product from ID:", productId);
   
   if (!realtimeDb) {
@@ -469,28 +492,62 @@ async function loadProductFromId(productId) {
     const product = snapshot.val();
     
     if (product) {
-      console.log("Product found:", product.title || product.name);
+      console.log("✅ Product found in Firebase");
+      console.log("Product title:", product.title || product.name);
+      console.log("Product ID from Firebase:", productId);
+      
+      // Add ID to product object
       product.id = productId;
       
-      // FIXED: Convert Firebase Images properly
+      // ✅ DEBUG: Log the Images structure
+      console.log("📸 Product Images property:", product.Images);
+      console.log("📸 Type of Images:", typeof product.Images);
+      
       if (product.Images && typeof product.Images === 'object') {
-        if (Array.isArray(product.Images)) {
-          product.Images = product.Images.filter(img => img && img.trim() !== '');
+        console.log("📸 Object keys:", Object.keys(product.Images));
+        console.log("📸 Object values:", Object.values(product.Images));
+        
+        // Log each image URL
+        Object.keys(product.Images).forEach(key => {
+          console.log(`📸 Image ${key}:`, product.Images[key]);
+        });
+      }
+      
+      // ✅ Process Images properly - FIXED FOR FIREBASE OBJECT
+      if (product.Images && typeof product.Images === 'object') {
+        if (!Array.isArray(product.Images)) {
+          // Convert Firebase object to array
+          const keys = Object.keys(product.Images).sort((a, b) => parseInt(a) - parseInt(b));
+          const imagesArray = [];
+          
+          for (const key of keys) {
+            const img = product.Images[key];
+            if (img && img.trim() !== '') {
+              imagesArray.push(img);
+            }
+          }
+          
+          console.log("🔄 Converted Images to array:", imagesArray);
+          product.Images = imagesArray;
         } else {
-          product.Images = Object.values(product.Images).filter(img => img && img.trim() !== '');
+          // Already an array
+          product.Images = product.Images.filter(img => img && img.trim() !== '');
         }
+        
+        // Also set lowercase version
         product.images = product.Images;
       }
       
       showProductDetail(product);
     } else {
-      console.error("Product not found for ID:", productId);
+      console.error("❌ Product not found for ID:", productId);
       showToast('Product not found', 'error');
     }
   } catch (error) {
-    console.error('Error loading product:', error);
+    console.error('❌ Error loading product:', error);
     showToast('Error loading product details', 'error');
   }
+  console.log("=== LOAD PRODUCT FROM ID END ===");
 }
 
 // Fixed Functions
@@ -642,81 +699,136 @@ function resetPriceFilter() {
   filterProducts(searchInput?.value || '', 'productGrid');
 }
 
-// PERMANENT FIX: Get Product Image - Handle Firebase structure properly
+// FIXED: Get Product Image - Handle Firebase structure properly
 function getProductImage(product, idx = 0) {
   if (!product) {
     return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
   }
   
-  // 1. Handle Firebase Images (capital I) - could be array or object
+  console.log("=== getProductImage DEBUG ===");
+  console.log("Product ID:", product.id);
+  console.log("Requested index:", idx);
+  
+  // Create cache key
+  const cacheKey = `${product.id}_${idx}`;
+  
+  // Check cache first
+  if (productImageCache[cacheKey]) {
+    console.log("Using cached image");
+    return productImageCache[cacheKey];
+  }
+  
+  // 1. Handle Firebase Images (capital I) - FIXED FOR OBJECT
   if (product.Images) {
-    let images = [];
+    console.log("Found Images property");
     
     if (Array.isArray(product.Images)) {
       // Already an array
-      images = product.Images.filter(img => img && img.trim() !== '');
+      const images = product.Images.filter(img => img && img.trim() !== '');
+      if (images.length > 0) {
+        const selectedIdx = idx < images.length ? idx : 0;
+        const imageUrl = images[selectedIdx];
+        console.log("Using array image, index:", selectedIdx, "URL:", imageUrl);
+        productImageCache[cacheKey] = imageUrl;
+        return imageUrl;
+      }
     } else if (typeof product.Images === 'object') {
-      // Convert object to array
-      images = Object.values(product.Images).filter(img => img && img.trim() !== '');
-    }
-    
-    if (images.length > 0) {
-      const selectedIdx = idx < images.length ? idx : 0;
-      return images[selectedIdx];
+      // Firebase object like {0: "url1", 1: "url2", 2: "url3"}
+      console.log("Images is object, keys:", Object.keys(product.Images));
+      
+      const keys = Object.keys(product.Images).sort((a, b) => parseInt(a) - parseInt(b));
+      if (keys.length > 0) {
+        const selectedKey = idx < keys.length ? keys[idx] : keys[0];
+        const imageUrl = product.Images[selectedKey];
+        
+        if (imageUrl && imageUrl.trim() !== '') {
+          console.log("Using object image, key:", selectedKey, "URL:", imageUrl);
+          productImageCache[cacheKey] = imageUrl;
+          return imageUrl;
+        }
+      }
     }
   }
   
   // 2. Check for lowercase "images" array
   if (Array.isArray(product.images) && product.images.length > 0) {
+    console.log("Found lowercase images array");
     const validImages = product.images.filter(img => img && img.trim() !== '');
     if (validImages.length > 0) {
       const selectedIdx = idx < validImages.length ? idx : 0;
-      return validImages[selectedIdx];
+      const imageUrl = validImages[selectedIdx];
+      console.log("Using lowercase array image:", imageUrl);
+      productImageCache[cacheKey] = imageUrl;
+      return imageUrl;
     }
   }
   
   // 3. Check for single image properties
-  const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
+  const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'ImageUrl', 'ImageURL'];
   for (const prop of imageProperties) {
     if (product[prop] && product[prop].trim() !== '') {
+      console.log(`Found single image property "${prop}":`, product[prop]);
+      productImageCache[cacheKey] = product[prop];
       return product[prop];
     }
   }
   
   // 4. Last resort: placeholder
-  return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+  console.log("No image found, using placeholder");
+  const placeholder = "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+  productImageCache[cacheKey] = placeholder;
+  return placeholder;
 }
 
-// PERMANENT FIX: Get Product Images Array - Handle Firebase structure properly
+// FIXED: Get Product Images Array - Handle Firebase structure properly
 function getProductImages() {
   if (!currentProduct) {
     return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
   }
   
+  console.log("=== getProductImages DEBUG ===");
+  console.log("Current Product:", currentProduct);
+  
   // 1. First priority: Use currentProductImages from color selection
   if (currentProductImages && currentProductImages.length > 0) {
+    console.log("Using currentProductImages:", currentProductImages);
     return currentProductImages;
   }
   
-  // 2. Check for "Images" (capital I) from Firebase
+  // 2. Check for "Images" (capital I) from Firebase - FIXED
   if (currentProduct.Images) {
-    let images = [];
+    console.log("Processing Images property");
     
     if (Array.isArray(currentProduct.Images)) {
       // Already an array
-      images = currentProduct.Images.filter(img => img && img.trim() !== '');
+      const images = currentProduct.Images.filter(img => img && img.trim() !== '');
+      if (images.length > 0) {
+        console.log("Returning Images array:", images);
+        return images;
+      }
     } else if (typeof currentProduct.Images === 'object') {
-      // Convert object to array
-      images = Object.values(currentProduct.Images).filter(img => img && img.trim() !== '');
-    }
-    
-    if (images.length > 0) {
-      return images;
+      // Convert Firebase object to array
+      console.log("Converting Images object to array");
+      const keys = Object.keys(currentProduct.Images).sort((a, b) => parseInt(a) - parseInt(b));
+      const imagesArray = [];
+      
+      for (const key of keys) {
+        const img = currentProduct.Images[key];
+        if (img && img.trim() !== '') {
+          imagesArray.push(img);
+        }
+      }
+      
+      if (imagesArray.length > 0) {
+        console.log("Converted to array:", imagesArray);
+        return imagesArray;
+      }
     }
   }
   
   // 3. Check for "images" (small i) array
   if (Array.isArray(currentProduct.images) && currentProduct.images.length > 0) {
+    console.log("Using lowercase images array");
     const validImages = currentProduct.images.filter(img => img && img.trim() !== '');
     if (validImages.length > 0) {
       return validImages;
@@ -727,11 +839,13 @@ function getProductImages() {
   const imageProperties = ['image', 'img', 'imageUrl', 'photo', 'thumbnail'];
   for (const prop of imageProperties) {
     if (currentProduct[prop] && currentProduct[prop].trim() !== '') {
+      console.log(`Using single image property "${prop}":`, currentProduct[prop]);
       return [currentProduct[prop]];
     }
   }
   
   // 5. Last resort: Default placeholder
+  console.log("No images found, using placeholder");
   return ["https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image"];
 }
 
@@ -864,9 +978,11 @@ function updateDetailCarouselDots(totalImages) {
   }
 }
 
-// PERMANENT FIX: Enhanced Show Product Detail Function
+// FIXED: Enhanced Show Product Detail Function
 function showProductDetail(product) {
+  console.log("=== showProductDetail START ===");
   console.log("Showing product detail for:", product?.title || product?.name);
+  console.log("Product ID:", product?.id);
   
   if (!product) {
     console.error("No product provided to showProductDetail");
@@ -874,17 +990,30 @@ function showProductDetail(product) {
     return;
   }
   
-  // Ensure product has proper images structure
+  // Debug product images
+  console.log("📸 Product Images structure:", product.Images);
+  console.log("📸 Type of Images:", typeof product.Images);
+  
   if (product.Images && typeof product.Images === 'object') {
-    if (Array.isArray(product.Images)) {
-      product.Images = product.Images.filter(img => img && img.trim() !== '');
-    } else {
-      product.Images = Object.values(product.Images).filter(img => img && img.trim() !== '');
+    if (!Array.isArray(product.Images)) {
+      console.log("📸 Converting Images object to array");
+      const keys = Object.keys(product.Images).sort((a, b) => parseInt(a) - parseInt(b));
+      console.log("📸 Sorted keys:", keys);
+      
+      keys.forEach(key => {
+        console.log(`📸 Image ${key}:`, product.Images[key]);
+      });
     }
-    product.images = product.Images;
   }
   
   currentProduct = product;
+  
+  // Clear image cache for this product
+  Object.keys(productImageCache).forEach(key => {
+    if (key.startsWith(product.id)) {
+      delete productImageCache[key];
+    }
+  });
   
   // Update text content with fallbacks
   const detailTitle = document.getElementById('detailTitle');
@@ -953,6 +1082,7 @@ function showProductDetail(product) {
   
   // Show the page with updated URL
   showPageWithProduct('productDetailPage', product.id);
+  console.log("=== showProductDetail END ===");
 }
 
 // Show Page with Product URL Update
@@ -1051,6 +1181,7 @@ function checkAuthAndShowPage(pageId) {
 
 // FIXED: Product Detail Gallery Initialization
 function initProductDetailGallery(product) {
+  console.log("=== initProductDetailGallery START ===");
   console.log("Initializing gallery for product:", product?.id);
   
   const mainImage = document.getElementById('productMainImage');
@@ -1061,14 +1192,32 @@ function initProductDetailGallery(product) {
   
   if (!mainImage) {
     console.error('Main image element not found with ID: productMainImage');
-    console.log('Available image elements:', document.querySelectorAll('[id*="image"]'));
     return;
   }
   
   // Get all product images
   let images = getProductImages();
-  
   console.log("Gallery images loaded:", images.length, images);
+  
+  // If no images or placeholder, try direct extraction
+  if (images.length === 0 || (images.length === 1 && images[0].includes('placeholder'))) {
+    console.log("No valid images, trying direct extraction");
+    
+    // Direct extraction from Firebase object
+    if (product.Images && typeof product.Images === 'object') {
+      const keys = Object.keys(product.Images).sort((a, b) => parseInt(a) - parseInt(b));
+      images = [];
+      
+      for (const key of keys) {
+        const img = product.Images[key];
+        if (img && img.trim() !== '') {
+          images.push(img);
+        }
+      }
+      
+      console.log("Direct extracted images:", images);
+    }
+  }
   
   // Set current images
   currentProductImages = images;
@@ -1078,28 +1227,39 @@ function initProductDetailGallery(product) {
     const imageUrl = images[0];
     console.log("Setting main image URL:", imageUrl);
     
-    mainImage.src = imageUrl;
-    mainImage.style.display = 'block';
-    mainImage.style.width = '100%';
-    mainImage.style.height = 'auto';
-    mainImage.style.objectFit = 'contain';
-    mainImage.style.borderRadius = 'var(--radius)';
+    // Create new image for preloading
+    const imgLoader = new Image();
+    
+    imgLoader.onload = function() {
+      console.log("✅ Image preloaded successfully");
+      mainImage.src = imageUrl;
+      mainImage.style.display = 'block';
+      mainImage.style.width = '100%';
+      mainImage.style.height = 'auto';
+      mainImage.style.objectFit = 'contain';
+      mainImage.style.borderRadius = 'var(--radius)';
+      mainImage.style.maxHeight = '500px';
+      
+      // Force display
+      mainImage.style.opacity = '1';
+      mainImage.style.visibility = 'visible';
+    };
+    
+    imgLoader.onerror = function() {
+      console.error("❌ Image failed to load:", imageUrl);
+      mainImage.src = "https://via.placeholder.com/600x600/f3f4f6/64748b?text=Image+Not+Found";
+      mainImage.style.display = 'block';
+    };
+    
+    // Start loading
+    imgLoader.src = imageUrl;
     
     // Add click event for zoom
     mainImage.addEventListener('click', openProductZoomModal);
-    
-    // Add error handling
-    mainImage.onerror = function() {
-      console.error("Image failed to load:", imageUrl);
-      this.src = "https://via.placeholder.com/600x600/f3f4f6/64748b?text=Image+Not+Found";
-    };
-    
-    mainImage.onload = function() {
-      console.log("Main image loaded successfully");
-    };
   } else {
     console.warn("No images found for product");
     mainImage.src = "https://via.placeholder.com/600x600/f3f4f6/64748b?text=No+Image";
+    mainImage.style.display = 'block';
   }
   
   // Reset index
@@ -1139,7 +1299,8 @@ function initProductDetailGallery(product) {
     nextBtn.onclick = nextDetailImage;
   }
   
-  console.log("Gallery initialized successfully");
+  console.log("✅ Gallery initialized successfully");
+  console.log("=== initProductDetailGallery END ===");
 }
 
 function updateProductDetailImage() {
@@ -1147,7 +1308,10 @@ function updateProductDetailImage() {
   const dots = document.querySelectorAll('.image-dot');
   
   if (mainImage && currentProductImages[currentImageIndex]) {
-    mainImage.src = currentProductImages[currentImageIndex];
+    const imageUrl = currentProductImages[currentImageIndex];
+    console.log("Updating to image:", imageUrl, "Index:", currentImageIndex);
+    
+    mainImage.src = imageUrl;
     mainImage.style.display = 'block';
     
     // Update dots
@@ -1217,6 +1381,7 @@ function openProductZoomModal() {
         thumbnail.style.borderRadius = '8px';
         thumbnail.style.cursor = 'pointer';
         thumbnail.style.marginBottom = '10px';
+        thumbnail.style.border = index === currentImageIndex ? '3px solid #3b82f6' : '1px solid rgba(255,255,255,0.2)';
         
         thumbnail.addEventListener('click', () => {
           currentImageIndex = index;
@@ -1383,6 +1548,7 @@ function updateThumbnailSelection() {
   const thumbnails = document.querySelectorAll('.modal-thumbnail');
   thumbnails.forEach((thumb, index) => {
     thumb.classList.toggle('active', index === currentImageIndex);
+    thumb.style.border = index === currentImageIndex ? '3px solid #3b82f6' : '1px solid rgba(255,255,255,0.2)';
   });
 }
 
@@ -2079,13 +2245,6 @@ function setupEventListeners() {
       if (advancedSearchPanel) advancedSearchPanel.classList.remove('active');
     });
   });
-  
-  // FIXED: Setup zoom modal event listeners
-  setupZoomModalListeners();
-}
-
-function setupZoomModalListeners() {
-  // These will be set up dynamically when modal opens
 }
 
 // Banner touch handlers for mobile swipe
