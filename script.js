@@ -3911,4 +3911,3 @@ function orderProductFromDetail() {
   initOrderPageGallery();
   showPage('orderPage');
 }
-[file content end]
