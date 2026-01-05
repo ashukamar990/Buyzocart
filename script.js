@@ -106,7 +106,7 @@ const skeletonManager = {
   }
 };
 
-// Firebase Configuration
+// Firebase Configuration - UPDATED WITH NEW CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
   authDomain: "buyzocart.firebaseapp.com",
@@ -117,36 +117,12 @@ const firebaseConfig = {
   appId: "1:640560737762:web:7fe368df6486d6da759dbb"
 };
 
-// Firebase services (will be initialized later)
-let auth = null;
-let realtimeDb = null;
-let firebaseApp = null;
-
 // Initialize Firebase
-async function initializeFirebase() {
-  try {
-    // Check if Firebase is already available
-    if (typeof firebase === 'undefined') {
-      console.error('Firebase SDK not loaded. Please check your imports.');
-      return;
-    }
-    
-    // Initialize Firebase if not already initialized
-    if (!firebase.apps.length) {
-      firebaseApp = firebase.initializeApp(firebaseConfig);
-    } else {
-      firebaseApp = firebase.app();
-    }
-    
-    // Get services
-    auth = firebaseApp.auth();
-    realtimeDb = firebaseApp.database();
-    
-    console.log('Firebase initialized successfully');
-  } catch (error) {
-    console.error('Error initializing Firebase:', error);
-  }
+if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
 }
+const auth = firebase?.auth?.();
+const realtimeDb = firebase?.database?.();
 
 // Initialize EmailJS if available
 if (typeof emailjs !== 'undefined') {
@@ -154,11 +130,8 @@ if (typeof emailjs !== 'undefined') {
 }
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
   console.log("Script loaded");
-  
-  // Initialize Firebase first
-  await initializeFirebase();
   
   // Check for product in URL parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -171,11 +144,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Load cached data first
   loadCachedData();
   
-  // Then fetch live data (will work after Firebase is initialized)
-  if (realtimeDb) {
-    fetchLiveData();
-    setupRealtimeListeners();
-  }
+  // Then fetch live data
+  fetchLiveData();
+  
+  // Setup realtime listeners
+  setupRealtimeListeners();
   
   // Initialize recent searches
   updateRecentSearches();
@@ -202,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   
   // Load product from URL if available
-  if (productId && realtimeDb) {
+  if (productId) {
     loadProductFromId(productId);
   }
 });
@@ -577,8 +550,6 @@ async function loadProductFromId(productId) {
   }
   console.log("=== LOAD PRODUCT FROM ID END ===");
 }
-
-// Fixed Functions
 
 function handleSearch() {
   const searchInput = document.getElementById('searchInput');
