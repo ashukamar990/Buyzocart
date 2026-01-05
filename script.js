@@ -1,5 +1,3 @@
-[file name]: script.js
-[file content begin]
 // Global variables
 let currentUser = null;
 let currentProduct = null;
@@ -106,7 +104,7 @@ const skeletonManager = {
   }
 };
 
-// Firebase Configuration - UPDATED WITH NEW CONFIG
+// Firebase Configuration (UPDATED)
 const firebaseConfig = {
   apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
   authDomain: "buyzocart.firebaseapp.com",
@@ -550,6 +548,8 @@ async function loadProductFromId(productId) {
   }
   console.log("=== LOAD PRODUCT FROM ID END ===");
 }
+
+// Fixed Functions
 
 function handleSearch() {
   const searchInput = document.getElementById('searchInput');
@@ -3890,4 +3890,3 @@ function orderProductFromDetail() {
   initOrderPageGallery();
   showPage('orderPage');
 }
-[file content end]
