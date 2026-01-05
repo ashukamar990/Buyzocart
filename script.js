@@ -106,7 +106,7 @@ const skeletonManager = {
   }
 };
 
-// Firebase Configuration - UPDATED
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
   authDomain: "buyzocart.firebaseapp.com",
@@ -117,30 +117,35 @@ const firebaseConfig = {
   appId: "1:640560737762:web:7fe368df6486d6da759dbb"
 };
 
-// Initialize Firebase (with compatibility check)
-let auth, realtimeDb;
+// Firebase services (will be initialized later)
+let auth = null;
+let realtimeDb = null;
+let firebaseApp = null;
 
-try {
-  if (typeof firebase !== 'undefined') {
-    // Initialize with old SDK if available
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+// Initialize Firebase
+async function initializeFirebase() {
+  try {
+    // Check if Firebase is already available
+    if (typeof firebase === 'undefined') {
+      console.error('Firebase SDK not loaded. Please check your imports.');
+      return;
     }
-    auth = firebase?.auth?.();
-    realtimeDb = firebase?.database?.();
-    console.log("Firebase initialized with legacy SDK");
-  } else if (typeof initializeApp !== 'undefined') {
-    // Initialize with new modular SDK if available
-    const { getAuth, getDatabase } = await import("https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js");
-    const app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    realtimeDb = getDatabase(app);
-    console.log("Firebase initialized with modular SDK");
-  } else {
-    console.warn("Firebase SDK not loaded");
+    
+    // Initialize Firebase if not already initialized
+    if (!firebase.apps.length) {
+      firebaseApp = firebase.initializeApp(firebaseConfig);
+    } else {
+      firebaseApp = firebase.app();
+    }
+    
+    // Get services
+    auth = firebaseApp.auth();
+    realtimeDb = firebaseApp.database();
+    
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.error('Error initializing Firebase:', error);
   }
-} catch (error) {
-  console.error("Error initializing Firebase:", error);
 }
 
 // Initialize EmailJS if available
@@ -149,8 +154,11 @@ if (typeof emailjs !== 'undefined') {
 }
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   console.log("Script loaded");
+  
+  // Initialize Firebase first
+  await initializeFirebase();
   
   // Check for product in URL parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -163,11 +171,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Load cached data first
   loadCachedData();
   
-  // Then fetch live data
-  fetchLiveData();
-  
-  // Setup realtime listeners
-  setupRealtimeListeners();
+  // Then fetch live data (will work after Firebase is initialized)
+  if (realtimeDb) {
+    fetchLiveData();
+    setupRealtimeListeners();
+  }
   
   // Initialize recent searches
   updateRecentSearches();
@@ -194,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Load product from URL if available
-  if (productId) {
+  if (productId && realtimeDb) {
     loadProductFromId(productId);
   }
 });
@@ -3911,3 +3919,4 @@ function orderProductFromDetail() {
   initOrderPageGallery();
   showPage('orderPage');
 }
+[file content end]
