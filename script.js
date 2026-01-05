@@ -1,3 +1,5 @@
+[file name]: script.js
+[file content begin]
 // Global variables
 let currentUser = null;
 let currentProduct = null;
@@ -104,24 +106,42 @@ const skeletonManager = {
   }
 };
 
-// Firebase Configuration
+// Firebase Configuration - UPDATED
 const firebaseConfig = {
-  apiKey: "AIzaSyAeB7VzIxJaNYagUPoKd-kN5HXmLbS2-Vw",
-  authDomain: "videomanager-23d98.firebaseapp.com",
-  databaseURL: "https://videomanager-23d98-default-rtdb.firebaseio.com",
-  projectId: "videomanager-23d98",
-  storageBucket: "videomanager-23d98.firebasestorage.app",
-  messagingSenderId: "847321523576",
-  appId: "1:847321523576:web:bda3f5026e3e163603548d",
-  measurementId: "G-YBSJ1KMPV4"
+  apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
+  authDomain: "buyzocart.firebaseapp.com",
+  databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
+  projectId: "buyzocart",
+  storageBucket: "buyzocart.firebasestorage.app",
+  messagingSenderId: "640560737762",
+  appId: "1:640560737762:web:7fe368df6486d6da759dbb"
 };
 
-// Initialize Firebase
-if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+// Initialize Firebase (with compatibility check)
+let auth, realtimeDb;
+
+try {
+  if (typeof firebase !== 'undefined') {
+    // Initialize with old SDK if available
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    auth = firebase?.auth?.();
+    realtimeDb = firebase?.database?.();
+    console.log("Firebase initialized with legacy SDK");
+  } else if (typeof initializeApp !== 'undefined') {
+    // Initialize with new modular SDK if available
+    const { getAuth, getDatabase } = await import("https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js");
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    realtimeDb = getDatabase(app);
+    console.log("Firebase initialized with modular SDK");
+  } else {
+    console.warn("Firebase SDK not loaded");
+  }
+} catch (error) {
+  console.error("Error initializing Firebase:", error);
 }
-const auth = firebase?.auth?.();
-const realtimeDb = firebase?.database?.();
 
 // Initialize EmailJS if available
 if (typeof emailjs !== 'undefined') {
@@ -3891,3 +3911,4 @@ function orderProductFromDetail() {
   initOrderPageGallery();
   showPage('orderPage');
 }
+[file content end]
