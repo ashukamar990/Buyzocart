@@ -13,1777 +13,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
   
-  <!-- CSS ko alag file mein link kiya hai -->
-  <link rel="stylesheet" href="style.css">
-  
-  <!-- EmailJS -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-  
-  <!-- Firebase SDKs -->
-  <script type="module">
-    // Import Firebase modules
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-    // Firebase Configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
-      authDomain: "buyzocart.firebaseapp.com",
-      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
-      projectId: "buyzocart",
-      storageBucket: "buyzocart.firebasestorage.app",
-      messagingSenderId: "640560737762",
-      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    // Global Variables
-    window.currentUser = null;
-    window.currentProduct = null;
-    window.userInfo = {};
-    window.currentOrderId = null;
-    window.products = [];
-    window.categories = [];
-    window.banners = [];
-    window.recentlyViewed = [];
-    window.currentImageIndex = 0;
-    window.currentZoomLevel = 1;
-    window.currentCategoryFilter = null;
-    window.currentProductImages = [];
-    window.currentProductModalIndex = 0;
-    window.bannerStartX = 0;
-    window.bannerCurrentX = 0;
-    window.isBannerDragging = false;
-    window.adminSettings = {
-      deliveryCharge: 50,
-      gatewayChargePercent: 2,
-      freeShippingOver: 999
-    };
-    window.savedAddresses = [];
-    window.selectedColor = 'black';
-    window.selectedColorName = 'Black';
-    window.recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-    
-    // Cache Manager
-    window.cacheManager = {
-      set: function(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
-        const item = {
-          data: data,
-          timestamp: Date.now(),
-          ttl: ttl
-        };
-        try {
-          localStorage.setItem(key, JSON.stringify(item));
-        } catch (e) {
-          console.error('Error saving to localStorage:', e);
-        }
-      },
-      
-      get: function(key) {
-        const item = localStorage.getItem(key);
-        if (!item) return null;
-        
-        try {
-          const parsed = JSON.parse(item);
-          const now = Date.now();
-          
-          if (now - parsed.timestamp > parsed.ttl) {
-            localStorage.removeItem(key);
-            return null;
-          }
-          
-          return parsed.data;
-        } catch (e) {
-          localStorage.removeItem(key);
-          return null;
-        }
-      },
-      
-      remove: function(key) {
-        localStorage.removeItem(key);
-      }
-    };
-
-    // Initialize EmailJS
-    emailjs.init("YOUR_EMAILJS_PUBLIC_KEY"); // Add your EmailJS public key here
-
-    // ==================== CORE FUNCTIONS ====================
-    
-    // Product Image Helper Function
-    window.getProductImage = function(product, idx = 0) {
-      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
-      if (Array.isArray(product.images) && product.images.length > 0) {
-        if (idx < product.images.length) return product.images[idx];
-        return product.images[0];
-      }
-      if (product.image) return product.image;
-      if (product.img) return product.img;
-      if (product.imageUrl) return product.imageUrl;
-      if (product.photo) return product.photo;
-      return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
-    };
-
-    // Order ID Generation Function
-    window.generateOrderId = function() {
-      const date = new Date();
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      const randomNum = Math.floor(100000 + Math.random() * 900000);
-      return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
-    };
-
-    // Wishlist Functions
-    window.isInWishlist = function(productId) {
-      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      return wishlist.includes(productId);
-    };
-
-    window.toggleWishlist = function(productId) {
-      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      const isWishlisted = wishlist.includes(productId);
-
-      if (isWishlisted) {
-        wishlist = wishlist.filter(id => id !== productId);
-        window.showToast('Removed from wishlist', 'success');
-      } else {
-        wishlist.push(productId);
-        window.showToast('Added to wishlist', 'success');
-      }
-
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
-      window.updateWishlistButtons();
-      
-      if (window.currentUser) {
-        window.updateWishlistInFirebase(productId, !isWishlisted);
-      }
-      
-      if (document.getElementById('wishlistPage') && document.getElementById('wishlistPage').classList.contains('active')) {
-        window.renderWishlist();
-      }
-    };
-
-    window.updateWishlistInFirebase = async function(productId, add) {
-      if (!window.currentUser) return;
-      
-      try {
-        if (add) {
-          await set(ref(database, 'userWishlists/' + window.currentUser.uid + '/' + productId), {
-            productId: productId,
-            addedAt: Date.now()
-          });
-        } else {
-          await remove(ref(database, 'userWishlists/' + window.currentUser.uid + '/' + productId));
-        }
-      } catch (error) {
-        console.error('Error updating wishlist in Firebase:', error);
-      }
-    };
-
-    window.updateWishlistButtons = function() {
-      document.querySelectorAll('.wishlist-btn').forEach(btn => {
-        const productId = btn.getAttribute('data-product-id');
-        if (productId) {
-          const isActive = window.isInWishlist(productId);
-          btn.classList.toggle('active', isActive);
-          
-          const svg = btn.querySelector('svg');
-          if (svg) {
-            if (isActive) {
-              svg.setAttribute('fill', 'red');
-            } else {
-              svg.setAttribute('fill', 'none');
-            }
-          }
-        }
-      });
-      
-      const detailBtn = document.getElementById('detailWishlistBtn');
-      if (detailBtn && window.currentProduct) {
-        const isActive = window.isInWishlist(window.currentProduct.id);
-        detailBtn.classList.toggle('active', isActive);
-        detailBtn.textContent = isActive ? 'Remove from Wishlist' : 'Add to Wishlist';
-      }
-    };
-
-    // Price Parsing Function
-    window.parsePrice = function(p) {
-      if (typeof p === "number") return p;
-      if (typeof p === "string") {
-        const num = parseFloat(p.replace(/[₹,]/g, ""));
-        return isNaN(num) ? 0 : num;
-      }
-      return 0;
-    };
-
-    // Toast Notification Function
-    window.showToast = function(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      if (!toast) {
-        console.log(message);
-        return;
-      }
-      toast.textContent = message;
-      toast.className = 'toast ' + type;
-      toast.classList.add('show');
-      
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    };
-
-    // Page Navigation Function
-    window.showPage = function(pageId) {
-      // Clean URL
-      const cleanHash = pageId === 'homePage' ? '' : `#${pageId}`;
-      const newUrl = window.location.pathname.replace('index.html', '') + cleanHash;
-      window.history.pushState({ page: pageId }, '', newUrl);
-      
-      // Special cases for external pages
-      if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
-        window.location.href = 'account.html';
-        return;
-      }
-      
-      // Hide all pages
-      document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-      });
-      
-      // Show selected page
-      const pageElement = document.getElementById(pageId);
-      if (pageElement) {
-        pageElement.classList.add('active');
-      } else {
-        console.error('Page not found:', pageId);
-        return;
-      }
-      
-      // Update UI
-      window.updateStepPills();
-      window.updateBottomNav();
-      
-      // Scroll to top
-      window.scrollTo(0, 0);
-      
-      // Page-specific actions
-      if (pageId === 'myOrdersPage' && window.currentUser) {
-        window.showMyOrders();
-      }
-      
-      if (pageId === 'wishlistPage') {
-        window.renderWishlist();
-      }
-      
-      if (pageId === 'productDetailPage' && window.currentProduct) {
-        window.loadProductReviews(window.currentProduct.id);
-      }
-      
-      if (pageId === 'paymentPage') {
-        window.updatePaymentSummary();
-      }
-      
-      if (pageId === 'userPage' && window.currentUser) {
-        window.loadSavedAddresses();
-      }
-      
-      if (pageId === 'orderPage' && window.currentProduct) {
-        window.initOrderPageGallery();
-      }
-      
-      if (pageId === 'productsPage') {
-        // Clear search
-        const searchPanelInput = document.getElementById('searchPanelInput');
-        const searchPanelResults = document.getElementById('searchPanelResults');
-        if (searchPanelInput) searchPanelInput.value = '';
-        if (searchPanelResults) searchPanelResults.innerHTML = '';
-        window.loadRecentSearches();
-      }
-      
-      console.log('Showing page:', pageId);
-    };
-
-    window.checkAuthAndShowPage = function(pageId) {
-      if (!window.currentUser) {
-        window.showLoginModal();
-        return;
-      }
-      window.showPage(pageId);
-    };
-
-    // ==================== EVENT LISTENERS SETUP ====================
-    
-    window.setupEventListeners = function() {
-      console.log('Setting up event listeners...');
-      
-      // Mobile Menu Events
-      const menuIcon = document.getElementById('menuIcon');
-      const menuClose = document.getElementById('menuClose');
-      const menuOverlay = document.getElementById('menuOverlay');
-      
-      if (menuIcon) menuIcon.addEventListener('click', window.openMenu);
-      if (menuClose) menuClose.addEventListener('click', window.closeMenu);
-      if (menuOverlay) menuOverlay.addEventListener('click', window.closeMenu);
-      
-      // Theme Toggle
-      const themeToggle = document.getElementById('themeToggle');
-      if (themeToggle) themeToggle.addEventListener('click', window.toggleTheme);
-      
-      // Auth Modal Events
-      const authClose = document.getElementById('authClose');
-      const loginTab = document.getElementById('loginTab');
-      const signupTab = document.getElementById('signupTab');
-      const loginBtn = document.getElementById('loginBtn');
-      const signupBtn = document.getElementById('signupBtn');
-      const googleLoginBtn = document.getElementById('googleLoginBtn');
-      const googleSignupBtn = document.getElementById('googleSignupBtn');
-      const switchToLogin = document.getElementById('switchToLogin');
-      const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-      const backToLogin = document.getElementById('backToLogin');
-      const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-      const openLoginTop = document.getElementById('openLoginTop');
-      
-      if (authClose) authClose.addEventListener('click', () => document.getElementById('authModal').classList.remove('active'));
-      if (openLoginTop) openLoginTop.addEventListener('click', window.showLoginModal);
-      
-      if (loginTab) loginTab.addEventListener('click', () => window.switchAuthTab('login'));
-      if (signupTab) signupTab.addEventListener('click', () => window.switchAuthTab('signup'));
-      if (switchToLogin) switchToLogin.addEventListener('click', () => window.switchAuthTab('login'));
-      
-      if (loginBtn) loginBtn.addEventListener('click', window.handleLogin);
-      if (signupBtn) signupBtn.addEventListener('click', window.handleSignup);
-      if (googleLoginBtn) googleLoginBtn.addEventListener('click', window.handleGoogleLogin);
-      if (googleSignupBtn) googleSignupBtn.addEventListener('click', window.handleGoogleLogin);
-      
-      if (forgotPasswordLink) forgotPasswordLink.addEventListener('click', () => {
-        document.getElementById('loginForm').classList.remove('active');
-        document.getElementById('forgotPasswordForm').classList.add('active');
-      });
-      
-      if (backToLogin) backToLogin.addEventListener('click', () => {
-        document.getElementById('forgotPasswordForm').classList.remove('active');
-        document.getElementById('loginForm').classList.add('active');
-      });
-      
-      if (resetPasswordBtn) resetPasswordBtn.addEventListener('click', window.handleResetPassword);
-      
-      // Order Flow Events
-      const backToProducts = document.getElementById('backToProducts');
-      const toUserInfo = document.getElementById('toUserInfo');
-      const editOrder = document.getElementById('editOrder');
-      const toPayment = document.getElementById('toPayment');
-      const payBack = document.getElementById('payBack');
-      const confirmOrder = document.getElementById('confirmOrder');
-      const goHome = document.getElementById('goHome');
-      const viewOrders = document.getElementById('viewOrders');
-      const openMyOrdersTop = document.getElementById('openMyOrdersTop');
-      
-      if (backToProducts) backToProducts.addEventListener('click', () => window.showPage('productsPage'));
-      if (toUserInfo) toUserInfo.addEventListener('click', window.toUserInfoFlow);
-      if (editOrder) editOrder.addEventListener('click', () => window.showPage('orderPage'));
-      if (toPayment) toPayment.addEventListener('click', window.toPaymentFlow);
-      if (payBack) payBack.addEventListener('click', () => window.showPage('userPage'));
-      if (confirmOrder) confirmOrder.addEventListener('click', window.confirmOrderFlow);
-      if (goHome) goHome.addEventListener('click', () => window.showPage('homePage'));
-      if (viewOrders) viewOrders.addEventListener('click', () => window.checkAuthAndShowPage('myOrdersPage'));
-      if (openMyOrdersTop) openMyOrdersTop.addEventListener('click', () => window.checkAuthAndShowPage('myOrdersPage'));
-      
-      // Quantity Controls
-      const qtyMinus = document.querySelector('.qty-minus');
-      const qtyPlus = document.querySelector('.qty-plus');
-      
-      if (qtyMinus) qtyMinus.addEventListener('click', window.decreaseQuantity);
-      if (qtyPlus) qtyPlus.addEventListener('click', window.increaseQuantity);
-      
-      // Size and Color Options
-      document.querySelectorAll('.size-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          const error = document.getElementById('sizeValidationError');
-          if (error) error.classList.remove('show');
-        });
-      });
-      
-      document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-        });
-      });
-      
-      // Mobile Login/Logout
-      const mobileLoginBtn = document.getElementById('mobileLoginBtn');
-      const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
-      
-      if (mobileLoginBtn) mobileLoginBtn.addEventListener('click', window.showLoginModal);
-      if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', window.showLogoutConfirmation);
-      
-      // Alert Modal
-      const alertCancelBtn = document.getElementById('alertCancelBtn');
-      const alertConfirmBtn = document.getElementById('alertConfirmBtn');
-      
-      if (alertCancelBtn) alertCancelBtn.addEventListener('click', () => document.getElementById('alertModal').classList.remove('active'));
-      if (alertConfirmBtn) alertConfirmBtn.addEventListener('click', window.confirmLogout);
-      
-      // Search Panel
-      const headerSearchInput = document.getElementById('headerSearchInput');
-      const searchPanelClose = document.getElementById('searchPanelClose');
-      const clearRecentSearches = document.getElementById('clearRecentSearches');
-      
-      if (headerSearchInput) headerSearchInput.addEventListener('click', window.openSearchPanel);
-      if (searchPanelClose) searchPanelClose.addEventListener('click', window.closeSearchPanel);
-      if (clearRecentSearches) clearRecentSearches.addEventListener('click', window.clearRecentSearchesHandler);
-      
-      // Bottom Navigation
-      document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.addEventListener('click', function() {
-          document.querySelectorAll('.bottom-nav-item').forEach(nav => nav.classList.remove('active'));
-          this.classList.add('active');
-        });
-      });
-      
-      // Product Image Modal
-      const productImageModalClose = document.getElementById('productImageModalClose');
-      const productImageModalPrev = document.getElementById('productImageModalPrev');
-      const productImageModalNext = document.getElementById('productImageModalNext');
-      
-      if (productImageModalClose) productImageModalClose.addEventListener('click', () => document.getElementById('productImageModal').classList.remove('active'));
-      if (productImageModalPrev) productImageModalPrev.addEventListener('click', window.prevProductModalImage);
-      if (productImageModalNext) productImageModalNext.addEventListener('click', window.nextProductModalImage);
-      
-      // Zoom Modal
-      const zoomClose = document.getElementById('zoomClose');
-      const zoomIn = document.getElementById('zoomIn');
-      const zoomOut = document.getElementById('zoomOut');
-      const zoomReset = document.getElementById('zoomReset');
-      
-      if (zoomClose) zoomClose.addEventListener('click', () => document.getElementById('zoomModal').classList.remove('active'));
-      if (zoomIn) zoomIn.addEventListener('click', () => window.adjustZoom(0.2));
-      if (zoomOut) zoomOut.addEventListener('click', () => window.adjustZoom(-0.2));
-      if (zoomReset) zoomReset.addEventListener('click', window.resetZoom);
-      
-      // Product Detail Page Events
-      const detailOrderBtn = document.getElementById('detailOrderBtn');
-      const detailWishlistBtn = document.getElementById('detailWishlistBtn');
-      const copyShareLink = document.getElementById('copyShareLink');
-      const productDetailMainImage = document.getElementById('productDetailMainImage');
-      const detailCarouselPrev = document.querySelector('.detail-carousel-control.prev');
-      const detailCarouselNext = document.querySelector('.detail-carousel-control.next');
-      
-      if (detailOrderBtn) detailOrderBtn.addEventListener('click', window.orderProductFromDetail);
-      if (detailWishlistBtn) detailWishlistBtn.addEventListener('click', window.toggleWishlistFromDetail);
-      if (copyShareLink) copyShareLink.addEventListener('click', window.copyShareLink);
-      if (productDetailMainImage) productDetailMainImage.addEventListener('click', window.openProductImageModal);
-      if (detailCarouselPrev) detailCarouselPrev.addEventListener('click', window.prevDetailImage);
-      if (detailCarouselNext) detailCarouselNext.addEventListener('click', window.nextDetailImage);
-      
-      // Rating and Reviews
-      const ratingStars = document.querySelectorAll('.rating-star');
-      const submitReview = document.getElementById('submitReview');
-      
-      if (ratingStars) {
-        ratingStars.forEach(star => {
-          star.addEventListener('click', function() {
-            const rating = parseInt(this.getAttribute('data-rating'));
-            window.setRating(rating);
-          });
-        });
-      }
-      
-      if (submitReview) submitReview.addEventListener('click', window.submitProductReview);
-      
-      // Newsletter Subscription
-      const subscribeBtn = document.getElementById('subscribeBtn');
-      if (subscribeBtn) subscribeBtn.addEventListener('click', window.handleNewsletterSubscription);
-      
-      // Social Sharing
-      document.querySelectorAll('.share-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const platform = this.getAttribute('data-platform');
-          window.shareProduct(platform);
-        });
-      });
-      
-      // Price Filter
-      const minPriceSlider = document.getElementById('minPriceSlider');
-      const maxPriceSlider = document.getElementById('maxPriceSlider');
-      const minPrice = document.getElementById('minPrice');
-      const maxPrice = document.getElementById('maxPrice');
-      const applyPriceFilter = document.getElementById('applyPriceFilter');
-      const resetPriceFilter = document.getElementById('resetPriceFilter');
-      
-      if (minPriceSlider && maxPriceSlider) {
-        minPriceSlider.addEventListener('input', window.updatePriceSlider);
-        maxPriceSlider.addEventListener('input', window.updatePriceSlider);
-      }
-      
-      if (minPrice && maxPrice) {
-        minPrice.addEventListener('input', window.updatePriceInputs);
-        maxPrice.addEventListener('input', window.updatePriceInputs);
-      }
-      
-      if (applyPriceFilter) applyPriceFilter.addEventListener('click', window.applyPriceFilter);
-      if (resetPriceFilter) resetPriceFilter.addEventListener('click', window.resetPriceFilter);
-      
-      // Payment Method Changes
-      document.querySelectorAll('input[name="pay"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-          if (document.getElementById('paymentPage').classList.contains('active')) {
-            window.updatePaymentSummary();
-          }
-        });
-      });
-      
-      // Save Address Button
-      const saveUserInfo = document.getElementById('saveUserInfo');
-      if (saveUserInfo) saveUserInfo.addEventListener('click', window.saveUserInfoAndAddress);
-      
-      // Color Selection
-      const colorOptionsGrid = document.getElementById('colorOptionsGrid');
-      if (colorOptionsGrid) {
-        colorOptionsGrid.addEventListener('click', function(e) {
-          const colorBox = e.target.closest('.color-box');
-          if (colorBox && !colorBox.classList.contains('out-of-stock')) {
-            document.querySelectorAll('.color-box').forEach(b => b.classList.remove('selected'));
-            colorBox.classList.add('selected');
-            
-            window.selectedColor = colorBox.getAttribute('data-color');
-            window.selectedColorName = colorBox.getAttribute('data-color-name');
-            
-            const selectedColorText = document.getElementById('selectedColorText');
-            if (selectedColorText) selectedColorText.textContent = window.selectedColorName;
-            
-            window.showToast(`Selected color: ${window.selectedColorName}`, 'success');
-          }
-        });
-      }
-      
-      // Banner Carousel Touch Events
-      const bannerCarousel = document.getElementById('bannerCarousel');
-      if (bannerCarousel) {
-        bannerCarousel.addEventListener('touchstart', window.handleBannerTouchStart);
-        bannerCarousel.addEventListener('touchmove', window.handleBannerTouchMove);
-        bannerCarousel.addEventListener('touchend', window.handleBannerTouchEnd);
-      }
-      
-      // Banner Track Click Event
-      const bannerTrack = document.getElementById('bannerTrack');
-      if (bannerTrack) {
-        bannerTrack.addEventListener('click', function(e) {
-          const bannerIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => 
-            dot.classList.contains('active')
-          );
-          if (bannerIndex !== -1 && window.banners[bannerIndex] && window.banners[bannerIndex].link) {
-            window.open(window.banners[bannerIndex].link, '_blank');
-          }
-        });
-      }
-      
-      // Search Panel Input
-      const searchPanelInput = document.getElementById('searchPanelInput');
-      if (searchPanelInput) {
-        searchPanelInput.addEventListener('input', window.debounce(window.handleSearchPanelInput, 300));
-      }
-      
-      // Popular Search Tags
-      document.querySelectorAll('.search-tag').forEach(tag => {
-        tag.addEventListener('click', function() {
-          const searchTerm = this.textContent;
-          window.searchFromPanel(searchTerm);
-        });
-      });
-      
-      console.log('Event listeners setup completed');
-    };
-
-    // ==================== MOBILE MENU FUNCTIONS ====================
-    
-    window.openMenu = function() {
-      const mobileMenu = document.getElementById('mobileMenu');
-      const menuOverlay = document.getElementById('menuOverlay');
-      if (mobileMenu && menuOverlay) {
-        mobileMenu.classList.add('active');
-        menuOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-      }
-    };
-
-    window.closeMenu = function() {
-      const mobileMenu = document.getElementById('mobileMenu');
-      const menuOverlay = document.getElementById('menuOverlay');
-      if (mobileMenu && menuOverlay) {
-        mobileMenu.classList.remove('active');
-        menuOverlay.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-    };
-
-    // ==================== THEME FUNCTIONS ====================
-    
-    window.toggleTheme = function() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-    };
-
-    // ==================== AUTHENTICATION FUNCTIONS ====================
-    
-    window.showLoginModal = function() {
-      const authModal = document.getElementById('authModal');
-      if (authModal) {
-        authModal.classList.add('active');
-        window.switchAuthTab('login');
-      }
-    };
-
-    window.switchAuthTab = function(tab) {
-      const loginForm = document.getElementById('loginForm');
-      const signupForm = document.getElementById('signupForm');
-      const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-      const loginTab = document.getElementById('loginTab');
-      const signupTab = document.getElementById('signupTab');
-      const loginError = document.getElementById('loginError');
-      const signupError = document.getElementById('signupError');
-      
-      if (!loginForm || !signupForm) return;
-      
-      loginForm.classList.remove('active');
-      signupForm.classList.remove('active');
-      if (forgotPasswordForm) forgotPasswordForm.classList.remove('active');
-      
-      if (loginTab) loginTab.classList.remove('active');
-      if (signupTab) signupTab.classList.remove('active');
-      
-      if (loginError) loginError.textContent = '';
-      if (signupError) signupError.textContent = '';
-      
-      if (tab === 'login') {
-        if (loginTab) loginTab.classList.add('active');
-        if (loginForm) loginForm.classList.add('active');
-      } else {
-        if (signupTab) signupTab.classList.add('active');
-        if (signupForm) signupForm.classList.add('active');
-      }
-    };
-
-    window.handleLogin = async function() {
-      const email = document.getElementById('loginEmail')?.value;
-      const password = document.getElementById('loginPassword')?.value;
-      const loginError = document.getElementById('loginError');
-      const loginBtn = document.getElementById('loginBtn');
-      
-      if (!email || !password) {
-        if (loginError) loginError.textContent = 'Please fill in all fields';
-        return;
-      }
-      
-      try {
-        if (loginBtn) {
-          loginBtn.disabled = true;
-          loginBtn.innerHTML = 'Logging in...';
-        }
-        
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        
-        // Update last login time
-        await update(ref(database, 'users/' + userCredential.user.uid), {
-          lastLoginAt: Date.now()
-        });
-        
-        window.showToast('Login successful!', 'success');
-        
-        const authModal = document.getElementById('authModal');
-        if (authModal) authModal.classList.remove('active');
-        
-      } catch (err) {
-        console.error('Login error:', err);
-        if (loginError) loginError.textContent = err.message;
-      } finally {
-        const loginBtn = document.getElementById('loginBtn');
-        if (loginBtn) {
-          loginBtn.disabled = false;
-          loginBtn.textContent = 'Login';
-        }
-      }
-    };
-
-    window.handleSignup = async function() {
-      const name = document.getElementById('signupName')?.value;
-      const email = document.getElementById('signupEmail')?.value;
-      const password = document.getElementById('signupPassword')?.value;
-      const signupError = document.getElementById('signupError');
-      const signupBtn = document.getElementById('signupBtn');
-      
-      if (!name || !email || !password) {
-        if (signupError) signupError.textContent = 'Please fill in all fields';
-        return;
-      }
-      
-      if (password.length < 6) {
-        if (signupError) signupError.textContent = 'Password should be at least 6 characters';
-        return;
-      }
-      
-      try {
-        if (signupBtn) {
-          signupBtn.disabled = true;
-          signupBtn.innerHTML = 'Creating account...';
-        }
-        
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        // Save user data to database
-        await set(ref(database, 'users/' + user.uid), {
-          name: name,
-          email: email,
-          createdAt: Date.now(),
-          lastLoginAt: Date.now()
-        });
-        
-        localStorage.setItem('userName', name);
-        window.updateUserNameUI(name);
-        
-        window.showToast('Account created successfully!', 'success');
-        
-        const authModal = document.getElementById('authModal');
-        if (authModal) authModal.classList.remove('active');
-        
-      } catch (err) {
-        console.error('Signup error:', err);
-        if (signupError) signupError.textContent = err.message;
-      } finally {
-        const signupBtn = document.getElementById('signupBtn');
-        if (signupBtn) {
-          signupBtn.disabled = false;
-          signupBtn.textContent = 'Sign Up';
-        }
-      }
-    };
-
-    window.handleGoogleLogin = async function() {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        
-        const userSnapshot = await get(ref(database, 'users/' + user.uid));
-        
-        if (!userSnapshot.exists()) {
-          await set(ref(database, 'users/' + user.uid), {
-            name: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL,
-            createdAt: Date.now(),
-            lastLoginAt: Date.now()
-          });
-        } else {
-          await update(ref(database, 'users/' + user.uid), {
-            lastLoginAt: Date.now()
-          });
-        }
-        
-        localStorage.setItem('userName', user.displayName || 'User');
-        window.updateUserNameUI(user.displayName || 'User');
-        
-        window.showToast('Login successful!', 'success');
-        
-        const authModal = document.getElementById('authModal');
-        if (authModal) authModal.classList.remove('active');
-        
-      } catch (err) {
-        console.error('Google login error:', err);
-        window.showToast(err.message, 'error');
-      }
-    };
-
-    window.handleResetPassword = async function() {
-      const email = document.getElementById('forgotPasswordEmail')?.value;
-      const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-      
-      if (!email) {
-        window.showToast('Please enter your email address', 'error');
-        return;
-      }
-      
-      try {
-        if (resetPasswordBtn) {
-          resetPasswordBtn.disabled = true;
-          resetPasswordBtn.textContent = 'Sending...';
-        }
-        
-        await sendPasswordResetEmail(auth, email);
-        window.showToast('Password reset email sent! Check your inbox.', 'success');
-        
-        setTimeout(() => {
-          const authModal = document.getElementById('authModal');
-          if (authModal) authModal.classList.remove('active');
-        }, 2000);
-        
-      } catch (err) {
-        console.error('Password reset error:', err);
-        window.showToast(err.message, 'error');
-      } finally {
-        if (resetPasswordBtn) {
-          resetPasswordBtn.disabled = false;
-          resetPasswordBtn.textContent = 'Send Reset Link';
-        }
-      }
-    };
-
-    window.showLogoutConfirmation = function() {
-      document.getElementById('alertTitle').textContent = 'Logout Confirmation';
-      document.getElementById('alertMessage').textContent = 'Are you sure you want to logout?';
-      document.getElementById('alertModal').classList.add('active');
-    };
-
-    window.confirmLogout = function() {
-      signOut(auth).then(() => {
-        window.showToast('Logged out successfully', 'success');
-        document.getElementById('alertModal').classList.remove('active');
-        window.showPage('homePage');
-      }).catch(error => {
-        console.error('Logout error:', error);
-        window.showToast('Error logging out', 'error');
-      });
-    };
-
-    // ==================== UI UPDATE FUNCTIONS ====================
-    
-    window.updateUIForUser = function(user) {
-      const userProfile = document.getElementById('userProfile');
-      const openLoginTop = document.getElementById('openLoginTop');
-      const mobileLoginBtn = document.getElementById('mobileLoginBtn');
-      const mobileUserProfile = document.getElementById('mobileUserProfile');
-      const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
-      
-      if (userProfile) userProfile.style.display = 'flex';
-      if (openLoginTop) openLoginTop.style.display = 'none';
-      if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
-      if (mobileUserProfile) mobileUserProfile.style.display = 'flex';
-      if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'flex';
-      
-      // Update user profile
-      window.updateUserProfile(user);
-      
-      // Load user data
-      get(ref(database, 'users/' + user.uid)).then(snapshot => {
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          const name = userData.name || user.displayName || 'User';
-          localStorage.setItem('userName', name);
-          window.updateUserNameUI(name);
-          const mobileUserName = document.getElementById('mobileUserName');
-          if (mobileUserName) mobileUserName.textContent = name;
-        }
-      });
-    };
-
-    window.updateUserProfile = function(user) {
-      const userAvatarImg = document.getElementById('userAvatarImg');
-      const userAvatarInitial = document.getElementById('userAvatarInitial');
-      
-      if (user.photoURL && userAvatarImg) {
-        userAvatarImg.src = user.photoURL;
-        userAvatarImg.style.display = 'block';
-        if (userAvatarInitial) userAvatarInitial.style.display = 'none';
-      } else if (userAvatarInitial) {
-        if (userAvatarImg) userAvatarImg.style.display = 'none';
-        userAvatarInitial.style.display = 'block';
-        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
-      }
-      
-      const userName = document.getElementById('userName');
-      const mobileUserName = document.getElementById('mobileUserName');
-      const name = user.displayName || 'User';
-      if (userName) userName.textContent = name;
-      if (mobileUserName) mobileUserName.textContent = name;
-    };
-
-    window.updateUIForGuest = function() {
-      const userProfile = document.getElementById('userProfile');
-      const openLoginTop = document.getElementById('openLoginTop');
-      const mobileLoginBtn = document.getElementById('mobileLoginBtn');
-      const mobileUserProfile = document.getElementById('mobileUserProfile');
-      const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
-      
-      if (userProfile) userProfile.style.display = 'none';
-      if (openLoginTop) openLoginTop.style.display = 'block';
-      if (mobileLoginBtn) mobileLoginBtn.style.display = 'flex';
-      if (mobileUserProfile) mobileUserProfile.style.display = 'none';
-      if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'none';
-    };
-
-    window.updateUserNameUI = function(name) {
-      const userName = document.getElementById('userName');
-      const mobileUserName = document.getElementById('mobileUserName');
-      if (userName) userName.textContent = name;
-      if (mobileUserName) mobileUserName.textContent = name;
-    };
-
-    // ==================== PAGE NAVIGATION FUNCTIONS ====================
-    
-    window.updateStepPills = function() {
-      const currentPage = document.querySelector('.page.active').id;
-      const pills = ['pill-products', 'pill-order', 'pill-user', 'pill-pay'];
-      
-      pills.forEach((pillId, index) => {
-        const pill = document.getElementById(pillId);
-        if (pill) {
-          if (index === 0 || currentPage === 'homePage' || currentPage === 'productsPage') {
-            pill.classList.remove('disabled');
-          } else {
-            pill.classList.add('disabled');
-          }
-        }
-      });
-    };
-
-    window.updateBottomNav = function() {
-      const currentPage = document.querySelector('.page.active').id;
-      const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
-      
-      bottomNavItems.forEach(item => {
-        item.classList.remove('active');
-        if (currentPage === 'homePage' && item.textContent.includes('Home')) {
-          item.classList.add('active');
-        } else if (currentPage === 'productsPage' && item.textContent.includes('Products')) {
-          item.classList.add('active');
-        } else if (currentPage === 'myOrdersPage' && item.textContent.includes('Orders')) {
-          item.classList.add('active');
-        } else if (currentPage === 'wishlistPage' && item.textContent.includes('Wishlist')) {
-          item.classList.add('active');
-        }
-      });
-    };
-
-    // ==================== PRODUCT FUNCTIONS ====================
-    
-    window.showProductDetail = function(product) {
-      window.currentProduct = product;
-      
-      const detailTitle = document.getElementById('detailTitle');
-      const detailPrice = document.getElementById('detailPrice');
-      const detailDesc = document.getElementById('detailDesc');
-      const detailFullDesc = document.getElementById('detailFullDesc');
-      const detailSku = document.getElementById('detailSku');
-      const breadcrumbProductName = document.getElementById('breadcrumbProductName');
-      const detailStockStatus = document.getElementById('detailStockStatus');
-      const detailWishlistBtn = document.getElementById('detailWishlistBtn');
-      
-      if (detailTitle) detailTitle.textContent = product.name || 'Product Name';
-      if (detailPrice) detailPrice.textContent = product.price || '₹0';
-      if (detailDesc) detailDesc.textContent = product.description || '';
-      if (detailFullDesc) detailFullDesc.textContent = product.fullDescription || product.description || 'No description available.';
-      if (detailSku) detailSku.textContent = `SKU: ${product.sku || 'N/A'}`;
-      if (breadcrumbProductName) breadcrumbProductName.textContent = product.name || 'Product';
-      
-      // Stock status
-      if (detailStockStatus) {
-        const stock = product.stock || 'in';
-        if (stock === 'in' || product.quantity > 0) {
-          detailStockStatus.textContent = 'In Stock';
-          detailStockStatus.className = 'stock-status in-stock';
-        } else if (stock === 'low' || (product.quantity > 0 && product.quantity < 10)) {
-          detailStockStatus.textContent = 'Low Stock';
-          detailStockStatus.className = 'stock-status low-stock';
-        } else {
-          detailStockStatus.textContent = 'Out of Stock';
-          detailStockStatus.className = 'stock-status out-of-stock';
-        }
-      }
-      
-      // Initialize product gallery
-      window.initProductDetailGallery(product);
-      
-      // Initialize color selection
-      window.initColorSelection(product);
-      
-      // Update share link
-      const productShareLink = document.getElementById('productShareLink');
-      if (productShareLink) {
-        productShareLink.value = window.location.origin + window.location.pathname.replace('index.html', '') + `#productDetail?product=${product.id}`;
-      }
-      
-      // Update wishlist button
-      if (detailWishlistBtn) {
-        if (window.isInWishlist(product.id)) {
-          detailWishlistBtn.textContent = 'Remove from Wishlist';
-          detailWishlistBtn.classList.add('active');
-        } else {
-          detailWishlistBtn.textContent = 'Add to Wishlist';
-          detailWishlistBtn.classList.remove('active');
-        }
-      }
-      
-      // Load similar products
-      window.loadSimilarProducts(product);
-      
-      // Load product reviews
-      window.loadProductReviews(product.id);
-      
-      // Add to recently viewed
-      if (window.currentUser) {
-        window.addToRecentlyViewed(product.id);
-      }
-      
-      window.showPage('productDetailPage');
-    };
-
-    window.initColorSelection = function(product) {
-      const colorOptionsGrid = document.getElementById('colorOptionsGrid');
-      if (!colorOptionsGrid) return;
-      
-      colorOptionsGrid.innerHTML = '';
-      
-      // Default colors if not specified
-      const colors = product.colors || [
-        { name: 'Black', value: 'black', image: window.getProductImage(product), inStock: true },
-        { name: 'White', value: 'white', image: window.getProductImage(product), inStock: true },
-        { name: 'Blue', value: 'blue', image: window.getProductImage(product), inStock: true },
-        { name: 'Red', value: 'red', image: window.getProductImage(product), inStock: true }
-      ];
-      
-      colors.forEach((color, index) => {
-        const colorBox = document.createElement('div');
-        colorBox.className = `color-box ${index === 0 ? 'selected' : ''} ${!color.inStock ? 'out-of-stock' : ''}`;
-        colorBox.setAttribute('data-color', color.value);
-        colorBox.setAttribute('data-color-name', color.name);
-        colorBox.style.backgroundImage = `url('${color.image}')`;
-        
-        if (index === 0) {
-          window.selectedColor = color.value;
-          window.selectedColorName = color.name;
-          const selectedColorText = document.getElementById('selectedColorText');
-          if (selectedColorText) selectedColorText.textContent = color.name;
-        }
-        
-        colorOptionsGrid.appendChild(colorBox);
-      });
-    };
-
-    window.initProductDetailGallery = function(product) {
-      const mainImage = document.getElementById('productDetailMainImage');
-      const dots = document.getElementById('detailCarouselDots');
-      
-      if (!mainImage || !dots) return;
-      
-      dots.innerHTML = '';
-      
-      window.currentProductImages = window.getProductImages();
-      window.currentImageIndex = 0;
-      window.updateMainImage();
-      
-      window.currentProductImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          window.currentImageIndex = index;
-          window.updateMainImage();
-          window.updateDots();
-        });
-        dots.appendChild(dot);
-      });
-    };
-
-    window.getProductImages = function() {
-      if (!window.currentProduct) return [];
-      
-      if (Array.isArray(window.currentProduct.images) && window.currentProduct.images.length > 0) {
-        return window.currentProduct.images;
-      } else {
-        return [window.getProductImage(window.currentProduct)];
-      }
-    };
-
-    window.updateMainImage = function() {
-      const mainImage = document.getElementById('productDetailMainImage');
-      
-      if (mainImage && window.currentProductImages[window.currentImageIndex]) {
-        mainImage.style.backgroundImage = `url('${window.currentProductImages[window.currentImageIndex]}')`;
-        
-        document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
-          dot.classList.toggle('active', index === window.currentImageIndex);
-        });
-      }
-    };
-
-    window.updateDots = function() {
-      document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
-        dot.classList.toggle('active', index === window.currentImageIndex);
-      });
-    };
-
-    window.prevDetailImage = function() {
-      if (window.currentProductImages.length <= 1) return;
-      
-      window.currentImageIndex = (window.currentImageIndex - 1 + window.currentProductImages.length) % window.currentProductImages.length;
-      window.updateMainImage();
-    };
-
-    window.nextDetailImage = function() {
-      if (window.currentProductImages.length <= 1) return;
-      
-      window.currentImageIndex = (window.currentImageIndex + 1) % window.currentProductImages.length;
-      window.updateMainImage();
-    };
-
-    // ==================== ORDER FLOW FUNCTIONS ====================
-    
-    window.decreaseQuantity = function() {
-      const qtySelect = document.getElementById('qtySelect');
-      if (qtySelect) {
-        let value = parseInt(qtySelect.value) || 1;
-        if (value > 1) {
-          value--;
-          qtySelect.value = value;
-        }
-      }
-      
-      // Update payment summary if on payment page
-      if (document.getElementById('paymentPage').classList.contains('active')) {
-        window.updatePaymentSummary();
-      }
-    };
-
-    window.increaseQuantity = function() {
-      const qtySelect = document.getElementById('qtySelect');
-      if (qtySelect) {
-        let value = parseInt(qtySelect.value) || 1;
-        if (value < 10) {
-          value++;
-          qtySelect.value = value;
-        }
-      }
-      
-      // Update payment summary if on payment page
-      if (document.getElementById('paymentPage').classList.contains('active')) {
-        window.updatePaymentSummary();
-      }
-    };
-
-    window.toUserInfoFlow = function() {
-      const selectedSize = document.querySelector('.size-option.selected');
-      if (!selectedSize) {
-        const error = document.getElementById('sizeValidationError');
-        if (error) error.classList.add('show');
-        return;
-      }
-      
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const size = selectedSize.getAttribute('data-value');
-      const color = window.selectedColor || document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
-      
-      const cart = {
-        productId: window.currentProduct ? window.currentProduct.id : 'test',
-        quantity: quantity,
-        size: size,
-        color: color
-      };
-      localStorage.setItem('cart', JSON.stringify(cart));
-      
-      window.showPage('userPage');
-    };
-
-    window.toPaymentFlow = function() {
-      const fullname = document.getElementById('fullname')?.value;
-      const mobile = document.getElementById('mobile')?.value;
-      const pincode = document.getElementById('pincode')?.value;
-      const city = document.getElementById('city')?.value;
-      const state = document.getElementById('state')?.value;
-      const house = document.getElementById('house')?.value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        window.showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      window.userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-      window.showPage('paymentPage');
-    };
-
-    window.confirmOrderFlow = async function() {
-      if (!window.currentUser) {
-        window.showLoginModal();
-        return;
-      }
-      
-      if (!window.userInfo.fullName || !window.userInfo.mobile) {
-        window.showToast('Please complete your information first', 'error');
-        window.showPage('userPage');
-        return;
-      }
-      
-      if (!window.currentProduct) {
-        window.showToast('No product selected', 'error');
-        window.showPage('productsPage');
-        return;
-      }
-      
-      const orderId = window.generateOrderId();
-      window.currentOrderId = orderId;
-      
-      const paymentMethod = document.querySelector('input[name="pay"]:checked')?.value || 'cod';
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const size = document.querySelector('.size-option.selected')?.getAttribute('data-value') || 'Not specified';
-      const color = window.selectedColor || document.querySelector('.color-option.selected')?.getAttribute('data-value') || 'Not specified';
-      
-      const productPrice = window.parsePrice(window.currentProduct.price);
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = window.adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = window.adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      const orderData = {
-        orderId: orderId,
-        userId: window.currentUser.uid,
-        username: window.userInfo.fullName,
-        userEmail: window.currentUser.email,
-        productId: window.currentProduct.id || 'test',
-        productName: window.currentProduct.name || 'Test Product',
-        productPrice: productPrice,
-        quantity: quantity,
-        size: size,
-        color: color,
-        subtotal: subtotal,
-        deliveryCharge: deliveryCharge,
-        gatewayCharge: gatewayCharge,
-        totalAmount: total,
-        paymentMethod: paymentMethod,
-        status: 'confirmed',
-        orderDate: Date.now(),
-        userInfo: window.userInfo,
-        tracking: {
-          confirmed: Date.now(),
-          shipped: null,
-          delivered: null
-        }
-      };
-      
-      try {
-        await set(ref(database, 'orders/' + orderId), orderData);
-        
-        const orderIdDisplay = document.getElementById('orderIdDisplay');
-        if (orderIdDisplay) orderIdDisplay.textContent = orderId;
-        
-        window.showPage('successPage');
-        window.showToast('Order placed successfully!', 'success');
-        
-        localStorage.removeItem('cart');
-        
-      } catch (error) {
-        console.error('Error placing order:', error);
-        window.showToast('Failed to place order. Please try again.', 'error');
-      }
-    };
-
-    window.updatePaymentSummary = function() {
-      if (!window.currentProduct) {
-        const sumProduct = document.getElementById('sumProduct');
-        const sumQty = document.getElementById('sumQty');
-        const sumPrice = document.getElementById('sumPrice');
-        const sumDel = document.getElementById('sumDel');
-        const sumGateway = document.getElementById('sumGateway');
-        const sumTotal = document.getElementById('sumTotal');
-        
-        if (sumProduct) sumProduct.textContent = '-';
-        if (sumQty) sumQty.textContent = '-';
-        if (sumPrice) sumPrice.textContent = '-';
-        if (sumDel) sumDel.textContent = `₹${window.adminSettings.deliveryCharge || 50}`;
-        if (sumGateway) sumGateway.textContent = '₹0';
-        if (sumTotal) sumTotal.textContent = '-';
-        return;
-      }
-      
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const paymentMethod = document.querySelector('input[name="pay"]:checked')?.value || 'cod';
-      
-      const productPrice = window.parsePrice(window.currentProduct.price);
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = window.adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = window.adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      const sumProduct = document.getElementById('sumProduct');
-      const sumQty = document.getElementById('sumQty');
-      const sumPrice = document.getElementById('sumPrice');
-      const sumDel = document.getElementById('sumDel');
-      const sumGateway = document.getElementById('sumGateway');
-      const sumTotal = document.getElementById('sumTotal');
-      
-      if (sumProduct) sumProduct.textContent = window.currentProduct.name || 'Product';
-      if (sumQty) sumQty.textContent = quantity;
-      if (sumPrice) sumPrice.textContent = `₹${subtotal.toLocaleString()}`;
-      if (sumDel) sumDel.textContent = `₹${deliveryCharge}`;
-      if (sumGateway) sumGateway.textContent = `₹${gatewayCharge.toFixed(2)}`;
-      if (sumTotal) sumTotal.textContent = `₹${total.toLocaleString()}`;
-    };
-
-    // ==================== INITIALIZATION ====================
-    
-    window.initApp = function() {
-      // Set theme
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      
-      // Remove index.html from URL if present
-      if (window.location.pathname.includes('index.html')) {
-        const newUrl = window.location.pathname.replace('index.html', '') + window.location.hash;
-        window.history.replaceState(null, '', newUrl);
-      }
-      
-      // Show appropriate page
-      if (window.location.hash) {
-        const pageId = window.location.hash.replace('#', '');
-        if (document.getElementById(pageId)) {
-          window.showPage(pageId);
-        } else {
-          window.showPage('homePage');
-        }
-      } else {
-        window.showPage('homePage');
-      }
-      
-      // Setup event listeners
-      window.setupEventListeners();
-      
-      // Setup hero messages
-      window.setupHeroMessages();
-      
-      // Load cached data
-      window.loadCachedData();
-      
-      console.log('App initialized successfully');
-    };
-
-    window.setupHeroMessages = function() {
-      const heroMessages = document.getElementById('heroMessages');
-      if (!heroMessages) return;
-      
-      const messages = heroMessages.querySelectorAll('span');
-      let currentIndex = 0;
-      
-      setInterval(() => {
-        messages.forEach(msg => msg.classList.remove('active'));
-        currentIndex = (currentIndex + 1) % messages.length;
-        messages[currentIndex].classList.add('active');
-      }, 3000);
-    };
-
-    // ==================== FIREBASE DATA FUNCTIONS ====================
-    
-    window.loadCachedData = function() {
-      // Load products from cache
-      const cachedProducts = window.cacheManager.get('products');
-      if (cachedProducts && cachedProducts.length > 0) {
-        window.products = cachedProducts;
-        window.renderProducts(window.products, 'homeProductGrid');
-        window.renderProducts(window.products, 'productGrid');
-        
-        const trendingProducts = window.products.filter(p => p.isTrending).slice(0, 10);
-        window.renderProductSlider(trendingProducts.length > 0 ? trendingProducts : window.products.slice(0, 10), 'productSlider');
-        
-        const featuredProducts = window.products.filter(p => p.isFeatured);
-        if (featuredProducts.length > 0) {
-          window.renderProducts(featuredProducts, 'homeProductGrid');
-        }
-      }
-      
-      // Load categories from cache
-      const cachedCategories = window.cacheManager.get('categories');
-      if (cachedCategories && cachedCategories.length > 0) {
-        window.categories = cachedCategories;
-        window.renderCategories();
-        window.renderCategoryCircles();
-      }
-      
-      // Load banners from cache
-      const cachedBanners = window.cacheManager.get('banners');
-      if (cachedBanners && cachedBanners.length > 0) {
-        window.banners = cachedBanners;
-        window.renderBannerCarousel();
-      }
-      
-      // Load admin settings from cache
-      const cachedSettings = window.cacheManager.get('adminSettings');
-      if (cachedSettings) {
-        window.adminSettings = cachedSettings;
-        window.updateAdminSettingsUI();
-      }
-    };
-
-    window.updateAdminSettingsUI = function() {
-      const deliveryCharge = document.getElementById('deliveryCharge');
-      const sumDel = document.getElementById('sumDel');
-      const gatewayChargePercent = document.getElementById('gatewayChargePercent');
-      
-      if (deliveryCharge) deliveryCharge.textContent = window.adminSettings.deliveryCharge;
-      if (sumDel) sumDel.textContent = `₹${window.adminSettings.deliveryCharge}`;
-      if (gatewayChargePercent) gatewayChargePercent.textContent = `${window.adminSettings.gatewayChargePercent}%`;
-    };
-
-    // ==================== RENDER FUNCTIONS ====================
-    
-    window.renderProducts = function(productsToRender, containerId) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      if (productsToRender.length === 0) {
-        container.innerHTML = '<div class="card-panel center">No products found</div>';
-        return;
-      }
-      
-      productsToRender.forEach(product => {
-        const productCard = window.createProductCard(product);
-        container.appendChild(productCard);
-      });
-    };
-
-    window.createProductCard = function(product) {
-      const card = document.createElement('div');
-      card.className = 'product-card';
-      const isWishlisted = window.isInWishlist(product.id);
-      
-      card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${window.getProductImage(product)}')">
-          ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
-          ${product.isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
-          ${product.isFeatured ? `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>` : ''}
-        </div>
-        <div class="product-card-body">
-          <div class="product-card-title">${product.name || 'Product Name'}</div>
-          <div class="product-card-rating">
-            <div class="product-card-stars">★★★★★</div>
-            <div class="product-card-review-count">(${product.reviews || '0'})</div>
-          </div>
-          <div class="product-card-price">
-            <div class="product-card-current-price">${product.price || '₹0'}</div>
-            ${product.originalPrice ? `<div class="product-card-original-price">${product.originalPrice}</div>` : ''}
-          </div>
-          <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${product.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-              </svg>
-            </button>
-            <button class="action-btn share-btn" data-product-id="${product.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
-      `;
-      
-      card.querySelector('.product-card-image').addEventListener('click', () => window.showProductDetail(product));
-      card.querySelector('.wishlist-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        window.toggleWishlist(product.id);
-      });
-      card.querySelector('.share-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        window.shareProduct('default', product);
-      });
-      
-      return card;
-    };
-
-    window.renderProductSlider = function(productsToRender, containerId) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      productsToRender.forEach(product => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
-        sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${window.getProductImage(product)}')"></div>
-          <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || 'Product Name'}</div>
-            <div class="slider-item-price">${product.price || '₹0'}</div>
-          </div>
-        `;
-        
-        sliderItem.addEventListener('click', () => window.showProductDetail(product));
-        container.appendChild(sliderItem);
-      });
-    };
-
-    window.renderCategories = function() {
-      const container = document.getElementById('categoriesContainer');
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      window.categories.forEach(category => {
-        const categoryPill = document.createElement('div');
-        categoryPill.className = 'category-pill';
-        categoryPill.textContent = category.name || 'Category';
-        categoryPill.addEventListener('click', () => window.filterByCategory(category.id));
-        container.appendChild(categoryPill);
-      });
-    };
-
-    window.renderCategoryCircles = function() {
-      const container = document.getElementById('categoryCirclesContainer');
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      window.categories.forEach(category => {
-        const circle = document.createElement('div');
-        circle.className = 'category-circle';
-        circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${window.getProductImage(category)}')"></div>
-          <div class="category-circle-name">${category.name || 'Category'}</div>
-        `;
-        
-        circle.addEventListener('click', () => window.filterByCategory(category.id));
-        container.appendChild(circle);
-      });
-    };
-
-    window.renderBannerCarousel = function() {
-      const track = document.getElementById('bannerTrack');
-      const controls = document.getElementById('bannerControls');
-      
-      if (!track || !controls) return;
-      
-      track.innerHTML = '';
-      controls.innerHTML = '';
-      
-      window.banners.forEach((banner, index) => {
-        const slide = document.createElement('div');
-        slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${window.getProductImage(banner)}')`;
-        
-        if (banner.link) {
-          slide.style.cursor = 'pointer';
-        }
-        
-        track.appendChild(slide);
-        
-        const dot = document.createElement('div');
-        dot.className = `banner-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => window.setBannerSlide(index));
-        controls.appendChild(dot);
-      });
-      
-      // Auto slide
-      if (window.banners.length > 1) {
-        setInterval(() => {
-          const activeIndex = window.banners.findIndex((_, index) => 
-            document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
-          );
-          const nextIndex = (activeIndex + 1) % window.banners.length;
-          window.setBannerSlide(nextIndex);
-        }, 5000);
-      }
-    };
-
-    window.setBannerSlide = function(index) {
-      const track = document.getElementById('bannerTrack');
-      const dots = document.querySelectorAll('.banner-dot');
-      
-      if (!track || !dots.length) return;
-      
-      track.style.transform = `translateX(-${index * 100}%)`;
-      
-      dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-      });
-    };
-
-    // ==================== SEARCH FUNCTIONS ====================
-    
-    window.openSearchPanel = function() {
-      const searchPanel = document.getElementById('searchPanel');
-      if (searchPanel) {
-        searchPanel.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        const searchPanelInput = document.getElementById('searchPanelInput');
-        if (searchPanelInput) searchPanelInput.focus();
-      }
-    };
-
-    window.closeSearchPanel = function() {
-      const searchPanel = document.getElementById('searchPanel');
-      if (searchPanel) {
-        searchPanel.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-    };
-
-    window.debounce = function(func, wait) {
-      let timeout;
-      return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
-      };
-    };
-
-    window.handleSearchPanelInput = function() {
-      const query = document.getElementById('searchPanelInput')?.value.toLowerCase().trim() || '';
-      const searchPanelResults = document.getElementById('searchPanelResults');
-      const recentSearchesSection = document.getElementById('recentSearchesSection');
-      
-      if (!searchPanelResults) return;
-      
-      if (query.length === 0) {
-        searchPanelResults.innerHTML = '';
-        if (recentSearchesSection) recentSearchesSection.style.display = 'block';
-        window.loadRecentSearches();
-        return;
-      }
-      
-      if (recentSearchesSection) recentSearchesSection.style.display = 'none';
-      
-      const filteredProducts = window.products.filter(product => 
-        (product.name && product.name.toLowerCase().includes(query)) ||
-        (product.description && product.description.toLowerCase().includes(query)) ||
-        (product.category && product.category.toLowerCase().includes(query))
-      );
-      
-      if (filteredProducts.length === 0) {
-        searchPanelResults.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No products found</div>';
-      } else {
-        searchPanelResults.innerHTML = `
-          <div style="font-size:16px;font-weight:600;margin-bottom:16px;color:var(--ink)">
-            Search Results (${filteredProducts.length})
-          </div>
-          <div style="display:grid;grid-template-columns:1fr;gap:12px;">
-            ${filteredProducts.map(product => `
-              <div class="recent-search-item" onclick="window.searchAndClose('${product.name}')">
-                <div class="recent-search-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                </div>
-                <div style="flex:1">
-                  <div style="font-weight:600">${product.name}</div>
-                  <div style="font-size:12px;color:var(--muted)">${product.price}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-    };
-
-    window.searchAndClose = function(searchTerm) {
-      window.addRecentSearch(searchTerm);
-      window.closeSearchPanel();
-      window.showPage('productsPage');
-      window.filterProducts(searchTerm, 'productGrid');
-    };
-
-    window.searchFromPanel = function(searchTerm) {
-      const searchPanelInput = document.getElementById('searchPanelInput');
-      if (searchPanelInput) searchPanelInput.value = searchTerm;
-      window.searchAndClose(searchTerm);
-    };
-
-    window.loadRecentSearches = function() {
-      const recentSearchesList = document.getElementById('recentSearchesList');
-      const recentSearchesSection = document.getElementById('recentSearchesSection');
-      
-      if (!recentSearchesList || !recentSearchesSection) return;
-      
-      if (window.recentSearches.length === 0) {
-        recentSearchesSection.style.display = 'none';
-        return;
-      }
-      
-      recentSearchesSection.style.display = 'block';
-      recentSearchesList.innerHTML = window.recentSearches.map(term => `
-        <div class="recent-search-item" onclick="window.searchFromPanel('${term}')">
-          <div class="recent-search-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-          <div style="flex:1">${term}</div>
-        </div>
-      `).join('');
-    };
-
-    window.addRecentSearch = function(term) {
-      if (!term.trim()) return;
-      
-      // Remove if already exists
-      window.recentSearches = window.recentSearches.filter(t => t !== term);
-      
-      // Add to beginning
-      window.recentSearches.unshift(term);
-      
-      // Keep only last 10 searches
-      if (window.recentSearches.length > 10) {
-        window.recentSearches = window.recentSearches.slice(0, 10);
-      }
-      
-      localStorage.setItem('recentSearches', JSON.stringify(window.recentSearches));
-    };
-
-    window.clearRecentSearchesHandler = function() {
-      window.recentSearches = [];
-      localStorage.removeItem('recentSearches');
-      const recentSearchesSection = document.getElementById('recentSearchesSection');
-      if (recentSearchesSection) recentSearchesSection.style.display = 'none';
-    };
-
-    window.filterProducts = function(searchTerm, containerId) {
-      const filteredProducts = window.products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      
-      window.renderProducts(filteredProducts, containerId);
-    };
-
-    window.filterByCategory = function(categoryId) {
-      window.currentCategoryFilter = categoryId;
-      const filteredProducts = window.products.filter(product => 
-        product.category === categoryId
-      );
-      
-      window.renderProducts(filteredProducts, 'productGrid');
-      
-      // Update active category pill
-      document.querySelectorAll('.category-pill').forEach(pill => {
-        pill.classList.remove('active');
-      });
-      
-      const activePill = Array.from(document.querySelectorAll('.category-pill')).find(pill => 
-        pill.textContent.includes(window.categories.find(c => c.id === categoryId)?.name || '')
-      );
-      if (activePill) activePill.classList.add('active');
-    };
-
-    // ==================== MORE FUNCTIONS ====================
-    
-    // Note: Character limit ke karan main yahan sab functions include nahi kar sakta
-    // Main aapko puri file alag se provide kar doonga
-    
-  </script>
+<link rel="stylesheet" href="style.css">
+<script src="script.js" defer></script>
 </head>
 <body>
   <!-- Mobile Menu Overlay -->
@@ -1799,14 +31,14 @@
       <div class="menu-close" id="menuClose">×</div>
     </div>
     <div class="menu-items">
-      <div class="menu-item" onclick="window.showPage('homePage'); window.closeMenu();">
+      <div class="menu-item" onclick="showPage('homePage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
         Home
       </div>
-      <div class="menu-item" onclick="window.showPage('productsPage'); window.closeMenu();">
+      <div class="menu-item" onclick="showPage('productsPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7"></rect>
           <rect x="14" y="3" width="7" height="7"></rect>
@@ -1815,7 +47,7 @@
         </svg>
         Products
       </div>
-      <div class="menu-item" onclick="window.checkAuthAndShowPage('myOrdersPage'); window.closeMenu();">
+      <div class="menu-item" onclick="checkAuthAndShowPage('myOrdersPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="9" cy="21" r="1"></circle>
           <circle cx="20" cy="21" r="1"></circle>
@@ -1823,20 +55,20 @@
         </svg>
         My Orders
       </div>
-      <div class="menu-item" onclick="window.checkAuthAndShowPage('wishlistPage'); window.closeMenu();">
+      <div class="menu-item" onclick="checkAuthAndShowPage('wishlistPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
         Wishlist
       </div>
-      <div class="menu-item" onclick="window.location.href='account.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='account.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         My Account
       </div>
-      <div class="menu-item" onclick="window.location.href='refund.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='refund.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="15" y1="9" x2="9" y2="15"></line>
@@ -1844,7 +76,7 @@
         </svg>
         Refund & Cancellation
       </div>
-      <div class="menu-item" onclick="window.location.href='terms.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='terms.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
@@ -1854,7 +86,7 @@
         </svg>
         Terms & Conditions
       </div>
-      <div class="menu-item" onclick="window.location.href='shipping.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='shipping.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 15a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v0z"></path>
           <path d="M3 15V9a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6"></path>
@@ -1862,13 +94,13 @@
         </svg>
         Shipping Policy
       </div>
-      <div class="menu-item" onclick="window.location.href='privacy.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='privacy.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         </svg>
         Privacy Policy
       </div>
-      <div class="menu-item" onclick="window.location.href='contact.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='contact.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
           <polyline points="22,6 12,13 2,6"></polyline>
@@ -1877,7 +109,7 @@
       </div>
       
       <!-- Additional Menu Items -->
-      <div class="menu-item" onclick="window.location.href='about.html'; window.closeMenu();">
+      <div class="menu-item" onclick="window.location.href='about.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -1888,23 +120,23 @@
       
       <!-- Social Media Links in Mobile Menu - Icons Only -->
       <div style="display: flex; justify-content: center; gap: 10px; padding: 15px 20px; border-top: 1px solid var(--border);">
-        <div class="social-menu-item" onclick="window.open('https://www.instagram.com/buyzo.cart?igsh=d2Mxc2EwMW45cWwy', '_blank'); window.closeMenu();">
+        <div class="social-menu-item" onclick="window.open('https://www.instagram.com/buyzo.cart?igsh=d2Mxc2EwMW45cWwy', '_blank'); closeMenu();">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#E4405F" class="instagram-fixed">
             <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"></path>
             <path d="M12 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
           </svg>
         </div>
-        <div class="social-menu-item" onclick="window.open('https://www.youtube.com/@BuyzoCart', '_blank'); window.closeMenu();">
+        <div class="social-menu-item" onclick="window.open('https://www.youtube.com/@BuyzoCart', '_blank'); closeMenu();">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#FF0000">
             <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
           </svg>
         </div>
-        <div class="social-menu-item" onclick="window.open('https://t.me/buyzocartshop', '_blank'); window.closeMenu();">
+        <div class="social-menu-item" onclick="window.open('https://t.me/buyzocartshop', '_blank'); closeMenu();">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#26A5E4">
-            <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-l1.447 1.394c-.14.141-.259.259-.374.261l.213-3.053 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.136-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+            <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.14.141-.259.259-.374.261l.213-3.053 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.136-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
           </svg>
         </div>
-        <div class="social-menu-item" onclick="window.open('https://www.facebook.com/share/17G9Bu9fmH/', '_blank'); window.closeMenu();">
+        <div class="social-menu-item" onclick="window.open('https://www.facebook.com/share/17G9Bu9fmH/', '_blank'); closeMenu();">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#1877F2">
             <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
           </svg>
@@ -1912,21 +144,22 @@
       </div>
       
       <!-- Login/Signup at the bottom of mobile menu -->
-      <div class="menu-item" id="mobileLoginBtn" onclick="window.showLoginModal(); window.closeMenu();">
+      <div class="menu-item" id="mobileLoginBtn" onclick="showLoginModal(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v -2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         Login / Sign Up
       </div>
-      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="window.location.href='account.html'; window.closeMenu();">
+      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="window.location.href='account.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         <span id="mobileUserName">My Account</span>
       </div>
-      <div class="menu-item" id="mobileLogoutBtn" style="display:none;" onclick="window.showLogoutConfirmation(); window.closeMenu();">
+      <!-- NEW: Logout in mobile menu -->
+      <div class="menu-item" id="mobileLogoutBtn" style="display:none;" onclick="showLogoutConfirmation(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
@@ -1955,12 +188,12 @@
     <div class="popular-searches">
       <div class="popular-searches-title">Popular Searches</div>
       <div class="popular-search-tags">
-        <div class="search-tag" onclick="window.searchFromPanel('Men Shirts')">Men Shirts</div>
-        <div class="search-tag" onclick="window.searchFromPanel('Women Dresses')">Women Dresses</div>
-        <div class="search-tag hot" onclick="window.searchFromPanel('Smart Watches')">Smart Watches</div>
-        <div class="search-tag" onclick="window.searchFromPanel('Sneakers')">Sneakers</div>
-        <div class="search-tag hot" onclick="window.searchFromPanel('Wireless Earbuds')">Wireless Earbuds</div>
-        <div class="search-tag" onclick="window.searchFromPanel('Backpacks')">Backpacks</div>
+        <div class="search-tag" onclick="searchFromPanel('Men Shirts')">Men Shirts</div>
+        <div class="search-tag" onclick="searchFromPanel('Women Dresses')">Women Dresses</div>
+        <div class="search-tag hot" onclick="searchFromPanel('Smart Watches')">Smart Watches</div>
+        <div class="search-tag" onclick="searchFromPanel('Sneakers')">Sneakers</div>
+        <div class="search-tag hot" onclick="searchFromPanel('Wireless Earbuds')">Wireless Earbuds</div>
+        <div class="search-tag" onclick="searchFromPanel('Backpacks')">Backpacks</div>
       </div>
     </div>
     
@@ -1974,14 +207,14 @@
         <span></span>
         <span></span>
       </div>
-      <div class="brand" aria-label="Buyzo Cart brand" onclick="window.showPage('homePage')">
+      <div class="brand" aria-label="Buyzo Cart brand" onclick="showPage('homePage')">
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
       
       <!-- Search Bar in Header -->
       <div class="search-wrap">
-        <input id="headerSearchInput" placeholder="Search products..." onclick="window.openSearchPanel()" readonly />
+        <input id="headerSearchInput" placeholder="Search products..." onclick="openSearchPanel()" readonly />
       </div>
       
       <div class="cta">
@@ -2036,24 +269,15 @@
         </div>
 
         <!-- Highlight CTA strip -->
-        <div class="highlight-strip" onclick="window.showPage('productsPage')">
+        <div class="highlight-strip" onclick="showPage('productsPage')">
           Limited Time Offer: Flat 40% OFF on all Fashion Items — <u>Shop Now →</u>
         </div>
       </section>
 
       <!-- NEW: Banner Carousel -->
-      <div class="banner-carousel" id="bannerCarousel">
-        <div class="banner-track" id="bannerTrack">
-          <!-- Default banner images -->
-          <div class="banner-slide" style="background-image: url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=400&fit=crop')"></div>
-          <div class="banner-slide" style="background-image: url('https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200&h=400&fit=crop')"></div>
-          <div class="banner-slide" style="background-image: url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&h=400&fit=crop')"></div>
-        </div>
-        <div class="banner-controls" id="bannerControls">
-          <div class="banner-dot active"></div>
-          <div class="banner-dot"></div>
-          <div class="banner-dot"></div>
-        </div>
+      <div class="banner-carousel skeleton" id="bannerCarousel">
+        <div class="banner-track" id="bannerTrack"></div>
+        <div class="banner-controls" id="bannerControls"></div>
       </div>
 
       <!-- TRENDING NOW SECTION -->
@@ -2063,42 +287,12 @@
         </div>
         <div class="slider-container">
           <div class="slider-track" id="productSlider">
-            <!-- Sample products -->
-            <div class="slider-item" onclick="window.showProductDetail({id: '1', name: 'Wireless Headphones', price: '₹2499', description: 'Premium wireless headphones with noise cancellation'})">
-              <div class="slider-item-img" style="background-image: url('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop')"></div>
-              <div class="slider-item-body">
-                <div class="slider-item-title">Wireless Headphones</div>
-                <div class="slider-item-price">₹2499</div>
-              </div>
-            </div>
-            <div class="slider-item" onclick="window.showProductDetail({id: '2', name: 'Smart Watch', price: '₹3999', description: 'Fitness tracker with heart rate monitor'})">
-              <div class="slider-item-img" style="background-image: url('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=300&fit=crop')"></div>
-              <div class="slider-item-body">
-                <div class="slider-item-title">Smart Watch</div>
-                <div class="slider-item-price">₹3999</div>
-              </div>
-            </div>
-            <div class="slider-item" onclick="window.showProductDetail({id: '3', name: 'Casual T-Shirt', price: '₹599', description: 'Comfortable cotton t-shirt for everyday wear'})">
-              <div class="slider-item-img" style="background-image: url('https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=300&fit=crop')"></div>
-              <div class="slider-item-body">
-                <div class="slider-item-title">Casual T-Shirt</div>
-                <div class="slider-item-price">₹599</div>
-              </div>
-            </div>
-            <div class="slider-item" onclick="window.showProductDetail({id: '4', name: 'Running Shoes', price: '₹1999', description: 'Lightweight running shoes for maximum comfort'})">
-              <div class="slider-item-img" style="background-image: url('https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop')"></div>
-              <div class="slider-item-body">
-                <div class="slider-item-title">Running Shoes</div>
-                <div class="slider-item-price">₹1999</div>
-              </div>
-            </div>
-            <div class="slider-item" onclick="window.showProductDetail({id: '5', name: 'Backpack', price: '₹1299', description: 'Water-resistant backpack with laptop compartment'})">
-              <div class="slider-item-img" style="background-image: url('https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop')"></div>
-              <div class="slider-item-body">
-                <div class="slider-item-title">Backpack</div>
-                <div class="slider-item-price">₹1299</div>
-              </div>
-            </div>
+            <!-- Skeleton loader for trending products -->
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
+            <div class="slider-item skeleton" style="height: 200px;"></div>
           </div>
         </div>
       </div>
@@ -2107,26 +301,22 @@
       <div class="category-circles">
         <h2 class="category-circles-title">Shop by Category</h2>
         <div class="category-circles-container" id="categoryCirclesContainer">
-          <!-- Sample categories -->
-          <div class="category-circle" onclick="window.filterByCategory('electronics')">
-            <div class="category-circle-image" style="background-image: url('https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&h=200&fit=crop')"></div>
-            <div class="category-circle-name">Electronics</div>
+          <!-- Skeleton loader for categories -->
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
           </div>
-          <div class="category-circle" onclick="window.filterByCategory('fashion')">
-            <div class="category-circle-image" style="background-image: url('https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&h=200&fit=crop')"></div>
-            <div class="category-circle-name">Fashion</div>
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
           </div>
-          <div class="category-circle" onclick="window.filterByCategory('home')">
-            <div class="category-circle-image" style="background-image: url('https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=200&h=200&fit=crop')"></div>
-            <div class="category-circle-name">Home</div>
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
           </div>
-          <div class="category-circle" onclick="window.filterByCategory('beauty')">
-            <div class="category-circle-image" style="background-image: url('https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=200&h=200&fit=crop')"></div>
-            <div class="category-circle-name">Beauty</div>
-          </div>
-          <div class="category-circle" onclick="window.filterByCategory('sports')">
-            <div class="category-circle-image" style="background-image: url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&h=200&fit=crop')"></div>
-            <div class="category-circle-name">Sports</div>
+          <div class="category-circle skeleton">
+            <div class="category-circle-image"></div>
+            <div class="category-circle-name"></div>
           </div>
         </div>
       </div>
@@ -2144,137 +334,41 @@
 
       <!-- Featured Products Grid -->
       <div class="product-grid" id="homeProductGrid">
-        <!-- Sample products -->
-        <div class="product-card" onclick="window.showProductDetail({id: '6', name: 'Wireless Earbuds', price: '₹1799', description: 'True wireless earbuds with 24-hour battery'})">
-          <div class="product-card-image" style="background-image:url('https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=300&fit=crop')">
-            <div class="product-card-badge">30% OFF</div>
-          </div>
+        <!-- Skeleton loader for products -->
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
           <div class="product-card-body">
-            <div class="product-card-title">Wireless Earbuds</div>
-            <div class="product-card-rating">
-              <div class="product-card-stars">★★★★★</div>
-              <div class="product-card-review-count">(128)</div>
-            </div>
-            <div class="product-card-price">
-              <div class="product-card-current-price">₹1799</div>
-              <div class="product-card-original-price">₹2499</div>
-            </div>
-            <div class="product-card-actions">
-              <button class="action-btn wishlist-btn" data-product-id="6">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
-              <button class="action-btn share-btn" data-product-id="6">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-              </button>
-            </div>
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
           </div>
         </div>
-        
-        <div class="product-card" onclick="window.showProductDetail({id: '7', name: 'Sports Shoes', price: '₹2999', description: 'Premium sports shoes for running and gym'})">
-          <div class="product-card-image" style="background-image:url('https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop')">
-            <div class="professional-badge">TRENDING</div>
-          </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
           <div class="product-card-body">
-            <div class="product-card-title">Sports Shoes</div>
-            <div class="product-card-rating">
-              <div class="product-card-stars">★★★★★</div>
-              <div class="product-card-review-count">(89)</div>
-            </div>
-            <div class="product-card-price">
-              <div class="product-card-current-price">₹2999</div>
-              <div class="product-card-original-price">₹3999</div>
-            </div>
-            <div class="product-card-actions">
-              <button class="action-btn wishlist-btn" data-product-id="7">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
-              <button class="action-btn share-btn" data-product-id="7">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-              </button>
-            </div>
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
           </div>
         </div>
-        
-        <div class="product-card" onclick="window.showProductDetail({id: '8', name: 'Smartphone', price: '₹15999', description: 'Latest smartphone with advanced camera features'})">
-          <div class="product-card-image" style="background-image:url('https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop')">
-            <div class="product-card-badge">NEW</div>
-            <div class="professional-badge" style="background:#22c55e;">FEATURED</div>
-          </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
           <div class="product-card-body">
-            <div class="product-card-title">Smartphone</div>
-            <div class="product-card-rating">
-              <div class="product-card-stars">★★★★★</div>
-              <div class="product-card-review-count">(256)</div>
-            </div>
-            <div class="product-card-price">
-              <div class="product-card-current-price">₹15999</div>
-              <div class="product-card-original-price">₹19999</div>
-            </div>
-            <div class="product-card-actions">
-              <button class="action-btn wishlist-btn" data-product-id="8">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
-              <button class="action-btn share-btn" data-product-id="8">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-              </button>
-            </div>
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
           </div>
         </div>
-        
-        <div class="product-card" onclick="window.showProductDetail({id: '9', name: 'Laptop Backpack', price: '₹1499', description: 'Water-resistant laptop backpack with USB port'})">
-          <div class="product-card-image" style="background-image:url('https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop')">
-            <div class="professional-badge">BEST SELLER</div>
-          </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
           <div class="product-card-body">
-            <div class="product-card-title">Laptop Backpack</div>
-            <div class="product-card-rating">
-              <div class="product-card-stars">★★★★★</div>
-              <div class="product-card-review-count">(312)</div>
-            </div>
-            <div class="product-card-price">
-              <div class="product-card-current-price">₹1499</div>
-              <div class="product-card-original-price">₹1999</div>
-            </div>
-            <div class="product-card-actions">
-              <button class="action-btn wishlist-btn" data-product-id="9">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
-              <button class="action-btn share-btn" data-product-id="9">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-              </button>
-            </div>
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
           </div>
         </div>
       </div>
@@ -2336,17 +430,47 @@
 
       <!-- Category Navigation -->
       <div class="categories" id="categoriesContainer">
-        <!-- Categories will be loaded dynamically -->
-        <div class="category-pill active" onclick="window.filterByCategory('all')">All</div>
-        <div class="category-pill" onclick="window.filterByCategory('electronics')">Electronics</div>
-        <div class="category-pill" onclick="window.filterByCategory('fashion')">Fashion</div>
-        <div class="category-pill" onclick="window.filterByCategory('home')">Home</div>
-        <div class="category-pill" onclick="window.filterByCategory('beauty')">Beauty</div>
-        <div class="category-pill" onclick="window.filterByCategory('sports')">Sports</div>
+        <!-- Categories will be loaded from Firebase by admin -->
       </div>
 
       <div class="product-grid" id="productGrid">
-        <!-- Products will be loaded dynamically -->
+        <!-- Skeleton loader for products -->
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
+        <div class="product-card skeleton">
+          <div class="product-card-image"></div>
+          <div class="product-card-body">
+            <div class="product-card-title"></div>
+            <div class="product-card-rating"></div>
+            <div class="product-card-price"></div>
+            <div class="product-card-actions"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -2355,14 +479,14 @@
       <div class="product-detail-page">
         <!-- Breadcrumb Navigation -->
         <div class="breadcrumb">
-          <a href="#" onclick="window.showPage('homePage')">Home</a>
+          <a href="#" onclick="showPage('homePage')">Home</a>
           <span>></span>
-          <a href="#" onclick="window.showPage('productsPage')">Products</a>
+          <a href="#" onclick="showPage('productsPage')">Products</a>
           <span>></span>
           <span id="breadcrumbProductName">Product Details</span>
         </div>
         
-        <div class="back-to-products" onclick="window.showPage('productsPage')">
+        <div class="back-to-products" onclick="showPage('productsPage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
@@ -2393,15 +517,15 @@
           </div>
           
           <div class="product-detail-info">
-            <h1 class="product-detail-title" id="detailTitle">Product Name</h1>
+            <h1 class="product-detail-title" id="detailTitle"></h1>
             <!-- Product SKU -->
-            <div class="product-sku" id="detailSku">SKU: N/A</div>
-            <div class="product-detail-price" id="detailPrice">₹0</div>
+            <div class="product-sku" id="detailSku"></div>
+            <div class="product-detail-price" id="detailPrice"></div>
             <!-- Stock Status -->
             <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
             
-            <div class="product-detail-desc" id="detailDesc">Product description will appear here.</div>
-            <div class="product-detail-full-desc" id="detailFullDesc">Full product description will appear here.</div>
+            <div class="product-detail-desc" id="detailDesc"></div>
+            <div class="product-detail-full-desc" id="detailFullDesc"></div>
             
             <!-- Rating and Reviews Section -->
             <div class="review-section">
@@ -2487,14 +611,14 @@
             </div>
           </div>
           <div class="card-body">
-            <div class="title" id="spTitle">Product Title</div>
-            <div class="price" id="spPrice">₹0</div>
-            <div class="badge" id="spDesc">Product description</div>
+            <div class="title" id="spTitle"></div>
+            <div class="price" id="spPrice"></div>
+            <div class="badge" id="spDesc"></div>
             
             <!-- Product Details Section -->
             <div class="product-details">
               <h4>Product Details</h4>
-              <p id="spFullDesc">Full product description will appear here.</p>
+              <p id="spFullDesc"></p>
             </div>
 
             <div style="margin-top:auto">
@@ -2553,7 +677,7 @@
         <div class="card-panel" id="savedAddressesSection" style="display:none; margin-bottom: 20px;">
           <h4 style="margin-top:0">Select Saved Address</h4>
           <div id="savedAddressesList"></div>
-          <button class="btn secondary" onclick="window.showNewAddressForm()" style="margin-top: 12px;">Add New Address</button>
+          <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">Add New Address</button>
         </div>
 
         <!-- UPDATED: New Address Form with Address Type -->
@@ -2569,8 +693,8 @@
               <div class="col"><label>Pincode *</label><input id="pincode" placeholder="Pincode" type="text" /></div>
             </div>
             <div class="row">
-              <div class="col"><label>City *</label><input id="city" placeholder="City" /></div>
-              <div class="col"><label>State *</label><input id="state" placeholder="State" /></div>
+              <div class="col"><label>City *</label><input id="city" /></div>
+              <div class="col"><label>State *</label><input id="state" /></div>
             </div>
             <div>
               <label>House / Street *</label>
@@ -2654,7 +778,7 @@
     <!-- My Orders Page -->
     <section class="page" id="myOrdersPage">
       <div class="policy-page">
-        <div class="back-button" onclick="window.showPage('homePage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
@@ -2667,12 +791,13 @@
           
           <div id="ordersList">
             <!-- Orders will be dynamically inserted here -->
-            <div class="empty-state" style="display:block">
-              <div style="font-size:48px;margin-bottom:16px">📦</div>
-              <h3>No Orders Yet</h3>
-              <p>Your orders will appear here after you place them.</p>
-              <button class="empty-btn" onclick="window.showPage('productsPage')">Start Shopping</button>
-            </div>
+          </div>
+          
+          <div id="orders-empty" class="empty-state" style="display:none">
+            <img src="https://cdn-icons-png.flaticon.com/512/891/891419.png" class="empty-icon">
+            <h3>No Orders Yet</h3>
+            <p>Your orders will appear here after you place them.</p>
+            <a href="#" class="empty-btn" onclick="showPage('productsPage')">Start Shopping</a>
           </div>
         </div>
       </div>
@@ -2681,7 +806,7 @@
     <!-- Order Detail Page -->
     <section class="page" id="orderDetailPage">
       <div class="policy-page">
-        <div class="back-button" onclick="window.showPage('myOrdersPage')">
+        <div class="back-button" onclick="showMyOrders(); showPage('myOrdersPage');">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
@@ -2701,7 +826,7 @@
     <!-- Wishlist Page - UPDATED WITH INSTANT DISLIKE -->
     <section class="page" id="wishlistPage">
       <div class="policy-page">
-        <div class="back-button" onclick="window.showPage('homePage')">
+        <div class="back-button" onclick="showPage('homePage')">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
@@ -2714,12 +839,15 @@
           
           <div id="wishlistItems" class="product-grid">
             <!-- Wishlist items will be dynamically inserted here -->
-            <div class="empty-state" style="display:block">
-              <div style="font-size:48px;margin-bottom:16px">❤️</div>
-              <h3>Your Wishlist is Empty</h3>
-              <p>You haven't added any products to your wishlist yet.</p>
-              <button class="empty-btn" onclick="window.showPage('productsPage')">Browse Products</button>
-            </div>
+          </div>
+          
+          <div id="emptyWishlist" class="card-panel center" style="display:none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            <h3 style="margin:16px 0 8px;color:var(--muted)">Aapki wishlist khaali hai.</h3>
+            <p style="color:var(--muted-light)">You haven't added any products to your wishlist yet.</p>
+            <button class="btn" style="margin-top:16px" onclick="showPage('productsPage')">Browse Products</button>
           </div>
         </div>
       </div>
@@ -2728,7 +856,7 @@
 
   <!-- NEW: Bottom Navigation Bar -->
   <div class="bottom-nav">
-    <div class="bottom-nav-item active" onclick="window.showPage('homePage')">
+    <div class="bottom-nav-item active" onclick="showPage('homePage')">
       <div class="bottom-nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -2737,7 +865,7 @@
       </div>
       <div class="bottom-nav-label">Home</div>
     </div>
-    <div class="bottom-nav-item" onclick="window.showPage('productsPage')">
+    <div class="bottom-nav-item" onclick="showPage('productsPage')">
       <div class="bottom-nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7"></rect>
@@ -2748,7 +876,7 @@
       </div>
       <div class="bottom-nav-label">Products</div>
     </div>
-    <div class="bottom-nav-item" onclick="window.checkAuthAndShowPage('myOrdersPage')">
+    <div class="bottom-nav-item" onclick="checkAuthAndShowPage('myOrdersPage')">
       <div class="bottom-nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="9" cy="21" r="1"></circle>
@@ -2758,7 +886,7 @@
       </div>
       <div class="bottom-nav-label">Orders</div>
     </div>
-    <div class="bottom-nav-item" onclick="window.checkAuthAndShowPage('wishlistPage')">
+    <div class="bottom-nav-item" onclick="checkAuthAndShowPage('wishlistPage')">
       <div class="bottom-nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -2833,10 +961,10 @@
         <div class="footer-section">
           <h3>Quick Links</h3>
           <ul class="footer-links">
-            <li><a onclick="window.showPage('homePage')">Home</a></li>
-            <li><a onclick="window.showPage('productsPage')">Products</a></li>
-            <li><a onclick="window.checkAuthAndShowPage('myOrdersPage')">My Orders</a></li>
-            <li><a onclick="window.checkAuthAndShowPage('wishlistPage')">Wishlist</a></li>
+            <li><a onclick="showPage('homePage')">Home</a></li>
+            <li><a onclick="showPage('productsPage')">Products</a></li>
+            <li><a onclick="checkAuthAndShowPage('myOrdersPage')">My Orders</a></li>
+            <li><a onclick="checkAuthAndShowPage('wishlistPage')">Wishlist</a></li>
             <li><a href="account.html">My Account</a></li>
             <li><a href="about.html">About Us</a></li>
             <li><a href="contact.html">Contact Us</a></li>
@@ -3059,1087 +1187,10 @@
     </div>
   </div>
 
-  <!-- Additional JavaScript for remaining functions -->
-  <script>
-    // ==================== ADDITIONAL FUNCTIONS ====================
-    
-    // Initialize order page gallery
-    window.initOrderPageGallery = function() {
-      if (!window.currentProduct) return;
-      
-      const galleryMain = document.getElementById('galleryMain');
-      const dotsContainer = document.getElementById('orderCarouselDots');
-      
-      if (!galleryMain || !dotsContainer) return;
-      
-      const productImages = window.getProductImages();
-      
-      if (galleryMain && productImages[0]) {
-        galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
-      }
-      
-      dotsContainer.innerHTML = '';
-      
-      productImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          window.setOrderPageImage(index);
-        });
-        dotsContainer.appendChild(dot);
-      });
-      
-      const prevBtn = galleryMain.querySelector('.carousel-control.prev');
-      const nextBtn = galleryMain.querySelector('.carousel-control.next');
-      
-      if (prevBtn) {
-        prevBtn.onclick = () => {
-          const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
-          const newIndex = (activeIndex - 1 + productImages.length) % productImages.length;
-          window.setOrderPageImage(newIndex);
-        };
-      }
-      
-      if (nextBtn) {
-        nextBtn.onclick = () => {
-          const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
-          const newIndex = (activeIndex + 1) % productImages.length;
-          window.setOrderPageImage(newIndex);
-        };
-      }
-    };
+  <!-- EmailJS SDK -->
+  
 
-    window.setOrderPageImage = function(index) {
-      const galleryMain = document.getElementById('galleryMain');
-      const dots = document.querySelectorAll('#orderCarouselDots .carousel-dot');
-      const productImages = window.getProductImages();
-      
-      if (galleryMain && productImages[index]) {
-        galleryMain.style.backgroundImage = `url('${productImages[index]}')`;
-      }
-      
-      dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-      });
-    };
-
-    // Load similar products
-    window.loadSimilarProducts = function(product) {
-      const similarProducts = window.products
-        .filter(p => p.id !== product.id && p.category === product.category)
-        .slice(0, 10);
-      
-      const similarSlider = document.getElementById('similarProductsSlider');
-      if (similarSlider) {
-        similarSlider.innerHTML = '';
-        
-        (similarProducts.length > 0 ? similarProducts : window.products.slice(0, 10)).forEach(product => {
-          const sliderItem = document.createElement('div');
-          sliderItem.className = 'slider-item';
-          sliderItem.innerHTML = `
-            <div class="slider-item-img" style="background-image: url('${window.getProductImage(product)}')"></div>
-            <div class="slider-item-body">
-              <div class="slider-item-title">${product.name || 'Product Name'}</div>
-              <div class="slider-item-price">${product.price || '₹0'}</div>
-            </div>
-          `;
-          
-          sliderItem.addEventListener('click', () => window.showProductDetail(product));
-          similarSlider.appendChild(sliderItem);
-        });
-      }
-    };
-
-    // Rating and review functions
-    window.setRating = function(rating) {
-      const stars = document.querySelectorAll('.rating-star');
-      stars.forEach((star, index) => {
-        if (index < rating) {
-          star.classList.add('active');
-        } else {
-          star.classList.remove('active');
-        }
-      });
-    };
-
-    window.submitProductReview = async function() {
-      if (!window.currentUser) {
-        window.showLoginModal();
-        return;
-      }
-      
-      if (!window.currentProduct) {
-        window.showToast('No product selected', 'error');
-        return;
-      }
-      
-      const activeStars = document.querySelectorAll('.rating-star.active');
-      const rating = activeStars.length;
-      const reviewTextValue = document.getElementById('reviewText')?.value.trim();
-      
-      if (rating === 0) {
-        window.showToast('Please select a rating', 'error');
-        return;
-      }
-      
-      if (!reviewTextValue) {
-        window.showToast('Please write a review', 'error');
-        return;
-      }
-      
-      try {
-        const reviewId = 'review_' + Date.now();
-        const reviewData = {
-          id: reviewId,
-          productId: window.currentProduct.id,
-          userId: window.currentUser.uid,
-          userName: window.currentUser.displayName || 'Anonymous',
-          rating: rating,
-          text: reviewTextValue,
-          date: Date.now()
-        };
-        
-        await set(ref(database, 'reviews/' + reviewId), reviewData);
-        
-        window.showToast('Review submitted successfully', 'success');
-        
-        window.setRating(0);
-        const reviewText = document.getElementById('reviewText');
-        if (reviewText) reviewText.value = '';
-        
-        window.loadProductReviews(window.currentProduct.id);
-      } catch (error) {
-        console.error('Error submitting review:', error);
-        window.showToast('Failed to submit review', 'error');
-      }
-    };
-
-    window.loadProductReviews = async function(productId) {
-      try {
-        const reviewsRef = ref(database, 'reviews');
-        const reviewsQuery = query(reviewsRef, orderByChild('productId'), equalTo(productId));
-        const snapshot = await get(reviewsQuery);
-        
-        const reviewsList = document.getElementById('reviewsList');
-        if (!reviewsList) return;
-        
-        if (!snapshot.exists()) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
-          return;
-        }
-        
-        const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        reviews.sort((a, b) => b.date - a.date);
-        
-        window.renderReviews(reviews);
-      } catch (error) {
-        console.error('Error loading reviews:', error);
-        const reviewsList = document.getElementById('reviewsList');
-        if (reviewsList) reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
-      }
-    };
-
-    window.renderReviews = function(reviews) {
-      const reviewsList = document.getElementById('reviewsList');
-      if (!reviewsList) return;
-      
-      reviewsList.innerHTML = '';
-      
-      reviews.forEach(review => {
-        const reviewItem = document.createElement('div');
-        reviewItem.className = 'review-item';
-        
-        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
-        
-        reviewItem.innerHTML = `
-          <div class="review-header">
-            <div class="reviewer-name">${review.userName}</div>
-            <div class="review-date">${date}</div>
-          </div>
-          <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
-          ${window.currentUser && (review.userId === window.currentUser.uid) ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 6h18"></path>
-                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-              </svg>
-              Delete
-            </button>` : ''}
-        `;
-        
-        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', function() {
-            window.deleteReview(review.id);
-          });
-        }
-        
-        reviewsList.appendChild(reviewItem);
-      });
-    };
-
-    window.deleteReview = async function(reviewId) {
-      if (!window.currentUser) return;
-      
-      if (!confirm('Are you sure you want to delete this review?')) return;
-      
-      try {
-        await remove(ref(database, 'reviews/' + reviewId));
-        window.showToast('Review deleted successfully', 'success');
-        if (window.currentProduct) {
-          window.loadProductReviews(window.currentProduct.id);
-        }
-      } catch (error) {
-        console.error('Error deleting review:', error);
-        window.showToast('Failed to delete review', 'error');
-      }
-    };
-
-    // Banner touch handlers
-    window.handleBannerTouchStart = function(e) {
-      window.bannerStartX = e.touches[0].clientX;
-      window.isBannerDragging = true;
-    };
-
-    window.handleBannerTouchMove = function(e) {
-      if (!window.isBannerDragging) return;
-      window.bannerCurrentX = e.touches[0].clientX;
-    };
-
-    window.handleBannerTouchEnd = function() {
-      if (!window.isBannerDragging) return;
-      
-      const diff = window.bannerStartX - window.bannerCurrentX;
-      const bannerTrack = document.getElementById('bannerTrack');
-      const activeIndex = window.banners.findIndex((_, index) => 
-        document.querySelector(`.banner-dot:nth-child(${index + 1})`).classList.contains('active')
-      );
-      
-      if (Math.abs(diff) > 50) {
-        if (diff > 0) {
-          const nextIndex = (activeIndex + 1) % window.banners.length;
-          window.setBannerSlide(nextIndex);
-        } else {
-          const prevIndex = (activeIndex - 1 + window.banners.length) % window.banners.length;
-          window.setBannerSlide(prevIndex);
-        }
-      }
-      
-      window.isBannerDragging = false;
-    };
-
-    // Product image modal functions
-    window.openProductImageModal = function() {
-      if (!window.currentProduct) return;
-      
-      window.currentProductImages = window.getProductImages();
-      window.currentProductModalIndex = window.currentImageIndex;
-      
-      window.updateProductModalImage();
-      document.getElementById('productImageModal').classList.add('active');
-      document.body.style.overflow = 'hidden';
-    };
-
-    window.updateProductModalImage = function() {
-      const productImageModalImage = document.getElementById('productImageModalImage');
-      const productImageModalDots = document.getElementById('productImageModalDots');
-      
-      if (!productImageModalImage || !productImageModalDots) return;
-      
-      if (window.currentProductImages[window.currentProductModalIndex]) {
-        productImageModalImage.src = window.currentProductImages[window.currentProductModalIndex];
-      }
-      
-      productImageModalDots.innerHTML = '';
-      window.currentProductImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `product-image-modal-dot ${index === window.currentProductModalIndex ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          window.currentProductModalIndex = index;
-          window.updateProductModalImage();
-        });
-        productImageModalDots.appendChild(dot);
-      });
-    };
-
-    window.prevProductModalImage = function() {
-      if (window.currentProductImages.length <= 1) return;
-      
-      window.currentProductModalIndex = (window.currentProductModalIndex - 1 + window.currentProductImages.length) % window.currentProductImages.length;
-      window.updateProductModalImage();
-    };
-
-    window.nextProductModalImage = function() {
-      if (window.currentProductImages.length <= 1) return;
-      
-      window.currentProductModalIndex = (window.currentProductModalIndex + 1) % window.currentProductImages.length;
-      window.updateProductModalImage();
-    };
-
-    // Zoom modal functions
-    window.adjustZoom = function(amount) {
-      window.currentZoomLevel += amount;
-      if (window.currentZoomLevel < 0.1) window.currentZoomLevel = 0.1;
-      if (window.currentZoomLevel > 5) window.currentZoomLevel = 5;
-      
-      const zoomImage = document.getElementById('zoomImage');
-      if (zoomImage) {
-        zoomImage.style.transform = `scale(${window.currentZoomLevel})`;
-      }
-    };
-
-    window.resetZoom = function() {
-      window.currentZoomLevel = 1;
-      const zoomImage = document.getElementById('zoomImage');
-      if (zoomImage) {
-        zoomImage.style.transform = 'scale(1)';
-      }
-    };
-
-    // Product sharing functions
-    window.shareProduct = function(platform, product = window.currentProduct) {
-      if (!product) return;
-      
-      const productUrl = window.location.origin + window.location.pathname.replace('index.html', '') + `#productDetail?product=${product.id}`;
-      const text = `Check out ${product.name} on Buyzo Cart: ${productUrl}`;
-      
-      switch(platform) {
-        case 'facebook':
-          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}`, '_blank');
-          break;
-        case 'twitter':
-          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-          break;
-        case 'whatsapp':
-          window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-          break;
-        default:
-          // Copy to clipboard
-          navigator.clipboard.writeText(text).then(() => {
-            window.showToast('Product link copied to clipboard!', 'success');
-          }).catch(() => {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            window.showToast('Product link copied to clipboard!', 'success');
-          });
-      }
-    };
-
-    window.copyShareLink = function() {
-      const productShareLink = document.getElementById('productShareLink');
-      if (!productShareLink) return;
-      
-      productShareLink.select();
-      productShareLink.setSelectionRange(0, 99999);
-      
-      navigator.clipboard.writeText(productShareLink.value).then(() => {
-        window.showToast('Link copied to clipboard!', 'success');
-      }).catch(() => {
-        document.execCommand('copy');
-        window.showToast('Link copied to clipboard!', 'success');
-      });
-    };
-
-    window.orderProductFromDetail = function() {
-      if (!window.currentProduct) {
-        window.showToast('Please select a product first', 'error');
-        return;
-      }
-      window.showPage('orderPage');
-    };
-
-    window.toggleWishlistFromDetail = function() {
-      if (!window.currentProduct) {
-        window.showToast('No product selected', 'error');
-        return;
-      }
-      window.toggleWishlist(window.currentProduct.id);
-    };
-
-    // Price filter functions
-    window.updatePriceSlider = function() {
-      const minSlider = document.getElementById('minPriceSlider');
-      const maxSlider = document.getElementById('maxPriceSlider');
-      const minPrice = document.getElementById('minPrice');
-      const maxPrice = document.getElementById('maxPrice');
-      const priceSliderRange = document.getElementById('priceSliderRange');
-      const minPriceValue = document.getElementById('minPriceValue');
-      const maxPriceValue = document.getElementById('maxPriceValue');
-      
-      if (!minSlider || !maxSlider || !priceSliderRange) return;
-      
-      let minVal = parseInt(minSlider.value);
-      let maxVal = parseInt(maxSlider.value);
-      
-      if (minVal > maxVal) {
-        minVal = maxVal;
-        minSlider.value = minVal;
-      }
-      
-      if (maxVal < minVal) {
-        maxVal = minVal;
-        maxSlider.value = maxVal;
-      }
-      
-      const minPercent = (minVal / 5000) * 100;
-      const maxPercent = (maxVal / 5000) * 100;
-      
-      priceSliderRange.style.left = minPercent + '%';
-      priceSliderRange.style.right = (100 - maxPercent) + '%';
-      
-      if (minPrice) minPrice.value = minVal;
-      if (maxPrice) maxPrice.value = maxVal;
-      if (minPriceValue) minPriceValue.textContent = '₹' + minVal;
-      if (maxPriceValue) maxPriceValue.textContent = '₹' + maxVal;
-    };
-
-    window.updatePriceInputs = function() {
-      const minPrice = document.getElementById('minPrice');
-      const maxPrice = document.getElementById('maxPrice');
-      const minSlider = document.getElementById('minPriceSlider');
-      const maxSlider = document.getElementById('maxPriceSlider');
-      
-      if (!minPrice || !maxPrice || !minSlider || !maxSlider) return;
-      
-      let minVal = parseInt(minPrice.value) || 0;
-      let maxVal = parseInt(maxPrice.value) || 5000;
-      
-      if (minVal < 0) minVal = 0;
-      if (maxVal > 5000) maxVal = 5000;
-      if (minVal > maxVal) minVal = maxVal;
-      if (maxVal < minVal) maxVal = minVal;
-      
-      minSlider.value = minVal;
-      maxSlider.value = maxVal;
-      window.updatePriceSlider();
-    };
-
-    window.applyPriceFilter = function() {
-      const minPrice = parseInt(document.getElementById('minPrice')?.value) || 0;
-      const maxPrice = parseInt(document.getElementById('maxPrice')?.value) || 5000;
-      
-      const filteredProducts = window.products.filter(product => {
-        const price = window.parsePrice(product.price);
-        return price >= minPrice && price <= maxPrice;
-      });
-      
-      window.renderProducts(filteredProducts, 'productGrid');
-      window.showToast(`Showing ${filteredProducts.length} products in price range`, 'success');
-    };
-
-    window.resetPriceFilter = function() {
-      const minSlider = document.getElementById('minPriceSlider');
-      const maxSlider = document.getElementById('maxPriceSlider');
-      const minPrice = document.getElementById('minPrice');
-      const maxPrice = document.getElementById('maxPrice');
-      
-      if (minSlider) minSlider.value = 0;
-      if (maxSlider) maxSlider.value = 5000;
-      if (minPrice) minPrice.value = '';
-      if (maxPrice) maxPrice.value = '';
-      
-      window.updatePriceSlider();
-      window.renderProducts(window.products, 'productGrid');
-      window.showToast('Price filter reset', 'success');
-    };
-
-    // Newsletter subscription
-    window.handleNewsletterSubscription = function() {
-      const email = document.getElementById('newsletterEmail')?.value;
-      
-      if (!email) {
-        window.showToast('Please enter your email address', 'error');
-        return;
-      }
-      
-      if (!email.includes('@') || !email.includes('.')) {
-        window.showToast('Please enter a valid email address', 'error');
-        return;
-      }
-      
-      // Save to localStorage
-      let subscriptions = JSON.parse(localStorage.getItem('newsletterSubscriptions') || '[]');
-      if (!subscriptions.includes(email)) {
-        subscriptions.push(email);
-        localStorage.setItem('newsletterSubscriptions', JSON.stringify(subscriptions));
-      }
-      
-      window.showToast('Thank you for subscribing!', 'success');
-      const newsletterEmail = document.getElementById('newsletterEmail');
-      if (newsletterEmail) newsletterEmail.value = '';
-    };
-
-    // Address management functions
-    window.saveUserInfoAndAddress = async function() {
-      const fullname = document.getElementById('fullname')?.value;
-      const mobile = document.getElementById('mobile')?.value;
-      const pincode = document.getElementById('pincode')?.value;
-      const city = document.getElementById('city')?.value;
-      const state = document.getElementById('state')?.value;
-      const house = document.getElementById('house')?.value;
-      const addressType = document.getElementById('addressType')?.value;
-
-      if (!fullname || !mobile || !pincode || !city || !state || !house) {
-        window.showToast('Please fill in all required fields', 'error');
-        return;
-      }
-
-      window.userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-      
-      const addressData = {
-        name: fullname,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        street: house,
-        type: addressType
-      };
-      
-      await window.saveAddress(addressData, true);
-      window.loadSavedAddresses();
-    };
-
-    window.saveAddress = async function(addressData, isDefault = false) {
-      if (!window.currentUser) return null;
-      
-      const isDuplicate = window.savedAddresses.some(addr => 
-        addr.name === addressData.name &&
-        addr.mobile === addressData.mobile &&
-        addr.pincode === addressData.pincode &&
-        addr.city === addressData.city &&
-        addr.state === addressData.state &&
-        addr.street === addressData.street
-      );
-      
-      if (isDuplicate) {
-        window.showToast('Address already exists', 'info');
-        return null;
-      }
-      
-      const addressId = 'address_' + Date.now();
-      const addressToSave = {
-        id: addressId,
-        userId: window.currentUser.uid,
-        name: addressData.name,
-        mobile: addressData.mobile,
-        pincode: addressData.pincode,
-        city: addressData.city,
-        state: addressData.state,
-        street: addressData.street,
-        type: addressData.type || 'home',
-        isDefault: isDefault,
-        createdAt: Date.now()
-      };
-      
-      try {
-        await set(ref(database, 'addresses/' + addressId), addressToSave);
-        window.showToast('Address saved successfully', 'success');
-        
-        window.savedAddresses.push(addressToSave);
-        window.cacheManager.set('addresses_' + window.currentUser.uid, window.savedAddresses);
-        
-        return addressId;
-      } catch (error) {
-        console.error('Error saving address:', error);
-        window.showToast('Failed to save address', 'error');
-        return null;
-      }
-    };
-
-    window.loadSavedAddresses = async function() {
-      if (!window.currentUser) return;
-      
-      try {
-        const cachedAddresses = window.cacheManager.get('addresses_' + window.currentUser.uid);
-        if (cachedAddresses && cachedAddresses.length > 0) {
-          window.savedAddresses = cachedAddresses;
-          window.renderSavedAddresses();
-        }
-        
-        const addressesRef = ref(database, 'addresses');
-        const addressesQuery = query(addressesRef, orderByChild('userId'), equalTo(window.currentUser.uid));
-        const snapshot = await get(addressesQuery);
-        const addressesList = document.getElementById('savedAddressesList');
-        const savedAddressesSection = document.getElementById('savedAddressesSection');
-        
-        if (!snapshot.exists()) {
-          if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-          window.savedAddresses = [];
-          return;
-        }
-        
-        const addressesObj = snapshot.val();
-        const addresses = Object.keys(addressesObj).map(key => ({
-          id: key,
-          ...addressesObj[key]
-        }));
-        
-        window.savedAddresses = addresses;
-        window.cacheManager.set('addresses_' + window.currentUser.uid, addresses);
-        
-        if (addresses.length > 0 && savedAddressesSection) {
-          savedAddressesSection.style.display = 'block';
-          window.renderSavedAddresses();
-        } else if (savedAddressesSection) {
-          savedAddressesSection.style.display = 'none';
-        }
-      } catch (error) {
-        console.error('Error loading addresses:', error);
-      }
-    };
-
-    window.renderSavedAddresses = function() {
-      const addressesList = document.getElementById('savedAddressesList');
-      if (!addressesList) return;
-      
-      addressesList.innerHTML = '';
-      
-      window.savedAddresses.forEach(address => {
-        const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card';
-        addressCard.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
-            <div style="flex:1">
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}, ${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile} • Type: ${address.type}</div>
-            </div>
-          </div>
-          <div class="address-actions">
-            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
-          </div>
-        `;
-        
-        const radio = addressCard.querySelector('input[type="radio"]');
-        radio.addEventListener('click', function(e) {
-          e.stopPropagation();
-          window.fillAddressForm(address);
-        });
-        
-        addressCard.addEventListener('click', function(e) {
-          if (e.target.type !== 'radio') {
-            radio.checked = true;
-            window.fillAddressForm(address);
-          }
-        });
-        
-        const editBtn = addressCard.querySelector('.edit-address');
-        editBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          window.editAddress(address.id);
-        });
-        
-        const deleteBtn = addressCard.querySelector('.delete-address');
-        deleteBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          window.deleteAddress(address.id);
-        });
-        
-        addressesList.appendChild(addressCard);
-      });
-    };
-
-    window.fillAddressForm = function(address) {
-      const fullname = document.getElementById('fullname');
-      const mobile = document.getElementById('mobile');
-      const pincode = document.getElementById('pincode');
-      const city = document.getElementById('city');
-      const state = document.getElementById('state');
-      const house = document.getElementById('house');
-      const addressType = document.getElementById('addressType');
-      
-      if (fullname) fullname.value = address.name;
-      if (mobile) mobile.value = address.mobile;
-      if (pincode) pincode.value = address.pincode;
-      if (city) city.value = address.city;
-      if (state) state.value = address.state;
-      if (house) house.value = address.street;
-      if (addressType) addressType.value = address.type;
-    };
-
-    window.showNewAddressForm = function() {
-      const fullname = document.getElementById('fullname');
-      const mobile = document.getElementById('mobile');
-      const pincode = document.getElementById('pincode');
-      const city = document.getElementById('city');
-      const state = document.getElementById('state');
-      const house = document.getElementById('house');
-      const addressType = document.getElementById('addressType');
-      
-      if (fullname) fullname.value = '';
-      if (mobile) mobile.value = '';
-      if (pincode) pincode.value = '';
-      if (city) city.value = '';
-      if (state) state.value = '';
-      if (house) house.value = '';
-      if (addressType) addressType.value = 'home';
-    };
-
-    window.editAddress = function(addressId) {
-      const address = window.savedAddresses.find(addr => addr.id === addressId);
-      if (!address) return;
-      
-      window.fillAddressForm(address);
-      window.showToast('Address loaded for editing', 'info');
-    };
-
-    window.deleteAddress = async function(addressId) {
-      if (!confirm('Are you sure you want to delete this address?')) return;
-      
-      if (!window.currentUser) return;
-      
-      try {
-        await remove(ref(database, 'addresses/' + addressId));
-        
-        window.savedAddresses = window.savedAddresses.filter(addr => addr.id !== addressId);
-        window.cacheManager.set('addresses_' + window.currentUser.uid, window.savedAddresses);
-        
-        window.showToast('Address deleted successfully', 'success');
-        window.loadSavedAddresses();
-      } catch (error) {
-        console.error('Error deleting address:', error);
-        window.showToast('Failed to delete address', 'error');
-      }
-    };
-
-    // Wishlist rendering
-    window.renderWishlist = function() {
-      const wishlistItems = document.getElementById('wishlistItems');
-      if (!wishlistItems) return;
-      
-      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      
-      if (wishlist.length === 0) {
-        wishlistItems.innerHTML = `
-          <div class="empty-state" style="display:block">
-            <div style="font-size:48px;margin-bottom:16px">❤️</div>
-            <h3>Your Wishlist is Empty</h3>
-            <p>You haven't added any products to your wishlist yet.</p>
-            <button class="empty-btn" onclick="window.showPage('productsPage')">Browse Products</button>
-          </div>
-        `;
-        return;
-      }
-      
-      const wishlistProducts = window.products.filter(product => wishlist.includes(product.id));
-      
-      if (wishlistProducts.length === 0) {
-        wishlistItems.innerHTML = `
-          <div class="empty-state" style="display:block">
-            <div style="font-size:48px;margin-bottom:16px">❤️</div>
-            <h3>Your Wishlist is Empty</h3>
-            <p>You haven't added any products to your wishlist yet.</p>
-            <button class="empty-btn" onclick="window.showPage('productsPage')">Browse Products</button>
-          </div>
-        `;
-        return;
-      }
-      
-      wishlistItems.innerHTML = '';
-      wishlistProducts.forEach(product => {
-        const productCard = window.createProductCard(product);
-        wishlistItems.appendChild(productCard);
-      });
-    };
-
-    // Recently viewed functions
-    window.addToRecentlyViewed = function(productId) {
-      if (!window.currentUser) return;
-      
-      let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed_' + window.currentUser.uid) || '[]');
-      
-      // Remove if already exists
-      recentlyViewed = recentlyViewed.filter(id => id !== productId);
-      
-      // Add to beginning
-      recentlyViewed.unshift(productId);
-      
-      // Keep only last 10
-      if (recentlyViewed.length > 10) {
-        recentlyViewed = recentlyViewed.slice(0, 10);
-      }
-      
-      localStorage.setItem('recentlyViewed_' + window.currentUser.uid, JSON.stringify(recentlyViewed));
-      window.recentlyViewed = recentlyViewed;
-      
-      // Update UI if on home page
-      if (document.getElementById('homePage').classList.contains('active')) {
-        window.updateRecentlyViewedUI();
-      }
-    };
-
-    window.updateRecentlyViewedUI = function() {
-      if (window.recentlyViewed.length === 0) return;
-      
-      const recentlyViewedSection = document.getElementById('recentlyViewedSection');
-      const recentlyViewedSlider = document.getElementById('recentlyViewedSlider');
-      
-      if (!recentlyViewedSection || !recentlyViewedSlider) return;
-      
-      const recentlyViewedProducts = window.products.filter(product => 
-        window.recentlyViewed.includes(product.id)
-      ).slice(0, 10);
-      
-      if (recentlyViewedProducts.length === 0) {
-        recentlyViewedSection.style.display = 'none';
-        return;
-      }
-      
-      recentlyViewedSection.style.display = 'block';
-      recentlyViewedSlider.innerHTML = '';
-      
-      recentlyViewedProducts.forEach(product => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
-        sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${window.getProductImage(product)}')"></div>
-          <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || 'Product Name'}</div>
-            <div class="slider-item-price">${product.price || '₹0'}</div>
-          </div>
-        `;
-        
-        sliderItem.addEventListener('click', () => window.showProductDetail(product));
-        recentlyViewedSlider.appendChild(sliderItem);
-      });
-    };
-
-    // My orders functions
-    window.showMyOrders = async function() {
-      if (!window.currentUser) return;
-      
-      const ordersList = document.getElementById('ordersList');
-      if (!ordersList) return;
-      
-      try {
-        const ordersRef = ref(database, 'orders');
-        const ordersQuery = query(ordersRef, orderByChild('userId'), equalTo(window.currentUser.uid));
-        const snapshot = await get(ordersQuery);
-        
-        if (!snapshot.exists()) {
-          ordersList.innerHTML = `
-            <div class="empty-state" style="display:block">
-              <div style="font-size:48px;margin-bottom:16px">📦</div>
-              <h3>No Orders Yet</h3>
-              <p>Your orders will appear here after you place them.</p>
-              <button class="empty-btn" onclick="window.showPage('productsPage')">Start Shopping</button>
-            </div>
-          `;
-          return;
-        }
-        
-        const ordersObj = snapshot.val();
-        const orders = Object.keys(ordersObj).map(key => ordersObj[key]);
-        
-        orders.sort((a, b) => b.orderDate - a.orderDate);
-        
-        ordersList.innerHTML = '';
-        orders.forEach(order => {
-          const orderCard = document.createElement('div');
-          orderCard.className = 'order-card';
-          orderCard.innerHTML = `
-            <div class="order-header">
-              <div>
-                <div class="order-id">${order.orderId}</div>
-                <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
-                <div class="order-estimated">Estimated delivery: ${new Date(order.orderDate + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
-              </div>
-              <div class="order-status status-confirmed">${order.status}</div>
-            </div>
-            <div class="order-details">
-              <div class="order-product-image" style="background-image: url('${window.getProductImage({image: ''})}')"></div>
-              <div class="order-product-info">
-                <div class="order-product-title">${order.productName}</div>
-                <div class="order-product-price">₹${order.totalAmount}</div>
-                <div class="order-product-meta">Qty: ${order.quantity} • Size: ${order.size} • Color: ${order.color}</div>
-              </div>
-            </div>
-            <div class="order-actions">
-              <button class="btn secondary" onclick="window.viewOrderDetails('${order.orderId}')">View Details</button>
-              <button class="btn error" onclick="window.cancelOrder('${order.orderId}')">Cancel Order</button>
-            </div>
-          `;
-          
-          ordersList.appendChild(orderCard);
-        });
-      } catch (error) {
-        console.error('Error loading orders:', error);
-        ordersList.innerHTML = `
-          <div class="empty-state" style="display:block">
-            <div style="font-size:48px;margin-bottom:16px">⚠️</div>
-            <h3>Error Loading Orders</h3>
-            <p>There was an error loading your orders. Please try again.</p>
-          </div>
-        `;
-      }
-    };
-
-    window.viewOrderDetails = function(orderId) {
-      // For now, just show a message
-      window.showToast(`Viewing order details for ${orderId}`, 'info');
-      window.showPage('orderDetailPage');
-    };
-
-    window.cancelOrder = function(orderId) {
-      // For now, just show a message
-      window.showToast(`Cancelling order ${orderId}`, 'info');
-    };
-
-    // Initialize the app when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-      // Setup auth state listener
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          window.currentUser = user;
-          window.updateUIForUser(user);
-          console.log('User logged in:', user.email);
-          
-          // Load user-specific data
-          window.loadSavedAddresses();
-          window.loadRecentlyViewed(user);
-        } else {
-          window.currentUser = null;
-          window.updateUIForGuest();
-          console.log('User logged out');
-        }
-      });
-      
-      // Initialize the app
-      window.initApp();
-      
-      // Test if everything is working
-      console.log('Website loaded successfully!');
-      console.log('Available functions:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.startsWith('show')));
-    });
-
-    // Popstate handler for browser back/forward
-    window.addEventListener('popstate', function(event) {
-      if (event.state && event.state.page) {
-        window.showPage(event.state.page);
-      }
-    });
-
-    // ==================== TEST DATA ====================
-    // Add some test products for demonstration
-    window.products = [
-      {
-        id: '1',
-        name: 'Wireless Headphones',
-        price: '₹2499',
-        description: 'Premium wireless headphones with noise cancellation',
-        category: 'electronics',
-        isTrending: true,
-        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop'
-      },
-      {
-        id: '2',
-        name: 'Smart Watch',
-        price: '₹3999',
-        description: 'Fitness tracker with heart rate monitor',
-        category: 'electronics',
-        isFeatured: true,
-        image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=300&fit=crop'
-      },
-      {
-        id: '3',
-        name: 'Casual T-Shirt',
-        price: '₹599',
-        description: 'Comfortable cotton t-shirt for everyday wear',
-        category: 'fashion',
-        image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=300&fit=crop'
-      },
-      {
-        id: '4',
-        name: 'Running Shoes',
-        price: '₹1999',
-        description: 'Lightweight running shoes for maximum comfort',
-        category: 'sports',
-        isTrending: true,
-        image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop'
-      },
-      {
-        id: '5',
-        name: 'Backpack',
-        price: '₹1299',
-        description: 'Water-resistant backpack with laptop compartment',
-        category: 'home',
-        image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop'
-      },
-      {
-        id: '6',
-        name: 'Wireless Earbuds',
-        price: '₹1799',
-        description: 'True wireless earbuds with 24-hour battery',
-        category: 'electronics',
-        badge: '30% OFF',
-        image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=300&fit=crop'
-      },
-      {
-        id: '7',
-        name: 'Sports Shoes',
-        price: '₹2999',
-        description: 'Premium sports shoes for running and gym',
-        category: 'sports',
-        isTrending: true,
-        image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop'
-      },
-      {
-        id: '8',
-        name: 'Smartphone',
-        price: '₹15999',
-        description: 'Latest smartphone with advanced camera features',
-        category: 'electronics',
-        badge: 'NEW',
-        isFeatured: true,
-        image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop'
-      },
-      {
-        id: '9',
-        name: 'Laptop Backpack',
-        price: '₹1499',
-        description: 'Water-resistant laptop backpack with USB port',
-        category: 'home',
-        isTrending: true,
-        image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop'
-      }
-    ];
-    
-    window.categories = [
-      { id: 'electronics', name: 'Electronics', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&h=200&fit=crop' },
-      { id: 'fashion', name: 'Fashion', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&h=200&fit=crop' },
-      { id: 'home', name: 'Home', image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=200&h=200&fit=crop' },
-      { id: 'beauty', name: 'Beauty', image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=200&h=200&fit=crop' },
-      { id: 'sports', name: 'Sports', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&h=200&fit=crop' }
-    ];
-    
-    window.banners = [
-      { image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=400&fit=crop', link: '#' },
-      { image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200&h=400&fit=crop', link: '#' },
-      { image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&h=400&fit=crop', link: '#' }
-    ];
-    
-    // Render initial data
-    setTimeout(() => {
-      window.renderProducts(window.products, 'homeProductGrid');
-      window.renderProducts(window.products, 'productGrid');
-      window.renderProductSlider(window.products.slice(0, 5), 'productSlider');
-      window.renderCategories();
-      window.renderCategoryCircles();
-      window.renderBannerCarousel();
-    }, 500);
-  </script>
+  <!-- JavaScript -->
+  
 </body>
 </html>
