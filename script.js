@@ -1,4 +1,3 @@
-document.addEventListener("DOMContentLoaded", function () {
 
 
     // Import the functions you need from the SDKs you need
@@ -2846,4 +2845,3 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
   
-});
