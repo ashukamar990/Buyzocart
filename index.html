@@ -120,6 +120,7 @@
       max-width: 500px;
       margin: 16px 0;
       min-width: 200px;
+      position: relative;
     }
 
     .search-wrap input {
@@ -704,7 +705,7 @@
       touch-action: pan-y;
     }
 
-    /* REMOVED: Edit button styles for gallery-main */
+    /* FIXED: Remove edit button */
     .gallery-main .edit-btn {
       display: none;
     }
@@ -774,7 +775,7 @@
       margin-bottom: 16px;
       position: relative;
       overflow: hidden;
-      cursor: pointer;
+      cursor: zoom-in;
       background-color: #ffffff;
       touch-action: pan-y;
     }
@@ -3783,9 +3784,9 @@
       color: white !important;
     }
 
-    /* REMOVED: Gallery Edit Button Styles */
+    /* FIXED: Gallery Edit Button - REMOVED */
     .gallery-edit-btn {
-      display: none !important;
+      display: none;
     }
 
     /* NEW: Similar Products Replacement */
@@ -3800,41 +3801,12 @@
       color: var(--ink);
     }
 
-    /* FIX: Product Detail Main Image - Click to zoom */
-    .product-detail-main-image {
-      cursor: zoom-in;
-    }
-
-    /* FIX: Gallery thumbnails container */
-    .gallery-thumbnails-container {
-      margin-top: 12px;
-    }
-
-    /* FIX: Product slider position */
-    .product-slider-section {
-      margin: 30px 0;
-      position: relative;
-    }
-
-    /* FIX: Email overflow in user name */
-    .user-name {
+    /* FIXED: Long email ellipsis */
+    .user-email {
+      max-width: 120px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 120px;
-    }
-
-    @media (max-width: 768px) {
-      .user-name {
-        max-width: 80px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .user-name {
-        max-width: 60px;
-        font-size: 12px;
-      }
     }
   </style>
 
@@ -3861,23 +3833,17 @@
     const auth = getAuth();
     const database = getDatabase();
     
-    // Set persistence to LOCAL so user stays logged in
+    // Set persistence to local (user stays logged in)
     setPersistence(auth, browserLocalPersistence)
       .then(() => {
-        console.log('Firebase persistence set to LOCAL');
+        console.log('Firebase persistence set to local');
       })
       .catch((error) => {
         console.error('Error setting persistence:', error);
       });
     
     // Make Firebase available globally
-    window.firebase = { 
-      app, auth, database, getAuth, onAuthStateChanged, 
-      signInWithEmailAndPassword, createUserWithEmailAndPassword, 
-      signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail,
-      setPersistence, browserLocalPersistence,
-      getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo 
-    };
+    window.firebase = { app, auth, database, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail, getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, setPersistence, browserLocalPersistence };
     
     console.log('Firebase initialized successfully');
   </script>
@@ -3929,12 +3895,12 @@
         My Orders
       </div>
       <div class="menu-item" onclick="checkAuthAndShowPage('wishlistPage'); closeMenu();">
-        <svg xmlns="http://www.w3.org2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
         Wishlist
       </div>
-      <!-- FIXED: Only ONE account option - removed duplicate -->
+      <!-- FIXED: SINGLE ACCOUNT OPTION - Only user profile link -->
       <div class="menu-item" onclick="window.location.href='account.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -3942,7 +3908,7 @@
         </svg>
         My Account
       </div>
-      <!-- Additional Professional Menu Items -->
+      <!-- NEW: Additional Professional Menu Items -->
       <div class="menu-item" onclick="window.location.href='categories.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -4016,7 +3982,7 @@
       <!-- Login/Signup at the bottom of mobile menu -->
       <div class="menu-item" id="mobileLoginBtn" onclick="showLoginModal(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v -2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         Login / Sign Up
@@ -4028,7 +3994,7 @@
         </svg>
         <span id="mobileUserName">My Account</span>
       </div>
-      <!-- Logout in mobile menu -->
+      <!-- NEW: Logout in mobile menu -->
       <div class="menu-item" id="mobileLogoutBtn" style="display:none;" onclick="showLogoutConfirmation(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -4101,12 +4067,13 @@
         </button>
         <!-- Login/Signup buttons -->
         <button class="btn secondary" id="openLoginTop" title="Login">Login</button>
+        <!-- FIXED: Single user profile option -->
         <div class="user-profile" id="userProfile" style="display:none;" onclick="window.location.href='account.html'">
           <div class="user-avatar" id="userAvatar">
             <img class="user-avatar-img" id="userAvatarImg" style="display:none;" />
             <span id="userAvatarInitial">U</span>
           </div>
-          <div class="user-name" id="userName">User</div>
+          <div class="user-name user-email" id="userName">User</div>
         </div>
       </div>
     </div>
@@ -4133,7 +4100,7 @@
         </div>
       </section>
 
-      <!-- Banner Carousel -->
+      <!-- NEW: Banner Carousel -->
       <div class="banner-carousel skeleton" id="bannerCarousel">
         <div class="banner-track" id="bannerTrack"></div>
         <div class="banner-controls" id="bannerControls"></div>
@@ -4151,7 +4118,7 @@
         </div>
       </div>
 
-      <!-- Category Circles Section -->
+      <!-- NEW: Category Circles Section -->
       <div class="category-circles">
         <h2 class="category-circles-title">Shop by Category</h2>
         <div class="category-circles-container" id="categoryCirclesContainer">
@@ -4257,99 +4224,95 @@
           Back to Products
         </div>
         
-        <!-- FIXED: Product slider position - now below search bar/back button -->
-        <div class="product-slider-section">
-          <div class="product-detail-container">
-            <div class="product-detail-gallery">
-              <!-- ENHANCED: Peter England Style Gallery -->
-              <div class="product-detail-main-image" id="productDetailMainImage">
-                <button class="detail-carousel-control prev">&#10094;</button>
-                <button class="detail-carousel-control next">&#10095;</button>
-                <div class="detail-carousel-dots" id="detailCarouselDots"></div>
-                <div class="zoom-indicator">Click to zoom</div>
-                <!-- REMOVED: Edit Button -->
+        <div class="product-detail-container">
+          <div class="product-detail-gallery">
+            <!-- ENHANCED: Peter England Style Gallery -->
+            <div class="product-detail-main-image" id="productDetailMainImage">
+              <button class="detail-carousel-control prev">&#10094;</button>
+              <button class="detail-carousel-control next">&#10095;</button>
+              <div class="detail-carousel-dots" id="detailCarouselDots"></div>
+              <div class="zoom-indicator">Click to zoom</div>
+            </div>
+            <div class="product-gallery-thumbnails" id="productGalleryThumbnails">
+              <!-- Thumbnails will be loaded here -->
+            </div>
+          </div>
+          
+          <div class="product-detail-info">
+            <h1 class="product-detail-title" id="detailTitle"></h1>
+            <!-- Product SKU -->
+            <div class="product-sku" id="detailSku"></div>
+            <div class="product-detail-price" id="detailPrice"></div>
+            <!-- Stock Status -->
+            <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
+            
+            <div class="product-detail-desc" id="detailDesc"></div>
+            <div class="product-detail-full-desc" id="detailFullDesc"></div>
+            
+            <!-- Rating and Reviews Section -->
+            <div class="review-section">
+              <div class="review-form">
+                <h3>Add Your Review</h3>
+                <div class="rating-input" id="ratingInput">
+                  <span class="rating-star" data-rating="1">★</span>
+                  <span class="rating-star" data-rating="2">★</span>
+                  <span class="rating-star" data-rating="3">★</span>
+                  <span class="rating-star" data-rating="4">★</span>
+                  <span class="rating-star" data-rating="5">★</span>
+                </div>
+                <textarea class="review-textarea" id="reviewText" placeholder="Share your experience with this product..."></textarea>
+                <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
               </div>
-              <div class="product-gallery-thumbnails" id="productGalleryThumbnails">
-                <!-- Thumbnails will be loaded here -->
+              
+              <div class="reviews-list" id="reviewsList">
+                <!-- Reviews will be dynamically inserted here -->
               </div>
             </div>
             
-            <div class="product-detail-info">
-              <h1 class="product-detail-title" id="detailTitle"></h1>
-              <!-- Product SKU -->
-              <div class="product-sku" id="detailSku"></div>
-              <div class="product-detail-price" id="detailPrice"></div>
-              <!-- Stock Status -->
-              <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
-              
-              <div class="product-detail-desc" id="detailDesc"></div>
-              <div class="product-detail-full-desc" id="detailFullDesc"></div>
-              
-              <!-- Rating and Reviews Section -->
-              <div class="review-section">
-                <div class="review-form">
-                  <h3>Add Your Review</h3>
-                  <div class="rating-input" id="ratingInput">
-                    <span class="rating-star" data-rating="1">★</span>
-                    <span class="rating-star" data-rating="2">★</span>
-                    <span class="rating-star" data-rating="3">★</span>
-                    <span class="rating-star" data-rating="4">★</span>
-                    <span class="rating-star" data-rating="5">★</span>
-                  </div>
-                  <textarea class="review-textarea" id="reviewText" placeholder="Share your experience with this product..."></textarea>
-                  <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
-                </div>
-                
-                <div class="reviews-list" id="reviewsList">
-                  <!-- Reviews will be dynamically inserted here -->
-                </div>
-              </div>
-              
-              <!-- Share Link Section -->
-              <div class="product-detail-meta" style="margin-top: 20px;">
-                <h4>Share This Product</h4>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                  <input type="text" id="productShareLink" readonly style="flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: #f8fafc;">
-                  <button class="btn secondary" id="copyShareLink">Copy Link</button>
-                </div>
-              </div>
-              
-              <!-- Social Sharing Buttons -->
-              <div class="social-sharing">
-                <button class="share-btn facebook" data-platform="facebook">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                  Share
-                </button>
-                <button class="share-btn twitter" data-platform="twitter">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
-                  </svg>
-                  Tweet
-                </button>
-                <button class="share-btn whatsapp" data-platform="whatsapp">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335 .157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                  Share
-                </button>
+            <!-- Share Link Section -->
+            <div class="product-detail-meta" style="margin-top: 20px;">
+              <h4>Share This Product</h4>
+              <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <input type="text" id="productShareLink" readonly style="flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: #f8fafc;">
+                <button class="btn secondary" id="copyShareLink">Copy Link</button>
               </div>
             </div>
-          </div>
-
-          <!-- Sticky Action Buttons -->
-          <div class="product-detail-actions">
-            <button class="btn" id="detailOrderBtn" style="flex: 2;">Order Now</button>
-            <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
-          </div>
-
-          <!-- Similar Products Section - UPDATED: Color selection replaced with similar products -->
-          <div class="similar-products">
-            <h2 class="similar-title">Similar Products</h2>
-            <div class="similar-products-grid" id="similarProductsGrid">
-              <!-- Similar products will be loaded here -->
+            
+            <!-- Social Sharing Buttons -->
+            <div class="social-sharing">
+              <button class="share-btn facebook" data-platform="facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Share
+              </button>
+              <button class="share-btn twitter" data-platform="twitter">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                </svg>
+                Tweet
+              </button>
+              <button class="share-btn whatsapp" data-platform="whatsapp">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335 .157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Share
+              </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Sticky Action Buttons -->
+        <div class="product-detail-actions">
+          <button class="btn" id="detailOrderBtn" style="flex: 2;">Order Now</button>
+          <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
+        </div>
+
+        <!-- Similar Products Section - UPDATED: Auto-loaded similar products -->
+        <div class="similar-products">
+          <h2 class="similar-title">Similar Products</h2>
+          <div class="similar-products-grid" id="similarProductsGrid">
+            <!-- Similar products will be automatically loaded here -->
           </div>
         </div>
       </div>
@@ -4369,9 +4332,8 @@
               <button class="carousel-control prev">&#10094;</button>
               <button class="carousel-control next">&#10095;</button>
               <div class="carousel-dots" id="orderCarouselDots"></div>
-              <!-- REMOVED: Edit Button -->
             </div>
-            <!-- Thumbnails below main image -->
+            <!-- NEW: Thumbnails below main image -->
             <div class="gallery-thumbnails" id="orderGalleryThumbnails">
               <!-- Thumbnails will be loaded here -->
             </div>
@@ -5106,7 +5068,7 @@
       updateStepPills();
       updateBottomNav();
       
-      // Setup Firebase auth state listener
+      // Setup Firebase auth state listener - FIXED: No redirect/reload
       if (firebase && firebase.auth) {
         firebase.onAuthStateChanged(firebase.auth, user => {
           if (user) {
@@ -5120,6 +5082,8 @@
             currentUser = null;
             updateUIForGuest();
           }
+        }, (error) => {
+          console.error('Auth state change error:', error);
         });
       }
       
@@ -5130,7 +5094,7 @@
       fetchLiveData();
     }
 
-    // Setup swipe gestures for mobile
+    // Setup swipe gestures for mobile - FIXED
     function setupSwipeGestures() {
       const galleryMain = document.getElementById('galleryMain');
       const productDetailMainImage = document.getElementById('productDetailMainImage');
@@ -5767,7 +5731,7 @@
       }
     }
 
-    // Authentication Functions
+    // Authentication Functions - FIXED: No redirect/reload
     async function handleLogin() {
       if (!firebase || !firebase.auth) {
         showToast('Firebase not initialized', 'error');
@@ -6098,7 +6062,7 @@
       }, 3000);
     }
 
-    // User interface updates
+    // User interface updates - FIXED: No redirect on account click
     function updateUIForUser(user) {
       userProfile.style.display = 'flex';
       openLoginTop.style.display = 'none';
@@ -6371,6 +6335,7 @@
         wishlistBtn.classList.remove('active');
       }
       
+      // FIXED: Auto-load similar products
       loadSimilarProductsGrid(product);
       loadProductReviews(product.id);
       
@@ -6381,7 +6346,7 @@
       showPage('productDetailPage');
     }
 
-    // Initialize product detail gallery with thumbnails
+    // Initialize product detail gallery with thumbnails - FIXED: Similar products in thumbnails
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('productDetailMainImage');
       const thumbnails = document.getElementById('productGalleryThumbnails');
@@ -6399,29 +6364,41 @@
       currentImageIndex = 0;
       updateMainImage();
       
-      // Create thumbnails
-      currentProductImages.forEach((image, index) => {
-        const thumb = document.createElement('div');
-        thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
-        thumb.style.backgroundImage = `url('${image}')`;
-        thumb.addEventListener('click', () => {
-          currentImageIndex = index;
-          updateMainImage();
-          updateThumbnails();
-          updateDots();
+      // Create thumbnails - FIXED: Show similar products instead of same product images
+      if (similarProducts.length > 0) {
+        similarProducts.slice(0, 6).forEach((similarProduct, index) => {
+          const thumb = document.createElement('div');
+          thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
+          thumb.style.backgroundImage = `url('${getProductImage(similarProduct)}')`;
+          thumb.addEventListener('click', () => {
+            showProductDetail(similarProduct);
+          });
+          thumbnails.appendChild(thumb);
         });
-        thumbnails.appendChild(thumb);
-        
-        const dot = document.createElement('div');
-        dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          currentImageIndex = index;
-          updateMainImage();
-          updateThumbnails();
-          updateDots();
+      } else {
+        currentProductImages.forEach((image, index) => {
+          const thumb = document.createElement('div');
+          thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
+          thumb.style.backgroundImage = `url('${image}')`;
+          thumb.addEventListener('click', () => {
+            currentImageIndex = index;
+            updateMainImage();
+            updateThumbnails();
+            updateDots();
+          });
+          thumbnails.appendChild(thumb);
+          
+          const dot = document.createElement('div');
+          dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
+          dot.addEventListener('click', () => {
+            currentImageIndex = index;
+            updateMainImage();
+            updateThumbnails();
+            updateDots();
+          });
+          dots.appendChild(dot);
         });
-        dots.appendChild(dot);
-      });
+      }
       
       function updateMainImage() {
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
@@ -6554,58 +6531,38 @@
       }
     }
 
-    // NEW: Load similar products grid AUTOMATICALLY
+    // NEW: Load similar products grid - FIXED: Auto-load based on category
     function loadSimilarProductsGrid(product) {
       if (!similarProductsGrid) return;
       
       similarProductsGrid.innerHTML = '';
       
-      // Get similar products from Firebase or filter by category
-      let similarProductsList = [];
+      // Get similar products automatically based on category
+      const similarProductsList = products
+        .filter(p => p.id !== product.id && p.category === product.category)
+        .slice(0, 6);
       
-      if (similarProducts.length > 0) {
-        // Use pre-defined similar products from Firebase
-        similarProductsList = similarProducts
-          .filter(p => p.mainProductId === product.id)
-          .slice(0, 6)
-          .map(similar => {
-            return products.find(p => p.id === similar.similarProductId);
-          })
-          .filter(p => p); // Remove undefined
-      }
-      
-      // If no similar products found in Firebase, use automatic filtering
       if (similarProductsList.length === 0) {
-        similarProductsList = products
-          .filter(p => p.id !== product.id && p.category === product.category)
-          .slice(0, 6);
-      }
-      
-      // If still no similar products, use random products from same price range
-      if (similarProductsList.length === 0) {
-        const productPrice = parsePrice(product.price);
-        similarProductsList = products
-          .filter(p => p.id !== product.id)
-          .filter(p => {
-            const price = parsePrice(p.price);
-            return price >= productPrice * 0.5 && price <= productPrice * 1.5;
-          })
-          .slice(0, 6);
-      }
-      
-      // If still no similar products, just show any other products
-      if (similarProductsList.length === 0) {
-        similarProductsList = products
+        // Fallback to any products if no same category
+        const fallbackSimilar = products
           .filter(p => p.id !== product.id)
           .slice(0, 6);
+        
+        if (fallbackSimilar.length === 0) {
+          similarProductsGrid.innerHTML = '<p style="color:var(--muted);text-align:center">No similar products found</p>';
+          return;
+        }
+        
+        renderSimilarProducts(fallbackSimilar);
+      } else {
+        renderSimilarProducts(similarProductsList);
       }
+    }
+
+    function renderSimilarProducts(productsList) {
+      similarProductsGrid.innerHTML = '';
       
-      if (similarProductsList.length === 0) {
-        similarProductsGrid.innerHTML = '<p style="color:var(--muted);text-align:center">No similar products found</p>';
-        return;
-      }
-      
-      similarProductsList.forEach(product => {
+      productsList.forEach(product => {
         const similarCard = document.createElement('div');
         similarCard.className = 'similar-product-card';
         similarCard.innerHTML = `
@@ -6841,7 +6798,7 @@
       }
     }
 
-    // Product Image Modal Functions
+    // Product Image Modal Functions - FIXED: Fullscreen on click
     function openProductImageModal() {
       if (!currentProduct) return;
       
@@ -7166,10 +7123,11 @@
       });
     }
 
-    // Update user name UI
+    // Update user name UI - FIXED: Ellipsis for long emails
     function updateUserNameUI(name) {
       document.querySelectorAll('.user-name').forEach(el => {
         el.textContent = name;
+        el.title = name; // Add tooltip for full name/email
       });
     }
 
