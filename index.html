@@ -705,10 +705,7 @@
       touch-action: pan-y;
     }
 
-    /* FIXED: Remove edit button */
-    .gallery-main .edit-btn {
-      display: none;
-    }
+    /* REMOVED: Edit button styles - We're removing the pencil icon */
 
     .gallery-thumbnails {
       display: flex;
@@ -763,7 +760,7 @@
       min-width: 300px;
     }
     
-    /* ENHANCED: Peter England Style Gallery */
+    /* ENHANCED: Peter England Style Gallery - WITHOUT EDIT BUTTON */
     .product-detail-main-image {
       width: 100%;
       height: 500px;
@@ -3784,10 +3781,7 @@
       color: white !important;
     }
 
-    /* FIXED: Gallery Edit Button - REMOVED */
-    .gallery-edit-btn {
-      display: none;
-    }
+    /* NEW: Gallery Edit Button REMOVED */
 
     /* NEW: Similar Products Replacement */
     .similar-products-replacement {
@@ -3800,13 +3794,63 @@
       margin-bottom: 16px;
       color: var(--ink);
     }
-
-    /* FIXED: Long email ellipsis */
-    .user-email {
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    
+    /* NEW: Fixed slider position */
+    .product-slider-container {
+      margin-top: 20px;
+      margin-bottom: 30px;
+    }
+    
+    /* NEW: Product detail gallery thumbnails for similar products */
+    .similar-products-thumbnails {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 10px 0;
+      margin-top: 15px;
+    }
+    
+    .similar-product-thumbnail {
+      min-width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      background-size: cover;
+      background-position: center;
+      cursor: pointer;
+      border: 2px solid var(--border);
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    
+    .similar-product-thumbnail:hover,
+    .similar-product-thumbnail.active {
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+    
+    /* NEW: Fullscreen image modal close button */
+    .fullscreen-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      color: #333;
+      z-index: 1001;
+      transition: all 0.2s ease;
+    }
+    
+    .fullscreen-close:hover {
+      background: rgba(255, 255, 255, 1);
+      transform: scale(1.1);
     }
   </style>
 
@@ -3833,19 +3877,19 @@
     const auth = getAuth();
     const database = getDatabase();
     
-    // Set persistence to local (user stays logged in)
+    // Set persistence to local so user stays logged in
     setPersistence(auth, browserLocalPersistence)
       .then(() => {
-        console.log('Firebase persistence set to local');
+        console.log("Auth persistence set to browserLocalPersistence");
       })
       .catch((error) => {
-        console.error('Error setting persistence:', error);
+        console.error("Error setting auth persistence:", error);
       });
     
     // Make Firebase available globally
-    window.firebase = { app, auth, database, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail, getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, setPersistence, browserLocalPersistence };
+    window.firebase = { app, auth, database, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence, getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo };
     
-    console.log('Firebase initialized successfully');
+    console.log('Firebase initialized successfully with local persistence');
   </script>
   
   <!-- EmailJS SDK -->
@@ -3860,7 +3904,7 @@
   <!-- Mobile Menu Overlay -->
   <div class="menu-overlay" id="menuOverlay"></div>
   
-  <!-- Mobile Menu -->
+  <!-- Mobile Menu - FIXED: Removed duplicate "My Profile" option -->
   <div class="mobile-menu" id="mobileMenu">
     <div class="menu-header">
       <div class="brand">
@@ -3900,8 +3944,8 @@
         </svg>
         Wishlist
       </div>
-      <!-- FIXED: SINGLE ACCOUNT OPTION - Only user profile link -->
-      <div class="menu-item" onclick="window.location.href='account.html'; closeMenu();">
+      <!-- FIXED: Single My Profile option -->
+      <div class="menu-item" onclick="handleAccountClick(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -3982,12 +4026,12 @@
       <!-- Login/Signup at the bottom of mobile menu -->
       <div class="menu-item" id="mobileLoginBtn" onclick="showLoginModal(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <path d="M20 21v -2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         Login / Sign Up
       </div>
-      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="window.location.href='account.html'; closeMenu();">
+      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="handleAccountClick(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -4067,13 +4111,12 @@
         </button>
         <!-- Login/Signup buttons -->
         <button class="btn secondary" id="openLoginTop" title="Login">Login</button>
-        <!-- FIXED: Single user profile option -->
-        <div class="user-profile" id="userProfile" style="display:none;" onclick="window.location.href='account.html'">
+        <div class="user-profile" id="userProfile" style="display:none;" onclick="handleAccountClick()">
           <div class="user-avatar" id="userAvatar">
             <img class="user-avatar-img" id="userAvatarImg" style="display:none;" />
             <span id="userAvatarInitial">U</span>
           </div>
-          <div class="user-name user-email" id="userName">User</div>
+          <div class="user-name" id="userName">User</div>
         </div>
       </div>
     </div>
@@ -4226,7 +4269,7 @@
         
         <div class="product-detail-container">
           <div class="product-detail-gallery">
-            <!-- ENHANCED: Peter England Style Gallery -->
+            <!-- ENHANCED: Peter England Style Gallery - WITHOUT EDIT BUTTON -->
             <div class="product-detail-main-image" id="productDetailMainImage">
               <button class="detail-carousel-control prev">&#10094;</button>
               <button class="detail-carousel-control next">&#10095;</button>
@@ -4308,11 +4351,11 @@
           <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
         </div>
 
-        <!-- Similar Products Section - UPDATED: Auto-loaded similar products -->
+        <!-- Similar Products Section - UPDATED: Color selection replaced with similar products -->
         <div class="similar-products">
           <h2 class="similar-title">Similar Products</h2>
           <div class="similar-products-grid" id="similarProductsGrid">
-            <!-- Similar products will be automatically loaded here -->
+            <!-- Similar products will be loaded here -->
           </div>
         </div>
       </div>
@@ -4595,7 +4638,7 @@
       </svg>
       <div class="bottom-nav-label">Orders</div>
     </div>
-    <div class="bottom-nav-item" onclick="window.location.href='account.html'">
+    <div class="bottom-nav-item" onclick="handleAccountClick()">
       <svg class="bottom-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
@@ -4664,7 +4707,7 @@
             <li><a onclick="showPage('productsPage')">Products</a></li>
             <li><a onclick="checkAuthAndShowPage('myOrdersPage')">My Orders</a></li>
             <li><a onclick="checkAuthAndShowPage('wishlistPage')">Wishlist</a></li>
-            <li><a href="account.html">My Account</a></li>
+            <li><a onclick="handleAccountClick()">My Account</a></li>
             <li><a href="about.html">About Us</a></li>
             <li><a href="contact.html">Contact Us</a></li>
           </ul>
@@ -4913,6 +4956,7 @@
     let galleryThumbnails = [];
     let touchStartX = 0;
     let touchEndX = 0;
+    let isTouching = false;
 
     // Cache Manager with 7 days TTL
     const cacheManager = {
@@ -5034,6 +5078,19 @@
     // Order Gallery Elements
     const orderGalleryThumbnails = document.getElementById('orderGalleryThumbnails');
 
+    // NEW: Account click handler to prevent reload
+    function handleAccountClick() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      // Use hash navigation instead of page reload
+      window.location.hash = 'account';
+      // In a real implementation, you would have an account.html page
+      // For now, show a toast
+      showToast('Account page would open here', 'success');
+    }
+
     // Initialize app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
       // Check if Firebase is available
@@ -5068,7 +5125,7 @@
       updateStepPills();
       updateBottomNav();
       
-      // Setup Firebase auth state listener - FIXED: No redirect/reload
+      // Setup Firebase auth state listener
       if (firebase && firebase.auth) {
         firebase.onAuthStateChanged(firebase.auth, user => {
           if (user) {
@@ -5082,8 +5139,6 @@
             currentUser = null;
             updateUIForGuest();
           }
-        }, (error) => {
-          console.error('Auth state change error:', error);
         });
       }
       
@@ -5094,7 +5149,7 @@
       fetchLiveData();
     }
 
-    // Setup swipe gestures for mobile - FIXED
+    // Setup swipe gestures for mobile
     function setupSwipeGestures() {
       const galleryMain = document.getElementById('galleryMain');
       const productDetailMainImage = document.getElementById('productDetailMainImage');
@@ -5113,16 +5168,22 @@
     }
 
     function handleTouchStart(e) {
+      isTouching = true;
       touchStartX = e.changedTouches[0].screenX;
     }
 
     function handleTouchMove(e) {
-      e.preventDefault(); // Prevent scrolling while swiping
+      if (isTouching) {
+        e.preventDefault(); // Prevent scrolling while swiping
+      }
     }
 
     function handleTouchEnd(e) {
+      if (!isTouching) return;
+      
       touchEndX = e.changedTouches[0].screenX;
       handleSwipe();
+      isTouching = false;
     }
 
     function handleSwipe() {
@@ -5323,7 +5384,7 @@
       });
       resetPasswordBtn.addEventListener('click', handleResetPassword);
       
-      userProfile.addEventListener('click', () => window.location.href = 'account.html');
+      userProfile.addEventListener('click', handleAccountClick);
       
       mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
       
@@ -5632,7 +5693,7 @@
       window.history.pushState({ page: pageId }, '', newUrl);
       
       if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
-        window.location.href = 'account.html';
+        handleAccountClick();
         return;
       }
       
@@ -5731,7 +5792,7 @@
       }
     }
 
-    // Authentication Functions - FIXED: No redirect/reload
+    // Authentication Functions
     async function handleLogin() {
       if (!firebase || !firebase.auth) {
         showToast('Firebase not initialized', 'error');
@@ -6062,7 +6123,7 @@
       }, 3000);
     }
 
-    // User interface updates - FIXED: No redirect on account click
+    // User interface updates
     function updateUIForUser(user) {
       userProfile.style.display = 'flex';
       openLoginTop.style.display = 'none';
@@ -6335,7 +6396,6 @@
         wishlistBtn.classList.remove('active');
       }
       
-      // FIXED: Auto-load similar products
       loadSimilarProductsGrid(product);
       loadProductReviews(product.id);
       
@@ -6346,7 +6406,7 @@
       showPage('productDetailPage');
     }
 
-    // Initialize product detail gallery with thumbnails - FIXED: Similar products in thumbnails
+    // Initialize product detail gallery with thumbnails
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('productDetailMainImage');
       const thumbnails = document.getElementById('productGalleryThumbnails');
@@ -6364,41 +6424,29 @@
       currentImageIndex = 0;
       updateMainImage();
       
-      // Create thumbnails - FIXED: Show similar products instead of same product images
-      if (similarProducts.length > 0) {
-        similarProducts.slice(0, 6).forEach((similarProduct, index) => {
-          const thumb = document.createElement('div');
-          thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
-          thumb.style.backgroundImage = `url('${getProductImage(similarProduct)}')`;
-          thumb.addEventListener('click', () => {
-            showProductDetail(similarProduct);
-          });
-          thumbnails.appendChild(thumb);
+      // Create thumbnails
+      currentProductImages.forEach((image, index) => {
+        const thumb = document.createElement('div');
+        thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
+        thumb.style.backgroundImage = `url('${image}')`;
+        thumb.addEventListener('click', () => {
+          currentImageIndex = index;
+          updateMainImage();
+          updateThumbnails();
+          updateDots();
         });
-      } else {
-        currentProductImages.forEach((image, index) => {
-          const thumb = document.createElement('div');
-          thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
-          thumb.style.backgroundImage = `url('${image}')`;
-          thumb.addEventListener('click', () => {
-            currentImageIndex = index;
-            updateMainImage();
-            updateThumbnails();
-            updateDots();
-          });
-          thumbnails.appendChild(thumb);
-          
-          const dot = document.createElement('div');
-          dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
-          dot.addEventListener('click', () => {
-            currentImageIndex = index;
-            updateMainImage();
-            updateThumbnails();
-            updateDots();
-          });
-          dots.appendChild(dot);
+        thumbnails.appendChild(thumb);
+        
+        const dot = document.createElement('div');
+        dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          currentImageIndex = index;
+          updateMainImage();
+          updateThumbnails();
+          updateDots();
         });
-      }
+        dots.appendChild(dot);
+      });
       
       function updateMainImage() {
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
@@ -6531,38 +6579,50 @@
       }
     }
 
-    // NEW: Load similar products grid - FIXED: Auto-load based on category
+    // NEW: Load similar products grid - AUTOMATICALLY based on category
     function loadSimilarProductsGrid(product) {
       if (!similarProductsGrid) return;
       
       similarProductsGrid.innerHTML = '';
       
       // Get similar products automatically based on category
-      const similarProductsList = products
-        .filter(p => p.id !== product.id && p.category === product.category)
-        .slice(0, 6);
+      let similarProductsList = [];
+      
+      if (product.category) {
+        // Filter by same category first
+        similarProductsList = products
+          .filter(p => p.id !== product.id && p.category === product.category)
+          .slice(0, 6);
+      }
+      
+      // If not enough products from same category, add from similar price range
+      if (similarProductsList.length < 4) {
+        const productPrice = parsePrice(product.price);
+        const priceRangeProducts = products
+          .filter(p => p.id !== product.id && 
+                 !similarProductsList.find(sp => sp.id === p.id) &&
+                 Math.abs(parsePrice(p.price) - productPrice) < (productPrice * 0.3)) // Within 30% price range
+          .slice(0, 6 - similarProductsList.length);
+        
+        similarProductsList = [...similarProductsList, ...priceRangeProducts];
+      }
+      
+      // If still not enough, add random products
+      if (similarProductsList.length < 4) {
+        const randomProducts = products
+          .filter(p => p.id !== product.id && 
+                 !similarProductsList.find(sp => sp.id === p.id))
+          .slice(0, 6 - similarProductsList.length);
+        
+        similarProductsList = [...similarProductsList, ...randomProducts];
+      }
       
       if (similarProductsList.length === 0) {
-        // Fallback to any products if no same category
-        const fallbackSimilar = products
-          .filter(p => p.id !== product.id)
-          .slice(0, 6);
-        
-        if (fallbackSimilar.length === 0) {
-          similarProductsGrid.innerHTML = '<p style="color:var(--muted);text-align:center">No similar products found</p>';
-          return;
-        }
-        
-        renderSimilarProducts(fallbackSimilar);
-      } else {
-        renderSimilarProducts(similarProductsList);
+        similarProductsGrid.innerHTML = '<p style="color:var(--muted);text-align:center">No similar products found</p>';
+        return;
       }
-    }
-
-    function renderSimilarProducts(productsList) {
-      similarProductsGrid.innerHTML = '';
       
-      productsList.forEach(product => {
+      similarProductsList.forEach(product => {
         const similarCard = document.createElement('div');
         similarCard.className = 'similar-product-card';
         similarCard.innerHTML = `
@@ -6575,6 +6635,42 @@
         
         similarCard.addEventListener('click', () => showProductDetail(product));
         similarProductsGrid.appendChild(similarCard);
+      });
+      
+      // Also update the thumbnail gallery with similar products
+      updateSimilarProductThumbnails(similarProductsList);
+    }
+    
+    // NEW: Update thumbnail gallery with similar products
+    function updateSimilarProductThumbnails(similarProductsList) {
+      const thumbnailsContainer = document.getElementById('productGalleryThumbnails');
+      if (!thumbnailsContainer || similarProductsList.length === 0) return;
+      
+      // Clear existing thumbnails
+      thumbnailsContainer.innerHTML = '';
+      
+      // Add current product as first thumbnail
+      const currentProductThumb = document.createElement('div');
+      currentProductThumb.className = 'product-gallery-thumbnail active';
+      currentProductThumb.style.backgroundImage = `url('${getProductImage(currentProduct)}')`;
+      currentProductThumb.addEventListener('click', () => {
+        currentImageIndex = 0;
+        updateProductDetailImage();
+        document.querySelectorAll('.product-gallery-thumbnail').forEach((thumb, index) => {
+          thumb.classList.toggle('active', index === 0);
+        });
+      });
+      thumbnailsContainer.appendChild(currentProductThumb);
+      
+      // Add similar products as thumbnails (max 5)
+      similarProductsList.slice(0, 5).forEach((product, index) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'product-gallery-thumbnail';
+        thumb.style.backgroundImage = `url('${getProductImage(product)}')`;
+        thumb.addEventListener('click', () => {
+          showProductDetail(product);
+        });
+        thumbnailsContainer.appendChild(thumb);
       });
     }
 
@@ -6798,7 +6894,7 @@
       }
     }
 
-    // Product Image Modal Functions - FIXED: Fullscreen on click
+    // Product Image Modal Functions
     function openProductImageModal() {
       if (!currentProduct) return;
       
@@ -7123,11 +7219,10 @@
       });
     }
 
-    // Update user name UI - FIXED: Ellipsis for long emails
+    // Update user name UI
     function updateUserNameUI(name) {
       document.querySelectorAll('.user-name').forEach(el => {
         el.textContent = name;
-        el.title = name; // Add tooltip for full name/email
       });
     }
 
