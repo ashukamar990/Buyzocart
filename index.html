@@ -64,7 +64,7 @@
   <!-- Mobile Menu Overlay -->
   <div class="menu-overlay" id="menuOverlay"></div>
   
-  <!-- Mobile Menu - FIXED: Removed duplicate "My Profile" option -->
+  <!-- Mobile Menu - FIXED: Single Account option -->
   <div class="mobile-menu" id="mobileMenu">
     <div class="menu-header">
       <div class="brand">
@@ -104,7 +104,7 @@
         </svg>
         Wishlist
       </div>
-      <!-- FIXED: Single My Profile option -->
+      <!-- Single My Profile option -->
       <div class="menu-item" onclick="handleAccountClick(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -112,9 +112,9 @@
         </svg>
         My Account
       </div>
-      <!-- NEW: Additional Professional Menu Items -->
+      <!-- Additional Professional Menu Items -->
       <div class="menu-item" onclick="window.location.href='categories.html'; closeMenu();">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
         </svg>
@@ -198,7 +198,7 @@
         </svg>
         <span id="mobileUserName">My Account</span>
       </div>
-      <!-- NEW: Logout in mobile menu -->
+      <!-- Logout in mobile menu -->
       <div class="menu-item" id="mobileLogoutBtn" style="display:none;" onclick="showLogoutConfirmation(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -429,16 +429,14 @@
         
         <div class="product-detail-container">
           <div class="product-detail-gallery">
-            <!-- ENHANCED: Peter England Style Gallery - WITHOUT EDIT BUTTON -->
+            <!-- Product Image Gallery - WITHOUT THUMBNAILS -->
             <div class="product-detail-main-image" id="productDetailMainImage">
               <button class="detail-carousel-control prev">&#10094;</button>
               <button class="detail-carousel-control next">&#10095;</button>
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
-              <div class="zoom-indicator">Click to zoom</div>
+              <div class="zoom-indicator">Tap image to zoom</div>
             </div>
-            <div class="product-gallery-thumbnails" id="productGalleryThumbnails">
-              <!-- Thumbnails will be loaded here -->
-            </div>
+            <!-- Thumbnail gallery removed as requested -->
           </div>
           
           <div class="product-detail-info">
@@ -511,11 +509,11 @@
           <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
         </div>
 
-        <!-- Similar Products Section - UPDATED: Color selection replaced with similar products -->
-        <div class="similar-products">
+        <!-- Similar Products Section - ADDED DYNAMICALLY -->
+        <div class="similar-products" id="similarProductsContainer">
           <h2 class="similar-title">Similar Products</h2>
           <div class="similar-products-grid" id="similarProductsGrid">
-            <!-- Similar products will be loaded here -->
+            <!-- Similar products will be loaded dynamically -->
           </div>
         </div>
       </div>
@@ -535,10 +533,6 @@
               <button class="carousel-control prev">&#10094;</button>
               <button class="carousel-control next">&#10095;</button>
               <div class="carousel-dots" id="orderCarouselDots"></div>
-            </div>
-            <!-- NEW: Thumbnails below main image -->
-            <div class="gallery-thumbnails" id="orderGalleryThumbnails">
-              <!-- Thumbnails will be loaded here -->
             </div>
           </div>
 
@@ -711,9 +705,10 @@
             <!-- Orders will be dynamically inserted here -->
           </div>
           
+          <!-- Empty State Section -->
           <div id="orders-empty" class="empty-state" style="display:none">
             <img src="https://cdn-icons-png.flaticon.com/512/891/891419.png" class="empty-icon">
-            <h3>No Orders Yet</h3>
+            <h3>You haven't placed any orders yet</h3>
             <p>Your orders will appear here after you place them.</p>
             <a href="#" class="empty-btn" onclick="showPage('productsPage')">Start Shopping</a>
           </div>
@@ -763,7 +758,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
-            <h3 style="margin:16px 0 8px;color:var(--muted)">Aapki wishlist khaali hai.</h3>
+            <h3 style="margin:16px 0 8px;color:var(--muted)">Your wishlist is empty</h3>
             <p style="color:var(--muted-light)">You haven't added any products to your wishlist yet.</p>
             <button class="btn" style="margin-top:16px" onclick="showPage('productsPage')">Browse Products</button>
           </div>
@@ -1116,7 +1111,10 @@
     let galleryThumbnails = [];
     let touchStartX = 0;
     let touchEndX = 0;
+    let touchStartY = 0;
+    let touchEndY = 0;
     let isTouching = false;
+    let isHorizontalSwipe = false;
 
     // Cache Manager with 7 days TTL
     const cacheManager = {
@@ -1235,8 +1233,8 @@
     // Similar Products Elements
     const similarProductsGrid = document.getElementById('similarProductsGrid');
 
-    // Order Gallery Elements
-    const orderGalleryThumbnails = document.getElementById('orderGalleryThumbnails');
+    // Search Input Elements
+    const searchInput = document.getElementById('searchInput');
 
     // NEW: Account click handler to prevent reload
     function handleAccountClick() {
@@ -1311,64 +1309,81 @@
 
     // Setup swipe gestures for mobile
     function setupSwipeGestures() {
-      const galleryMain = document.getElementById('galleryMain');
       const productDetailMainImage = document.getElementById('productDetailMainImage');
-      
-      if (galleryMain) {
-        galleryMain.addEventListener('touchstart', handleTouchStart, false);
-        galleryMain.addEventListener('touchmove', handleTouchMove, false);
-        galleryMain.addEventListener('touchend', handleTouchEnd, false);
-      }
+      const galleryMain = document.getElementById('galleryMain');
       
       if (productDetailMainImage) {
         productDetailMainImage.addEventListener('touchstart', handleTouchStart, false);
         productDetailMainImage.addEventListener('touchmove', handleTouchMove, false);
         productDetailMainImage.addEventListener('touchend', handleTouchEnd, false);
       }
+      
+      if (galleryMain) {
+        galleryMain.addEventListener('touchstart', handleTouchStart, false);
+        galleryMain.addEventListener('touchmove', handleTouchMove, false);
+        galleryMain.addEventListener('touchend', handleTouchEnd, false);
+      }
     }
 
     function handleTouchStart(e) {
       isTouching = true;
-      touchStartX = e.changedTouches[0].screenX;
+      isHorizontalSwipe = false;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
     }
 
     function handleTouchMove(e) {
-      if (isTouching) {
-        e.preventDefault(); // Prevent scrolling while swiping
+      if (!isTouching) return;
+      
+      touchEndX = e.touches[0].clientX;
+      touchEndY = e.touches[0].clientY;
+      
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      
+      // Determine if this is primarily a horizontal swipe
+      if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        isHorizontalSwipe = true;
+        e.preventDefault(); // Only prevent default for horizontal swipes
       }
     }
 
     function handleTouchEnd(e) {
       if (!isTouching) return;
       
-      touchEndX = e.changedTouches[0].screenX;
-      handleSwipe();
-      isTouching = false;
-    }
-
-    function handleSwipe() {
-      const swipeThreshold = 50;
-      const diff = touchStartX - touchEndX;
+      touchEndX = e.changedTouches[0].clientX;
+      touchEndY = e.changedTouches[0].clientY;
       
-      if (Math.abs(diff) > swipeThreshold) {
-        if (diff > 0) {
-          // Swipe left - next image
-          if (document.getElementById('orderPage').classList.contains('active')) {
-            const nextBtn = document.querySelector('#galleryMain .carousel-control.next');
-            if (nextBtn) nextBtn.click();
-          } else if (document.getElementById('productDetailPage').classList.contains('active')) {
-            nextDetailImage();
-          }
-        } else {
-          // Swipe right - previous image
-          if (document.getElementById('orderPage').classList.contains('active')) {
-            const prevBtn = document.querySelector('#galleryMain .carousel-control.prev');
-            if (prevBtn) prevBtn.click();
-          } else if (document.getElementById('productDetailPage').classList.contains('active')) {
-            prevDetailImage();
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      
+      // Only handle as swipe if it's primarily horizontal
+      if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        const swipeThreshold = 50;
+        
+        if (Math.abs(deltaX) > swipeThreshold) {
+          if (deltaX > 0) {
+            // Swipe right - previous image
+            if (document.getElementById('productDetailPage').classList.contains('active')) {
+              prevDetailImage();
+            } else if (document.getElementById('orderPage').classList.contains('active')) {
+              const prevBtn = document.querySelector('#galleryMain .carousel-control.prev');
+              if (prevBtn) prevBtn.click();
+            }
+          } else {
+            // Swipe left - next image
+            if (document.getElementById('productDetailPage').classList.contains('active')) {
+              nextDetailImage();
+            } else if (document.getElementById('orderPage').classList.contains('active')) {
+              const nextBtn = document.querySelector('#galleryMain .carousel-control.next');
+              if (nextBtn) nextBtn.click();
+            }
           }
         }
       }
+      
+      isTouching = false;
+      isHorizontalSwipe = false;
     }
 
     // Load cached data first
@@ -1564,12 +1579,36 @@
       productImageModalPrev.addEventListener('click', prevProductModalImage);
       productImageModalNext.addEventListener('click', nextProductModalImage);
       
-      const searchInput = document.getElementById('searchInput');
+      // Search keyboard enter handling
       if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSearch();
+            this.blur(); // Close mobile keyboard
+            window.scrollTo(0, 0); // Scroll to top
+          }
+        });
         searchInput.addEventListener('input', debounce(handleSearch, 300));
       }
       
       if (homeSearchInput) {
+        homeSearchInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = this.value.trim();
+            if (query) {
+              addToRecentSearches(query);
+              this.blur(); // Close mobile keyboard
+              // Redirect to products page with search
+              showPage('productsPage');
+              if (searchInput) {
+                searchInput.value = query;
+              }
+              filterProducts(query, 'productGrid');
+            }
+          }
+        });
         homeSearchInput.addEventListener('focus', showAdvancedSearchPanel);
         homeSearchInput.addEventListener('input', debounce(handleHomeSearch, 300));
         document.addEventListener('click', hideAdvancedSearchPanel);
@@ -2338,7 +2377,7 @@
       container.innerHTML = '';
       
       if (productsToRender.length === 0) {
-        container.innerHTML = '<div class="card-panel center">No products found</div>';
+        container.innerHTML = '<div class="card-panel center">No products found. Try a different search or filter.</div>';
         return;
       }
       
@@ -2566,43 +2605,27 @@
       showPage('productDetailPage');
     }
 
-    // Initialize product detail gallery with thumbnails
+    // Initialize product detail gallery WITHOUT thumbnails
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('productDetailMainImage');
-      const thumbnails = document.getElementById('productGalleryThumbnails');
       const dots = document.getElementById('detailCarouselDots');
       
-      if (!mainImage || !thumbnails || !dots) return;
+      if (!mainImage || !dots) return;
       
-      thumbnails.innerHTML = '';
       dots.innerHTML = '';
       
       // Get product images
       currentProductImages = getProductImages();
-      galleryThumbnails = currentProductImages;
-      
       currentImageIndex = 0;
       updateMainImage();
       
-      // Create thumbnails
+      // Create dots for navigation
       currentProductImages.forEach((image, index) => {
-        const thumb = document.createElement('div');
-        thumb.className = `product-gallery-thumbnail ${index === 0 ? 'active' : ''}`;
-        thumb.style.backgroundImage = `url('${image}')`;
-        thumb.addEventListener('click', () => {
-          currentImageIndex = index;
-          updateMainImage();
-          updateThumbnails();
-          updateDots();
-        });
-        thumbnails.appendChild(thumb);
-        
         const dot = document.createElement('div');
         dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
         dot.addEventListener('click', () => {
           currentImageIndex = index;
           updateMainImage();
-          updateThumbnails();
           updateDots();
         });
         dots.appendChild(dot);
@@ -2612,12 +2635,6 @@
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
       }
       
-      function updateThumbnails() {
-        document.querySelectorAll('.product-gallery-thumbnail').forEach((thumb, index) => {
-          thumb.classList.toggle('active', index === currentImageIndex);
-        });
-      }
-      
       function updateDots() {
         document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentImageIndex);
@@ -2625,22 +2642,19 @@
       }
     }
 
-    // FIXED: Order page gallery initialization with thumbnails
+    // FIXED: Order page gallery initialization WITHOUT thumbnails
     function initOrderPageGallery() {
       if (!currentProduct) return;
       
       const galleryMain = document.getElementById('galleryMain');
       const dotsContainer = document.getElementById('orderCarouselDots');
-      const thumbnailsContainer = document.getElementById('orderGalleryThumbnails');
       
-      if (!galleryMain || !dotsContainer || !thumbnailsContainer) return;
+      if (!galleryMain || !dotsContainer) return;
       
       const productImages = getProductImages();
-      galleryThumbnails = productImages;
       
       galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
       dotsContainer.innerHTML = '';
-      thumbnailsContainer.innerHTML = '';
       
       productImages.forEach((image, index) => {
         const dot = document.createElement('div');
@@ -2649,15 +2663,6 @@
           setOrderPageImage(index);
         });
         dotsContainer.appendChild(dot);
-        
-        // Create thumbnail
-        const thumbnail = document.createElement('div');
-        thumbnail.className = `gallery-thumbnail ${index === 0 ? 'selected' : ''}`;
-        thumbnail.style.backgroundImage = `url('${image}')`;
-        thumbnail.addEventListener('click', () => {
-          setOrderPageImage(index);
-        });
-        thumbnailsContainer.appendChild(thumbnail);
       });
       
       const prevBtn = galleryMain.querySelector('.carousel-control.prev');
@@ -2683,7 +2688,6 @@
     function setOrderPageImage(index) {
       const galleryMain = document.getElementById('galleryMain');
       const dots = document.querySelectorAll('#orderCarouselDots .carousel-dot');
-      const thumbnails = document.querySelectorAll('#orderGalleryThumbnails .gallery-thumbnail');
       const productImages = getProductImages();
       
       if (galleryMain && productImages[index]) {
@@ -2692,10 +2696,6 @@
       
       dots.forEach((dot, i) => {
         dot.classList.toggle('active', i === index);
-      });
-      
-      thumbnails.forEach((thumb, i) => {
-        thumb.classList.toggle('selected', i === index);
       });
     }
 
@@ -2729,17 +2729,13 @@
       if (mainImage && currentProductImages[currentImageIndex]) {
         mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
         
-        document.querySelectorAll('.product-gallery-thumbnail').forEach((thumb, index) => {
-          thumb.classList.toggle('active', index === currentImageIndex);
-        });
-        
         document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentImageIndex);
         });
       }
     }
 
-    // NEW: Load similar products grid - AUTOMATICALLY based on category
+    // Load similar products grid - AUTOMATICALLY based on category
     function loadSimilarProductsGrid(product) {
       if (!similarProductsGrid) return;
       
@@ -2795,42 +2791,6 @@
         
         similarCard.addEventListener('click', () => showProductDetail(product));
         similarProductsGrid.appendChild(similarCard);
-      });
-      
-      // Also update the thumbnail gallery with similar products
-      updateSimilarProductThumbnails(similarProductsList);
-    }
-    
-    // NEW: Update thumbnail gallery with similar products
-    function updateSimilarProductThumbnails(similarProductsList) {
-      const thumbnailsContainer = document.getElementById('productGalleryThumbnails');
-      if (!thumbnailsContainer || similarProductsList.length === 0) return;
-      
-      // Clear existing thumbnails
-      thumbnailsContainer.innerHTML = '';
-      
-      // Add current product as first thumbnail
-      const currentProductThumb = document.createElement('div');
-      currentProductThumb.className = 'product-gallery-thumbnail active';
-      currentProductThumb.style.backgroundImage = `url('${getProductImage(currentProduct)}')`;
-      currentProductThumb.addEventListener('click', () => {
-        currentImageIndex = 0;
-        updateProductDetailImage();
-        document.querySelectorAll('.product-gallery-thumbnail').forEach((thumb, index) => {
-          thumb.classList.toggle('active', index === 0);
-        });
-      });
-      thumbnailsContainer.appendChild(currentProductThumb);
-      
-      // Add similar products as thumbnails (max 5)
-      similarProductsList.slice(0, 5).forEach((product, index) => {
-        const thumb = document.createElement('div');
-        thumb.className = 'product-gallery-thumbnail';
-        thumb.style.backgroundImage = `url('${getProductImage(product)}')`;
-        thumb.addEventListener('click', () => {
-          showProductDetail(product);
-        });
-        thumbnailsContainer.appendChild(thumb);
       });
     }
 
@@ -3476,7 +3436,7 @@
       renderProductSlider(recentlyViewedProducts, 'recentlyViewedSlider');
     }
 
-    // Orders rendering function
+    // Orders rendering function with empty state
     function renderOrders(orders) {
       const container = document.getElementById('ordersList');
       const empty = document.getElementById('orders-empty');
