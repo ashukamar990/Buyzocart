@@ -105,7 +105,7 @@
         Wishlist
       </div>
       <!-- Single My Profile option -->
-      <div class="menu-item" onclick="handleAccountClick(); closeMenu();">
+      <div class="menu-item" onclick="checkAuthAndShowPage('accountPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -191,7 +191,7 @@
         </svg>
         Login / Sign Up
       </div>
-      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="handleAccountClick(); closeMenu();">
+      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="checkAuthAndShowPage('accountPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -271,7 +271,7 @@
         </button>
         <!-- Login/Signup buttons -->
         <button class="btn secondary" id="openLoginTop" title="Login">Login</button>
-        <div class="user-profile" id="userProfile" style="display:none;" onclick="handleAccountClick()">
+        <div class="user-profile" id="userProfile" style="display:none;" onclick="checkAuthAndShowPage('accountPage')">
           <div class="user-avatar" id="userAvatar">
             <img class="user-avatar-img" id="userAvatarImg" style="display:none;" />
             <span id="userAvatarInitial">U</span>
@@ -765,6 +765,109 @@
         </div>
       </div>
     </section>
+
+    <!-- NEW: Account Page (Added inside index.html) -->
+    <section class="page" id="accountPage">
+      <div class="policy-page">
+        <div class="back-button" onclick="showPage('homePage')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
+        </div>
+        
+        <div class="orders-container">
+          <h2>My Account</h2>
+          <p style="color:var(--muted);margin-bottom:24px">Manage your account settings and preferences</p>
+          
+          <div class="account-sections">
+            <!-- Profile Section -->
+            <div class="account-section">
+              <h3>Profile Information</h3>
+              <div class="account-profile-info">
+                <div class="profile-avatar" id="accountProfileAvatar">
+                  <img id="accountProfileImg" style="display:none; width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+                  <div id="accountProfileInitial" style="width: 80px; height: 80px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold;">
+                    U
+                  </div>
+                </div>
+                <div class="profile-details">
+                  <div class="profile-name" id="accountProfileName">User Name</div>
+                  <div class="profile-email" id="accountProfileEmail">user@example.com</div>
+                  <div class="profile-meta" id="accountProfileMeta">Member since: Loading...</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Account Settings -->
+            <div class="account-section">
+              <h3>Account Settings</h3>
+              <div class="account-settings-list">
+                <div class="account-setting-item" onclick="showEditProfile()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span>Edit Profile</span>
+                  <span>→</span>
+                </div>
+                <div class="account-setting-item" onclick="showChangePassword()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <span>Change Password</span>
+                  <span>→</span>
+                </div>
+                <div class="account-setting-item" onclick="showPage('myOrdersPage')">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                  <span>My Orders</span>
+                  <span>→</span>
+                </div>
+                <div class="account-setting-item" onclick="showPage('wishlistPage')">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                  <span>My Wishlist</span>
+                  <span>→</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Address Management -->
+            <div class="account-section">
+              <h3>Saved Addresses</h3>
+              <div id="accountAddressesList" class="account-addresses-list">
+                <div class="empty-addresses" id="emptyAddresses">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <p>No saved addresses yet</p>
+                </div>
+              </div>
+              <button class="btn" onclick="showAddAddressForm()" style="margin-top: 16px;">Add New Address</button>
+            </div>
+            
+            <!-- Logout Button -->
+            <div class="account-section">
+              <button class="btn error" onclick="showLogoutConfirmation()" style="width: 100%;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Bottom Navigation Bar -->
@@ -793,7 +896,7 @@
       </svg>
       <div class="bottom-nav-label">Orders</div>
     </div>
-    <div class="bottom-nav-item" onclick="handleAccountClick()">
+    <div class="bottom-nav-item" onclick="checkAuthAndShowPage('accountPage')">
       <svg class="bottom-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
@@ -862,7 +965,7 @@
             <li><a onclick="showPage('productsPage')">Products</a></li>
             <li><a onclick="checkAuthAndShowPage('myOrdersPage')">My Orders</a></li>
             <li><a onclick="checkAuthAndShowPage('wishlistPage')">Wishlist</a></li>
-            <li><a onclick="handleAccountClick()">My Account</a></li>
+            <li><a onclick="checkAuthAndShowPage('accountPage')">My Account</a></li>
             <li><a href="about.html">About Us</a></li>
             <li><a href="contact.html">Contact Us</a></li>
           </ul>
@@ -1236,18 +1339,14 @@
     // Search Input Elements
     const searchInput = document.getElementById('searchInput');
 
-    // NEW: Account click handler to prevent reload
-    function handleAccountClick() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      // Use hash navigation instead of page reload
-      window.location.hash = 'account';
-      // In a real implementation, you would have an account.html page
-      // For now, show a toast
-      showToast('Account page would open here', 'success');
-    }
+    // Account Page Elements
+    const accountProfileImg = document.getElementById('accountProfileImg');
+    const accountProfileInitial = document.getElementById('accountProfileInitial');
+    const accountProfileName = document.getElementById('accountProfileName');
+    const accountProfileEmail = document.getElementById('accountProfileEmail');
+    const accountProfileMeta = document.getElementById('accountProfileMeta');
+    const accountAddressesList = document.getElementById('accountAddressesList');
+    const emptyAddresses = document.getElementById('emptyAddresses');
 
     // Initialize app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -1270,7 +1369,7 @@
       
       // Set initial page based on URL hash
       const hash = window.location.hash.replace('#', '');
-      const validPages = ['homePage', 'productsPage', 'myOrdersPage', 'wishlistPage', 'productDetailPage', 'orderPage', 'userPage', 'paymentPage', 'successPage', 'orderDetailPage'];
+      const validPages = ['homePage', 'productsPage', 'myOrdersPage', 'wishlistPage', 'productDetailPage', 'orderPage', 'userPage', 'paymentPage', 'successPage', 'orderDetailPage', 'accountPage'];
       
       if (hash && validPages.includes(hash)) {
         showPage(hash);
@@ -1436,7 +1535,7 @@
       
       try {
         // Fetch products
-        const productsSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'products')));
+        const productsSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'products')));
         if (productsSnapshot.exists()) {
           const productsObj = productsSnapshot.val();
           const newProducts = Object.keys(productsObj).map(key => ({
@@ -1464,7 +1563,7 @@
         }
         
         // Fetch categories
-        const categoriesSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'categories')));
+        const categoriesSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'categories')));
         if (categoriesSnapshot.exists()) {
           const categoriesObj = categoriesSnapshot.val();
           const newCategories = Object.keys(categoriesObj).map(key => ({
@@ -1483,7 +1582,7 @@
         }
         
         // Fetch banners
-        const bannersSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'banners')));
+        const bannersSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'banners')));
         if (bannersSnapshot.exists()) {
           const bannersObj = bannersSnapshot.val();
           const newBanners = Object.keys(bannersObj).map(key => ({
@@ -1500,7 +1599,7 @@
         }
         
         // Fetch admin settings
-        const settingsSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'adminSettings')));
+        const settingsSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'adminSettings')));
         if (settingsSnapshot.exists()) {
           const settingsObj = settingsSnapshot.val();
           adminSettings = { ...adminSettings, ...settingsObj };
@@ -1509,7 +1608,7 @@
         }
         
         // Fetch similar products data
-        const similarSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'similarProducts')));
+        const similarSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'similarProducts')));
         if (similarSnapshot.exists()) {
           const similarObj = similarSnapshot.val();
           similarProducts = Object.keys(similarObj).map(key => ({
@@ -1559,7 +1658,7 @@
       });
       resetPasswordBtn.addEventListener('click', handleResetPassword);
       
-      userProfile.addEventListener('click', handleAccountClick);
+      userProfile.addEventListener('click', () => checkAuthAndShowPage('accountPage'));
       
       mobileLogoutBtn.addEventListener('click', showLogoutConfirmation);
       
@@ -1847,12 +1946,12 @@
       
       try {
         if (add) {
-          await firebase.set(firebase.ref(firebase.database(), 'userWishlists/' + currentUser.uid + '/' + productId), {
+          await firebase.set(firebase.ref(firebase.database, 'userWishlists/' + currentUser.uid + '/' + productId), {
             productId: productId,
             addedAt: Date.now()
           });
         } else {
-          await firebase.remove(firebase.ref(firebase.database(), 'userWishlists/' + currentUser.uid + '/' + productId));
+          await firebase.remove(firebase.ref(firebase.database, 'userWishlists/' + currentUser.uid + '/' + productId));
         }
       } catch (error) {
         console.error('Error updating wishlist in Firebase:', error);
@@ -1891,11 +1990,6 @@
       const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
       window.history.pushState({ page: pageId }, '', newUrl);
       
-      if (pageId === 'accountPage' || pageId === 'settingsPage' || pageId === 'addressPage') {
-        handleAccountClick();
-        return;
-      }
-      
       document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
       });
@@ -1932,6 +2026,10 @@
         updateOrderPageDetails();
       }
       
+      if (pageId === 'accountPage' && currentUser) {
+        loadAccountPageData();
+      }
+      
       // Handle search redirect
       if (pageId === 'productsPage') {
         const urlParams = new URLSearchParams(window.location.search);
@@ -1959,7 +2057,7 @@
     }
 
     function checkAuthAndShowPage(pageId) {
-      if (!currentUser) {
+      if (!currentUser && (pageId === 'accountPage' || pageId === 'myOrdersPage' || pageId === 'wishlistPage')) {
         showLoginModal();
         return;
       }
@@ -2060,7 +2158,7 @@
         const userCredential = await firebase.createUserWithEmailAndPassword(firebase.auth, email, password);
         const user = userCredential.user;
         
-        await firebase.set(firebase.ref(firebase.database(), 'users/' + user.uid), {
+        await firebase.set(firebase.ref(firebase.database, 'users/' + user.uid), {
           name: name,
           email: email,
           createdAt: Date.now(),
@@ -2097,10 +2195,10 @@
         const result = await firebase.signInWithPopup(firebase.auth, provider);
         const user = result.user;
         
-        const userSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'users/' + user.uid)));
+        const userSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'users/' + user.uid)));
         
         if (!userSnapshot.exists()) {
-          await firebase.set(firebase.ref(firebase.database(), 'users/' + user.uid), {
+          await firebase.set(firebase.ref(firebase.database, 'users/' + user.uid), {
             name: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
@@ -2108,7 +2206,7 @@
             lastLoginAt: Date.now()
           });
         } else {
-          await firebase.update(firebase.ref(firebase.database(), 'users/' + user.uid), {
+          await firebase.update(firebase.ref(firebase.database, 'users/' + user.uid), {
             lastLoginAt: Date.now()
           });
         }
@@ -2187,7 +2285,7 @@
       };
       
       try {
-        await firebase.set(firebase.ref(firebase.database(), 'orders/' + orderId), orderData);
+        await firebase.set(firebase.ref(firebase.database, 'orders/' + orderId), orderData);
         
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
@@ -2333,7 +2431,7 @@
       updateUserProfile(user);
       
       if (firebase && firebase.database) {
-        firebase.get(firebase.query(firebase.ref(firebase.database(), 'users/' + user.uid))).then(snapshot => {
+        firebase.get(firebase.query(firebase.ref(firebase.database, 'users/' + user.uid))).then(snapshot => {
           if (snapshot.exists()) {
             const userData = snapshot.val();
             const name = userData.name || user.displayName || 'User';
@@ -3105,7 +3203,7 @@
           date: Date.now()
         };
         
-        await firebase.set(firebase.ref(firebase.database(), 'reviews/' + reviewId), reviewData);
+        await firebase.set(firebase.ref(firebase.database, 'reviews/' + reviewId), reviewData);
         
         showToast('Review submitted successfully', 'success');
         
@@ -3122,7 +3220,7 @@
     async function loadProductReviews(productId) {
       try {
         const reviewsQuery = firebase.query(
-          firebase.ref(firebase.database(), 'reviews'),
+          firebase.ref(firebase.database, 'reviews'),
           firebase.orderByChild('productId'),
           firebase.equalTo(productId)
         );
@@ -3184,7 +3282,7 @@
       if (!confirm('Are you sure you want to delete this review?')) return;
       
       try {
-        await firebase.remove(firebase.ref(firebase.database(), 'reviews/' + reviewId));
+        await firebase.remove(firebase.ref(firebase.database, 'reviews/' + reviewId));
         showToast('Review deleted successfully', 'success');
         loadProductReviews(currentProduct.id);
       } catch (error) {
@@ -3329,7 +3427,7 @@
     function loadUserData(user) {
       if (!firebase || !firebase.database) return;
       
-      firebase.get(firebase.query(firebase.ref(firebase.database(), 'users/' + user.uid))).then(snapshot => {
+      firebase.get(firebase.query(firebase.ref(firebase.database, 'users/' + user.uid))).then(snapshot => {
         if (snapshot.exists()) {
           const userData = snapshot.val();
           userInfo = { ...userInfo, ...userData };
@@ -3390,7 +3488,7 @@
       if (!currentUser || !firebase || !firebase.database) return;
       
       try {
-        await firebase.set(firebase.ref(firebase.database(), 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
+        await firebase.set(firebase.ref(firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
         loadRecentlyViewed(currentUser);
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
@@ -3401,7 +3499,7 @@
       if (!firebase || !firebase.database) return;
       
       try {
-        const snapshot = await firebase.get(firebase.query(firebase.ref(firebase.database(), 'recentlyViewed/' + user.uid)));
+        const snapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'recentlyViewed/' + user.uid)));
         if (snapshot.exists()) {
           const recentlyViewedObj = snapshot.val();
           recentlyViewed = Object.keys(recentlyViewedObj);
@@ -3488,7 +3586,7 @@
       
       try {
         const ordersQuery = firebase.query(
-          firebase.ref(firebase.database(), 'orders'),
+          firebase.ref(firebase.database, 'orders'),
           firebase.orderByChild('userId'),
           firebase.equalTo(currentUser.uid)
         );
@@ -3530,6 +3628,87 @@
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       
       showToast('Address saved for this order', 'success');
+    }
+
+    // Account Page Functions
+    async function loadAccountPageData() {
+      if (!currentUser) return;
+      
+      // Update profile information
+      if (currentUser.photoURL) {
+        accountProfileImg.src = currentUser.photoURL;
+        accountProfileImg.style.display = 'block';
+        accountProfileInitial.style.display = 'none';
+      } else {
+        accountProfileImg.style.display = 'none';
+        accountProfileInitial.style.display = 'block';
+        accountProfileInitial.textContent = (currentUser.displayName || 'U').charAt(0).toUpperCase();
+      }
+      
+      accountProfileName.textContent = currentUser.displayName || 'User';
+      accountProfileEmail.textContent = currentUser.email || 'No email';
+      
+      // Load user details from Firebase
+      try {
+        const userSnapshot = await firebase.get(firebase.query(firebase.ref(firebase.database, 'users/' + currentUser.uid)));
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.val();
+          if (userData.createdAt) {
+            const joinDate = new Date(userData.createdAt).toLocaleDateString();
+            accountProfileMeta.textContent = `Member since: ${joinDate}`;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data for account page:', error);
+      }
+      
+      // Load saved addresses
+      loadAccountAddresses();
+    }
+
+    function loadAccountAddresses() {
+      // This is a simplified version - you would normally fetch from Firebase
+      accountAddressesList.innerHTML = '';
+      
+      if (savedAddresses.length === 0) {
+        emptyAddresses.style.display = 'block';
+        return;
+      }
+      
+      emptyAddresses.style.display = 'none';
+      
+      savedAddresses.forEach(address => {
+        const addressCard = document.createElement('div');
+        addressCard.className = 'account-address-card';
+        addressCard.innerHTML = `
+          <div class="address-card-header">
+            <div class="address-type">${address.type === 'home' ? '🏠 Home' : address.type === 'work' ? '💼 Work' : '📍 Other'}</div>
+            <div class="address-actions">
+              <button class="address-edit-btn">Edit</button>
+              <button class="address-delete-btn">Delete</button>
+            </div>
+          </div>
+          <div class="address-card-body">
+            <div class="address-name">${address.fullName}</div>
+            <div class="address-mobile">${address.mobile}</div>
+            <div class="address-full">${address.house}, ${address.city}, ${address.state} - ${address.pincode}</div>
+          </div>
+        `;
+        
+        accountAddressesList.appendChild(addressCard);
+      });
+    }
+
+    function showEditProfile() {
+      showToast('Edit profile feature would open here', 'success');
+    }
+
+    function showChangePassword() {
+      showToast('Change password feature would open here', 'success');
+    }
+
+    function showAddAddressForm() {
+      showToast('Add address form would open here', 'success');
     }
   </script>
 </body>
