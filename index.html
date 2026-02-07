@@ -79,7 +79,7 @@
       
       <!-- OFFERS -->
       <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+        <svg xmlns="http://www.w3.org2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.5 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/>
         </svg>
         Offers
@@ -646,8 +646,8 @@
               <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
             </div>
             
-            <!-- Sticky Action Buttons -->
-            <div class="sticky-order-buttons">
+            <!-- Sticky Action Buttons - FIXED POSITION -->
+            <div class="sticky-order-buttons-fixed">
               <button id="toUserInfo" class="btn" style="flex:1">Continue → Provide Your Info</button>
               <button id="backToProducts" class="btn secondary" style="flex:1">Back to Products</button>
             </div>
@@ -699,7 +699,7 @@
             </div>
             
             <!-- Sticky Action Buttons -->
-            <div class="sticky-action-buttons">
+            <div class="sticky-action-buttons-fixed">
               <button id="toPayment" class="btn" style="flex:1">Continue to Payment</button>
               <button id="editOrder" class="btn secondary" style="flex:1">Edit Order Details</button>
               <button id="saveUserInfo" class="btn secondary" style="flex:1">Save This Address</button>
@@ -2395,21 +2395,60 @@
         product.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
       );
       
-      // Redirect to products page with search results
-      showPage('productsPage');
-      
-      // Apply search filter
-      currentCategoryFilter = null;
-      document.querySelectorAll('.category-pill').forEach(pill => {
-        if (pill.textContent === 'All') {
-          pill.classList.add('active');
+      // If no exact matches found, show similar products
+      if (filteredProducts.length === 0) {
+        // Try to find similar products
+        const similarProducts = products.filter(product => {
+          // Split query into words
+          const queryWords = query.toLowerCase().split(' ');
+          const productNameWords = product.name?.toLowerCase().split(' ') || [];
+          const productDescWords = product.description?.toLowerCase().split(' ') || [];
+          
+          // Check if any query word matches any product word
+          return queryWords.some(qWord => 
+            productNameWords.some(pWord => pWord.includes(qWord)) ||
+            productDescWords.some(pWord => pWord.includes(qWord))
+          );
+        });
+        
+        // Redirect to products page with search results
+        showPage('productsPage');
+        
+        // Apply search filter
+        currentCategoryFilter = null;
+        document.querySelectorAll('.category-pill').forEach(pill => {
+          if (pill.textContent === 'All') {
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
+        });
+        
+        renderProducts(similarProducts.length > 0 ? similarProducts : products, 'productGrid');
+        updateProductsCount();
+        
+        if (similarProducts.length === 0) {
+          showToast('No exact matches found. Showing all products.', 'info');
         } else {
-          pill.classList.remove('active');
+          showToast(`No exact matches for "${query}". Showing similar products.`, 'info');
         }
-      });
-      
-      renderProducts(filteredProducts, 'productGrid');
-      updateProductsCount();
+      } else {
+        // Redirect to products page with search results
+        showPage('productsPage');
+        
+        // Apply search filter
+        currentCategoryFilter = null;
+        document.querySelectorAll('.category-pill').forEach(pill => {
+          if (pill.textContent === 'All') {
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
+        });
+        
+        renderProducts(filteredProducts, 'productGrid');
+        updateProductsCount();
+      }
       
       // Close search panel
       closeSearchPanel();
@@ -2451,11 +2490,11 @@
         const item = document.createElement('div');
         item.className = 'recent-search-item';
         item.innerHTML = `
-          <span>${search}</span>
+          <span class="recent-search-text">${search}</span>
           <button class="recent-search-remove" data-search="${search}">×</button>
         `;
         
-        item.querySelector('span').addEventListener('click', () => {
+        item.querySelector('.recent-search-text').addEventListener('click', () => {
           document.getElementById('searchPanelInput').value = search;
           performSearch(search);
         });
@@ -2818,8 +2857,8 @@
         <div class="product-card-body">
           <div class="product-card-title">${product.name || 'Product Name'}</div>
           <div class="product-card-rating">
-            <div class="product-card-stars">★★★★★</div>
-            <div class="product-card-review-count">(${product.reviews || '0'})</div>
+            <div class="product-card-stars">${generateStarRating(product.rating || 0)}</div>
+            <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
@@ -2845,15 +2884,6 @@
         </div>
       `;
       
-      // Fix: Add click event to entire card to open product detail
-      card.addEventListener('click', (e) => {
-        if (!e.target.closest('.action-btn')) {
-          e.preventDefault();
-          e.stopPropagation();
-          showProductDetail(product);
-        }
-      });
-      
       card.querySelector('.product-card-image').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -2871,6 +2901,19 @@
       });
       
       return card;
+    }
+
+    function generateStarRating(rating) {
+      const fullStars = Math.floor(rating);
+      const halfStar = rating % 1 >= 0.5;
+      const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+      
+      let stars = '';
+      for (let i = 0; i < fullStars; i++) stars += '★';
+      if (halfStar) stars += '½';
+      for (let i = 0; i < emptyStars; i++) stars += '☆';
+      
+      return stars;
     }
 
     function shareProduct(product) {
@@ -3061,7 +3104,7 @@
         stockStatus.className = 'stock-status out-of-stock';
       }
       
-      // Initialize gallery with touch events
+      // Initialize gallery
       initProductDetailGallery(actualProduct);
       
       // Update share link
@@ -3145,31 +3188,16 @@
       
       mainImage.addEventListener('touchmove', (e) => {
         if (!isBannerDragging) return;
-        bannerCurrentX = e.touches[0].clientX;
+        touchEndX = e.changedTouches[0].screenX;
       }, { passive: true });
       
-      mainImage.addEventListener('touchend', () => {
+      mainImage.addEventListener('touchend', (e) => {
         if (!isBannerDragging) return;
         
-        const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = banners.findIndex((_, index) => 
-          document.querySelector(`.banner-dot:nth-child(${index + 1})`)?.classList.contains('active')
-        );
-        
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
-          } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
-          }
-        }
-        
-        isBannerDragging = false;
-        // Restart auto-slide after 3 seconds
-        setTimeout(setupBannerAutoSlide, 3000);
-      });
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+        resumeSlideAfterDelay();
+      }, { passive: true });
       
       // Mouse events for desktop
       mainImage.addEventListener('mousedown', (e) => {
@@ -3177,10 +3205,21 @@
         touchStartX = e.clientX;
       });
       
+      mainImage.addEventListener('mousemove', (e) => {
+        if (touchStartX === 0) return;
+        touchEndX = e.clientX;
+      });
+      
       mainImage.addEventListener('mouseup', (e) => {
+        if (touchStartX === 0) return;
         touchEndX = e.clientX;
         handleSwipe();
         resumeSlideAfterDelay();
+      });
+      
+      mainImage.addEventListener('mouseleave', () => {
+        touchStartX = 0;
+        touchEndX = 0;
       });
       
       function handleSwipe() {
@@ -3196,6 +3235,9 @@
             prevDetailImage();
           }
         }
+        
+        touchStartX = 0;
+        touchEndX = 0;
       }
       
       // Start auto-slide
@@ -3595,8 +3637,10 @@
     function increaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
       let value = parseInt(qtyInput.value);
-      if (value < 3) { // Changed from 10 to 3
+      if (value < 3) {
         qtyInput.value = value + 1;
+      } else {
+        showToast('Maximum 3 units per order', 'error');
       }
       if (document.getElementById('paymentPage')?.classList.contains('active')) {
         updatePaymentSummary();
@@ -4724,6 +4768,7 @@
       border-radius: var(--radius);
       overflow: hidden;
       margin-bottom: 20px;
+      cursor: pointer;
     }
     
     /* Image zoom button */
@@ -4773,39 +4818,39 @@
       transform: scale(1.2);
     }
     
-    /* Sticky order buttons */
-    .sticky-order-buttons {
-      position: sticky;
-      bottom: 80px; /* Adjusted to be above bottom navigation */
+    /* Sticky order buttons - FIXED POSITION */
+    .sticky-order-buttons-fixed {
+      position: fixed;
+      bottom: 70px;
+      left: 0;
+      right: 0;
       background: var(--surface);
-      padding: 20px;
-      margin-top: 20px;
+      padding: 15px 20px;
       border-top: 1px solid var(--border);
       box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-      z-index: 10;
-      border-radius: 0 0 var(--radius) var(--radius);
+      z-index: 100;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
     
-    .sticky-action-buttons {
-      position: sticky;
-      bottom: 80px; /* Adjusted to be above bottom navigation */
+    .sticky-action-buttons-fixed {
+      position: fixed;
+      bottom: 70px;
+      left: 0;
+      right: 0;
       background: var(--surface);
-      padding: 20px;
-      margin-top: 20px;
+      padding: 15px 20px;
       border-top: 1px solid var(--border);
       box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-      z-index: 10;
-      border-radius: 0 0 var(--radius) var(--radius);
+      z-index: 100;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
     
     #orderPage .card {
-      padding-bottom: 100px; /* Extra padding for sticky buttons */
+      padding-bottom: 100px;
       min-height: calc(100vh - 200px);
     }
     
@@ -4891,6 +4936,38 @@
       outline: none;
     }
     
+    /* Recent search items */
+    .recent-search-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    
+    .recent-search-text {
+      flex: 1;
+      color: var(--text);
+    }
+    
+    .recent-search-text:hover {
+      color: var(--accent);
+    }
+    
+    .recent-search-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 5px;
+    }
+    
+    .recent-search-remove:hover {
+      color: #ef4444;
+    }
+    
     /* Trending products auto-slide */
     .slider-container {
       position: relative;
@@ -4933,36 +5010,17 @@
       color: #856404;
     }
     
-    /* Recent search item styling */
-    .recent-search-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: background 0.2s;
+    /* Rating stars in product card */
+    .product-card-stars {
+      font-size: 14px;
+      color: #ffc107;
+      letter-spacing: 1px;
     }
     
-    .recent-search-item:hover {
-      background: var(--hover);
-    }
-    
-    .recent-search-item span {
-      flex: 1;
-    }
-    
-    .recent-search-remove {
-      background: none;
-      border: none;
+    .product-card-review-count {
+      font-size: 12px;
       color: var(--muted);
-      font-size: 18px;
-      cursor: pointer;
-      padding: 0 8px;
-    }
-    
-    .recent-search-remove:hover {
-      color: var(--error);
+      margin-left: 5px;
     }
   </style>
 </body>
