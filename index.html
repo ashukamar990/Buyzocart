@@ -95,7 +95,7 @@
       </div>
       
       <!-- NOTIFICATIONS -->
-      <div class="menu-item" onclick="window.location.href='notification.html'; closeMenu();">
+      <div class="menu-item" onclick="window.location.href='notifications.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
@@ -104,7 +104,7 @@
       </div>
       
       <!-- HELP & SUPPORT -->
-      <div class="menu-item" onclick="window.location.href='contact.html'; closeMenu();">
+      <div class="menu-item" onclick="window.location.href='help-support.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"></path>
@@ -178,7 +178,7 @@
       <!-- Login/Signup at the bottom of mobile menu -->
       <div class="menu-item" id="mobileLoginBtn" onclick="showLoginModal(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <path d="M20 21v -2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         Login / Sign Up
@@ -525,7 +525,7 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - MOVED DIRECTLY UNDER IMAGE -->
+              <!-- Carousel Dots - MOVED ABOVE SIMILAR PRODUCTS -->
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
               <!-- Similar Products Section -->
@@ -551,6 +551,15 @@
 
             <!-- Rating and Reviews Section -->
             <div class="review-section">
+              <!-- Top 5-Star Reviews -->
+              <div class="top-reviews" id="topReviews" style="display: none;">
+                <h3>Top 5-Star Reviews</h3>
+                <div id="topReviewsList" style="margin-bottom: 20px;">
+                  <!-- Top reviews will be loaded here -->
+                </div>
+                <button class="btn secondary" onclick="showAllReviews()">View All Reviews</button>
+              </div>
+              
               <div class="review-form">
                 <h3>Add Your Review</h3>
                 <div class="rating-input" id="ratingInput">
@@ -564,7 +573,8 @@
                 <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
               </div>
               
-              <div class="reviews-list" id="reviewsList">
+              <div class="reviews-list" id="reviewsList" style="display: none;">
+                <h3>All Reviews</h3>
                 <!-- Reviews will be dynamically inserted here -->
               </div>
             </div>
@@ -894,7 +904,7 @@
       </svg>
       <span class="bottom-nav-label">Orders</span>
     </div>
-    <div class="bottom-nav-item" onclick="window.location.href='account.html';">
+    <div class="bottom-nav-item" onclick="checkAuthAndShowAccount()">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
@@ -990,8 +1000,8 @@
             <li><a onclick="showPage('sellProductPage')">Sell Product</a></li>
             <li><a href="terms.html">Terms & Conditions</a></li>
             <li><a href="privacy.html">Privacy Policy</a></li>
-            <li><a href="contact.html">Help & Support</a></li>
-            <li><a href="notification.html">Notifications</a></li>
+            <li><a href="help-support.html">Help & Support</a></li>
+            <li><a href="notifications.html">Notifications</a></li>
           </ul>
         </div>
       </div>
@@ -1080,6 +1090,10 @@
         <div class="auth-form-group">
           <label>Password</label>
           <input type="password" id="signupPassword" placeholder="Create a password">
+        </div>
+        <div class="auth-form-group">
+          <label>Confirm Password</label>
+          <input type="password" id="signupConfirmPassword" placeholder="Confirm your password">
         </div>
         <div id="signupError" style="color:red; font-size:14px; margin-bottom:12px;"></div>
         <button class="btn" id="signupBtn" style="width:100%">Sign Up</button>
@@ -1269,6 +1283,15 @@
       // Show categories page or filter
       filterByCategory('all');
     }
+    
+    // NEW FUNCTION FOR ACCOUNT
+    function checkAuthAndShowAccount() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      window.location.href = 'account.html';
+    }
 
     // Global variables
     let currentUser = null;
@@ -1302,69 +1325,43 @@
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
 
-    // Cache Manager - NEW LOCALSTORAGE CACHE SYSTEM
+    // Cache Manager
     const cacheManager = {
-      set: function(key, data, ttl = 7 * 24 * 60 * 60 * 1000) { // 7 days default
+      set: function(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
+        const item = {
+          data: data,
+          timestamp: Date.now(),
+          ttl: ttl
+        };
         try {
-          const item = {
-            data: data,
-            timestamp: Date.now(),
-            ttl: ttl
-          };
-          localStorage.setItem(`buyzocart_${key}`, JSON.stringify(item));
-          return true;
+          localStorage.setItem(key, JSON.stringify(item));
         } catch (e) {
-          console.warn('LocalStorage full or not available, skipping cache:', e);
-          return false;
+          console.error('Error saving to localStorage:', e);
         }
       },
       
       get: function(key) {
+        const item = localStorage.getItem(key);
+        if (!item) return null;
+        
         try {
-          const itemStr = localStorage.getItem(`buyzocart_${key}`);
-          if (!itemStr) return null;
-          
-          const item = JSON.parse(itemStr);
+          const parsed = JSON.parse(item);
           const now = Date.now();
           
-          // Check if cache is expired
-          if (now - item.timestamp > item.ttl) {
-            localStorage.removeItem(`buyzocart_${key}`);
+          if (now - parsed.timestamp > parsed.ttl) {
+            localStorage.removeItem(key);
             return null;
           }
           
-          return item.data;
+          return parsed.data;
         } catch (e) {
-          localStorage.removeItem(`buyzocart_${key}`);
+          localStorage.removeItem(key);
           return null;
         }
       },
       
       remove: function(key) {
-        localStorage.removeItem(`buyzocart_${key}`);
-      },
-      
-      clearAll: function() {
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('buyzocart_')) {
-            localStorage.removeItem(key);
-          }
-        });
-      },
-      
-      // Preload all cached data
-      preload: function() {
-        const cachedProducts = this.get('products');
-        const cachedCategories = this.get('categories');
-        const cachedBanners = this.get('banners');
-        const cachedSettings = this.get('adminSettings');
-        
-        return {
-          products: cachedProducts || [],
-          categories: cachedCategories || [],
-          banners: cachedBanners || [],
-          settings: cachedSettings || adminSettings
-        };
+        localStorage.removeItem(key);
       }
     };
 
@@ -1457,9 +1454,6 @@
       // Load recent searches
       recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
       
-      // FIRST: Load cached data IMMEDIATELY to prevent blank screen
-      loadCachedDataImmediately();
-      
       // Setup event listeners
       setupEventListeners();
       
@@ -1480,7 +1474,10 @@
         });
       }
       
-      // Then fetch live data from Firebase (async)
+      // Load cached data first
+      loadCachedData();
+      
+      // Then fetch live data
       fetchLiveData();
       
       // Setup realtime listeners
@@ -1506,66 +1503,12 @@
       
       // Fix search input
       setupSearchInput();
-    }
-
-    // Load cached data IMMEDIATELY on page load
-    function loadCachedDataImmediately() {
-      // Preload all cached data at once
-      const cached = cacheManager.preload();
       
-      // Load products from cache
-      if (cached.products && cached.products.length > 0) {
-        products = cached.products;
-        renderProducts(products, 'homeProductGrid');
-        renderProducts(products, 'productGrid');
-        
-        const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
-        renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
-        
-        const featuredProducts = products.filter(p => p.isFeatured);
-        if (featuredProducts.length > 0) {
-          renderProducts(featuredProducts, 'homeProductGrid');
-        }
-        
-        updateProductsCount();
-      }
-      
-      // Load categories from cache
-      if (cached.categories && cached.categories.length > 0) {
-        categories = cached.categories;
-        renderCategories();
-        renderCategoryCircles();
-      }
-      
-      // Load banners from cache
-      if (cached.banners && cached.banners.length > 0) {
-        banners = cached.banners;
-        renderBannerCarousel();
-      }
-      
-      // Load admin settings from cache
-      if (cached.settings) {
-        adminSettings = cached.settings;
-        updateAdminSettingsUI();
-      }
-      
-      // Load search tags and popular searches from cache
-      const cachedSearchTags = cacheManager.get('searchTags');
-      if (cachedSearchTags) {
-        searchTags = cachedSearchTags;
-      }
-      
-      const cachedPopularSearches = cacheManager.get('popularSearches');
-      if (cachedPopularSearches) {
-        popularSearches = cachedPopularSearches;
-      }
-      
-      // Remove skeleton classes immediately
+      // Start auto slides
       setTimeout(() => {
-        document.querySelectorAll('.skeleton').forEach(el => {
-          el.classList.remove('skeleton');
-        });
-      }, 100);
+        setupTrendingAutoSlide();
+        setupBannerAutoSlide();
+      }, 1000);
     }
 
     // Setup search input
@@ -1655,6 +1598,75 @@
       }, false);
     }
 
+    // Load cached data
+    function loadCachedData() {
+      // Load products from cache
+      const cachedProducts = cacheManager.get('products');
+      if (cachedProducts && cachedProducts.length > 0) {
+        products = cachedProducts;
+        renderProducts(products, 'homeProductGrid');
+        renderProducts(products, 'productGrid');
+        
+        const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
+        renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+        
+        const featuredProducts = products.filter(p => p.isFeatured);
+        if (featuredProducts.length > 0) {
+          renderProducts(featuredProducts, 'homeProductGrid');
+        }
+        
+        updateProductsCount();
+        
+        // Remove skeleton loaders
+        document.querySelectorAll('.skeleton').forEach(el => {
+          el.classList.remove('skeleton');
+        });
+      } else {
+        // Show placeholder images if no cached data
+        setTimeout(() => {
+          document.querySelectorAll('.skeleton').forEach(el => {
+            el.classList.remove('skeleton');
+            if (el.classList.contains('product-card-image')) {
+              el.style.backgroundImage = "url('https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...')";
+            }
+          });
+        }, 500);
+      }
+      
+      // Load categories from cache
+      const cachedCategories = cacheManager.get('categories');
+      if (cachedCategories && cachedCategories.length > 0) {
+        categories = cachedCategories;
+        renderCategories();
+        renderCategoryCircles();
+      }
+      
+      // Load banners from cache
+      const cachedBanners = cacheManager.get('banners');
+      if (cachedBanners && cachedBanners.length > 0) {
+        banners = cachedBanners;
+        renderBannerCarousel();
+      }
+      
+      // Load admin settings from cache
+      const cachedSettings = cacheManager.get('adminSettings');
+      if (cachedSettings) {
+        adminSettings = cachedSettings;
+        updateAdminSettingsUI();
+      }
+      
+      // Load popular searches and tags from cache
+      const cachedPopularSearches = cacheManager.get('popularSearches');
+      if (cachedPopularSearches) {
+        popularSearches = cachedPopularSearches;
+      }
+      
+      const cachedSearchTags = cacheManager.get('searchTags');
+      if (cachedSearchTags) {
+        searchTags = cachedSearchTags;
+      }
+    }
+
     // Fetch live data from Firebase
     function fetchLiveData() {
       if (!window.firebase || !window.firebase.database) {
@@ -1694,6 +1706,11 @@
             
             updateProductsCount();
           }
+          
+          // Remove skeleton loaders
+          document.querySelectorAll('.skeleton').forEach(el => {
+            el.classList.remove('skeleton');
+          });
         }
       }).catch(error => {
         console.error('Error fetching products:', error);
@@ -1753,21 +1770,24 @@
         console.error('Error fetching admin settings:', error);
       });
       
-      // Fetch search tags and popular searches from admin panel
-      get(ref(database, 'searchSettings')).then(snapshot => {
-        const searchSettings = snapshot.val();
-        if (searchSettings) {
-          if (searchSettings.popularSearches) {
-            popularSearches = searchSettings.popularSearches;
-            cacheManager.set('popularSearches', popularSearches);
-          }
-          if (searchSettings.searchTags) {
-            searchTags = searchSettings.searchTags;
-            cacheManager.set('searchTags', searchTags);
-          }
+      // Fetch popular searches
+      get(ref(database, 'popularSearches')).then(snapshot => {
+        if (snapshot.exists()) {
+          popularSearches = snapshot.val();
+          cacheManager.set('popularSearches', popularSearches);
         }
       }).catch(error => {
-        console.error('Error fetching search settings:', error);
+        console.error('Error fetching popular searches:', error);
+      });
+      
+      // Fetch search tags
+      get(ref(database, 'searchTags')).then(snapshot => {
+        if (snapshot.exists()) {
+          searchTags = snapshot.val();
+          cacheManager.set('searchTags', searchTags);
+        }
+      }).catch(error => {
+        console.error('Error fetching search tags:', error);
       });
       
       // Fetch out of stock items
@@ -1869,18 +1889,19 @@
         }
       });
       
-      // Search settings listener
-      onValue(ref(database, 'searchSettings'), snapshot => {
-        const searchSettings = snapshot.val();
-        if (searchSettings) {
-          if (searchSettings.popularSearches) {
-            popularSearches = searchSettings.popularSearches;
-            cacheManager.set('popularSearches', popularSearches);
-          }
-          if (searchSettings.searchTags) {
-            searchTags = searchSettings.searchTags;
-            cacheManager.set('searchTags', searchTags);
-          }
+      // Popular searches listener
+      onValue(ref(database, 'popularSearches'), snapshot => {
+        if (snapshot.exists()) {
+          popularSearches = snapshot.val();
+          cacheManager.set('popularSearches', popularSearches);
+        }
+      });
+      
+      // Search tags listener
+      onValue(ref(database, 'searchTags'), snapshot => {
+        if (snapshot.exists()) {
+          searchTags = snapshot.val();
+          cacheManager.set('searchTags', searchTags);
         }
       });
       
@@ -2055,7 +2076,7 @@
       }
     }
 
-    // Banner touch events setup with FIXED swipe direction
+    // Banner touch events setup - FIXED SWIPE DIRECTION
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
@@ -2085,11 +2106,11 @@
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
-            // Swipe left - go to next (RIGHT)
+            // Swipe left - go to next slide (RIGHT)
             const nextIndex = (activeIndex + 1) % banners.length;
             setBannerSlide(nextIndex);
           } else {
-            // Swipe right - go to previous (LEFT)
+            // Swipe right - go to previous slide (LEFT)
             const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
             setBannerSlide(prevIndex);
           }
@@ -2117,7 +2138,7 @@
       }, 5000);
     }
 
-    // Setup trending products auto-slide (2 seconds)
+    // Setup trending products auto-slide - EVERY 2 SECONDS
     function setupTrendingAutoSlide() {
       const slider = document.getElementById('productSlider');
       if (!slider) return;
@@ -2132,7 +2153,7 @@
       // Clear any existing interval
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       
-      // Auto slide every 2 seconds - RIGHT ONLY
+      // Auto slide every 2 seconds as requested
       trendingAutoSlideInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % totalSlides;
         slider.scrollTo({
@@ -2295,7 +2316,7 @@
           updateProductsCount();
           break;
         case 'homePage':
-          // Setup auto slide for trending products (2 seconds)
+          // Setup auto slide for trending products
           setTimeout(setupTrendingAutoSlide, 1000);
           // Setup banner auto slide
           setTimeout(setupBannerAutoSlide, 1000);
@@ -2304,7 +2325,7 @@
     }
 
     function checkAuthAndShowPage(pageId) {
-      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'accountPage' || pageId === 'sellProductPage')) {
+      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'sellProductPage')) {
         showLoginModal();
         return;
       }
@@ -2729,13 +2750,19 @@
       const name = document.getElementById('signupName').value;
       const email = document.getElementById('signupEmail').value;
       const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('signupConfirmPassword').value;
       const signupError = document.getElementById('signupError');
       const signupBtn = document.getElementById('signupBtn');
       
       signupError.textContent = '';
       
-      if (!name || !email || !password) {
+      if (!name || !email || !password || !confirmPassword) {
         signupError.textContent = 'Please fill in all fields';
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        signupError.textContent = 'Passwords do not match';
         return;
       }
       
@@ -2768,6 +2795,7 @@
         document.getElementById('signupName').value = '';
         document.getElementById('signupEmail').value = '';
         document.getElementById('signupPassword').value = '';
+        document.getElementById('signupConfirmPassword').value = '';
       } catch (err) {
         console.error('Signup error:', err);
         signupError.textContent = err.message;
@@ -2958,11 +2986,10 @@
         </div>
       `;
       
-      // FIXED: Product click event to open correct product
-      card.addEventListener('click', (e) => {
-        if (!e.target.closest('.action-btn')) {
-          showProductDetail(product);
-        }
+      card.querySelector('.product-card-image').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showProductDetail(product);
       });
       
       card.querySelector('.wishlist-btn').addEventListener('click', (e) => {
@@ -3149,11 +3176,12 @@
       });
     }
 
-    // Product detail functions - FIXED to show all products
+    // Product detail functions - FIXED TO WORK WITH ALL PRODUCTS
     function showProductDetail(product) {
       // Find the actual product from products array using ID
-      const actualProduct = products.find(p => p.id === product.id) || product;
+      const actualProduct = products.find(p => p.id === product.id);
       if (!actualProduct) {
+        console.error('Product not found:', product.id);
         showToast('Product not found', 'error');
         return;
       }
@@ -3260,22 +3288,25 @@
       // Add touch events for swipe
       let touchStartX = 0;
       let touchEndX = 0;
+      let isDragging = false;
       
       mainImage.addEventListener('touchstart', (e) => {
         pauseSlide();
         touchStartX = e.changedTouches[0].screenX;
+        isDragging = true;
       }, { passive: true });
       
       mainImage.addEventListener('touchmove', (e) => {
-        if (!touchStartX) return;
+        if (!isDragging) return;
         touchEndX = e.changedTouches[0].screenX;
       }, { passive: true });
       
       mainImage.addEventListener('touchend', (e) => {
-        if (!touchStartX) return;
+        if (!isDragging) return;
         
         touchEndX = e.changedTouches[0].screenX;
         handleSwipe();
+        isDragging = false;
         resumeSlideAfterDelay();
       }, { passive: true });
       
@@ -3283,21 +3314,24 @@
       mainImage.addEventListener('mousedown', (e) => {
         pauseSlide();
         touchStartX = e.clientX;
+        isDragging = true;
       });
       
       mainImage.addEventListener('mousemove', (e) => {
-        if (touchStartX === 0) return;
+        if (!isDragging) return;
         touchEndX = e.clientX;
       });
       
       mainImage.addEventListener('mouseup', (e) => {
-        if (touchStartX === 0) return;
+        if (!isDragging) return;
         touchEndX = e.clientX;
         handleSwipe();
+        isDragging = false;
         resumeSlideAfterDelay();
       });
       
       mainImage.addEventListener('mouseleave', () => {
+        isDragging = false;
         touchStartX = 0;
         touchEndX = 0;
       });
@@ -3308,10 +3342,10 @@
         
         if (Math.abs(difference) > minSwipeDistance) {
           if (difference > 0) {
-            // Swipe left - go to next
+            // Swipe left - go to next image
             nextDetailImage();
           } else {
-            // Swipe right - go to previous
+            // Swipe right - go to previous image
             prevDetailImage();
           }
         }
@@ -3979,7 +4013,6 @@
       updateProductsCount();
     }
 
-    // FIXED: Update products count to show only when filtering
     function updateProductsCount() {
       const container = document.getElementById('productGrid');
       const noProductsMessage = document.getElementById('noProductsMessage');
@@ -3988,19 +4021,16 @@
       if (!container || !noProductsMessage || !productsCount) return;
       
       const visibleProducts = container.querySelectorAll('.product-card').length;
-      const isFiltered = currentCategoryFilter || 
-        (parseFloat(document.getElementById('minPrice').value) > 0) ||
-        (parseFloat(document.getElementById('maxPrice').value) < 10000);
       
       if (visibleProducts === 0) {
         noProductsMessage.style.display = 'block';
         productsCount.textContent = 'No products found';
       } else {
         noProductsMessage.style.display = 'none';
-        if (isFiltered) {
-          productsCount.textContent = `${visibleProducts} products found with applied filters`;
+        if (currentCategoryFilter || document.getElementById('minPrice').value !== '0' || document.getElementById('maxPrice').value !== '10000') {
+          productsCount.textContent = `${visibleProducts} products found (Filter Applied)`;
         } else {
-          productsCount.textContent = 'Amazing Products Collection';
+          productsCount.textContent = `${visibleProducts} products available`;
         }
       }
     }
@@ -4216,7 +4246,7 @@
       };
     }
 
-    // Reviews and ratings - FIXED
+    // Reviews and ratings - IMPROVED VERSION
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
@@ -4260,11 +4290,10 @@
           productId: currentProduct.id,
           userId: currentUser.uid,
           userName: currentUser.displayName || 'Anonymous',
-          userEmail: currentUser.email,
+          userEmail: currentUser.email || '',
           rating: rating,
           text: reviewTextValue,
-          date: Date.now(),
-          isActive: true
+          date: Date.now()
         };
         
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
@@ -4291,70 +4320,95 @@
           )
         );
         
+        const topReviewsDiv = document.getElementById('topReviews');
+        const topReviewsList = document.getElementById('topReviewsList');
         const reviewsList = document.getElementById('reviewsList');
-        if (!reviewsList) return;
         
         if (!snapshot.exists()) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          if (topReviewsDiv) topReviewsDiv.style.display = 'none';
+          if (reviewsList) {
+            reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+            reviewsList.style.display = 'block';
+          }
           return;
         }
         
         const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj)
-          .map(key => reviewsObj[key])
-          .filter(review => review.isActive !== false); // Only show active reviews
+        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
         
         reviews.sort((a, b) => b.date - a.date);
         
-        renderReviews(reviews);
+        // Separate 5-star reviews
+        const fiveStarReviews = reviews.filter(review => review.rating === 5);
+        const otherReviews = reviews.filter(review => review.rating < 5);
+        
+        if (fiveStarReviews.length > 0) {
+          if (topReviewsDiv) topReviewsDiv.style.display = 'block';
+          if (topReviewsList) {
+            topReviewsList.innerHTML = '';
+            fiveStarReviews.slice(0, 3).forEach(review => {
+              const reviewItem = createReviewItem(review);
+              topReviewsList.appendChild(reviewItem);
+            });
+          }
+        } else {
+          if (topReviewsDiv) topReviewsDiv.style.display = 'none';
+        }
+        
+        // Show all reviews
+        if (reviewsList) {
+          reviewsList.innerHTML = '<h3>All Reviews</h3>';
+          [...fiveStarReviews, ...otherReviews].forEach(review => {
+            const reviewItem = createReviewItem(review);
+            reviewsList.appendChild(reviewItem);
+          });
+          reviewsList.style.display = 'none'; // Initially hidden
+        }
+        
       } catch (error) {
         console.error('Error loading reviews:', error);
         const reviewsList = document.getElementById('reviewsList');
         if (reviewsList) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet</p>';
+          reviewsList.style.display = 'block';
         }
       }
     }
 
-    function renderReviews(reviews) {
-      const reviewsList = document.getElementById('reviewsList');
-      if (!reviewsList) return;
+    function createReviewItem(review) {
+      const reviewItem = document.createElement('div');
+      reviewItem.className = 'review-item';
       
-      reviewsList.innerHTML = '';
+      const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+      const date = new Date(review.date).toLocaleDateString();
       
-      if (reviews.length === 0) {
-        reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
-        return;
+      reviewItem.innerHTML = `
+        <div class="review-header">
+          <div class="reviewer-name">${review.userName}</div>
+          <div class="review-date">${date}</div>
+        </div>
+        <div class="review-rating">${stars}</div>
+        <div class="review-text">${review.text}</div>
+        ${currentUser && (review.userId === currentUser.uid || currentUser.email === 'admin@buyzocart.com') ? 
+          `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+      `;
+      
+      const deleteBtn = reviewItem.querySelector('.review-delete-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+          deleteReview(review.id);
+        });
       }
       
-      reviews.forEach(review => {
-        const reviewItem = document.createElement('div');
-        reviewItem.className = 'review-item';
-        
-        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
-        const canDelete = currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin');
-        
-        reviewItem.innerHTML = `
-          <div class="review-header">
-            <div class="reviewer-name">${review.userName}</div>
-            <div class="review-date">${date}</div>
-          </div>
-          <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
-          ${canDelete ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete Review</button>` : ''}
-        `;
-        
-        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', function() {
-            deleteReview(review.id);
-          });
-        }
-        
-        reviewsList.appendChild(reviewItem);
-      });
+      return reviewItem;
+    }
+
+    function showAllReviews() {
+      const topReviews = document.getElementById('topReviews');
+      const reviewsList = document.getElementById('reviewsList');
+      
+      if (topReviews) topReviews.style.display = 'none';
+      if (reviewsList) reviewsList.style.display = 'block';
     }
 
     async function deleteReview(reviewId) {
@@ -4363,13 +4417,7 @@
       if (!confirm('Are you sure you want to delete this review?')) return;
       
       try {
-        // Instead of removing, mark as inactive (soft delete)
-        await window.firebase.update(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), {
-          isActive: false,
-          deletedAt: Date.now(),
-          deletedBy: currentUser.uid
-        });
-        
+        await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
         showToast('Review deleted successfully', 'success');
         loadProductReviews(currentProduct.id);
       } catch (error) {
@@ -4424,12 +4472,9 @@
       }
     }
 
-    // Orders functions - FIXED to show all orders
+    // Orders functions - FIXED TO SHOW ALL ORDERS
     async function showMyOrders() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
+      if (!currentUser) return;
       
       try {
         const snapshot = await window.firebase.get(
@@ -4445,7 +4490,7 @@
         
         if (!snapshot.exists()) {
           ordersList.innerHTML = '';
-          empty.style.display = 'block';
+          if (empty) empty.style.display = 'block';
           return;
         }
         
@@ -4457,15 +4502,9 @@
         
         orders.sort((a, b) => b.orderDate - a.orderDate);
         renderOrders(orders);
-        empty.style.display = 'none';
+        if (empty) empty.style.display = 'none';
       } catch (error) {
         console.error('Error loading orders:', error);
-        const ordersList = document.getElementById('ordersList');
-        const empty = document.getElementById('orders-empty');
-        if (ordersList) {
-          ordersList.innerHTML = '';
-          empty.style.display = 'block';
-        }
       }
     }
 
@@ -4476,10 +4515,7 @@
       container.innerHTML = '';
       
       if (orders.length === 0) {
-        const empty = document.getElementById('orders-empty');
-        if (empty) {
-          empty.style.display = 'block';
-        }
+        container.innerHTML = '<div class="empty-state"><h3>No Orders Yet</h3><p>Your orders will appear here after you place them.</p></div>';
         return;
       }
       
@@ -4488,22 +4524,26 @@
         orderCard.className = 'order-card';
         
         const statusClass = `status-${order.status}`;
-        const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending';
+        const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+        
+        // Find product image
+        const product = products.find(p => p.id === order.productId);
+        const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=Product';
         
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
-              <div class="order-id">${order.orderId || order.id}</div>
+              <div class="order-id">${order.orderId}</div>
               <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-product-image" style="background-image: url('${productImage}')"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${order.productName || 'Product'}</div>
-              <div class="order-product-price">₹${order.totalAmount || '0'}</div>
-              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'} | Color: ${order.colorName || order.color || 'N/A'}</div>
+              <div class="order-product-title">${order.productName}</div>
+              <div class="order-product-price">₹${order.totalAmount}</div>
+              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}</div>
             </div>
           </div>
         `;
@@ -4518,12 +4558,16 @@
       if (!container) return;
       
       const statusClass = `status-${order.status}`;
-      const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending';
+      const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+      
+      // Find product image
+      const product = products.find(p => p.id === order.productId);
+      const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/100x100/f3f4f6/64748b?text=Product';
       
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
-          <div class="order-detail-value">${order.orderId || order.id}</div>
+          <div class="order-detail-value">${order.orderId}</div>
         </div>
         
         <div class="order-detail-section">
@@ -4539,12 +4583,12 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-detail-image" style="background-image: url('${productImage}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName || 'Product'}</div>
-              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice || '0'}</div>
+              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'} | Color: ${order.colorName || order.color || 'N/A'}
+                Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}
               </div>
             </div>
           </div>
@@ -4555,21 +4599,21 @@
           <div class="order-detail-value">
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Subtotal:</span>
-              <span>₹${order.subtotal || '0'}</span>
+              <span>₹${order.subtotal}</span>
             </div>
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Delivery:</span>
-              <span>₹${order.deliveryCharge || '0'}</span>
+              <span>₹${order.deliveryCharge}</span>
             </div>
-            ${(order.gatewayCharge || 0) > 0 ? `
+            ${order.gatewayCharge > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Payment Gateway Charge:</span>
-              <span>₹${order.gatewayCharge?.toFixed(2) || '0'}</span>
+              <span>₹${order.gatewayCharge.toFixed(2)}</span>
             </div>
             ` : ''}
             <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
               <span>Total Amount:</span>
-              <span>₹${order.totalAmount || '0'}</span>
+              <span>₹${order.totalAmount}</span>
             </div>
             <div style="margin-top:8px;color:var(--muted);font-size:14px">
               Payment Method: ${order.paymentMethod === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on Delivery'}
@@ -4874,7 +4918,7 @@
       color: var(--accent);
     }
     
-    /* Product detail gallery styling */
+    /* Product detail gallery styling - FIXED DOTS POSITION */
     .product-gallery {
       position: relative;
     }
@@ -4888,7 +4932,7 @@
       background-color: #f8fafc;
       border-radius: var(--radius);
       overflow: hidden;
-      margin-bottom: 10px; /* Reduced margin for dots */
+      margin-bottom: 10px; /* Reduced margin */
       cursor: pointer;
     }
     
@@ -4915,13 +4959,13 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots position - FIXED: DIRECTLY UNDER IMAGE */
+    /* Carousel dots position - MOVED CLOSER TO IMAGE */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin-bottom: 20px;
-      padding: 10px 0 0 0; /* Reduced padding */
+      margin: 10px 0 20px 0; /* Reduced top margin */
+      padding: 5px 0;
     }
     
     .detail-carousel-dot {
@@ -5089,7 +5133,7 @@
       color: #ef4444;
     }
     
-    /* Trending products auto-slide (2 seconds) */
+    /* Trending products auto-slide */
     .slider-container {
       position: relative;
       overflow: hidden;
@@ -5144,74 +5188,11 @@
       margin-left: 5px;
     }
     
-    /* Rating stars styling */
-    .rating-star {
-      font-size: 24px;
-      color: #d1d5db;
-      cursor: pointer;
-      transition: color 0.2s;
-    }
-    
-    .rating-star.active {
-      color: #fbbf24;
-    }
-    
-    .rating-star:hover {
-      color: #fbbf24;
-    }
-    
-    /* Review item styling */
-    .review-item {
-      border-bottom: 1px solid var(--border);
-      padding: 16px 0;
-    }
-    
-    .review-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    
-    .reviewer-name {
-      font-weight: 600;
-    }
-    
-    .review-date {
-      font-size: 14px;
-      color: var(--muted);
-    }
-    
-    .review-rating {
-      color: #fbbf24;
-      font-size: 16px;
-      margin-bottom: 8px;
-    }
-    
-    .review-text {
-      color: var(--text);
-      line-height: 1.5;
-    }
-    
-    .review-delete-btn {
-      margin-top: 8px;
-      padding: 6px 12px;
-      background: #fee2e2;
-      color: #dc2626;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    
-    .review-delete-btn:hover {
-      background: #fecaca;
-    }
-    
-    /* No orders message */
+    /* Order empty state */
     .empty-state {
       text-align: center;
       padding: 40px 20px;
+      color: var(--muted);
     }
     
     .empty-icon {
@@ -5222,40 +5203,122 @@
     }
     
     .empty-state h3 {
-      color: var(--text);
       margin-bottom: 10px;
-    }
-    
-    .empty-state p {
-      color: var(--muted);
-      margin-bottom: 20px;
+      color: var(--text);
     }
     
     .empty-btn {
       display: inline-block;
+      margin-top: 20px;
       padding: 10px 20px;
       background: var(--accent);
       color: white;
+      border-radius: var(--radius);
       text-decoration: none;
-      border-radius: 5px;
       font-weight: 600;
     }
     
-    .empty-btn:hover {
-      opacity: 0.9;
+    /* Review items */
+    .review-item {
+      padding: 15px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 10px;
     }
     
-    /* Order card styling */
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .reviewer-name {
+      font-weight: 600;
+    }
+    
+    .review-date {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    
+    .review-rating {
+      color: #ffc107;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    
+    .review-text {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    
+    .review-delete-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    /* Rating stars styling */
+    .rating-star {
+      font-size: 24px;
+      color: #ddd;
+      cursor: pointer;
+      margin-right: 5px;
+      transition: color 0.2s;
+    }
+    
+    .rating-star.active {
+      color: #ffc107;
+    }
+    
+    .rating-star:hover {
+      color: #ffc107;
+    }
+    
+    /* Order status styling */
+    .status-confirmed {
+      color: #3b82f6;
+      background: #dbeafe;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-shipped {
+      color: #f59e0b;
+      background: #fef3c7;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-delivered {
+      color: #10b981;
+      background: #d1fae5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    /* Order cards */
     .order-card {
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 16px;
+      padding: 15px;
+      margin-bottom: 15px;
       cursor: pointer;
-      transition: box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
     
     .order-card:hover {
+      transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     
@@ -5263,56 +5326,28 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 12px;
+      margin-bottom: 15px;
     }
     
     .order-id {
       font-weight: 600;
-      color: var(--text);
+      margin-bottom: 5px;
     }
     
     .order-date {
-      font-size: 14px;
       color: var(--muted);
-      margin-top: 4px;
-    }
-    
-    .order-status {
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    
-    .status-confirmed {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-    
-    .status-shipped {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    
-    .status-delivered {
-      background: #d1fae5;
-      color: #065f46;
-    }
-    
-    .status-cancelled {
-      background: #fee2e2;
-      color: #991b1b;
+      font-size: 14px;
     }
     
     .order-details {
       display: flex;
-      gap: 12px;
+      gap: 15px;
     }
     
     .order-product-image {
       width: 80px;
       height: 80px;
-      border-radius: 5px;
+      border-radius: 8px;
       background-size: cover;
       background-position: center;
       flex-shrink: 0;
@@ -5324,64 +5359,66 @@
     
     .order-product-title {
       font-weight: 600;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
     }
     
     .order-product-price {
       color: var(--accent);
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
     }
     
     .order-product-meta {
-      font-size: 14px;
       color: var(--muted);
+      font-size: 14px;
     }
     
-    /* Order detail page styling */
-    .order-detail-section {
-      margin-bottom: 24px;
-    }
-    
-    .order-detail-label {
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--text);
-    }
-    
-    .order-detail-value {
-      color: var(--text);
-    }
-    
-    .order-detail-product {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-    }
-    
-    .order-detail-image {
-      width: 100px;
-      height: 100px;
-      border-radius: 5px;
-      background-size: cover;
-      background-position: center;
-      flex-shrink: 0;
-    }
-    
-    .order-detail-product-info {
-      flex: 1;
-    }
-    
-    /* Skeleton loader improvement */
+    /* Skeleton loading animations */
     .skeleton {
-      animation: skeleton-loading 1.5s infinite ease-in-out;
       background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
       background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
     }
     
-    @keyframes skeleton-loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .main-product-image {
+        height: 300px;
+      }
+      
+      .similar-products-slider {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .header-search-wrap input {
+        font-size: 14px;
+        padding: 10px 40px 10px 15px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .main-product-image {
+        height: 250px;
+      }
+      
+      .similar-products-slider {
+        grid-template-columns: 1fr;
+      }
+      
+      .sticky-order-buttons-fixed,
+      .sticky-action-buttons-fixed {
+        flex-direction: column;
+      }
     }
   </style>
 </body>
