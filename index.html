@@ -123,7 +123,7 @@
         Refund & Cancellation
       </div>
       
-      <!-- SELL PRODUCT (Moved here as per requirement #6) -->
+      <!-- SELL PRODUCT -->
       <div class="menu-item" onclick="showPage('sellProductPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);">
           <circle cx="12" cy="12" r="10"></circle>
@@ -484,7 +484,7 @@
         </svg>
         <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
         <p style="color:var(--muted-light)">Try adjusting your filters or search terms</p>
-        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid'); updateProductsCount();">Reset All Filters</button>
+        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid');">Reset All Filters</button>
       </div>
     </section>
 
@@ -525,8 +525,8 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - MOVED CLOSER TO IMAGE -->
-              <div class="detail-carousel-dots" id="detailCarouselDots" style="margin-top: -20px; position: relative; z-index: 2;"></div>
+              <!-- Carousel Dots - MOVED ABOVE SIMILAR PRODUCTS -->
+              <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
               <!-- Similar Products Section -->
               <div class="similar-products-small">
@@ -549,31 +549,6 @@
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
 
-            <!-- Rating Display Section -->
-            <div class="product-rating-display">
-              <h3>Product Ratings</h3>
-              <div class="overall-rating">
-                <div class="average-rating" id="averageRating">0.0</div>
-                <div class="rating-stars-large" id="ratingStarsLarge"></div>
-                <div class="total-reviews" id="totalReviews">0 reviews</div>
-              </div>
-              
-              <!-- Top 10 5-star reviews -->
-              <div class="top-reviews" id="topReviews">
-                <h4>Top 5-Star Reviews</h4>
-                <div id="topReviewsList"></div>
-              </div>
-              
-              <!-- View All Reviews Button -->
-              <button class="btn secondary" id="viewAllReviews" onclick="showAllReviews()">View All Reviews</button>
-              
-              <!-- All Reviews Section (Initially hidden) -->
-              <div class="all-reviews" id="allReviewsSection" style="display:none;">
-                <h4>All Reviews</h4>
-                <div id="allReviewsList"></div>
-              </div>
-            </div>
-
             <!-- Rating and Reviews Section -->
             <div class="review-section">
               <div class="review-form">
@@ -587,6 +562,10 @@
                 </div>
                 <textarea class="review-textarea" id="reviewText" placeholder="Share your experience with this product..."></textarea>
                 <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
+              </div>
+              
+              <div class="reviews-list" id="reviewsList">
+                <!-- Reviews will be dynamically inserted here -->
               </div>
             </div>
             
@@ -809,7 +788,7 @@
           <div id="orders-empty" class="empty-state" style="display:none">
             <img src="https://cdn-icons-png.flaticon.com/512/891/891419.png" class="empty-icon">
             <h3>No Orders Yet</h3>
-            <p>You haven't placed any orders yet. Start shopping to see your order history here.</p>
+            <p>Your orders will appear here after you place them. Start shopping to see your order history.</p>
             <a href="#" class="empty-btn" onclick="showPage('productsPage')">Start Shopping</a>
           </div>
         </div>
@@ -915,7 +894,7 @@
       </svg>
       <span class="bottom-nav-label">Orders</span>
     </div>
-    <div class="bottom-nav-item" onclick="checkAuthAndShowPage('accountPage')">
+    <div class="bottom-nav-item" onclick="checkAuthAndRedirect('account.html')">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
@@ -1295,6 +1274,14 @@
       filterByCategory('all');
     }
 
+    function checkAuthAndRedirect(url) {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      window.location.href = url;
+    }
+
     // Global variables
     let currentUser = null;
     let currentProduct = null;
@@ -1636,12 +1623,13 @@
         updateAdminSettingsUI();
       }
       
-      // Load popular searches and tags from cache
+      // Load popular searches from cache
       const cachedPopularSearches = cacheManager.get('popularSearches');
       if (cachedPopularSearches) {
         popularSearches = cachedPopularSearches;
       }
       
+      // Load search tags from cache
       const cachedSearchTags = cacheManager.get('searchTags');
       if (cachedSearchTags) {
         searchTags = cachedSearchTags;
@@ -1746,6 +1734,28 @@
         console.error('Error fetching admin settings:', error);
       });
       
+      // Fetch popular searches
+      get(ref(database, 'popularSearches')).then(snapshot => {
+        const popularSearchesObj = snapshot.val();
+        if (popularSearchesObj) {
+          popularSearches = Object.values(popularSearchesObj);
+          cacheManager.set('popularSearches', popularSearches);
+        }
+      }).catch(error => {
+        console.error('Error fetching popular searches:', error);
+      });
+      
+      // Fetch search tags
+      get(ref(database, 'searchTags')).then(snapshot => {
+        const searchTagsObj = snapshot.val();
+        if (searchTagsObj) {
+          searchTags = Object.values(searchTagsObj);
+          cacheManager.set('searchTags', searchTags);
+        }
+      }).catch(error => {
+        console.error('Error fetching search tags:', error);
+      });
+      
       // Fetch out of stock items
       get(ref(database, 'outOfStock')).then(snapshot => {
         const outOfStockObj = snapshot.val();
@@ -1755,28 +1765,6 @@
         }
       }).catch(error => {
         console.error('Error fetching out of stock items:', error);
-      });
-      
-      // Fetch popular searches from Firebase
-      get(ref(database, 'popularSearches')).then(snapshot => {
-        const popularSearchesObj = snapshot.val();
-        if (popularSearchesObj) {
-          popularSearches = popularSearchesObj;
-          cacheManager.set('popularSearches', popularSearches);
-        }
-      }).catch(error => {
-        console.error('Error fetching popular searches:', error);
-      });
-      
-      // Fetch search tags from Firebase
-      get(ref(database, 'searchTags')).then(snapshot => {
-        const searchTagsObj = snapshot.val();
-        if (searchTagsObj) {
-          searchTags = searchTagsObj;
-          cacheManager.set('searchTags', searchTags);
-        }
-      }).catch(error => {
-        console.error('Error fetching search tags:', error);
       });
     }
 
@@ -1867,19 +1855,11 @@
         }
       });
       
-      // Out of stock listener
-      onValue(ref(database, 'outOfStock'), snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) {
-          window.outOfStockItems = outOfStockObj;
-        }
-      });
-      
       // Popular searches listener
       onValue(ref(database, 'popularSearches'), snapshot => {
         const popularSearchesObj = snapshot.val();
         if (popularSearchesObj) {
-          popularSearches = popularSearchesObj;
+          popularSearches = Object.values(popularSearchesObj);
           cacheManager.set('popularSearches', popularSearches);
         }
       });
@@ -1888,8 +1868,16 @@
       onValue(ref(database, 'searchTags'), snapshot => {
         const searchTagsObj = snapshot.val();
         if (searchTagsObj) {
-          searchTags = searchTagsObj;
+          searchTags = Object.values(searchTagsObj);
           cacheManager.set('searchTags', searchTags);
+        }
+      });
+      
+      // Out of stock listener
+      onValue(ref(database, 'outOfStock'), snapshot => {
+        const outOfStockObj = snapshot.val();
+        if (outOfStockObj) {
+          window.outOfStockItems = outOfStockObj;
         }
       });
     }
@@ -2054,11 +2042,6 @@
           window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
         });
       }
-      
-      // Fix bottom nav account click
-      document.querySelector('.bottom-nav-item:nth-child(4)')?.addEventListener('click', function(e) {
-        checkAuthAndShowPage('accountPage');
-      });
     }
 
     // Banner touch events setup
@@ -2091,13 +2074,11 @@
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
-            // Swipe right - go to previous
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
-          } else {
-            // Swipe left - go to next
             const nextIndex = (activeIndex + 1) % banners.length;
             setBannerSlide(nextIndex);
+          } else {
+            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+            setBannerSlide(prevIndex);
           }
         }
         
@@ -2123,7 +2104,7 @@
       }, 5000);
     }
 
-    // Setup trending products auto-slide - FIXED: Every 2 seconds
+    // Setup trending products auto-slide
     function setupTrendingAutoSlide() {
       const slider = document.getElementById('productSlider');
       if (!slider) return;
@@ -2138,7 +2119,7 @@
       // Clear any existing interval
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       
-      // Auto slide every 2 seconds - RIGHT ONLY
+      // Auto slide every 2 seconds - RIGHT ONLY (FIXED: पहले 4 seconds था, अब 2 seconds)
       trendingAutoSlideInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % totalSlides;
         slider.scrollTo({
@@ -2310,12 +2291,8 @@
     }
 
     function checkAuthAndShowPage(pageId) {
-      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'accountPage' || pageId === 'sellProductPage')) {
+      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'sellProductPage')) {
         showLoginModal();
-        return;
-      }
-      if (pageId === 'accountPage') {
-        window.location.href = 'account.html';
         return;
       }
       showPage(pageId);
@@ -2753,13 +2730,13 @@
         return;
       }
       
-      if (password.length < 6) {
-        signupError.textContent = 'Password should be at least 6 characters';
+      if (password !== confirmPassword) {
+        signupError.textContent = 'Passwords do not match';
         return;
       }
       
-      if (password !== confirmPassword) {
-        signupError.textContent = 'Passwords do not match';
+      if (password.length < 6) {
+        signupError.textContent = 'Password should be at least 6 characters';
         return;
       }
       
@@ -2978,10 +2955,10 @@
         </div>
       `;
       
-      card.addEventListener('click', (e) => {
-        if (!e.target.closest('.action-btn')) {
-          showProductDetail(product);
-        }
+      card.querySelector('.product-card-image').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showProductDetail(product);
       });
       
       card.querySelector('.wishlist-btn').addEventListener('click', (e) => {
@@ -3274,12 +3251,10 @@
       // Add touch events for swipe
       let touchStartX = 0;
       let touchEndX = 0;
-      let isBannerDragging = false;
       
       mainImage.addEventListener('touchstart', (e) => {
         pauseSlide();
         touchStartX = e.changedTouches[0].screenX;
-        isBannerDragging = true;
       }, { passive: true });
       
       mainImage.addEventListener('touchmove', (e) => {
@@ -3293,14 +3268,12 @@
         touchEndX = e.changedTouches[0].screenX;
         handleSwipe();
         resumeSlideAfterDelay();
-        isBannerDragging = false;
       }, { passive: true });
       
       // Mouse events for desktop
       mainImage.addEventListener('mousedown', (e) => {
         pauseSlide();
         touchStartX = e.clientX;
-        isBannerDragging = true;
       });
       
       mainImage.addEventListener('mousemove', (e) => {
@@ -3313,13 +3286,11 @@
         touchEndX = e.clientX;
         handleSwipe();
         resumeSlideAfterDelay();
-        isBannerDragging = false;
       });
       
       mainImage.addEventListener('mouseleave', () => {
         touchStartX = 0;
         touchEndX = 0;
-        isBannerDragging = false;
       });
       
       function handleSwipe() {
@@ -3328,10 +3299,10 @@
         
         if (Math.abs(difference) > minSwipeDistance) {
           if (difference > 0) {
-            // Swipe left - go to next
+            // Swipe left - show next image
             nextDetailImage();
           } else {
-            // Swipe right - go to previous
+            // Swipe right - show previous image
             prevDetailImage();
           }
         }
@@ -4013,16 +3984,11 @@
         productsCount.textContent = 'No products found';
       } else {
         noProductsMessage.style.display = 'none';
-        
-        // Check if filters are applied
-        const isFilterApplied = document.querySelectorAll('.category-pill.active').length > 1 || 
-                                document.getElementById('minPrice').value != '0' || 
-                                document.getElementById('maxPrice').value != '10000';
-        
-        if (isFilterApplied) {
+        const totalProducts = products.length;
+        if (currentCategoryFilter || document.getElementById('minPrice').value != '0' || document.getElementById('maxPrice').value != '10000') {
           productsCount.textContent = `Showing ${visibleProducts} products (filter applied)`;
         } else {
-          productsCount.textContent = 'Amazing Products Collection';
+          productsCount.textContent = `Amazing Products Collection (${totalProducts} products)`;
         }
       }
     }
@@ -4311,125 +4277,68 @@
           )
         );
         
+        const reviewsList = document.getElementById('reviewsList');
+        if (!reviewsList) return;
+        
         if (!snapshot.exists()) {
-          displayNoReviews();
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
           return;
         }
         
         const reviewsObj = snapshot.val();
         const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
         
-        // Sort by rating (highest first) and then by date (newest first)
+        // Sort by rating (highest first) then by date (newest first)
         reviews.sort((a, b) => {
           if (b.rating !== a.rating) {
             return b.rating - a.rating; // Higher rating first
           }
-          return b.date - a.date; // Newer first
+          return b.date - a.date; // Newer first if same rating
         });
         
-        // Calculate average rating
-        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-        const averageRating = reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : '0.0';
-        
-        // Display average rating
-        document.getElementById('averageRating').textContent = averageRating;
-        document.getElementById('ratingStarsLarge').innerHTML = generateStarRating(averageRating);
-        document.getElementById('totalReviews').textContent = `${reviews.length} reviews`;
-        
-        // Get top 10 5-star reviews
-        const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 10);
-        const otherReviews = reviews.filter(review => review.rating < 5);
-        
-        renderTopReviews(top5StarReviews);
-        renderAllReviews(otherReviews);
-        
+        renderReviews(reviews);
       } catch (error) {
         console.error('Error loading reviews:', error);
-        displayNoReviews();
+        const reviewsList = document.getElementById('reviewsList');
+        if (reviewsList) {
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
+        }
       }
     }
 
-    function displayNoReviews() {
-      document.getElementById('averageRating').textContent = '0.0';
-      document.getElementById('ratingStarsLarge').innerHTML = generateStarRating(0);
-      document.getElementById('totalReviews').textContent = '0 reviews';
-      document.getElementById('topReviewsList').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No reviews yet. Be the first to review!</p>';
-      document.getElementById('allReviewsList').innerHTML = '';
-    }
-
-    function renderTopReviews(reviews) {
-      const topReviewsList = document.getElementById('topReviewsList');
-      if (!topReviewsList) return;
+    function renderReviews(reviews) {
+      const reviewsList = document.getElementById('reviewsList');
+      if (!reviewsList) return;
       
-      if (reviews.length === 0) {
-        topReviewsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:10px;">No 5-star reviews yet</p>';
-        return;
-      }
-      
-      topReviewsList.innerHTML = '';
+      reviewsList.innerHTML = '';
       
       reviews.forEach(review => {
-        const reviewItem = createReviewItem(review);
-        topReviewsList.appendChild(reviewItem);
+        const reviewItem = document.createElement('div');
+        reviewItem.className = 'review-item';
+        
+        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+        const date = new Date(review.date).toLocaleDateString();
+        
+        reviewItem.innerHTML = `
+          <div class="review-header">
+            <div class="reviewer-name">${review.userName}</div>
+            <div class="review-date">${date}</div>
+          </div>
+          <div class="review-rating">${stars}</div>
+          <div class="review-text">${review.text}</div>
+          ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
+            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+        `;
+        
+        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function() {
+            deleteReview(review.id);
+          });
+        }
+        
+        reviewsList.appendChild(reviewItem);
       });
-    }
-
-    function renderAllReviews(reviews) {
-      const allReviewsList = document.getElementById('allReviewsList');
-      if (!allReviewsList) return;
-      
-      if (reviews.length === 0) {
-        allReviewsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:10px;">No other reviews</p>';
-        return;
-      }
-      
-      allReviewsList.innerHTML = '';
-      
-      reviews.forEach(review => {
-        const reviewItem = createReviewItem(review);
-        allReviewsList.appendChild(reviewItem);
-      });
-    }
-
-    function createReviewItem(review) {
-      const reviewItem = document.createElement('div');
-      reviewItem.className = 'review-item';
-      
-      const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-      const date = new Date(review.date).toLocaleDateString();
-      
-      reviewItem.innerHTML = `
-        <div class="review-header">
-          <div class="reviewer-name">${review.userName}</div>
-          <div class="review-date">${date}</div>
-        </div>
-        <div class="review-rating">${stars}</div>
-        <div class="review-text">${review.text}</div>
-        ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
-          `<button class="review-delete-btn" data-review-id="${review.id}">Delete Review</button>` : ''}
-      `;
-      
-      const deleteBtn = reviewItem.querySelector('.review-delete-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', function() {
-          deleteReview(review.id);
-        });
-      }
-      
-      return reviewItem;
-    }
-
-    function showAllReviews() {
-      const allReviewsSection = document.getElementById('allReviewsSection');
-      const viewAllBtn = document.getElementById('viewAllReviews');
-      
-      if (allReviewsSection.style.display === 'none') {
-        allReviewsSection.style.display = 'block';
-        viewAllBtn.textContent = 'Hide Reviews';
-      } else {
-        allReviewsSection.style.display = 'none';
-        viewAllBtn.textContent = 'View All Reviews';
-      }
     }
 
     async function deleteReview(reviewId) {
@@ -4940,7 +4849,7 @@
       background-color: #f8fafc;
       border-radius: var(--radius);
       overflow: hidden;
-      margin-bottom: 10px;
+      margin-bottom: 10px; /* Reduced margin for dots positioning */
       cursor: pointer;
     }
     
@@ -4967,15 +4876,13 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots position - MOVED CLOSER TO IMAGE */
+    /* Carousel dots position - MOVED ABOVE SIMILAR PRODUCTS with less margin */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin: 10px 0 20px 0;
-      padding: 10px 0;
-      position: relative;
-      z-index: 2;
+      margin-bottom: 10px; /* Reduced margin */
+      padding: 5px 0; /* Reduced padding */
     }
     
     .detail-carousel-dot {
@@ -4991,88 +4898,6 @@
     .detail-carousel-dot.active {
       background: var(--accent);
       transform: scale(1.2);
-    }
-    
-    /* Rating display section */
-    .product-rating-display {
-      margin: 20px 0;
-      padding: 20px;
-      background: var(--surface);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-    
-    .overall-rating {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-    
-    .average-rating {
-      font-size: 36px;
-      font-weight: 700;
-      color: var(--accent);
-    }
-    
-    .rating-stars-large {
-      font-size: 24px;
-      color: #ffc107;
-      letter-spacing: 2px;
-    }
-    
-    .total-reviews {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    
-    .top-reviews {
-      margin: 20px 0;
-    }
-    
-    .review-item {
-      padding: 15px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 15px;
-    }
-    
-    .review-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    
-    .reviewer-name {
-      font-weight: 600;
-    }
-    
-    .review-date {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    
-    .review-rating {
-      color: #ffc107;
-      font-size: 16px;
-      margin-bottom: 8px;
-    }
-    
-    .review-text {
-      margin-bottom: 10px;
-    }
-    
-    .review-delete-btn {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    
-    .review-delete-btn:hover {
-      background: #dc2626;
     }
     
     /* Sticky order buttons - FIXED POSITION */
@@ -5278,43 +5103,6 @@
       font-size: 12px;
       color: var(--muted);
       margin-left: 5px;
-    }
-    
-    /* Empty state for orders */
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-    }
-    
-    .empty-icon {
-      width: 80px;
-      height: 80px;
-      margin-bottom: 20px;
-      opacity: 0.5;
-    }
-    
-    .empty-state h3 {
-      margin-bottom: 10px;
-      color: var(--text);
-    }
-    
-    .empty-state p {
-      color: var(--muted);
-      margin-bottom: 20px;
-    }
-    
-    .empty-btn {
-      display: inline-block;
-      background: var(--accent);
-      color: white;
-      padding: 10px 20px;
-      border-radius: var(--radius);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    
-    .empty-btn:hover {
-      background: var(--accent-dark);
     }
   </style>
 </body>
