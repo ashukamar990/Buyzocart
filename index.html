@@ -79,7 +79,7 @@
       
       <!-- OFFERS -->
       <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();">
-        <svg xmlns="http://www.w3.org2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.5 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/>
         </svg>
         Offers
@@ -484,7 +484,7 @@
         </svg>
         <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
         <p style="color:var(--muted-light)">Try adjusting your filters or search terms</p>
-        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid');">Reset All Filters</button>
+        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid'); updateProductsCount();">Reset All Filters</button>
       </div>
     </section>
 
@@ -525,8 +525,8 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - MOVED ABOVE SIMILAR PRODUCTS -->
-              <div class="detail-carousel-dots" id="detailCarouselDots"></div>
+              <!-- Carousel Dots - MOVED CLOSER TO IMAGE -->
+              <div class="detail-carousel-dots" id="detailCarouselDots" style="margin-top: -20px; position: relative; z-index: 2;"></div>
               
               <!-- Similar Products Section -->
               <div class="similar-products-small">
@@ -549,17 +549,33 @@
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
 
-            <!-- Rating and Reviews Section -->
-            <div class="review-section">
-              <!-- Top 5-Star Reviews -->
-              <div class="top-reviews" id="topReviews" style="display: none;">
-                <h3>Top 5-Star Reviews</h3>
-                <div id="topReviewsList" style="margin-bottom: 20px;">
-                  <!-- Top reviews will be loaded here -->
-                </div>
-                <button class="btn secondary" onclick="showAllReviews()">View All Reviews</button>
+            <!-- Rating Display Section -->
+            <div class="product-rating-display">
+              <h3>Product Ratings</h3>
+              <div class="overall-rating">
+                <div class="average-rating" id="averageRating">0.0</div>
+                <div class="rating-stars-large" id="ratingStarsLarge"></div>
+                <div class="total-reviews" id="totalReviews">0 reviews</div>
               </div>
               
+              <!-- Top 10 5-star reviews -->
+              <div class="top-reviews" id="topReviews">
+                <h4>Top 5-Star Reviews</h4>
+                <div id="topReviewsList"></div>
+              </div>
+              
+              <!-- View All Reviews Button -->
+              <button class="btn secondary" id="viewAllReviews" onclick="showAllReviews()">View All Reviews</button>
+              
+              <!-- All Reviews Section (Initially hidden) -->
+              <div class="all-reviews" id="allReviewsSection" style="display:none;">
+                <h4>All Reviews</h4>
+                <div id="allReviewsList"></div>
+              </div>
+            </div>
+
+            <!-- Rating and Reviews Section -->
+            <div class="review-section">
               <div class="review-form">
                 <h3>Add Your Review</h3>
                 <div class="rating-input" id="ratingInput">
@@ -571,11 +587,6 @@
                 </div>
                 <textarea class="review-textarea" id="reviewText" placeholder="Share your experience with this product..."></textarea>
                 <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
-              </div>
-              
-              <div class="reviews-list" id="reviewsList" style="display: none;">
-                <h3>All Reviews</h3>
-                <!-- Reviews will be dynamically inserted here -->
               </div>
             </div>
             
@@ -798,7 +809,7 @@
           <div id="orders-empty" class="empty-state" style="display:none">
             <img src="https://cdn-icons-png.flaticon.com/512/891/891419.png" class="empty-icon">
             <h3>No Orders Yet</h3>
-            <p>Your orders will appear here after you place them. Start shopping to see your order history.</p>
+            <p>You haven't placed any orders yet. Start shopping to see your order history here.</p>
             <a href="#" class="empty-btn" onclick="showPage('productsPage')">Start Shopping</a>
           </div>
         </div>
@@ -904,7 +915,7 @@
       </svg>
       <span class="bottom-nav-label">Orders</span>
     </div>
-    <div class="bottom-nav-item" onclick="checkAuthAndShowAccount()">
+    <div class="bottom-nav-item" onclick="checkAuthAndShowPage('accountPage')">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
@@ -1283,15 +1294,6 @@
       // Show categories page or filter
       filterByCategory('all');
     }
-    
-    // NEW FUNCTION FOR ACCOUNT
-    function checkAuthAndShowAccount() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      window.location.href = 'account.html';
-    }
 
     // Global variables
     let currentUser = null;
@@ -1503,12 +1505,6 @@
       
       // Fix search input
       setupSearchInput();
-      
-      // Start auto slides
-      setTimeout(() => {
-        setupTrendingAutoSlide();
-        setupBannerAutoSlide();
-      }, 1000);
     }
 
     // Setup search input
@@ -1616,21 +1612,6 @@
         }
         
         updateProductsCount();
-        
-        // Remove skeleton loaders
-        document.querySelectorAll('.skeleton').forEach(el => {
-          el.classList.remove('skeleton');
-        });
-      } else {
-        // Show placeholder images if no cached data
-        setTimeout(() => {
-          document.querySelectorAll('.skeleton').forEach(el => {
-            el.classList.remove('skeleton');
-            if (el.classList.contains('product-card-image')) {
-              el.style.backgroundImage = "url('https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...')";
-            }
-          });
-        }, 500);
       }
       
       // Load categories from cache
@@ -1706,11 +1687,6 @@
             
             updateProductsCount();
           }
-          
-          // Remove skeleton loaders
-          document.querySelectorAll('.skeleton').forEach(el => {
-            el.classList.remove('skeleton');
-          });
         }
       }).catch(error => {
         console.error('Error fetching products:', error);
@@ -1770,26 +1746,6 @@
         console.error('Error fetching admin settings:', error);
       });
       
-      // Fetch popular searches
-      get(ref(database, 'popularSearches')).then(snapshot => {
-        if (snapshot.exists()) {
-          popularSearches = snapshot.val();
-          cacheManager.set('popularSearches', popularSearches);
-        }
-      }).catch(error => {
-        console.error('Error fetching popular searches:', error);
-      });
-      
-      // Fetch search tags
-      get(ref(database, 'searchTags')).then(snapshot => {
-        if (snapshot.exists()) {
-          searchTags = snapshot.val();
-          cacheManager.set('searchTags', searchTags);
-        }
-      }).catch(error => {
-        console.error('Error fetching search tags:', error);
-      });
-      
       // Fetch out of stock items
       get(ref(database, 'outOfStock')).then(snapshot => {
         const outOfStockObj = snapshot.val();
@@ -1799,6 +1755,28 @@
         }
       }).catch(error => {
         console.error('Error fetching out of stock items:', error);
+      });
+      
+      // Fetch popular searches from Firebase
+      get(ref(database, 'popularSearches')).then(snapshot => {
+        const popularSearchesObj = snapshot.val();
+        if (popularSearchesObj) {
+          popularSearches = popularSearchesObj;
+          cacheManager.set('popularSearches', popularSearches);
+        }
+      }).catch(error => {
+        console.error('Error fetching popular searches:', error);
+      });
+      
+      // Fetch search tags from Firebase
+      get(ref(database, 'searchTags')).then(snapshot => {
+        const searchTagsObj = snapshot.val();
+        if (searchTagsObj) {
+          searchTags = searchTagsObj;
+          cacheManager.set('searchTags', searchTags);
+        }
+      }).catch(error => {
+        console.error('Error fetching search tags:', error);
       });
     }
 
@@ -1889,27 +1867,29 @@
         }
       });
       
+      // Out of stock listener
+      onValue(ref(database, 'outOfStock'), snapshot => {
+        const outOfStockObj = snapshot.val();
+        if (outOfStockObj) {
+          window.outOfStockItems = outOfStockObj;
+        }
+      });
+      
       // Popular searches listener
       onValue(ref(database, 'popularSearches'), snapshot => {
-        if (snapshot.exists()) {
-          popularSearches = snapshot.val();
+        const popularSearchesObj = snapshot.val();
+        if (popularSearchesObj) {
+          popularSearches = popularSearchesObj;
           cacheManager.set('popularSearches', popularSearches);
         }
       });
       
       // Search tags listener
       onValue(ref(database, 'searchTags'), snapshot => {
-        if (snapshot.exists()) {
-          searchTags = snapshot.val();
+        const searchTagsObj = snapshot.val();
+        if (searchTagsObj) {
+          searchTags = searchTagsObj;
           cacheManager.set('searchTags', searchTags);
-        }
-      });
-      
-      // Out of stock listener
-      onValue(ref(database, 'outOfStock'), snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) {
-          window.outOfStockItems = outOfStockObj;
         }
       });
     }
@@ -2074,9 +2054,14 @@
           window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
         });
       }
+      
+      // Fix bottom nav account click
+      document.querySelector('.bottom-nav-item:nth-child(4)')?.addEventListener('click', function(e) {
+        checkAuthAndShowPage('accountPage');
+      });
     }
 
-    // Banner touch events setup - FIXED SWIPE DIRECTION
+    // Banner touch events setup
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
@@ -2106,13 +2091,13 @@
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
-            // Swipe left - go to next slide (RIGHT)
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
-          } else {
-            // Swipe right - go to previous slide (LEFT)
+            // Swipe right - go to previous
             const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
             setBannerSlide(prevIndex);
+          } else {
+            // Swipe left - go to next
+            const nextIndex = (activeIndex + 1) % banners.length;
+            setBannerSlide(nextIndex);
           }
         }
         
@@ -2138,7 +2123,7 @@
       }, 5000);
     }
 
-    // Setup trending products auto-slide - EVERY 2 SECONDS
+    // Setup trending products auto-slide - FIXED: Every 2 seconds
     function setupTrendingAutoSlide() {
       const slider = document.getElementById('productSlider');
       if (!slider) return;
@@ -2153,7 +2138,7 @@
       // Clear any existing interval
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       
-      // Auto slide every 2 seconds as requested
+      // Auto slide every 2 seconds - RIGHT ONLY
       trendingAutoSlideInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % totalSlides;
         slider.scrollTo({
@@ -2325,8 +2310,12 @@
     }
 
     function checkAuthAndShowPage(pageId) {
-      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'sellProductPage')) {
+      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'accountPage' || pageId === 'sellProductPage')) {
         showLoginModal();
+        return;
+      }
+      if (pageId === 'accountPage') {
+        window.location.href = 'account.html';
         return;
       }
       showPage(pageId);
@@ -2349,6 +2338,9 @@
         case 'myOrdersPage':
         case 'orderDetailPage':
           document.querySelector('.bottom-nav-item:nth-child(3)')?.classList.add('active');
+          break;
+        case 'accountPage':
+          document.querySelector('.bottom-nav-item:nth-child(4)')?.classList.add('active');
           break;
       }
     }
@@ -2761,13 +2753,13 @@
         return;
       }
       
-      if (password !== confirmPassword) {
-        signupError.textContent = 'Passwords do not match';
+      if (password.length < 6) {
+        signupError.textContent = 'Password should be at least 6 characters';
         return;
       }
       
-      if (password.length < 6) {
-        signupError.textContent = 'Password should be at least 6 characters';
+      if (password !== confirmPassword) {
+        signupError.textContent = 'Passwords do not match';
         return;
       }
       
@@ -2986,10 +2978,10 @@
         </div>
       `;
       
-      card.querySelector('.product-card-image').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showProductDetail(product);
+      card.addEventListener('click', (e) => {
+        if (!e.target.closest('.action-btn')) {
+          showProductDetail(product);
+        }
       });
       
       card.querySelector('.wishlist-btn').addEventListener('click', (e) => {
@@ -3176,16 +3168,10 @@
       });
     }
 
-    // Product detail functions - FIXED TO WORK WITH ALL PRODUCTS
+    // Product detail functions
     function showProductDetail(product) {
-      // Find the actual product from products array using ID
-      const actualProduct = products.find(p => p.id === product.id);
-      if (!actualProduct) {
-        console.error('Product not found:', product.id);
-        showToast('Product not found', 'error');
-        return;
-      }
-      
+      // Find the actual product from products array
+      const actualProduct = products.find(p => p.id === product.id) || product;
       currentProduct = actualProduct;
       currentSelectedColor = product.defaultColor || 'black';
       currentSelectedColorName = colorNames[currentSelectedColor] || 'काला';
@@ -3288,52 +3274,52 @@
       // Add touch events for swipe
       let touchStartX = 0;
       let touchEndX = 0;
-      let isDragging = false;
+      let isBannerDragging = false;
       
       mainImage.addEventListener('touchstart', (e) => {
         pauseSlide();
         touchStartX = e.changedTouches[0].screenX;
-        isDragging = true;
+        isBannerDragging = true;
       }, { passive: true });
       
       mainImage.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
+        if (!isBannerDragging) return;
         touchEndX = e.changedTouches[0].screenX;
       }, { passive: true });
       
       mainImage.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
+        if (!isBannerDragging) return;
         
         touchEndX = e.changedTouches[0].screenX;
         handleSwipe();
-        isDragging = false;
         resumeSlideAfterDelay();
+        isBannerDragging = false;
       }, { passive: true });
       
       // Mouse events for desktop
       mainImage.addEventListener('mousedown', (e) => {
         pauseSlide();
         touchStartX = e.clientX;
-        isDragging = true;
+        isBannerDragging = true;
       });
       
       mainImage.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
+        if (touchStartX === 0) return;
         touchEndX = e.clientX;
       });
       
       mainImage.addEventListener('mouseup', (e) => {
-        if (!isDragging) return;
+        if (touchStartX === 0) return;
         touchEndX = e.clientX;
         handleSwipe();
-        isDragging = false;
         resumeSlideAfterDelay();
+        isBannerDragging = false;
       });
       
       mainImage.addEventListener('mouseleave', () => {
-        isDragging = false;
         touchStartX = 0;
         touchEndX = 0;
+        isBannerDragging = false;
       });
       
       function handleSwipe() {
@@ -3342,10 +3328,10 @@
         
         if (Math.abs(difference) > minSwipeDistance) {
           if (difference > 0) {
-            // Swipe left - go to next image
+            // Swipe left - go to next
             nextDetailImage();
           } else {
-            // Swipe right - go to previous image
+            // Swipe right - go to previous
             prevDetailImage();
           }
         }
@@ -4027,10 +4013,16 @@
         productsCount.textContent = 'No products found';
       } else {
         noProductsMessage.style.display = 'none';
-        if (currentCategoryFilter || document.getElementById('minPrice').value !== '0' || document.getElementById('maxPrice').value !== '10000') {
-          productsCount.textContent = `${visibleProducts} products found (Filter Applied)`;
+        
+        // Check if filters are applied
+        const isFilterApplied = document.querySelectorAll('.category-pill.active').length > 1 || 
+                                document.getElementById('minPrice').value != '0' || 
+                                document.getElementById('maxPrice').value != '10000';
+        
+        if (isFilterApplied) {
+          productsCount.textContent = `Showing ${visibleProducts} products (filter applied)`;
         } else {
-          productsCount.textContent = `${visibleProducts} products available`;
+          productsCount.textContent = 'Amazing Products Collection';
         }
       }
     }
@@ -4246,7 +4238,7 @@
       };
     }
 
-    // Reviews and ratings - IMPROVED VERSION
+    // Reviews and ratings
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
@@ -4290,7 +4282,6 @@
           productId: currentProduct.id,
           userId: currentUser.uid,
           userName: currentUser.displayName || 'Anonymous',
-          userEmail: currentUser.email || '',
           rating: rating,
           text: reviewTextValue,
           date: Date.now()
@@ -4320,59 +4311,84 @@
           )
         );
         
-        const topReviewsDiv = document.getElementById('topReviews');
-        const topReviewsList = document.getElementById('topReviewsList');
-        const reviewsList = document.getElementById('reviewsList');
-        
         if (!snapshot.exists()) {
-          if (topReviewsDiv) topReviewsDiv.style.display = 'none';
-          if (reviewsList) {
-            reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
-            reviewsList.style.display = 'block';
-          }
+          displayNoReviews();
           return;
         }
         
         const reviewsObj = snapshot.val();
         const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
         
-        reviews.sort((a, b) => b.date - a.date);
+        // Sort by rating (highest first) and then by date (newest first)
+        reviews.sort((a, b) => {
+          if (b.rating !== a.rating) {
+            return b.rating - a.rating; // Higher rating first
+          }
+          return b.date - a.date; // Newer first
+        });
         
-        // Separate 5-star reviews
-        const fiveStarReviews = reviews.filter(review => review.rating === 5);
+        // Calculate average rating
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : '0.0';
+        
+        // Display average rating
+        document.getElementById('averageRating').textContent = averageRating;
+        document.getElementById('ratingStarsLarge').innerHTML = generateStarRating(averageRating);
+        document.getElementById('totalReviews').textContent = `${reviews.length} reviews`;
+        
+        // Get top 10 5-star reviews
+        const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 10);
         const otherReviews = reviews.filter(review => review.rating < 5);
         
-        if (fiveStarReviews.length > 0) {
-          if (topReviewsDiv) topReviewsDiv.style.display = 'block';
-          if (topReviewsList) {
-            topReviewsList.innerHTML = '';
-            fiveStarReviews.slice(0, 3).forEach(review => {
-              const reviewItem = createReviewItem(review);
-              topReviewsList.appendChild(reviewItem);
-            });
-          }
-        } else {
-          if (topReviewsDiv) topReviewsDiv.style.display = 'none';
-        }
-        
-        // Show all reviews
-        if (reviewsList) {
-          reviewsList.innerHTML = '<h3>All Reviews</h3>';
-          [...fiveStarReviews, ...otherReviews].forEach(review => {
-            const reviewItem = createReviewItem(review);
-            reviewsList.appendChild(reviewItem);
-          });
-          reviewsList.style.display = 'none'; // Initially hidden
-        }
+        renderTopReviews(top5StarReviews);
+        renderAllReviews(otherReviews);
         
       } catch (error) {
         console.error('Error loading reviews:', error);
-        const reviewsList = document.getElementById('reviewsList');
-        if (reviewsList) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet</p>';
-          reviewsList.style.display = 'block';
-        }
+        displayNoReviews();
       }
+    }
+
+    function displayNoReviews() {
+      document.getElementById('averageRating').textContent = '0.0';
+      document.getElementById('ratingStarsLarge').innerHTML = generateStarRating(0);
+      document.getElementById('totalReviews').textContent = '0 reviews';
+      document.getElementById('topReviewsList').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No reviews yet. Be the first to review!</p>';
+      document.getElementById('allReviewsList').innerHTML = '';
+    }
+
+    function renderTopReviews(reviews) {
+      const topReviewsList = document.getElementById('topReviewsList');
+      if (!topReviewsList) return;
+      
+      if (reviews.length === 0) {
+        topReviewsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:10px;">No 5-star reviews yet</p>';
+        return;
+      }
+      
+      topReviewsList.innerHTML = '';
+      
+      reviews.forEach(review => {
+        const reviewItem = createReviewItem(review);
+        topReviewsList.appendChild(reviewItem);
+      });
+    }
+
+    function renderAllReviews(reviews) {
+      const allReviewsList = document.getElementById('allReviewsList');
+      if (!allReviewsList) return;
+      
+      if (reviews.length === 0) {
+        allReviewsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:10px;">No other reviews</p>';
+        return;
+      }
+      
+      allReviewsList.innerHTML = '';
+      
+      reviews.forEach(review => {
+        const reviewItem = createReviewItem(review);
+        allReviewsList.appendChild(reviewItem);
+      });
     }
 
     function createReviewItem(review) {
@@ -4389,8 +4405,8 @@
         </div>
         <div class="review-rating">${stars}</div>
         <div class="review-text">${review.text}</div>
-        ${currentUser && (review.userId === currentUser.uid || currentUser.email === 'admin@buyzocart.com') ? 
-          `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+        ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
+          `<button class="review-delete-btn" data-review-id="${review.id}">Delete Review</button>` : ''}
       `;
       
       const deleteBtn = reviewItem.querySelector('.review-delete-btn');
@@ -4404,11 +4420,16 @@
     }
 
     function showAllReviews() {
-      const topReviews = document.getElementById('topReviews');
-      const reviewsList = document.getElementById('reviewsList');
+      const allReviewsSection = document.getElementById('allReviewsSection');
+      const viewAllBtn = document.getElementById('viewAllReviews');
       
-      if (topReviews) topReviews.style.display = 'none';
-      if (reviewsList) reviewsList.style.display = 'block';
+      if (allReviewsSection.style.display === 'none') {
+        allReviewsSection.style.display = 'block';
+        viewAllBtn.textContent = 'Hide Reviews';
+      } else {
+        allReviewsSection.style.display = 'none';
+        viewAllBtn.textContent = 'View All Reviews';
+      }
     }
 
     async function deleteReview(reviewId) {
@@ -4472,7 +4493,7 @@
       }
     }
 
-    // Orders functions - FIXED TO SHOW ALL ORDERS
+    // Orders functions
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -4490,7 +4511,7 @@
         
         if (!snapshot.exists()) {
           ordersList.innerHTML = '';
-          if (empty) empty.style.display = 'block';
+          empty.style.display = 'block';
           return;
         }
         
@@ -4502,7 +4523,7 @@
         
         orders.sort((a, b) => b.orderDate - a.orderDate);
         renderOrders(orders);
-        if (empty) empty.style.display = 'none';
+        empty.style.display = 'none';
       } catch (error) {
         console.error('Error loading orders:', error);
       }
@@ -4514,21 +4535,12 @@
       
       container.innerHTML = '';
       
-      if (orders.length === 0) {
-        container.innerHTML = '<div class="empty-state"><h3>No Orders Yet</h3><p>Your orders will appear here after you place them.</p></div>';
-        return;
-      }
-      
       orders.forEach(order => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
         const statusClass = `status-${order.status}`;
         const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-        
-        // Find product image
-        const product = products.find(p => p.id === order.productId);
-        const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=Product';
         
         orderCard.innerHTML = `
           <div class="order-header">
@@ -4539,7 +4551,7 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${productImage}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
@@ -4560,10 +4572,6 @@
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
       
-      // Find product image
-      const product = products.find(p => p.id === order.productId);
-      const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/100x100/f3f4f6/64748b?text=Product';
-      
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
@@ -4583,7 +4591,7 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${productImage}')"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
@@ -4918,7 +4926,7 @@
       color: var(--accent);
     }
     
-    /* Product detail gallery styling - FIXED DOTS POSITION */
+    /* Product detail gallery styling */
     .product-gallery {
       position: relative;
     }
@@ -4932,7 +4940,7 @@
       background-color: #f8fafc;
       border-radius: var(--radius);
       overflow: hidden;
-      margin-bottom: 10px; /* Reduced margin */
+      margin-bottom: 10px;
       cursor: pointer;
     }
     
@@ -4964,8 +4972,10 @@
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin: 10px 0 20px 0; /* Reduced top margin */
-      padding: 5px 0;
+      margin: 10px 0 20px 0;
+      padding: 10px 0;
+      position: relative;
+      z-index: 2;
     }
     
     .detail-carousel-dot {
@@ -4981,6 +4991,88 @@
     .detail-carousel-dot.active {
       background: var(--accent);
       transform: scale(1.2);
+    }
+    
+    /* Rating display section */
+    .product-rating-display {
+      margin: 20px 0;
+      padding: 20px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    
+    .overall-rating {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .average-rating {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    
+    .rating-stars-large {
+      font-size: 24px;
+      color: #ffc107;
+      letter-spacing: 2px;
+    }
+    
+    .total-reviews {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    
+    .top-reviews {
+      margin: 20px 0;
+    }
+    
+    .review-item {
+      padding: 15px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 15px;
+    }
+    
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    
+    .reviewer-name {
+      font-weight: 600;
+    }
+    
+    .review-date {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    
+    .review-rating {
+      color: #ffc107;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    
+    .review-text {
+      margin-bottom: 10px;
+    }
+    
+    .review-delete-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    .review-delete-btn:hover {
+      background: #dc2626;
     }
     
     /* Sticky order buttons - FIXED POSITION */
@@ -5188,11 +5280,10 @@
       margin-left: 5px;
     }
     
-    /* Order empty state */
+    /* Empty state for orders */
     .empty-state {
       text-align: center;
       padding: 40px 20px;
-      color: var(--muted);
     }
     
     .empty-icon {
@@ -5207,218 +5298,23 @@
       color: var(--text);
     }
     
+    .empty-state p {
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    
     .empty-btn {
       display: inline-block;
-      margin-top: 20px;
-      padding: 10px 20px;
       background: var(--accent);
       color: white;
+      padding: 10px 20px;
       border-radius: var(--radius);
       text-decoration: none;
       font-weight: 600;
     }
     
-    /* Review items */
-    .review-item {
-      padding: 15px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 10px;
-    }
-    
-    .review-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-    }
-    
-    .reviewer-name {
-      font-weight: 600;
-    }
-    
-    .review-date {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    
-    .review-rating {
-      color: #ffc107;
-      margin-bottom: 8px;
-      font-size: 16px;
-    }
-    
-    .review-text {
-      margin-bottom: 10px;
-      line-height: 1.5;
-    }
-    
-    .review-delete-btn {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    
-    /* Rating stars styling */
-    .rating-star {
-      font-size: 24px;
-      color: #ddd;
-      cursor: pointer;
-      margin-right: 5px;
-      transition: color 0.2s;
-    }
-    
-    .rating-star.active {
-      color: #ffc107;
-    }
-    
-    .rating-star:hover {
-      color: #ffc107;
-    }
-    
-    /* Order status styling */
-    .status-confirmed {
-      color: #3b82f6;
-      background: #dbeafe;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    
-    .status-shipped {
-      color: #f59e0b;
-      background: #fef3c7;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    
-    .status-delivered {
-      color: #10b981;
-      background: #d1fae5;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    
-    /* Order cards */
-    .order-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 15px;
-      margin-bottom: 15px;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    
-    .order-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
-    .order-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 15px;
-    }
-    
-    .order-id {
-      font-weight: 600;
-      margin-bottom: 5px;
-    }
-    
-    .order-date {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    
-    .order-details {
-      display: flex;
-      gap: 15px;
-    }
-    
-    .order-product-image {
-      width: 80px;
-      height: 80px;
-      border-radius: 8px;
-      background-size: cover;
-      background-position: center;
-      flex-shrink: 0;
-    }
-    
-    .order-product-info {
-      flex: 1;
-    }
-    
-    .order-product-title {
-      font-weight: 600;
-      margin-bottom: 5px;
-    }
-    
-    .order-product-price {
-      color: var(--accent);
-      font-weight: 700;
-      margin-bottom: 5px;
-    }
-    
-    .order-product-meta {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    
-    /* Skeleton loading animations */
-    .skeleton {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: 4px;
-    }
-    
-    @keyframes loading {
-      0% {
-        background-position: 200% 0;
-      }
-      100% {
-        background-position: -200% 0;
-      }
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .main-product-image {
-        height: 300px;
-      }
-      
-      .similar-products-slider {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      
-      .header-search-wrap input {
-        font-size: 14px;
-        padding: 10px 40px 10px 15px;
-      }
-    }
-    
-    @media (max-width: 480px) {
-      .main-product-image {
-        height: 250px;
-      }
-      
-      .similar-products-slider {
-        grid-template-columns: 1fr;
-      }
-      
-      .sticky-order-buttons-fixed,
-      .sticky-action-buttons-fixed {
-        flex-direction: column;
-      }
+    .empty-btn:hover {
+      background: var(--accent-dark);
     }
   </style>
 </body>
