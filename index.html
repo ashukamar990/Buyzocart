@@ -467,8 +467,8 @@
         </div>
       </div>
 
-      <!-- Category Navigation - HIDDEN FOR SEARCH RESULTS -->
-      <div class="categories" id="categoriesContainer" style="display: none;">
+      <!-- Category Navigation (Hidden for search results) -->
+      <div class="categories" id="categoriesContainer" style="display: block;">
         <!-- Categories will be loaded dynamically -->
       </div>
 
@@ -484,7 +484,7 @@
         </svg>
         <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
         <p style="color:var(--muted-light)">Try adjusting your filters or search terms</p>
-        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid'); updateProductsCount(); showCategories();">Reset All Filters</button>
+        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid'); updateProductsCount();">Reset All Filters</button>
       </div>
     </section>
 
@@ -551,10 +551,12 @@
               <div class="rating-stars"></div>
               <span class="rating-count">(0 reviews)</span>
             </div>
-            
-            <!-- Size Selection - MOVED UP BEFORE DESCRIPTION -->
-            <div class="product-selection-section" style="margin: 20px 0;">
-              <div class="selection-title">Select Size *</div>
+
+            <!-- Product Selection (Size & Quantity) - MOVED ABOVE DESCRIPTION -->
+            <div class="product-selection-section" style="margin: 20px 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
+              <h3 style="margin-top: 0; margin-bottom: 15px;">Select Options</h3>
+              
+              <div class="selection-title" style="font-weight: 600; margin-bottom: 10px;">Select Size *</div>
               <div class="size-options" id="detailSizeOptions">
                 <div class="size-option" data-value="S">S</div>
                 <div class="size-option" data-value="M">M</div>
@@ -564,7 +566,7 @@
               </div>
               
               <div style="margin-top: 20px;">
-                <div class="selection-title">Select Quantity</div>
+                <div class="selection-title" style="font-weight: 600; margin-bottom: 10px;">Select Quantity</div>
                 <!-- Professional Quantity Control -->
                 <div class="quantity-control" style="max-width: 200px;">
                   <button class="qty-minus">-</button>
@@ -574,9 +576,14 @@
                 <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
               </div>
               
-              <div class="size-validation-error" id="detailSizeValidationError">Please select a size to continue</div>
+              <!-- Order Button in Detail Page -->
+              <button class="btn" id="detailOrderBtn" style="width: 100%; margin-top: 20px; padding: 12px;">Order Now</button>
+              <button class="btn secondary" id="detailWishlistBtn" style="width: 100%; margin-top: 10px; padding: 12px;">Add to Wishlist</button>
+              
+              <div class="size-validation-error" id="detailSizeValidationError" style="display: none; color: var(--error); margin-top: 10px;">Please select a size to continue</div>
             </div>
             
+            <!-- Product Description - MOVED BELOW SELECTION -->
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
 
@@ -601,11 +608,9 @@
                 <div id="topReviewsList"></div>
               </div>
               
-              <!-- All Reviews with View All Button -->
+              <!-- All Reviews -->
               <div class="all-reviews" id="allReviews">
-                <h3>All Reviews 
-                  <button class="btn secondary view-all-btn" id="viewAllReviews" onclick="viewAllReviews()">View All</button>
-                </h3>
+                <h3>All Reviews <button class="btn secondary view-all-btn" id="viewAllReviews" onclick="showAllReviewsModal()">View All</button></h3>
                 <div id="reviewsList"></div>
               </div>
             </div>
@@ -619,12 +624,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Sticky Action Buttons -->
-        <div class="product-detail-actions">
-          <button class="btn" id="detailOrderBtn" style="flex: 2;">Order Now</button>
-          <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
         </div>
 
         <!-- Similar Products Section -->
@@ -655,15 +654,9 @@
             <div class="title" id="spTitle"></div>
             <div class="price" id="spPrice"></div>
             <div class="badge" id="spDesc"></div>
-            
-            <!-- Product Details Section -->
-            <div class="product-details">
-              <h4>Product Details</h4>
-              <p id="spFullDesc"></p>
-            </div>
 
-            <!-- Professional Size/Color Selection -->
-            <div class="product-selection-section">
+            <!-- Product Selection Section - MOVED ABOVE DETAILS -->
+            <div class="product-selection-section" style="margin: 20px 0;">
               <div class="selection-title">Select Size *</div>
               <div class="size-options" id="sizeOptions">
                 <div class="size-option" data-value="S">S</div>
@@ -685,6 +678,12 @@
               </div>
               
               <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
+            </div>
+            
+            <!-- Product Details Section - MOVED BELOW SELECTION -->
+            <div class="product-details">
+              <h4>Product Details</h4>
+              <p id="spFullDesc"></p>
             </div>
             
             <!-- Sticky Action Buttons - FIXED POSITION -->
@@ -1068,6 +1067,15 @@
   <!-- Toast Notification -->
   <div class="toast" id="toast"></div>
 
+  <!-- All Reviews Modal -->
+  <div class="modal-overlay" id="allReviewsModal" style="display: none;">
+    <div class="auth-modal" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+      <button class="auth-close" onclick="document.getElementById('allReviewsModal').style.display = 'none'">×</button>
+      <h3>All Reviews</h3>
+      <div id="allReviewsModalContent"></div>
+    </div>
+  </div>
+
   <!-- Product Image Full Screen Modal -->
   <div class="product-image-modal" id="productImageModal">
     <div class="product-image-modal-content">
@@ -1333,8 +1341,7 @@
 
     // ADDED NEW FUNCTIONS FOR MOBILE MENU OPTIONS
     function showCategories() {
-      // Show categories when clicked from menu
-      document.getElementById('categoriesContainer').style.display = 'flex';
+      // Show categories page or filter
       filterByCategory('all');
     }
 
@@ -1363,7 +1370,6 @@
     let recentSearches = [];
     let popularSearches = ['T-Shirt', 'Sneakers', 'Jeans', 'Watch', 'Headphones', 'Mobile', 'Laptop', 'Shoes'];
     let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
-    let similarProducts = [];
     
     // Auto-slide variables
     let autoSlideInterval;
@@ -1554,18 +1560,23 @@
       // Fix search input
       setupSearchInput();
       
-      // Check URL for product parameter
-      checkUrlForProduct();
+      // Check URL parameters for product sharing
+      checkUrlParameters();
     }
 
-    // Check URL for product parameter
-    function checkUrlForProduct() {
+    // Check URL parameters for product sharing
+    function checkUrlParameters() {
       const urlParams = new URLSearchParams(window.location.search);
       const productId = urlParams.get('product');
-      if (productId && products.length > 0) {
+      
+      if (productId && productId !== 'undefined') {
+        // Find the product by ID
         const product = products.find(p => p.id === productId);
         if (product) {
-          showProductDetail(product);
+          // Wait a bit for the page to load, then show the product
+          setTimeout(() => {
+            showProductDetail(product);
+          }, 500);
         }
       }
     }
@@ -1574,10 +1585,11 @@
     function setupSearchInput() {
       const searchInput = document.getElementById('searchPanelInput');
       if (searchInput) {
+        // Handle Enter key to search and close keyboard
         searchInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
             performSearch(this.value);
-            // Hide keyboard on mobile
+            // Blur the input to close keyboard on mobile
             this.blur();
           }
         });
@@ -1719,12 +1731,6 @@
       if (cachedSearchTags) {
         searchTags = cachedSearchTags;
       }
-      
-      // Load similar products
-      const cachedSimilarProducts = cacheManager.get('similarProducts');
-      if (cachedSimilarProducts) {
-        similarProducts = cachedSimilarProducts;
-      }
     }
 
     // Fetch live data from Firebase
@@ -1864,20 +1870,6 @@
       }).catch(error => {
         console.error('Error fetching out of stock items:', error);
       });
-      
-      // Fetch similar products
-      get(ref(database, 'similarProducts')).then(snapshot => {
-        const similarProductsObj = snapshot.val();
-        if (similarProductsObj) {
-          similarProducts = Object.keys(similarProductsObj).map(key => ({
-            id: key,
-            ...similarProductsObj[key]
-          }));
-          cacheManager.set('similarProducts', similarProducts);
-        }
-      }).catch(error => {
-        console.error('Error fetching similar products:', error);
-      });
     }
 
     // Setup realtime listeners
@@ -1997,18 +1989,6 @@
           window.outOfStockItems = outOfStockObj;
         }
       });
-      
-      // Similar products listener
-      onValue(ref(database, 'similarProducts'), snapshot => {
-        const similarProductsObj = snapshot.val();
-        if (similarProductsObj) {
-          similarProducts = Object.keys(similarProductsObj).map(key => ({
-            id: key,
-            ...similarProductsObj[key]
-          }));
-          cacheManager.set('similarProducts', similarProducts);
-        }
-      });
     }
 
     // DOM Elements and Event Listeners
@@ -2083,17 +2063,6 @@
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       
-      // Detail page quantity controls
-      const detailQtyMinus = document.querySelector('#detailQtySelect')?.parentElement?.querySelector('.qty-minus');
-      const detailQtyPlus = document.querySelector('#detailQtySelect')?.parentElement?.querySelector('.qty-plus');
-      
-      if (detailQtyMinus) {
-        detailQtyMinus.addEventListener('click', decreaseDetailQuantity);
-      }
-      if (detailQtyPlus) {
-        detailQtyPlus.addEventListener('click', increaseDetailQuantity);
-      }
-      
       // Size options
       document.querySelectorAll('#sizeOptions .size-option').forEach(option => {
         option.addEventListener('click', function() {
@@ -2104,13 +2073,48 @@
       });
       
       // Detail page size options
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('detailSizeValidationError')?.classList.remove('show');
+      if (document.getElementById('detailSizeOptions')) {
+        document.querySelectorAll('#detailSizeOptions .size-option').forEach(option => {
+          option.addEventListener('click', function() {
+            document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('detailSizeValidationError')?.style.display = 'none';
+          });
         });
-      });
+      }
+      
+      // Detail page quantity controls
+      if (document.querySelector('#detailQtySelect')) {
+        const detailQtyMinus = document.createElement('button');
+        detailQtyMinus.className = 'qty-minus';
+        detailQtyMinus.textContent = '-';
+        detailQtyMinus.addEventListener('click', () => {
+          const qtyInput = document.getElementById('detailQtySelect');
+          let value = parseInt(qtyInput.value);
+          if (value > 1) {
+            qtyInput.value = value - 1;
+          }
+        });
+        
+        const detailQtyPlus = document.createElement('button');
+        detailQtyPlus.className = 'qty-plus';
+        detailQtyPlus.textContent = '+';
+        detailQtyPlus.addEventListener('click', () => {
+          const qtyInput = document.getElementById('detailQtySelect');
+          let value = parseInt(qtyInput.value);
+          if (value < 3) {
+            qtyInput.value = value + 1;
+          } else {
+            showToast('Maximum 3 units per order', 'error');
+          }
+        });
+        
+        const detailQtyControl = document.querySelector('.quantity-control');
+        if (detailQtyControl) {
+          detailQtyControl.prepend(detailQtyMinus);
+          detailQtyControl.appendChild(detailQtyPlus);
+        }
+      }
       
       // Price filter
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
@@ -2431,8 +2435,6 @@
           break;
         case 'productsPage':
           updateProductsCount();
-          // Show categories by default
-          document.getElementById('categoriesContainer').style.display = 'flex';
           break;
         case 'homePage':
           // Setup auto slide for trending products (2 seconds)
@@ -2535,6 +2537,8 @@
       document.getElementById('searchPanel').classList.remove('active');
       document.getElementById('searchPanelInput').value = '';
       document.getElementById('searchSuggestions').style.display = 'none';
+      // Blur the input to close keyboard
+      document.getElementById('searchPanelInput').blur();
     }
 
     function handleSearchPanelInput(e) {
@@ -3200,6 +3204,8 @@
         allCategory.classList.add('active');
         renderProducts(products, 'productGrid');
         updateProductsCount();
+        // Show categories container
+        document.getElementById('categoriesContainer').style.display = 'block';
       });
       fragment.appendChild(allCategory);
       
@@ -3331,7 +3337,7 @@
       // Initialize gallery
       initProductDetailGallery(actualProduct);
       
-      // Update share link with proper URL
+      // Update share link - FIXED: Use URL parameter instead of hash
       const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + actualProduct.id;
       document.getElementById('productShareLink').value = shareLink;
       
@@ -3356,14 +3362,6 @@
       if (currentUser) {
         addToRecentlyViewed(actualProduct.id);
       }
-      
-      // Reset size selection
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => {
-        opt.classList.remove('selected');
-      });
-      
-      // Reset quantity
-      document.getElementById('detailQtySelect').value = 1;
       
       // Show product detail page
       showPage('productDetailPage');
@@ -3592,75 +3590,93 @@
       document.getElementById('zoomImage').style.transform = 'scale(1)';
     }
 
-    // Similar products - FIXED
-    function loadSimilarProducts(product) {
-      // First check if there are similar products defined in Firebase
-      if (similarProducts.length > 0) {
-        const similar = similarProducts.filter(p => p.mainProductId === product.id);
-        if (similar.length > 0) {
-          const similarProductIds = similar[0].similarIds || [];
-          const similarProductsList = products.filter(p => similarProductIds.includes(p.id));
-          if (similarProductsList.length > 0) {
-            renderProductSlider(similarProductsList, 'similarProductsSlider');
-            return;
-          }
+    // Similar products - FIXED: Now loads from Firebase similarProducts node
+    async function loadSimilarProducts(product) {
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'similarProducts/' + product.id));
+        const similarProductsObj = snapshot.val();
+        
+        let similarProducts = [];
+        
+        if (similarProductsObj) {
+          // Get product IDs from similarProducts
+          const similarProductIds = Object.keys(similarProductsObj);
+          // Get actual product objects
+          similarProducts = products.filter(p => similarProductIds.includes(p.id));
         }
+        
+        // If no similar products found in Firebase, show products from same category
+        if (similarProducts.length === 0) {
+          similarProducts = products
+            .filter(p => p.id !== product.id && p.category === product.category)
+            .slice(0, 10);
+        }
+        
+        renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
+      } catch (error) {
+        console.error('Error loading similar products:', error);
+        // Fallback to same category products
+        const similarProducts = products
+          .filter(p => p.id !== product.id && p.category === product.category)
+          .slice(0, 10);
+        
+        renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
       }
-      
-      // Fallback: show products from same category
-      const sameCategoryProducts = products
-        .filter(p => p.id !== product.id && p.category === product.category)
-        .slice(0, 10);
-      
-      renderProductSlider(sameCategoryProducts.length > 0 ? sameCategoryProducts : products.slice(0, 10), 'similarProductsSlider');
     }
 
-    function loadSimilarProductsSmall(product) {
+    async function loadSimilarProductsSmall(product) {
       const container = document.getElementById('similarProductsSmallSlider');
       if (!container) return;
       
-      // First check if there are similar products defined in Firebase
-      let similarList = [];
-      if (similarProducts.length > 0) {
-        const similar = similarProducts.filter(p => p.mainProductId === product.id);
-        if (similar.length > 0) {
-          const similarProductIds = similar[0].similarIds || [];
-          similarList = products.filter(p => similarProductIds.includes(p.id));
-        }
-      }
-      
-      // Fallback: show products from same category
-      if (similarList.length === 0) {
-        similarList = products
-          .filter(p => p.id !== product.id && p.category === product.category)
-          .slice(0, 6);
-      }
-      
-      if (similarList.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
-        return;
-      }
-      
-      // Create document fragment for better performance
-      const fragment = document.createDocumentFragment();
-      
-      similarList.forEach(product => {
-        const item = document.createElement('div');
-        item.className = 'similar-product-small';
-        item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
-          <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
-            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
-          </div>
-        `;
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'similarProducts/' + product.id));
+        const similarProductsObj = snapshot.val();
         
-        item.addEventListener('click', () => showProductDetail(product));
-        fragment.appendChild(item);
-      });
-      
-      container.innerHTML = '';
-      container.appendChild(fragment);
+        let similarProducts = [];
+        
+        if (similarProductsObj) {
+          // Get product IDs from similarProducts
+          const similarProductIds = Object.keys(similarProductsObj);
+          // Get actual product objects
+          similarProducts = products.filter(p => similarProductIds.includes(p.id));
+        }
+        
+        // If no similar products found in Firebase, show products from same category
+        if (similarProducts.length === 0) {
+          similarProducts = products
+            .filter(p => p.id !== product.id && p.category === product.category)
+            .slice(0, 6);
+        }
+        
+        if (similarProducts.length === 0) {
+          container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
+          return;
+        }
+        
+        // Create document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        similarProducts.forEach(product => {
+          const item = document.createElement('div');
+          item.className = 'similar-product-small';
+          item.innerHTML = `
+            <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="similar-product-small-info">
+              <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
+              <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', () => showProductDetail(product));
+          fragment.appendChild(item);
+        });
+        
+        container.innerHTML = '';
+        container.appendChild(fragment);
+      } catch (error) {
+        console.error('Error loading similar products small:', error);
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
+      }
     }
 
     // Order page gallery
@@ -3903,46 +3919,23 @@
       }
     }
 
-    // Detail page quantity functions
-    function decreaseDetailQuantity() {
-      const qtyInput = document.getElementById('detailQtySelect');
-      let value = parseInt(qtyInput.value);
-      if (value > 1) {
-        qtyInput.value = value - 1;
-      }
-    }
-
-    function increaseDetailQuantity() {
-      const qtyInput = document.getElementById('detailQtySelect');
-      let value = parseInt(qtyInput.value);
-      if (value < 3) {
-        qtyInput.value = value + 1;
-      } else {
-        showToast('Maximum 3 units per order', 'error');
-      }
-    }
-
     // Order from product detail
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      // Check if size is selected on detail page
       const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
       if (!selectedSize) {
-        document.getElementById('detailSizeValidationError').classList.add('show');
+        document.getElementById('detailSizeValidationError').style.display = 'block';
         showToast('Please select a size to continue', 'error');
         return;
       }
       
-      // Get quantity from detail page
-      const quantity = parseInt(document.getElementById('detailQtySelect').value) || 1;
-      
-      // Clear any previously selected size on order page
+      // Clear any previously selected size in order page
       document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
         opt.classList.remove('selected');
       });
       
-      // Select the same size on order page
+      // Select the same size in order page
       const sizeToSelect = selectedSize.getAttribute('data-value');
       document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
         if (opt.getAttribute('data-value') === sizeToSelect) {
@@ -3950,8 +3943,9 @@
         }
       });
       
-      // Set quantity on order page
-      document.getElementById('qtySelect').value = quantity;
+      // Update quantity in order page
+      const detailQty = parseInt(document.getElementById('detailQtySelect').value) || 1;
+      document.getElementById('qtySelect').value = detailQty;
       
       // Update order page
       document.getElementById('spTitle').textContent = currentProduct.name;
@@ -4117,11 +4111,10 @@
           }
         });
         
-        // Show categories
-        document.getElementById('categoriesContainer').style.display = 'flex';
-        
         renderProducts(products, 'productGrid');
         updateProductsCount();
+        // Show categories container
+        document.getElementById('categoriesContainer').style.display = 'block';
         return;
       }
       
@@ -4138,9 +4131,6 @@
       // Show products page
       showPage('productsPage');
       
-      // Show categories
-      document.getElementById('categoriesContainer').style.display = 'flex';
-      
       // Update active category pill
       document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('active');
@@ -4151,6 +4141,8 @@
       
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
+      // Show categories container
+      document.getElementById('categoriesContainer').style.display = 'block';
     }
 
     function applyPriceFilter() {
@@ -4437,7 +4429,7 @@
       };
     }
 
-    // Reviews and ratings - COMPLETELY REWORKED
+    // Reviews and ratings - FIXED: Now properly loads and displays reviews
     function setRating(rating) {
       const stars = document.querySelectorAll('#ratingInput .rating-star');
       stars.forEach((star, index) => {
@@ -4483,7 +4475,8 @@
           userName: currentUser.displayName || 'Anonymous',
           rating: rating,
           text: reviewTextValue,
-          date: Date.now()
+          date: Date.now(),
+          timestamp: Date.now()
         };
         
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
@@ -4493,6 +4486,7 @@
         setRating(0);
         document.getElementById('reviewText').value = '';
         
+        // Reload reviews
         loadProductReviews(currentProduct.id);
       } catch (error) {
         console.error('Error submitting review:', error);
@@ -4525,7 +4519,10 @@
         }
         
         const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
+        let reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
+        
+        // Sort by date (newest first)
+        reviews.sort((a, b) => b.timestamp - a.timestamp);
         
         // Calculate average rating
         const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
@@ -4537,13 +4534,6 @@
           productRatingDisplay.querySelector('.rating-stars').innerHTML = stars;
           productRatingDisplay.querySelector('.rating-count').textContent = `(${reviews.length} reviews)`;
         }
-        
-        // Sort reviews: 5-star reviews first, then by date
-        reviews.sort((a, b) => {
-          if (a.rating === 5 && b.rating !== 5) return -1;
-          if (b.rating === 5 && a.rating !== 5) return 1;
-          return b.date - a.date;
-        });
         
         // Get top 5-star reviews (first 5)
         const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 5);
@@ -4561,25 +4551,28 @@
           }
         }
         
-        // Render all reviews (first 10)
+        // Render all reviews (first 3)
         if (reviewsList) {
           reviewsList.innerHTML = '';
-          if (reviews.length === 0) {
+          const displayReviews = reviews.slice(0, 3);
+          
+          if (displayReviews.length === 0) {
             reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
           } else {
-            const limitedReviews = reviews.slice(0, 10);
-            limitedReviews.forEach(review => {
+            displayReviews.forEach(review => {
               const reviewItem = createReviewItem(review);
               reviewsList.appendChild(reviewItem);
             });
             
             // Show "View All" button if there are more reviews
-            if (reviews.length > 10) {
+            if (reviews.length > 3) {
               const viewAllBtn = document.createElement('button');
               viewAllBtn.className = 'btn secondary';
-              viewAllBtn.textContent = 'View All Reviews';
+              viewAllBtn.textContent = `View All ${reviews.length} Reviews`;
               viewAllBtn.style.marginTop = '15px';
-              viewAllBtn.addEventListener('click', viewAllReviews);
+              viewAllBtn.addEventListener('click', () => {
+                showAllReviewsModal(reviews);
+              });
               reviewsList.appendChild(viewAllBtn);
             }
           }
@@ -4593,67 +4586,12 @@
       }
     }
 
-    function viewAllReviews() {
-      // Create a modal or new page to show all reviews
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.style.display = 'flex';
-      modal.innerHTML = `
-        <div class="auth-modal" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
-          <button class="auth-close" onclick="this.parentElement.parentElement.remove()">×</button>
-          <h3>All Reviews</h3>
-          <div id="allReviewsContent"></div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-      
-      // Load all reviews
-      if (currentProduct) {
-        loadAllReviewsForProduct(currentProduct.id, 'allReviewsContent');
-      }
-    }
-
-    async function loadAllReviewsForProduct(productId, containerId) {
-      try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'reviews'),
-            window.firebase.orderByChild('productId'),
-            window.firebase.equalTo(productId)
-          )
-        );
-        
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        if (!snapshot.exists()) {
-          container.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet.</p>';
-          return;
-        }
-        
-        const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        // Sort by date (newest first)
-        reviews.sort((a, b) => b.date - a.date);
-        
-        container.innerHTML = '';
-        reviews.forEach(review => {
-          const reviewItem = createReviewItem(review);
-          container.appendChild(reviewItem);
-        });
-      } catch (error) {
-        console.error('Error loading all reviews:', error);
-      }
-    }
-
     function createReviewItem(review) {
       const reviewItem = document.createElement('div');
       reviewItem.className = 'review-item';
       
       const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-      const date = new Date(review.date).toLocaleDateString();
+      const date = new Date(review.timestamp || review.date).toLocaleDateString();
       
       reviewItem.innerHTML = `
         <div class="review-header">
@@ -4691,6 +4629,61 @@
       } catch (error) {
         console.error('Error deleting review:', error);
         showToast('Failed to delete review', 'error');
+      }
+    }
+
+    // Show all reviews modal
+    function showAllReviewsModal(reviews) {
+      if (!reviews) {
+        // Load reviews if not provided
+        loadAllReviewsForModal();
+        return;
+      }
+      
+      const modal = document.getElementById('allReviewsModal');
+      const content = document.getElementById('allReviewsModalContent');
+      
+      content.innerHTML = '';
+      
+      if (reviews.length === 0) {
+        content.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No reviews yet</p>';
+      } else {
+        reviews.forEach(review => {
+          const reviewItem = createReviewItem(review);
+          content.appendChild(reviewItem);
+        });
+      }
+      
+      modal.style.display = 'flex';
+    }
+
+    async function loadAllReviewsForModal() {
+      if (!currentProduct) return;
+      
+      try {
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'reviews'),
+            window.firebase.orderByChild('productId'),
+            window.firebase.equalTo(currentProduct.id)
+          )
+        );
+        
+        if (!snapshot.exists()) {
+          showAllReviewsModal([]);
+          return;
+        }
+        
+        const reviewsObj = snapshot.val();
+        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
+        
+        // Sort by date (newest first)
+        reviews.sort((a, b) => b.timestamp - a.timestamp);
+        
+        showAllReviewsModal(reviews);
+      } catch (error) {
+        console.error('Error loading all reviews:', error);
+        showAllReviewsModal([]);
       }
     }
 
@@ -4740,7 +4733,7 @@
       }
     }
 
-    // Orders functions - FIXED TO SHOW ALL ORDERS
+    // Orders functions - FIXED: Now properly loads and displays orders
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -4806,7 +4799,7 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId) || {})}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName || 'Product Name'}</div>
               <div class="order-product-price">₹${order.totalAmount || '0'}</div>
@@ -4827,9 +4820,6 @@
       const statusClass = `status-${order.status}`;
       const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending';
       
-      // Find product in products array
-      const product = products.find(p => p.id === order.productId) || {};
-      
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
@@ -4849,7 +4839,7 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName || 'Product Name'}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice || '0'}</div>
@@ -5225,21 +5215,21 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots position - FIXED (closer to image, but outside) */
+    /* Carousel dots position - FIXED (closer to image, below image) */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin-top: 10px;
-      margin-bottom: 20px;
-      padding: 5px 0;
+      margin-top: 15px;
+      margin-bottom: 25px;
+      padding: 10px 0;
       position: relative;
       z-index: 5;
     }
     
     .detail-carousel-dot {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.2);
       cursor: pointer;
@@ -5249,7 +5239,8 @@
     
     .detail-carousel-dot.active {
       background: var(--accent);
-      transform: scale(1.2);
+      transform: scale(1.3);
+      border-color: var(--accent);
     }
     
     /* Product rating display */
@@ -5770,6 +5761,48 @@
     
     .order-detail-product-info {
       flex: 1;
+    }
+    
+    /* All Reviews Modal */
+    #allReviewsModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #allReviewsModal .auth-modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 30px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    /* Product selection in detail page */
+    .product-selection-section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    
+    .product-selection-section h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: var(--text);
+    }
+    
+    /* Hide categories during search */
+    .search-mode .categories {
+      display: none !important;
     }
   </style>
 </body>
