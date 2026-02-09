@@ -467,7 +467,7 @@
         </div>
       </div>
 
-      <!-- Category Navigation (Hidden for search results) -->
+      <!-- Category Navigation (Will be hidden when searching) -->
       <div class="categories" id="categoriesContainer" style="display: block;">
         <!-- Categories will be loaded dynamically -->
       </div>
@@ -551,39 +551,7 @@
               <div class="rating-stars"></div>
               <span class="rating-count">(0 reviews)</span>
             </div>
-
-            <!-- Product Selection (Size & Quantity) - MOVED ABOVE DESCRIPTION -->
-            <div class="product-selection-section" style="margin: 20px 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
-              <h3 style="margin-top: 0; margin-bottom: 15px;">Select Options</h3>
-              
-              <div class="selection-title" style="font-weight: 600; margin-bottom: 10px;">Select Size *</div>
-              <div class="size-options" id="detailSizeOptions">
-                <div class="size-option" data-value="S">S</div>
-                <div class="size-option" data-value="M">M</div>
-                <div class="size-option" data-value="L">L</div>
-                <div class="size-option" data-value="XL">XL</div>
-                <div class="size-option" data-value="XXL">XXL</div>
-              </div>
-              
-              <div style="margin-top: 20px;">
-                <div class="selection-title" style="font-weight: 600; margin-bottom: 10px;">Select Quantity</div>
-                <!-- Professional Quantity Control -->
-                <div class="quantity-control" style="max-width: 200px;">
-                  <button class="qty-minus">-</button>
-                  <input type="number" id="detailQtySelect" min="1" value="1" max="3" readonly>
-                  <button class="qty-plus">+</button>
-                </div>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
-              </div>
-              
-              <!-- Order Button in Detail Page -->
-              <button class="btn" id="detailOrderBtn" style="width: 100%; margin-top: 20px; padding: 12px;">Order Now</button>
-              <button class="btn secondary" id="detailWishlistBtn" style="width: 100%; margin-top: 10px; padding: 12px;">Add to Wishlist</button>
-              
-              <div class="size-validation-error" id="detailSizeValidationError" style="display: none; color: var(--error); margin-top: 10px;">Please select a size to continue</div>
-            </div>
             
-            <!-- Product Description - MOVED BELOW SELECTION -->
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
 
@@ -604,13 +572,13 @@
               
               <!-- Top 5-star Reviews -->
               <div class="top-reviews" id="topReviews">
-                <h3>Top Reviews</h3>
+                <h3>Top Reviews <button class="btn secondary view-all-btn" id="viewAllReviewsBtn">View All</button></h3>
                 <div id="topReviewsList"></div>
               </div>
               
               <!-- All Reviews -->
-              <div class="all-reviews" id="allReviews">
-                <h3>All Reviews <button class="btn secondary view-all-btn" id="viewAllReviews" onclick="showAllReviewsModal()">View All</button></h3>
+              <div class="all-reviews" id="allReviews" style="display:none;">
+                <h3>All Reviews <button class="btn secondary view-all-btn" id="backToTopReviewsBtn">Back to Top Reviews</button></h3>
                 <div id="reviewsList"></div>
               </div>
             </div>
@@ -624,6 +592,12 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Sticky Action Buttons -->
+        <div class="product-detail-actions">
+          <button class="btn" id="detailOrderBtn" style="flex: 2;">Order Now</button>
+          <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
         </div>
 
         <!-- Similar Products Section -->
@@ -654,9 +628,11 @@
             <div class="title" id="spTitle"></div>
             <div class="price" id="spPrice"></div>
             <div class="badge" id="spDesc"></div>
-
-            <!-- Product Selection Section - MOVED ABOVE DETAILS -->
-            <div class="product-selection-section" style="margin: 20px 0;">
+            
+            <!-- Product Selection Section - MOVED ABOVE Product Details -->
+            <div class="product-selection-section">
+              <h4 style="margin-top: 0;">Select Options</h4>
+              
               <div class="selection-title">Select Size *</div>
               <div class="size-options" id="sizeOptions">
                 <div class="size-option" data-value="S">S</div>
@@ -680,7 +656,7 @@
               <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
             </div>
             
-            <!-- Product Details Section - MOVED BELOW SELECTION -->
+            <!-- Product Details Section - MOVED BELOW Selection -->
             <div class="product-details">
               <h4>Product Details</h4>
               <p id="spFullDesc"></p>
@@ -1066,15 +1042,6 @@
 
   <!-- Toast Notification -->
   <div class="toast" id="toast"></div>
-
-  <!-- All Reviews Modal -->
-  <div class="modal-overlay" id="allReviewsModal" style="display: none;">
-    <div class="auth-modal" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
-      <button class="auth-close" onclick="document.getElementById('allReviewsModal').style.display = 'none'">×</button>
-      <h3>All Reviews</h3>
-      <div id="allReviewsModalContent"></div>
-    </div>
-  </div>
 
   <!-- Product Image Full Screen Modal -->
   <div class="product-image-modal" id="productImageModal">
@@ -1560,23 +1527,19 @@
       // Fix search input
       setupSearchInput();
       
-      // Check URL parameters for product sharing
-      checkUrlParameters();
+      // Check URL for product ID parameter
+      checkUrlForProduct();
     }
 
-    // Check URL parameters for product sharing
-    function checkUrlParameters() {
+    // Check URL for product ID parameter
+    function checkUrlForProduct() {
       const urlParams = new URLSearchParams(window.location.search);
       const productId = urlParams.get('product');
       
-      if (productId && productId !== 'undefined') {
-        // Find the product by ID
+      if (productId && products.length > 0) {
         const product = products.find(p => p.id === productId);
         if (product) {
-          // Wait a bit for the page to load, then show the product
-          setTimeout(() => {
-            showProductDetail(product);
-          }, 500);
+          showProductDetail(product);
         }
       }
     }
@@ -1585,12 +1548,11 @@
     function setupSearchInput() {
       const searchInput = document.getElementById('searchPanelInput');
       if (searchInput) {
-        // Handle Enter key to search and close keyboard
         searchInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
-            performSearch(this.value);
-            // Blur the input to close keyboard on mobile
+            // Hide keyboard on mobile devices
             this.blur();
+            performSearch(this.value);
           }
         });
         
@@ -2072,50 +2034,6 @@
         });
       });
       
-      // Detail page size options
-      if (document.getElementById('detailSizeOptions')) {
-        document.querySelectorAll('#detailSizeOptions .size-option').forEach(option => {
-          option.addEventListener('click', function() {
-            document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-            this.classList.add('selected');
-            document.getElementById('detailSizeValidationError')?.style.display = 'none';
-          });
-        });
-      }
-      
-      // Detail page quantity controls
-      if (document.querySelector('#detailQtySelect')) {
-        const detailQtyMinus = document.createElement('button');
-        detailQtyMinus.className = 'qty-minus';
-        detailQtyMinus.textContent = '-';
-        detailQtyMinus.addEventListener('click', () => {
-          const qtyInput = document.getElementById('detailQtySelect');
-          let value = parseInt(qtyInput.value);
-          if (value > 1) {
-            qtyInput.value = value - 1;
-          }
-        });
-        
-        const detailQtyPlus = document.createElement('button');
-        detailQtyPlus.className = 'qty-plus';
-        detailQtyPlus.textContent = '+';
-        detailQtyPlus.addEventListener('click', () => {
-          const qtyInput = document.getElementById('detailQtySelect');
-          let value = parseInt(qtyInput.value);
-          if (value < 3) {
-            qtyInput.value = value + 1;
-          } else {
-            showToast('Maximum 3 units per order', 'error');
-          }
-        });
-        
-        const detailQtyControl = document.querySelector('.quantity-control');
-        if (detailQtyControl) {
-          detailQtyControl.prepend(detailQtyMinus);
-          detailQtyControl.appendChild(detailQtyPlus);
-        }
-      }
-      
       // Price filter
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
       document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
@@ -2195,6 +2113,10 @@
           window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
         });
       }
+      
+      // View all reviews button
+      document.getElementById('viewAllReviewsBtn')?.addEventListener('click', showAllReviews);
+      document.getElementById('backToTopReviewsBtn')?.addEventListener('click', backToTopReviews);
     }
 
     // Banner touch events setup - FIXED SWIPE DIRECTION
@@ -2537,8 +2459,6 @@
       document.getElementById('searchPanel').classList.remove('active');
       document.getElementById('searchPanelInput').value = '';
       document.getElementById('searchSuggestions').style.display = 'none';
-      // Blur the input to close keyboard
-      document.getElementById('searchPanelInput').blur();
     }
 
     function handleSearchPanelInput(e) {
@@ -2605,6 +2525,9 @@
     function performSearch(query) {
       if (!query.trim()) return;
       
+      // Hide keyboard on mobile
+      document.getElementById('searchPanelInput').blur();
+      
       // Add to recent searches
       addToRecentSearches(query);
       
@@ -2616,7 +2539,7 @@
         product.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
       );
       
-      // Hide categories for search results
+      // Hide categories when searching
       document.getElementById('categoriesContainer').style.display = 'none';
       
       // If no exact matches found, show similar products
@@ -2641,7 +2564,11 @@
         // Apply search filter
         currentCategoryFilter = null;
         document.querySelectorAll('.category-pill').forEach(pill => {
-          pill.classList.remove('active');
+          if (pill.textContent === 'All') {
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
         });
         
         renderProducts(similarProducts.length > 0 ? similarProducts : products, 'productGrid');
@@ -2659,7 +2586,11 @@
         // Apply search filter
         currentCategoryFilter = null;
         document.querySelectorAll('.category-pill').forEach(pill => {
-          pill.classList.remove('active');
+          if (pill.textContent === 'All') {
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
         });
         
         renderProducts(filteredProducts, 'productGrid');
@@ -3140,7 +3071,8 @@
     }
 
     function shareProduct(product) {
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + product.id;
+      // Create unique share link with product ID parameter
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + 'index.html?product=' + product.id;
       
       if (navigator.share) {
         navigator.share({
@@ -3204,8 +3136,6 @@
         allCategory.classList.add('active');
         renderProducts(products, 'productGrid');
         updateProductsCount();
-        // Show categories container
-        document.getElementById('categoriesContainer').style.display = 'block';
       });
       fragment.appendChild(allCategory);
       
@@ -3337,8 +3267,8 @@
       // Initialize gallery
       initProductDetailGallery(actualProduct);
       
-      // Update share link - FIXED: Use URL parameter instead of hash
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '?product=' + actualProduct.id;
+      // Update share link with proper URL
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + 'index.html?product=' + actualProduct.id;
       document.getElementById('productShareLink').value = shareLink;
       
       // Update wishlist button
@@ -3590,93 +3520,50 @@
       document.getElementById('zoomImage').style.transform = 'scale(1)';
     }
 
-    // Similar products - FIXED: Now loads from Firebase similarProducts node
-    async function loadSimilarProducts(product) {
-      try {
-        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'similarProducts/' + product.id));
-        const similarProductsObj = snapshot.val();
-        
-        let similarProducts = [];
-        
-        if (similarProductsObj) {
-          // Get product IDs from similarProducts
-          const similarProductIds = Object.keys(similarProductsObj);
-          // Get actual product objects
-          similarProducts = products.filter(p => similarProductIds.includes(p.id));
-        }
-        
-        // If no similar products found in Firebase, show products from same category
-        if (similarProducts.length === 0) {
-          similarProducts = products
-            .filter(p => p.id !== product.id && p.category === product.category)
-            .slice(0, 10);
-        }
-        
-        renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
-      } catch (error) {
-        console.error('Error loading similar products:', error);
-        // Fallback to same category products
-        const similarProducts = products
-          .filter(p => p.id !== product.id && p.category === product.category)
-          .slice(0, 10);
-        
-        renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
-      }
+    // Similar products
+    function loadSimilarProducts(product) {
+      // Try to get similar products from Firebase or use same category products
+      const similarProducts = products
+        .filter(p => p.id !== product.id && p.category === product.category)
+        .slice(0, 10);
+      
+      renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
     }
 
-    async function loadSimilarProductsSmall(product) {
+    function loadSimilarProductsSmall(product) {
       const container = document.getElementById('similarProductsSmallSlider');
       if (!container) return;
       
-      try {
-        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'similarProducts/' + product.id));
-        const similarProductsObj = snapshot.val();
-        
-        let similarProducts = [];
-        
-        if (similarProductsObj) {
-          // Get product IDs from similarProducts
-          const similarProductIds = Object.keys(similarProductsObj);
-          // Get actual product objects
-          similarProducts = products.filter(p => similarProductIds.includes(p.id));
-        }
-        
-        // If no similar products found in Firebase, show products from same category
-        if (similarProducts.length === 0) {
-          similarProducts = products
-            .filter(p => p.id !== product.id && p.category === product.category)
-            .slice(0, 6);
-        }
-        
-        if (similarProducts.length === 0) {
-          container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
-          return;
-        }
-        
-        // Create document fragment for better performance
-        const fragment = document.createDocumentFragment();
-        
-        similarProducts.forEach(product => {
-          const item = document.createElement('div');
-          item.className = 'similar-product-small';
-          item.innerHTML = `
-            <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
-            <div class="similar-product-small-info">
-              <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
-              <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
-            </div>
-          `;
-          
-          item.addEventListener('click', () => showProductDetail(product));
-          fragment.appendChild(item);
-        });
-        
-        container.innerHTML = '';
-        container.appendChild(fragment);
-      } catch (error) {
-        console.error('Error loading similar products small:', error);
+      // Try to get similar products from Firebase or use same category products
+      const similarProducts = products
+        .filter(p => p.id !== product.id && p.category === product.category)
+        .slice(0, 6);
+      
+      if (similarProducts.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
+        return;
       }
+      
+      // Create document fragment for better performance
+      const fragment = document.createDocumentFragment();
+      
+      similarProducts.forEach(product => {
+        const item = document.createElement('div');
+        item.className = 'similar-product-small';
+        item.innerHTML = `
+          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="similar-product-small-info">
+            <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
+            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => showProductDetail(product));
+        fragment.appendChild(item);
+      });
+      
+      container.innerHTML = '';
+      container.appendChild(fragment);
     }
 
     // Order page gallery
@@ -3835,7 +3722,16 @@
           }
         };
         
+        // Save order to Firebase
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
+        
+        // Update user's orders
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), {
+          orderId: orderId,
+          status: 'confirmed',
+          orderDate: Date.now(),
+          totalAmount: total
+        });
         
         // Send order notification email
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
@@ -3923,29 +3819,10 @@
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
-      if (!selectedSize) {
-        document.getElementById('detailSizeValidationError').style.display = 'block';
-        showToast('Please select a size to continue', 'error');
-        return;
-      }
-      
-      // Clear any previously selected size in order page
+      // Clear any previously selected size
       document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
         opt.classList.remove('selected');
       });
-      
-      // Select the same size in order page
-      const sizeToSelect = selectedSize.getAttribute('data-value');
-      document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
-        if (opt.getAttribute('data-value') === sizeToSelect) {
-          opt.classList.add('selected');
-        }
-      });
-      
-      // Update quantity in order page
-      const detailQty = parseInt(document.getElementById('detailQtySelect').value) || 1;
-      document.getElementById('qtySelect').value = detailQty;
       
       // Update order page
       document.getElementById('spTitle').textContent = currentProduct.name;
@@ -4113,8 +3990,6 @@
         
         renderProducts(products, 'productGrid');
         updateProductsCount();
-        // Show categories container
-        document.getElementById('categoriesContainer').style.display = 'block';
         return;
       }
       
@@ -4141,8 +4016,6 @@
       
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
-      // Show categories container
-      document.getElementById('categoriesContainer').style.display = 'block';
     }
 
     function applyPriceFilter() {
@@ -4429,7 +4302,7 @@
       };
     }
 
-    // Reviews and ratings - FIXED: Now properly loads and displays reviews
+    // Reviews and ratings - COMPLETELY REWORKED
     function setRating(rating) {
       const stars = document.querySelectorAll('#ratingInput .rating-star');
       stars.forEach((star, index) => {
@@ -4475,8 +4348,7 @@
           userName: currentUser.displayName || 'Anonymous',
           rating: rating,
           text: reviewTextValue,
-          date: Date.now(),
-          timestamp: Date.now()
+          date: Date.now()
         };
         
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
@@ -4486,7 +4358,6 @@
         setRating(0);
         document.getElementById('reviewText').value = '';
         
-        // Reload reviews
         loadProductReviews(currentProduct.id);
       } catch (error) {
         console.error('Error submitting review:', error);
@@ -4519,10 +4390,7 @@
         }
         
         const reviewsObj = snapshot.val();
-        let reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        // Sort by date (newest first)
-        reviews.sort((a, b) => b.timestamp - a.timestamp);
+        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
         
         // Calculate average rating
         const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
@@ -4534,6 +4402,13 @@
           productRatingDisplay.querySelector('.rating-stars').innerHTML = stars;
           productRatingDisplay.querySelector('.rating-count').textContent = `(${reviews.length} reviews)`;
         }
+        
+        // Sort reviews: 5-star reviews first, then by date
+        reviews.sort((a, b) => {
+          if (a.rating === 5 && b.rating !== 5) return -1;
+          if (b.rating === 5 && a.rating !== 5) return 1;
+          return b.date - a.date;
+        });
         
         // Get top 5-star reviews (first 5)
         const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 5);
@@ -4551,30 +4426,16 @@
           }
         }
         
-        // Render all reviews (first 3)
+        // Render all reviews
         if (reviewsList) {
           reviewsList.innerHTML = '';
-          const displayReviews = reviews.slice(0, 3);
-          
-          if (displayReviews.length === 0) {
+          if (reviews.length === 0) {
             reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
           } else {
-            displayReviews.forEach(review => {
+            reviews.forEach(review => {
               const reviewItem = createReviewItem(review);
               reviewsList.appendChild(reviewItem);
             });
-            
-            // Show "View All" button if there are more reviews
-            if (reviews.length > 3) {
-              const viewAllBtn = document.createElement('button');
-              viewAllBtn.className = 'btn secondary';
-              viewAllBtn.textContent = `View All ${reviews.length} Reviews`;
-              viewAllBtn.style.marginTop = '15px';
-              viewAllBtn.addEventListener('click', () => {
-                showAllReviewsModal(reviews);
-              });
-              reviewsList.appendChild(viewAllBtn);
-            }
           }
         }
       } catch (error) {
@@ -4591,7 +4452,7 @@
       reviewItem.className = 'review-item';
       
       const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-      const date = new Date(review.timestamp || review.date).toLocaleDateString();
+      const date = new Date(review.date).toLocaleDateString();
       
       reviewItem.innerHTML = `
         <div class="review-header">
@@ -4632,59 +4493,15 @@
       }
     }
 
-    // Show all reviews modal
-    function showAllReviewsModal(reviews) {
-      if (!reviews) {
-        // Load reviews if not provided
-        loadAllReviewsForModal();
-        return;
-      }
-      
-      const modal = document.getElementById('allReviewsModal');
-      const content = document.getElementById('allReviewsModalContent');
-      
-      content.innerHTML = '';
-      
-      if (reviews.length === 0) {
-        content.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No reviews yet</p>';
-      } else {
-        reviews.forEach(review => {
-          const reviewItem = createReviewItem(review);
-          content.appendChild(reviewItem);
-        });
-      }
-      
-      modal.style.display = 'flex';
+    // View all reviews function
+    function showAllReviews() {
+      document.getElementById('topReviews').style.display = 'none';
+      document.getElementById('allReviews').style.display = 'block';
     }
 
-    async function loadAllReviewsForModal() {
-      if (!currentProduct) return;
-      
-      try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'reviews'),
-            window.firebase.orderByChild('productId'),
-            window.firebase.equalTo(currentProduct.id)
-          )
-        );
-        
-        if (!snapshot.exists()) {
-          showAllReviewsModal([]);
-          return;
-        }
-        
-        const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        // Sort by date (newest first)
-        reviews.sort((a, b) => b.timestamp - a.timestamp);
-        
-        showAllReviewsModal(reviews);
-      } catch (error) {
-        console.error('Error loading all reviews:', error);
-        showAllReviewsModal([]);
-      }
+    function backToTopReviews() {
+      document.getElementById('allReviews').style.display = 'none';
+      document.getElementById('topReviews').style.display = 'block';
     }
 
     // Share link
@@ -4733,16 +4550,15 @@
       }
     }
 
-    // Orders functions - FIXED: Now properly loads and displays orders
+    // Orders functions - FIXED TO SHOW ALL ORDERS
     async function showMyOrders() {
       if (!currentUser) return;
       
       try {
         const snapshot = await window.firebase.get(
           window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'orders'),
-            window.firebase.orderByChild('userId'),
-            window.firebase.equalTo(currentUser.uid)
+            window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid),
+            window.firebase.orderByChild('orderDate')
           )
         );
         
@@ -4756,10 +4572,22 @@
         }
         
         const ordersObj = snapshot.val();
-        const orders = Object.keys(ordersObj).map(key => ({
+        const userOrders = Object.keys(ordersObj).map(key => ({
           id: key,
           ...ordersObj[key]
         }));
+        
+        // Get full order details for each order
+        const orders = [];
+        for (const userOrder of userOrders) {
+          const orderSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'orders/' + userOrder.orderId));
+          if (orderSnapshot.exists()) {
+            orders.push({
+              id: userOrder.orderId,
+              ...orderSnapshot.val()
+            });
+          }
+        }
         
         orders.sort((a, b) => b.orderDate - a.orderDate);
         renderOrders(orders);
@@ -5215,21 +5043,19 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots position - FIXED (closer to image, below image) */
+    /* Carousel dots position - FIXED (closer to image) */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin-top: 15px;
-      margin-bottom: 25px;
-      padding: 10px 0;
-      position: relative;
-      z-index: 5;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      padding: 5px 0;
     }
     
     .detail-carousel-dot {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.2);
       cursor: pointer;
@@ -5239,8 +5065,7 @@
     
     .detail-carousel-dot.active {
       background: var(--accent);
-      transform: scale(1.3);
-      border-color: var(--accent);
+      transform: scale(1.2);
     }
     
     /* Product rating display */
@@ -5382,7 +5207,13 @@
     }
     
     #orderPage .product-selection-section {
-      margin-top: auto;
+      margin-top: 20px;
+      order: 1;
+    }
+    
+    #orderPage .product-details {
+      order: 2;
+      margin-top: 30px;
     }
     
     /* Footer email styling */
@@ -5761,48 +5592,6 @@
     
     .order-detail-product-info {
       flex: 1;
-    }
-    
-    /* All Reviews Modal */
-    #allReviewsModal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    #allReviewsModal .auth-modal {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 30px;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    
-    /* Product selection in detail page */
-    .product-selection-section {
-      margin: 20px 0;
-      padding: 20px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-    
-    .product-selection-section h3 {
-      margin-top: 0;
-      margin-bottom: 15px;
-      color: var(--text);
-    }
-    
-    /* Hide categories during search */
-    .search-mode .categories {
-      display: none !important;
     }
   </style>
 </body>
