@@ -3102,62 +3102,96 @@
         signupError.textContent = err.message;
       } finally {
         signupBtn.disabled = false;
-        signupBtn.textContent = 'Sign Up';
-      }
+        async function handleGoogleLogin() {
+  try {
+    const provider = new window.firebase.GoogleAuthProvider();
+    const result = await window.firebase.signInWithPopup(window.firebase.auth, provider);
+    const user = result.user;
+
+    const userRef = window.firebase.ref(window.firebase.database, 'users/' + user.uid);
+    const snapshot = await window.firebase.get(userRef);
+
+    if (!snapshot.exists()) {
+      await window.firebase.set(userRef, {
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        createdAt: Date.now(),
+        lastLoginAt: Date.now()
+      });
+      sendWelcomeEmail(user.email, user.displayName);
+    } else {
+      await window.firebase.update(userRef, {
+        lastLoginAt: Date.now()
+      });
     }
 
-    async function handleGoogleLogin() {
-      try {
-        const provider = new window.firebase.GoogleAuthProvider();
-        const result = await window.firebase.signInWithPopup(window.firebase.auth, provider);
-        const user = result.user;
-        
-        // Check if user exists in database
-        const userRef = window.firebase.ref(window.firebase.database, 'users/' + user.uid);
-        const snapshot = await window.firebase.get(userRef);
-        
-        if (!snapshot.exists()) {
-          // Create new user record
-          await window.firebase.set(userRef, {
-            name: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL,
-            createdAt: Date.now(),
-            lastLoginAt: Date.now()
-          });
-          
-          // Send welcome email
-          sendWelcomeEmail(user.email, user.displayName);
-        } else {
-          // Update last login
-          await window.firebase.update(userRef, {
-            lastLoginAt: Date.now()
-          });
-        }
-        
-        // Send login notification
-        sendLoginNotification(user.email);
-        
-        showToast('Login successful!', 'success');
-        document.getElementById('authModal').classList.remove('active');
-      } catch (err) {
-        console.error('Google login error:', err);
-        const loginError = document.getElementById('loginError');
-        const signupError = document.getElementById('signupError');
-        
-        if (document.getElementById('loginForm').classList.contains('active')) {
-          loginError.textContent = err.message;
-        } else {
-          signupError.textContent = err.message;
-        }
-      }
-    }
+    sendLoginNotification(user.email);
+    showToast('Login successful!', 'success');
+    document.getElementById('authModal').classList.remove('active');
+  } catch (err) {
+    console.error('Google login error:', err);
+    const loginError = document.getElementById('loginError');
+    const signupError = document.getElementById('signupError');
 
-    async function handleResetPassword() {
-      const email = document.getElementById('forgotPasswordEmail').value;
-      const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-      
-      if (!email) {
+    if (document.getElementById('loginForm').classList.contains('active')) {
+      loginError.textContent = err.message;
+    } else {
+      signupError.textContent = err.message;
+    }
+  }
+}
+
+async function handleResetPassword() {
+  const email = document.getElementById('forgotPasswordEmail').value;
+  const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+
+  if (!email) {
+    showToast('Please enter your email address', 'error');
+    return;
+  }
+
+  try {
+    resetPasswordBtn.disabled = true;
+    resetPasswordBtn.innerHTML = '<div class="loading-spinner"></div> Sending...';
+
+    await window.firebase.sendPasswordResetEmail(window.firebase.auth, email);
+    
+    showToast('Password reset email sent! Check your inbox.', 'success');
+    document.getElementById('forgotPasswordEmail').value = '';
+
+    setTimeout(() => {
+      document.getElementById('authModal').classList.remove('active');
+    }, 2000);
+
+  } catch (err) {
+    console.error('Password reset error:', err);
+    showToast(err.message, 'error');
+  } finally {
+    resetPasswordBtn.disabled = false;
+    resetPasswordBtn.textContent = 'Send Reset Link';
+  }
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('loginForm').classList.remove('active');
+  document.getElementById('signupForm').classList.remove('active');
+  document.getElementById('forgotPasswordForm').classList.remove('active');
+  
+  document.getElementById('loginTab').classList.remove('active');
+  document.getElementById('signupTab').classList.remove('active');
+  
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('signupError').textContent = '';
+  
+  if (tab === 'login') {
+    document.getElementById('loginTab').classList.add('active');
+    document.getElementById('loginForm').classList.add('active');
+  } else {
+    document.getElementById('signupTab').classList.add('active');
+    document.getElementById('signupForm').classList.add('active');
+  }
+      }
         showToast('Please enter your email address', 'error');
         return;
       }
