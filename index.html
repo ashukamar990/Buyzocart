@@ -1378,7 +1378,7 @@
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-  <!-- JavaScript -->
+  <!-- JavaScript - UPDATED VERSION WITH PRODUCT CLICK FIX -->
   <script>
     // Performance optimization
     let frameId = null;
@@ -1573,6 +1573,96 @@
         return isNaN(num) ? 0 : num;
       }
       return 0;
+    }
+
+    // FIXED: Product detail function - now works even if products array is empty
+    function showProductDetail(product) {
+      // Wait for products to load if they're not available yet
+      if (products.length === 0) {
+        showToast('Loading product... Please wait', 'info');
+        
+        // Try again after 500ms
+        setTimeout(() => {
+          if (products.length > 0) {
+            showProductDetail(product);
+          } else {
+            showToast('Failed to load product. Please try again.', 'error');
+          }
+        }, 500);
+        return;
+      }
+      
+      // Find the actual product from products array using ID
+      let actualProduct = null;
+      
+      if (typeof product === 'string') {
+        actualProduct = products.find(p => p.id === product);
+      } else if (product && product.id) {
+        actualProduct = products.find(p => p.id === product.id) || product;
+      }
+      
+      if (!actualProduct) {
+        showToast('Product not found', 'error');
+        return;
+      }
+      
+      currentProduct = actualProduct;
+      currentSelectedColor = product.defaultColor || 'black';
+      currentSelectedColorName = colorNames[currentSelectedColor] || 'काला';
+      
+      // Update product info
+      document.getElementById('detailTitle').textContent = actualProduct.name || 'Product Name';
+      document.getElementById('detailPrice').textContent = actualProduct.price ? '₹' + parsePrice(actualProduct.price).toLocaleString() : '₹0';
+      document.getElementById('detailDesc').textContent = actualProduct.description || '';
+      document.getElementById('detailFullDesc').textContent = actualProduct.fullDescription || actualProduct.description || 'No description available.';
+      document.getElementById('detailSku').textContent = `SKU: ${actualProduct.sku || 'N/A'}`;
+      document.getElementById('breadcrumbProductName').textContent = actualProduct.name || 'Product';
+      
+      // Update stock status
+      const stockStatus = document.getElementById('detailStockStatus');
+      const stock = actualProduct.stock || 'in';
+      if (stock === 'in' || actualProduct.quantity > 0) {
+        stockStatus.textContent = 'In Stock';
+        stockStatus.className = 'stock-status in-stock';
+      } else if (stock === 'low' || (actualProduct.quantity > 0 && actualProduct.quantity < 10)) {
+        stockStatus.textContent = 'Low Stock';
+        stockStatus.className = 'stock-status low-stock';
+      } else {
+        stockStatus.textContent = 'Out of Stock';
+        stockStatus.className = 'stock-status out-of-stock';
+      }
+      
+      // Initialize gallery
+      initProductDetailGallery(actualProduct);
+      
+      // Update share link with unique product URL
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + 'index.html?product=' + actualProduct.id;
+      document.getElementById('productShareLink').value = shareLink;
+      
+      // Update wishlist button
+      const wishlistBtn = document.getElementById('detailWishlistBtn');
+      if (isInWishlist(actualProduct.id)) {
+        wishlistBtn.textContent = 'Remove from Wishlist';
+        wishlistBtn.classList.add('active');
+      } else {
+        wishlistBtn.textContent = 'Add to Wishlist';
+        wishlistBtn.classList.remove('active');
+      }
+      
+      // Load similar products
+      loadSimilarProducts(actualProduct);
+      loadSimilarProductsSmall(actualProduct);
+      
+      // Load reviews
+      loadProductReviews(actualProduct.id);
+      
+      // Add to recently viewed
+      if (currentUser) {
+        addToRecentlyViewed(actualProduct.id);
+      }
+      
+      // Show product detail page
+      showPage('productDetailPage');
     }
 
     // Initialize app
@@ -3102,96 +3192,62 @@
         signupError.textContent = err.message;
       } finally {
         signupBtn.disabled = false;
-        async function handleGoogleLogin() {
-  try {
-    const provider = new window.firebase.GoogleAuthProvider();
-    const result = await window.firebase.signInWithPopup(window.firebase.auth, provider);
-    const user = result.user;
-
-    const userRef = window.firebase.ref(window.firebase.database, 'users/' + user.uid);
-    const snapshot = await window.firebase.get(userRef);
-
-    if (!snapshot.exists()) {
-      await window.firebase.set(userRef, {
-        name: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-        createdAt: Date.now(),
-        lastLoginAt: Date.now()
-      });
-      sendWelcomeEmail(user.email, user.displayName);
-    } else {
-      await window.firebase.update(userRef, {
-        lastLoginAt: Date.now()
-      });
-    }
-
-    sendLoginNotification(user.email);
-    showToast('Login successful!', 'success');
-    document.getElementById('authModal').classList.remove('active');
-  } catch (err) {
-    console.error('Google login error:', err);
-    const loginError = document.getElementById('loginError');
-    const signupError = document.getElementById('signupError');
-
-    if (document.getElementById('loginForm').classList.contains('active')) {
-      loginError.textContent = err.message;
-    } else {
-      signupError.textContent = err.message;
-    }
-  }
-}
-
-async function handleResetPassword() {
-  const email = document.getElementById('forgotPasswordEmail').value;
-  const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-
-  if (!email) {
-    showToast('Please enter your email address', 'error');
-    return;
-  }
-
-  try {
-    resetPasswordBtn.disabled = true;
-    resetPasswordBtn.innerHTML = '<div class="loading-spinner"></div> Sending...';
-
-    await window.firebase.sendPasswordResetEmail(window.firebase.auth, email);
-    
-    showToast('Password reset email sent! Check your inbox.', 'success');
-    document.getElementById('forgotPasswordEmail').value = '';
-
-    setTimeout(() => {
-      document.getElementById('authModal').classList.remove('active');
-    }, 2000);
-
-  } catch (err) {
-    console.error('Password reset error:', err);
-    showToast(err.message, 'error');
-  } finally {
-    resetPasswordBtn.disabled = false;
-    resetPasswordBtn.textContent = 'Send Reset Link';
-  }
-}
-
-function switchAuthTab(tab) {
-  document.getElementById('loginForm').classList.remove('active');
-  document.getElementById('signupForm').classList.remove('active');
-  document.getElementById('forgotPasswordForm').classList.remove('active');
-  
-  document.getElementById('loginTab').classList.remove('active');
-  document.getElementById('signupTab').classList.remove('active');
-  
-  document.getElementById('loginError').textContent = '';
-  document.getElementById('signupError').textContent = '';
-  
-  if (tab === 'login') {
-    document.getElementById('loginTab').classList.add('active');
-    document.getElementById('loginForm').classList.add('active');
-  } else {
-    document.getElementById('signupTab').classList.add('active');
-    document.getElementById('signupForm').classList.add('active');
-  }
+        signupBtn.textContent = 'Sign Up';
       }
+    }
+
+    async function handleGoogleLogin() {
+      try {
+        const provider = new window.firebase.GoogleAuthProvider();
+        const result = await window.firebase.signInWithPopup(window.firebase.auth, provider);
+        const user = result.user;
+        
+        // Check if user exists in database
+        const userRef = window.firebase.ref(window.firebase.database, 'users/' + user.uid);
+        const snapshot = await window.firebase.get(userRef);
+        
+        if (!snapshot.exists()) {
+          // Create new user record
+          await window.firebase.set(userRef, {
+            name: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            createdAt: Date.now(),
+            lastLoginAt: Date.now()
+          });
+          
+          // Send welcome email
+          sendWelcomeEmail(user.email, user.displayName);
+        } else {
+          // Update last login
+          await window.firebase.update(userRef, {
+            lastLoginAt: Date.now()
+          });
+        }
+        
+        // Send login notification
+        sendLoginNotification(user.email);
+        
+        showToast('Login successful!', 'success');
+        document.getElementById('authModal').classList.remove('active');
+      } catch (err) {
+        console.error('Google login error:', err);
+        const loginError = document.getElementById('loginError');
+        const signupError = document.getElementById('signupError');
+        
+        if (document.getElementById('loginForm').classList.contains('active')) {
+          loginError.textContent = err.message;
+        } else {
+          signupError.textContent = err.message;
+        }
+      }
+    }
+
+    async function handleResetPassword() {
+      const email = document.getElementById('forgotPasswordEmail').value;
+      const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+      
+      if (!email) {
         showToast('Please enter your email address', 'error');
         return;
       }
@@ -3257,7 +3313,7 @@ function switchAuthTab(tab) {
       console.log('Order notification would be sent for:', orderId);
     }
 
-    // Product rendering functions
+    // FIXED: Product rendering functions with improved click handler
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -3283,6 +3339,8 @@ function switchAuthTab(tab) {
     function createProductCard(product) {
       const card = document.createElement('div');
       card.className = 'product-card';
+      card.dataset.productId = product.id; // Store product ID in dataset
+      
       const isWishlisted = isInWishlist(product.id);
       
       card.innerHTML = `
@@ -3321,18 +3379,30 @@ function switchAuthTab(tab) {
         </div>
       `;
       
-      card.querySelector('.product-card-image').addEventListener('click', (e) => {
+      // FIXED: Better click handler that always works
+      card.querySelector('.product-card-image').addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         showProductDetail(product);
       });
       
-      card.querySelector('.wishlist-btn').addEventListener('click', (e) => {
+      // Also make the entire card clickable (except buttons)
+      card.addEventListener('click', function(e) {
+        // Don't trigger if clicking on buttons
+        if (e.target.closest('.action-btn')) return;
+        if (e.target.closest('button')) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        showProductDetail(product);
+      });
+      
+      card.querySelector('.wishlist-btn').addEventListener('click', function(e) {
         e.stopPropagation();
         toggleWishlist(product.id);
       });
       
-      card.querySelector('.share-btn').addEventListener('click', (e) => {
+      card.querySelector('.share-btn').addEventListener('click', function(e) {
         e.stopPropagation();
         shareProduct(product);
       });
@@ -3512,74 +3582,7 @@ function switchAuthTab(tab) {
       });
     }
 
-    // Product detail functions - FIXED TO SHOW ALL PRODUCTS
-    function showProductDetail(product) {
-      // Find the actual product from products array using ID
-      const actualProduct = products.find(p => p.id === product.id) || product;
-      if (!actualProduct) {
-        showToast('Product not found', 'error');
-        return;
-      }
-      
-      currentProduct = actualProduct;
-      currentSelectedColor = product.defaultColor || 'black';
-      currentSelectedColorName = colorNames[currentSelectedColor] || 'काला';
-      
-      // Update product info
-      document.getElementById('detailTitle').textContent = actualProduct.name || 'Product Name';
-      document.getElementById('detailPrice').textContent = actualProduct.price ? '₹' + parsePrice(actualProduct.price).toLocaleString() : '₹0';
-      document.getElementById('detailDesc').textContent = actualProduct.description || '';
-      document.getElementById('detailFullDesc').textContent = actualProduct.fullDescription || actualProduct.description || 'No description available.';
-      document.getElementById('detailSku').textContent = `SKU: ${actualProduct.sku || 'N/A'}`;
-      document.getElementById('breadcrumbProductName').textContent = actualProduct.name || 'Product';
-      
-      // Update stock status
-      const stockStatus = document.getElementById('detailStockStatus');
-      const stock = actualProduct.stock || 'in';
-      if (stock === 'in' || actualProduct.quantity > 0) {
-        stockStatus.textContent = 'In Stock';
-        stockStatus.className = 'stock-status in-stock';
-      } else if (stock === 'low' || (actualProduct.quantity > 0 && actualProduct.quantity < 10)) {
-        stockStatus.textContent = 'Low Stock';
-        stockStatus.className = 'stock-status low-stock';
-      } else {
-        stockStatus.textContent = 'Out of Stock';
-        stockStatus.className = 'stock-status out-of-stock';
-      }
-      
-      // Initialize gallery
-      initProductDetailGallery(actualProduct);
-      
-      // Update share link with unique product URL
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + 'index.html?product=' + actualProduct.id;
-      document.getElementById('productShareLink').value = shareLink;
-      
-      // Update wishlist button
-      const wishlistBtn = document.getElementById('detailWishlistBtn');
-      if (isInWishlist(actualProduct.id)) {
-        wishlistBtn.textContent = 'Remove from Wishlist';
-        wishlistBtn.classList.add('active');
-      } else {
-        wishlistBtn.textContent = 'Add to Wishlist';
-        wishlistBtn.classList.remove('active');
-      }
-      
-      // Load similar products
-      loadSimilarProducts(actualProduct);
-      loadSimilarProductsSmall(actualProduct);
-      
-      // Load reviews
-      loadProductReviews(actualProduct.id);
-      
-      // Add to recently viewed
-      if (currentUser) {
-        addToRecentlyViewed(actualProduct.id);
-      }
-      
-      // Show product detail page
-      showPage('productDetailPage');
-    }
-
+    // Product detail functions
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('mainProductImage');
       const dotsContainer = document.getElementById('detailCarouselDots');
@@ -3803,7 +3806,7 @@ function switchAuthTab(tab) {
       document.getElementById('zoomImage').style.transform = 'scale(1)';
     }
 
-    // Similar products - FIXED to load from admin panel
+    // Similar products
     function loadSimilarProducts(product) {
       let similarProducts = [];
       
@@ -4636,7 +4639,7 @@ function switchAuthTab(tab) {
       };
     }
 
-    // Reviews and ratings - COMPLETELY REWORKED
+    // Reviews and ratings
     function setRating(rating) {
       const stars = document.querySelectorAll('#ratingInput .rating-star');
       stars.forEach((star, index) => {
@@ -4941,7 +4944,7 @@ function switchAuthTab(tab) {
       }
     }
 
-    // Orders functions - FIXED TO SHOW ALL ORDERS
+    // Orders functions
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -6050,6 +6053,11 @@ function switchAuthTab(tab) {
     
     #searchResultsPage .product-grid {
       margin-top: 20px;
+    }
+    
+    /* Product card clickable area */
+    .product-card {
+      cursor: pointer;
     }
   </style>
 </body>
