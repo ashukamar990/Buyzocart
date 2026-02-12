@@ -296,25 +296,19 @@
       
       if (productId && productId.trim() !== '') {
         // Wait for products to load, then show product detail
-        const checkProducts = setInterval(() => {
-          if (products && products.length > 0) {
-            clearInterval(checkProducts);
-            const product = products.find(p => p.id === productId);
-            if (product) {
-              showProductDetail(product);
-            }
+        setTimeout(() => {
+          const product = products.find(p => p.id === productId);
+          if (product) {
+            showProductDetail(product);
           }
-        }, 100);
+        }, 500);
       }
       
       if (searchQuery && searchQuery.trim() !== '') {
         currentSearchQuery = searchQuery;
-        const checkProducts = setInterval(() => {
-          if (products && products.length > 0) {
-            clearInterval(checkProducts);
-            performSearch(searchQuery, true);
-          }
-        }, 100);
+        setTimeout(() => {
+          performSearch(searchQuery, true);
+        }, 500);
       }
     }
 
@@ -834,47 +828,34 @@
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       
-      // Quantity controls - Product Detail Page - FIXED with specific IDs
-      document.getElementById('detailQtyMinus')?.addEventListener('click', function() {
-        const qtyInput = document.getElementById('detailQtySelect');
-        let value = parseInt(qtyInput.value);
-        if (value > 1) {
-          qtyInput.value = value - 1;
-        }
-      });
+      // Quantity controls - Product Detail Page
+      document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
+      document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       
-      document.getElementById('detailQtyPlus')?.addEventListener('click', function() {
-        const qtyInput = document.getElementById('detailQtySelect');
-        let value = parseInt(qtyInput.value);
-        if (value < 3) {
-          qtyInput.value = value + 1;
-        } else {
-          showToast('Maximum 3 units per order', 'error');
+      // Quantity controls - Product Detail Page (new elements)
+      document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('qty-minus')) {
+          const qtyInput = e.target.closest('.quantity-control').querySelector('input[type="number"]');
+          let value = parseInt(qtyInput.value);
+          if (value > 1) {
+            qtyInput.value = value - 1;
+          }
+          if (document.getElementById('paymentPage')?.classList.contains('active')) {
+            updatePaymentSummary();
+          }
         }
-      });
-      
-      // Quantity controls - Order Page - FIXED with specific IDs
-      document.getElementById('orderQtyMinus')?.addEventListener('click', function() {
-        const qtyInput = document.getElementById('qtySelect');
-        let value = parseInt(qtyInput.value);
-        if (value > 1) {
-          qtyInput.value = value - 1;
-        }
-        if (document.getElementById('paymentPage')?.classList.contains('active')) {
-          updatePaymentSummary();
-        }
-      });
-      
-      document.getElementById('orderQtyPlus')?.addEventListener('click', function() {
-        const qtyInput = document.getElementById('qtySelect');
-        let value = parseInt(qtyInput.value);
-        if (value < 3) {
-          qtyInput.value = value + 1;
-        } else {
-          showToast('Maximum 3 units per order', 'error');
-        }
-        if (document.getElementById('paymentPage')?.classList.contains('active')) {
-          updatePaymentSummary();
+        
+        if (e.target && e.target.classList.contains('qty-plus')) {
+          const qtyInput = e.target.closest('.quantity-control').querySelector('input[type="number"]');
+          let value = parseInt(qtyInput.value);
+          if (value < 3) {
+            qtyInput.value = value + 1;
+          } else {
+            showToast('Maximum 3 units per order', 'error');
+          }
+          if (document.getElementById('paymentPage')?.classList.contains('active')) {
+            updatePaymentSummary();
+          }
         }
       });
       
@@ -926,40 +907,9 @@
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       
-      // Product detail carousel - FIXED (only add listeners once)
-      const prevBtn = document.querySelector('.detail-carousel-control.prev');
-      const nextBtn = document.querySelector('.detail-carousel-control.next');
-      
-      if (prevBtn) {
-        prevBtn.removeEventListener('click', prevDetailImage);
-        prevBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          pauseSlide();
-          prevDetailImage();
-          resumeSlideAfterDelay();
-        });
-      }
-      
-      if (nextBtn) {
-        nextBtn.removeEventListener('click', nextDetailImage);
-        nextBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          pauseSlide();
-          nextDetailImage();
-          resumeSlideAfterDelay();
-        });
-      }
-      
-      // Image zoom button
-      document.getElementById('imageZoomBtn')?.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        pauseSlide();
-        openProductImageModal();
-        resumeSlideAfterDelay();
-      });
+      // Product detail carousel
+      document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
+      document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
       
       // Banner carousel touch events
       setupBannerTouchEvents();
@@ -1950,7 +1900,6 @@
     function createProductCard(product) {
       const card = document.createElement('div');
       card.className = 'product-card';
-      card.dataset.productId = product.id;
       const isWishlisted = isInWishlist(product.id);
       
       card.innerHTML = `
@@ -1992,12 +1941,6 @@
       card.querySelector('.product-card-image').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        // Check if products are loaded
-        if (products.length === 0) {
-          showToast('Products are still loading. Please try again in a moment.', 'info');
-          return;
-        }
         showProductDetail(product);
       });
       
@@ -2068,13 +2011,7 @@
           </div>
         `;
         
-        sliderItem.addEventListener('click', () => {
-          if (products.length === 0) {
-            showToast('Products are still loading. Please try again in a moment.', 'info');
-            return;
-          }
-          showProductDetail(product);
-        });
+        sliderItem.addEventListener('click', () => showProductDetail(product));
         fragment.appendChild(sliderItem);
       });
       
@@ -2192,23 +2129,10 @@
       });
     }
 
-    // FIXED: Product detail functions - Now checks if products are loaded
+    // Product detail functions - FIXED TO SHOW ALL PRODUCTS
     function showProductDetail(product) {
-      // Check if products are loaded
-      if (products.length === 0) {
-        showToast('Products are still loading. Please try again in a moment.', 'info');
-        return;
-      }
-      
       // Find the actual product from products array using ID
-      let actualProduct = null;
-      
-      if (typeof product === 'string') {
-        actualProduct = products.find(p => p.id === product);
-      } else if (product && product.id) {
-        actualProduct = products.find(p => p.id === product.id) || product;
-      }
-      
+      const actualProduct = products.find(p => p.id === product.id) || product;
       if (!actualProduct) {
         showToast('Product not found', 'error');
         return;
@@ -2303,6 +2227,15 @@
         });
         dotsContainer.appendChild(dot);
       });
+      
+      // Add zoom button event
+      if (zoomBtn) {
+        zoomBtn.addEventListener('click', () => {
+          pauseSlide();
+          openProductImageModal();
+          resumeSlideAfterDelay();
+        });
+      }
       
       // Add touch events for swipe
       let touchStartX = 0;
@@ -2565,13 +2498,7 @@
           </div>
         `;
         
-        item.addEventListener('click', () => {
-          if (products.length === 0) {
-            showToast('Products are still loading. Please try again in a moment.', 'info');
-            return;
-          }
-          showProductDetail(product);
-        });
+        item.addEventListener('click', () => showProductDetail(product));
         fragment.appendChild(item);
       });
       
@@ -2794,15 +2721,34 @@
       }
     }
 
+    // Quantity functions
+    function decreaseQuantity() {
+      const qtyInput = document.getElementById('qtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value > 1) {
+        qtyInput.value = value - 1;
+      }
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
+      }
+    }
+
+    function increaseQuantity() {
+      const qtyInput = document.getElementById('qtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value < 3) {
+        qtyInput.value = value + 1;
+      } else {
+        showToast('Maximum 3 units per order', 'error');
+      }
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
+      }
+    }
+
     // Order from product detail
     function orderProductFromDetail() {
       if (!currentProduct) return;
-      
-      // Check if products are loaded
-      if (products.length === 0) {
-        showToast('Products are still loading. Please try again in a moment.', 'info');
-        return;
-      }
       
       // Get selected size and quantity from product detail page
       const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
