@@ -3287,7 +3287,7 @@
         </div>
       `;
       
-      card.addEventListener('click', (e) => { e.stopPropagation();
+      card.querySelector('.product-card-image').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         showProductDetail(product);
@@ -3479,29 +3479,13 @@
     }
 
     // Product detail functions - FIXED TO SHOW ALL PRODUCTS
-    
-function showProductDetail(product) {
-
-  if (!products || products.length === 0) {
-    console.error("Products not loaded yet");
-    showToast("Products are still loading...", "error");
-    return;
-  }
-
-  const actualProduct = products.find(p => 
-    String(p.id) === String(product.id)
-  );
-
-  if (!actualProduct) {
-    console.error("Product not found:", product.id);
-    showToast("Product not found", "error");
-    return;
-  }
-
-  currentProduct = actualProduct;
-  showPage('productDetailPage');
-}
-
+    function showProductDetail(product) {
+      // Find the actual product from products array using ID
+      const actualProduct = products.find(p => p.id === product.id) || product;
+      if (!actualProduct) {
+        showToast('Product not found', 'error');
+        return;
+      }
       
       currentProduct = actualProduct;
       currentSelectedColor = product.defaultColor || 'black';
