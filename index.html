@@ -466,7 +466,7 @@
         </div>
       </div>
 
-      <!-- Category Navigation - ONLY SHOWN ON NORMAL PRODUCTS PAGE, NOT SEARCH RESULTS -->
+      <!-- Category Navigation - ONLY IN PRODUCTS PAGE -->
       <div class="categories" id="categoriesContainer">
         <!-- Categories will be loaded dynamically -->
       </div>
@@ -484,6 +484,55 @@
         <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
         <p style="color:var(--muted-light)">Try adjusting your filters or search terms</p>
         <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid'); updateProductsCount();">Reset All Filters</button>
+      </div>
+    </section>
+
+    <!-- Search Results Page (CLEAN PAGE - ONLY PRICE FILTER) -->
+    <section class="page" id="searchResultsPage">
+      <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Search Results</h2>
+        <div style="font-size:14px;color:var(--muted)" id="searchResultsCount">0 products found</div>
+      </div>
+      
+      <!-- Professional Price Filter - ONLY FILTER IN SEARCH PAGE -->
+      <div class="price-filter">
+        <div class="price-filter-title">Filter by Price</div>
+        <div class="price-range-slider-container">
+          <div class="price-slider-track" id="searchPriceSliderTrack">
+            <div class="price-slider-range" id="searchPriceSliderRange"></div>
+            <div class="price-slider-thumb" id="searchPriceMinThumb" style="left: 0%;"></div>
+            <div class="price-slider-thumb" id="searchPriceMaxThumb" style="left: 100%;"></div>
+          </div>
+        </div>
+        <div class="price-range-inputs">
+          <div class="price-input-wrapper">
+            <span>₹</span>
+            <input type="number" class="price-input" id="searchMinPrice" placeholder="Min" min="0" max="10000" />
+          </div>
+          <div class="price-input-separator">-</div>
+          <div class="price-input-wrapper">
+            <span>₹</span>
+            <input type="number" class="price-input" id="searchMaxPrice" placeholder="Max" min="0" max="10000" />
+          </div>
+        </div>
+        <div class="price-filter-buttons">
+          <button class="btn" id="applySearchPriceFilter">Apply Filter</button>
+          <button class="btn secondary" id="resetSearchPriceFilter">Reset</button>
+        </div>
+      </div>
+      
+      <div class="product-grid" id="searchResultsGrid">
+        <!-- Search results will be loaded dynamically -->
+      </div>
+      
+      <div id="noSearchResultsMessage" class="card-panel center" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
+        <p style="color:var(--muted-light)">Try adjusting your search terms or price filter</p>
+        <button class="btn" style="margin-top:16px" onclick="window.history.back();">Back to Search</button>
       </div>
     </section>
 
@@ -524,14 +573,14 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - FIXED POSITION: Image ke just neeche, thoda gap, center aligned -->
+              <!-- Carousel Dots - FIXED POSITION: Image ke just neeche, thoda sa gap, clearly visible aur center aligned -->
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
-              <!-- Similar Products Section -->
+              <!-- Similar Products Section - FIXED: Admin panel se add kiya hua dikhega -->
               <div class="similar-products-small">
                 <h3 class="similar-products-title">Similar Products</h3>
                 <div class="similar-products-slider" id="similarProductsSmallSlider">
-                  <!-- Similar products will be loaded dynamically -->
+                  <!-- Similar products will be loaded dynamically from Firebase -->
                 </div>
               </div>
             </div>
@@ -550,37 +599,33 @@
               <div class="rating-stars"></div>
               <span class="rating-count">(0 reviews)</span>
             </div>
-
-            <!-- --- SIZE & QUANTITY MOVED ABOVE PRODUCT DETAILS --- -->
-            <div class="product-selection-section" style="margin: 20px 0; padding: 15px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
-              <div class="selection-title">Select Size *</div>
-              <div class="size-options" id="sizeOptions">
-                <div class="size-option" data-value="S">S</div>
-                <div class="size-option" data-value="M">M</div>
-                <div class="size-option" data-value="L">L</div>
-                <div class="size-option" data-value="XL">XL</div>
-                <div class="size-option" data-value="XXL">XXL</div>
-              </div>
-              
-              <div style="margin-top: 20px;">
-                <div class="selection-title">Select Quantity</div>
-                <!-- Professional Quantity Control -->
-                <div class="quantity-control" style="max-width: 200px;">
-                  <button class="qty-minus">-</button>
-                  <input type="number" id="qtySelect" min="1" value="1" max="3" readonly>
-                  <button class="qty-plus">+</button>
+            
+            <!-- SIZE AND QUANTITY - MOVED ABOVE PRODUCT DETAILS (pahle select size or quantity aana chahie) -->
+            <div class="product-selection-section" style="margin: 20px 0; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
+              <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <div style="flex: 1; min-width: 200px;">
+                  <div class="selection-title" style="font-weight: 600; margin-bottom: 10px;">Select Size *</div>
+                  <div class="size-options" id="detailSizeOptions">
+                    <!-- Size options will be populated dynamically -->
+                  </div>
                 </div>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
+                
+                <div style="flex: 0 0 auto;">
+                  <div class="selection-title" style="font-weight: 600; margin-bottom: 10px;">Select Quantity</div>
+                  <div class="quantity-control" style="display: flex; align-items: center; gap: 5px;">
+                    <button class="qty-minus" style="width: 36px; height: 36px; border-radius: 4px; background: var(--hover); border: 1px solid var(--border); cursor: pointer;">-</button>
+                    <input type="number" id="detailQtySelect" min="1" value="1" max="3" readonly style="width: 60px; text-align: center; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface);">
+                    <button class="qty-plus" style="width: 36px; height: 36px; border-radius: 4px; background: var(--hover); border: 1px solid var(--border); cursor: pointer;">+</button>
+                  </div>
+                  <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
+                </div>
               </div>
-              
-              <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
             </div>
-            <!-- --- END OF MOVED SECTION --- -->
             
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
 
-            <!-- Rating and Reviews Section -->
+            <!-- Rating and Reviews Section - FIXED: Reviews ab page par dikhenge -->
             <div class="review-section">
               <div class="review-form">
                 <h3>Add Your Review</h3>
@@ -601,14 +646,17 @@
                 <div id="topReviewsList"></div>
               </div>
               
-              <!-- All Reviews -->
+              <!-- All Reviews - FIXED: View All button ab kaam karega -->
               <div class="all-reviews" id="allReviews">
-                <h3>All Reviews <button class="btn secondary view-all-btn" id="viewAllReviews">View All</button></h3>
+                <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                  All Reviews 
+                  <button class="btn secondary view-all-btn" id="viewAllReviewsBtn">View All</button>
+                </h3>
                 <div id="reviewsList"></div>
               </div>
             </div>
             
-            <!-- Share Link Section -->
+            <!-- Share Link Section - FIXED: Ab unique product link kaam karega -->
             <div class="product-detail-meta" style="margin-top: 20px;">
               <h4>Share This Product</h4>
               <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -631,6 +679,23 @@
           <div class="slider-container">
             <div class="slider-track" id="similarProductsSlider"></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- All Reviews Page (View All Reviews) - FIXED: Naya page for all reviews -->
+    <section class="page" id="allReviewsPage">
+      <div class="policy-page">
+        <div class="back-button" onclick="showPage('productDetailPage');">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Product
+        </div>
+        
+        <div class="orders-container">
+          <h2 id="allReviewsProductName">All Reviews</h2>
+          <div id="allReviewsContainer" style="margin-top: 20px;"></div>
         </div>
       </div>
     </section>
@@ -663,12 +728,8 @@
             <!-- Professional Size/Color Selection -->
             <div class="product-selection-section">
               <div class="selection-title">Select Size *</div>
-              <div class="size-options" id="sizeOptionsOrder">
-                <div class="size-option" data-value="S">S</div>
-                <div class="size-option" data-value="M">M</div>
-                <div class="size-option" data-value="L">L</div>
-                <div class="size-option" data-value="XL">XL</div>
-                <div class="size-option" data-value="XXL">XXL</div>
+              <div class="size-options" id="sizeOptions">
+                <!-- Size options will be populated dynamically -->
               </div>
               
               <div style="margin-top: 20px;">
@@ -676,13 +737,13 @@
                 <!-- Professional Quantity Control -->
                 <div class="quantity-control" style="max-width: 200px;">
                   <button class="qty-minus">-</button>
-                  <input type="number" id="qtySelectOrder" min="1" value="1" max="3" readonly>
+                  <input type="number" id="qtySelect" min="1" value="1" max="3" readonly>
                   <button class="qty-plus">+</button>
                 </div>
                 <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
               </div>
               
-              <div class="size-validation-error" id="sizeValidationErrorOrder">Please select a size to continue</div>
+              <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
             </div>
             
             <!-- Sticky Action Buttons - FIXED POSITION -->
@@ -806,7 +867,7 @@
       </div>
     </section>
 
-    <!-- My Orders Page -->
+    <!-- My Orders Page - FIXED: Orders ab dikhenge -->
     <section class="page" id="myOrdersPage">
       <div class="policy-page">
         <div class="back-button" onclick="showPage('homePage')">
@@ -927,15 +988,6 @@
         </div>
       </div>
     </section>
-
-    <!-- View All Reviews Modal (New Page) -->
-    <div class="modal-overlay" id="allReviewsModal">
-      <div class="auth-modal" style="max-width: 700px;">
-        <button class="auth-close" id="allReviewsClose">×</button>
-        <h3>All Reviews</h3>
-        <div id="allReviewsModalList" style="max-height: 500px; overflow-y: auto; padding: 10px;"></div>
-      </div>
-    </div>
   </main>
 
   <!-- Bottom Navigation -->
@@ -1305,7 +1357,6 @@
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-  <!-- JavaScript (UPDATED - FIXES ALL ISSUES) -->
   <script>
     // Performance optimization
     let frameId = null;
@@ -1338,6 +1389,12 @@
       };
     }
 
+    // ADDED NEW FUNCTIONS FOR MOBILE MENU OPTIONS
+    function showCategories() {
+      // Show categories page or filter
+      filterByCategory('all');
+    }
+
     // Global variables
     let currentUser = null;
     let currentProduct = null;
@@ -1355,7 +1412,7 @@
     let currentSelectedColor = 'black';
     let currentSelectedColorName = 'काला';
     let adminSettings = {
-      deliveryCharge: 388,  // UPDATED to 388 as per request
+      deliveryCharge: 388,
       gatewayChargePercent: 2,
       freeShippingOver: 999
     };
@@ -1369,16 +1426,6 @@
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
-    
-    // Search state: to differentiate between normal browse and search results
-    let isSearchResults = false;
-    let lastSearchQuery = '';
-
-    // ADDED NEW FUNCTIONS FOR MOBILE MENU OPTIONS
-    function showCategories() {
-      // Show categories page or filter
-      filterByCategory('all');
-    }
 
     // Cache Manager
     const cacheManager = {
@@ -1542,6 +1589,9 @@
       // Setup realtime listeners
       setupRealtimeListeners();
       
+      // Check for product ID in URL hash (for share links)
+      checkForProductInHash();
+      
       // Show home page
       showPage('homePage');
       
@@ -1562,27 +1612,18 @@
       
       // Fix search input
       setupSearchInput();
-      
-      // Parse product ID from URL hash for deep linking (share link fix)
-      parseProductFromHash();
-      
-      // Delivery charge update
-      document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge || 388;
     }
 
-    // Parse product from URL hash (for share links)
-    function parseProductFromHash() {
-      const hash = window.location.hash;
-      if (hash && hash.includes('product=')) {
-        const productId = hash.split('product=')[1].split('&')[0];
-        if (productId) {
-          // Find product and show detail
-          const product = products.find(p => p.id === productId);
-          if (product) {
-            setTimeout(() => {
-              showProductDetail(product);
-            }, 500); // Slight delay to ensure products are loaded
-          }
+    // Check for product ID in URL hash (for share links)
+    function checkForProductInHash() {
+      const hash = window.location.hash.substring(1);
+      if (hash && hash.startsWith('product-')) {
+        const productId = hash.replace('product-', '');
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          setTimeout(() => {
+            showProductDetail(product);
+          }, 1000);
         }
       }
     }
@@ -1594,9 +1635,8 @@
         searchInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
             performSearch(this.value);
-            // Automatically keyboard hat jana chahie
-            document.activeElement.blur();
-            closeSearchPanel();
+            // Keyboard automatically hide
+            this.blur();
           }
         });
         
@@ -1609,6 +1649,17 @@
     // Setup back button behavior
     function setupBackButton() {
       window.addEventListener('popstate', function(event) {
+        // Check for product in hash
+        const hash = window.location.hash.substring(1);
+        if (hash && hash.startsWith('product-')) {
+          const productId = hash.replace('product-', '');
+          const product = products.find(p => p.id === productId);
+          if (product) {
+            showProductDetail(product);
+            return;
+          }
+        }
+        
         // Check current page and handle accordingly
         const currentPage = document.querySelector('.page.active').id;
         if (currentPage === 'productDetailPage') {
@@ -1623,6 +1674,9 @@
           } else if (currentPage === 'orderPage') {
             showPage('productsPage');
           }
+        } else if (currentPage === 'allReviewsPage') {
+          // From all reviews page, go back to product detail
+          showPage('productDetailPage');
         } else {
           // For other pages, go to home
           showPage('homePage');
@@ -1870,6 +1924,7 @@
       get(ref(database, 'outOfStock')).then(snapshot => {
         const outOfStockObj = snapshot.val();
         if (outOfStockObj) {
+          // Store out of stock data globally
           window.outOfStockItems = outOfStockObj;
         }
       }).catch(error => {
@@ -1904,9 +1959,7 @@
               document.getElementById('productsPage')?.classList.contains('active') ||
               document.getElementById('productDetailPage')?.classList.contains('active')) {
             renderProducts(products, 'homeProductGrid');
-            if (!isSearchResults) {
-              renderProducts(products, 'productGrid');
-            }
+            renderProducts(products, 'productGrid');
             
             const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
             renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
@@ -1934,7 +1987,7 @@
           cacheManager.set('categories', categories);
           
           if (document.getElementById('homePage')?.classList.contains('active') || 
-              (document.getElementById('productsPage')?.classList.contains('active') && !isSearchResults)) {
+              document.getElementById('productsPage')?.classList.contains('active')) {
             renderCategories();
             renderCategoryCircles();
           }
@@ -2069,8 +2122,12 @@
       // Quantity controls
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
-      document.querySelector('#orderPage .qty-minus')?.addEventListener('click', decreaseQuantityOrder);
-      document.querySelector('#orderPage .qty-plus')?.addEventListener('click', increaseQuantityOrder);
+      
+      // Detail page quantity controls
+      const detailQtyMinus = document.querySelector('#productDetailPage .qty-minus');
+      const detailQtyPlus = document.querySelector('#productDetailPage .qty-plus');
+      if (detailQtyMinus) detailQtyMinus.addEventListener('click', decreaseDetailQuantity);
+      if (detailQtyPlus) detailQtyPlus.addEventListener('click', increaseDetailQuantity);
       
       // Size options
       document.querySelectorAll('#sizeOptions .size-option').forEach(option => {
@@ -2081,17 +2138,13 @@
         });
       });
       
-      document.querySelectorAll('#sizeOptionsOrder .size-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('#sizeOptionsOrder .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('sizeValidationErrorOrder')?.classList.remove('show');
-        });
-      });
-      
       // Price filter
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
       document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
+      
+      // Search price filter
+      document.getElementById('applySearchPriceFilter')?.addEventListener('click', applySearchPriceFilter);
+      document.getElementById('resetSearchPriceFilter')?.addEventListener('click', resetSearchPriceFilter);
       
       // Price slider
       const minThumb = document.getElementById('priceMinThumb');
@@ -2103,6 +2156,18 @@
       
       if (minThumb && maxThumb && priceSliderTrack) {
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
+      }
+      
+      // Search price slider
+      const searchMinThumb = document.getElementById('searchPriceMinThumb');
+      const searchMaxThumb = document.getElementById('searchPriceMaxThumb');
+      const searchPriceSliderTrack = document.getElementById('searchPriceSliderTrack');
+      const searchPriceSliderRange = document.getElementById('searchPriceSliderRange');
+      const searchMinPriceInput = document.getElementById('searchMinPrice');
+      const searchMaxPriceInput = document.getElementById('searchMaxPrice');
+      
+      if (searchMinThumb && searchMaxThumb && searchPriceSliderTrack) {
+        setupPriceSlider(searchMinThumb, searchMaxThumb, searchPriceSliderTrack, searchPriceSliderRange, searchMinPriceInput, searchMaxPriceInput);
       }
       
       // Newsletter
@@ -2131,6 +2196,9 @@
       
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       
+      // View all reviews button
+      document.getElementById('viewAllReviewsBtn')?.addEventListener('click', showAllReviews);
+      
       // Share link
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
       
@@ -2146,18 +2214,17 @@
       window.addEventListener('hashchange', function() {
         const hash = window.location.hash.substring(1);
         if (hash) {
-          if (hash.includes('product=')) {
-            parseProductFromHash();
+          if (hash.startsWith('product-')) {
+            const productId = hash.replace('product-', '');
+            const product = products.find(p => p.id === productId);
+            if (product) {
+              showProductDetail(product);
+            }
           } else if (document.getElementById(hash)) {
             showPage(hash);
           }
         }
       });
-      
-      // Initial page load from hash
-      if (window.location.hash) {
-        parseProductFromHash();
-      }
       
       // Fix WhatsApp click
       const whatsappLink = document.querySelector('a[href*="wa.me"]');
@@ -2169,51 +2236,25 @@
           window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
         });
       }
-      
-      // View All Reviews button
-      document.getElementById('viewAllReviews')?.addEventListener('click', function() {
-        showAllReviewsModal();
-      });
-      
-      // Close All Reviews Modal
-      document.getElementById('allReviewsClose')?.addEventListener('click', function() {
-        document.getElementById('allReviewsModal').classList.remove('active');
-      });
     }
 
-    // --- NEW FUNCTION FOR VIEW ALL REVIEWS ---
-    function showAllReviewsModal() {
-      if (!currentProduct) return;
-      
-      const modalList = document.getElementById('allReviewsModalList');
-      modalList.innerHTML = '<p style="text-align:center;color:var(--muted);">Loading reviews...</p>';
-      
-      window.firebase.get(
-        window.firebase.query(
-          window.firebase.ref(window.firebase.database, 'reviews'),
-          window.firebase.orderByChild('productId'),
-          window.firebase.equalTo(currentProduct.id)
-        )
-      ).then(snapshot => {
-        if (!snapshot.exists()) {
-          modalList.innerHTML = '<p style="text-align:center;color:var(--muted);">No reviews yet.</p>';
-        } else {
-          const reviewsObj = snapshot.val();
-          const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-          reviews.sort((a,b) => b.date - a.date);
-          
-          modalList.innerHTML = '';
-          reviews.forEach(review => {
-            const reviewItem = createReviewItem(review);
-            modalList.appendChild(reviewItem);
-          });
-        }
-        document.getElementById('allReviewsModal').classList.add('active');
-      }).catch(error => {
-        console.error('Error loading all reviews:', error);
-        modalList.innerHTML = '<p style="text-align:center;color:var(--muted);">Error loading reviews.</p>';
-        document.getElementById('allReviewsModal').classList.add('active');
-      });
+    // Detail page quantity controls
+    function decreaseDetailQuantity() {
+      const qtyInput = document.getElementById('detailQtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value > 1) {
+        qtyInput.value = value - 1;
+      }
+    }
+
+    function increaseDetailQuantity() {
+      const qtyInput = document.getElementById('detailQtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value < 3) {
+        qtyInput.value = value + 1;
+      } else {
+        showToast('Maximum 3 units per order', 'error');
+      }
     }
 
     // Banner touch events setup - FIXED SWIPE DIRECTION
@@ -2317,7 +2358,7 @@
         range.style.width = (maxPercent - minPercent) + '%';
         
         const minValue = Math.round(minPrice + (minPercent / 100) * (maxPrice - minPrice));
-        const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - minPrice));
+        const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - maxPrice));
         
         minInput.value = minValue;
         maxInput.value = maxValue;
@@ -2404,13 +2445,11 @@
     // Page Navigation
     function showPage(pageId) {
       // Update URL hash
-      let newUrl;
-      if (pageId === 'productDetailPage' && currentProduct) {
-        newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#product=' + currentProduct.id;
-      } else {
-        newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
+      const currentHash = window.location.hash.substring(1);
+      if (!currentHash.startsWith('product-')) {
+        const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
+        window.history.pushState(null, '', newUrl);
       }
-      window.history.pushState(null, '', newUrl);
       
       // Hide all pages
       document.querySelectorAll('.page').forEach(page => {
@@ -2446,6 +2485,8 @@
             // Load similar products
             loadSimilarProducts(currentProduct);
             loadSimilarProductsSmall(currentProduct);
+            // Load size options
+            loadProductSizeOptions(currentProduct);
           }
           break;
         case 'paymentPage':
@@ -2455,16 +2496,12 @@
           if (currentUser) loadSavedAddresses();
           break;
         case 'orderPage':
-          if (currentProduct) initOrderPageGallery();
+          if (currentProduct) {
+            initOrderPageGallery();
+            loadOrderPageSizeOptions(currentProduct);
+          }
           break;
         case 'productsPage':
-          // Agar search results hain toh categories hide karo, warna dikhao
-          if (isSearchResults) {
-            document.getElementById('categoriesContainer').style.display = 'none';
-          } else {
-            document.getElementById('categoriesContainer').style.display = 'flex';
-            renderCategories();
-          }
           updateProductsCount();
           break;
         case 'homePage':
@@ -2473,6 +2510,58 @@
           // Setup banner auto slide
           setTimeout(setupBannerAutoSlide, 1000);
           break;
+      }
+    }
+
+    // Load product size options
+    function loadProductSizeOptions(product) {
+      const sizeContainer = document.getElementById('detailSizeOptions');
+      if (!sizeContainer) return;
+      
+      sizeContainer.innerHTML = '';
+      
+      const sizes = product.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
+      sizes.forEach(size => {
+        const sizeOption = document.createElement('div');
+        sizeOption.className = 'size-option';
+        sizeOption.setAttribute('data-value', size);
+        sizeOption.textContent = size;
+        sizeOption.addEventListener('click', function() {
+          document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+        });
+        sizeContainer.appendChild(sizeOption);
+      });
+      
+      // Select first size by default
+      if (sizeContainer.firstChild) {
+        sizeContainer.firstChild.classList.add('selected');
+      }
+    }
+
+    function loadOrderPageSizeOptions(product) {
+      const sizeContainer = document.getElementById('sizeOptions');
+      if (!sizeContainer) return;
+      
+      sizeContainer.innerHTML = '';
+      
+      const sizes = product.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
+      sizes.forEach(size => {
+        const sizeOption = document.createElement('div');
+        sizeOption.className = 'size-option';
+        sizeOption.setAttribute('data-value', size);
+        sizeOption.textContent = size;
+        sizeOption.addEventListener('click', function() {
+          document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('sizeValidationError')?.classList.remove('show');
+        });
+        sizeContainer.appendChild(sizeOption);
+      });
+      
+      // Select first size by default
+      if (sizeContainer.firstChild) {
+        sizeContainer.firstChild.classList.add('selected');
       }
     }
 
@@ -2496,6 +2585,7 @@
           break;
         case 'productsPage':
         case 'productDetailPage':
+        case 'searchResultsPage':
           document.querySelector('.bottom-nav-item:nth-child(2)')?.classList.add('active');
           break;
         case 'myOrdersPage':
@@ -2519,6 +2609,7 @@
         case 'homePage':
         case 'productsPage':
         case 'productDetailPage':
+        case 'searchResultsPage':
           document.getElementById('pill-order')?.classList.add('disabled');
           document.getElementById('pill-user')?.classList.add('disabled');
           document.getElementById('pill-pay')?.classList.add('disabled');
@@ -2631,14 +2722,11 @@
       }
     }
 
-    // *** PERFORM SEARCH - FIXED: ONLY PRICE FILTER, NO CATEGORIES, CLEAN PAGE ***
     function performSearch(query) {
       if (!query.trim()) return;
       
       // Add to recent searches
       addToRecentSearches(query);
-      lastSearchQuery = query;
-      isSearchResults = true;  // Mark as search results mode
       
       // Filter products
       const filteredProducts = products.filter(product => 
@@ -2648,39 +2736,126 @@
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
       
-      // Redirect to products page with search results
-      showPage('productsPage');
-      
-      // Hide categories container - search results mein category nahi dikhni chahiye
-      const categoriesContainer = document.getElementById('categoriesContainer');
-      if (categoriesContainer) {
-        categoriesContainer.style.display = 'none';
+      // If no exact matches found, show similar products
+      if (filteredProducts.length === 0) {
+        // Try to find similar products
+        const similarProducts = products.filter(product => {
+          // Split query into words
+          const queryWords = query.toLowerCase().split(' ');
+          const productNameWords = product.name?.toLowerCase().split(' ') || [];
+          const productDescWords = product.description?.toLowerCase().split(' ') || [];
+          
+          // Check if any query word matches any product word
+          return queryWords.some(qWord => 
+            productNameWords.some(pWord => pWord.includes(qWord)) ||
+            productDescWords.some(pWord => pWord.includes(qWord))
+          );
+        });
+        
+        // Store search results
+        window.currentSearchResults = similarProducts.length > 0 ? similarProducts : [];
+        window.currentSearchQuery = query;
+        
+        // Show search results page (clean page - only price filter)
+        showPage('searchResultsPage');
+        
+        // Reset search price filter
+        resetSearchPriceFilter();
+        
+        // Render search results
+        renderSearchResults(window.currentSearchResults);
+        
+        if (similarProducts.length === 0) {
+          showToast('No exact matches found. Showing all products.', 'info');
+          renderSearchResults(products);
+        } else {
+          showToast(`No exact matches for "${query}". Showing similar products.`, 'info');
+        }
+      } else {
+        // Store search results
+        window.currentSearchResults = filteredProducts;
+        window.currentSearchQuery = query;
+        
+        // Show search results page (clean page - only price filter)
+        showPage('searchResultsPage');
+        
+        // Reset search price filter
+        resetSearchPriceFilter();
+        
+        // Render search results
+        renderSearchResults(filteredProducts);
       }
       
-      // Reset category filter and price filter (but keep price filter visible)
-      currentCategoryFilter = null;
+      // Close search panel
+      closeSearchPanel();
+    }
+
+    function renderSearchResults(productsToRender) {
+      const container = document.getElementById('searchResultsGrid');
+      const countElement = document.getElementById('searchResultsCount');
+      const noResultsMessage = document.getElementById('noSearchResultsMessage');
       
-      // Reset active category pills (though hidden)
-      document.querySelectorAll('.category-pill').forEach(pill => {
-        pill.classList.remove('active');
-        if (pill.textContent === 'All') {
-          pill.classList.add('active');
-        }
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (productsToRender.length === 0) {
+        if (countElement) countElement.textContent = '0 products found';
+        if (noResultsMessage) noResultsMessage.style.display = 'block';
+        container.style.display = 'none';
+        return;
+      }
+      
+      if (noResultsMessage) noResultsMessage.style.display = 'none';
+      container.style.display = 'grid';
+      
+      if (countElement) {
+        countElement.textContent = `${productsToRender.length} products found`;
+      }
+      
+      // Create document fragment for better performance
+      const fragment = document.createDocumentFragment();
+      
+      productsToRender.forEach(product => {
+        const productCard = createProductCard(product);
+        fragment.appendChild(productCard);
       });
       
-      // Render search results - only price filter visible, no categories
-      renderProducts(filteredProducts.length > 0 ? filteredProducts : products, 'productGrid');
-      updateProductsCount();
+      container.appendChild(fragment);
+    }
+
+    function applySearchPriceFilter() {
+      const minPrice = parseFloat(document.getElementById('searchMinPrice').value) || 0;
+      const maxPrice = parseFloat(document.getElementById('searchMaxPrice').value) || 10000;
       
-      if (filteredProducts.length === 0) {
-        showToast(`No products found for "${query}". Showing all products.`, 'info');
-      } else {
-        showToast(`${filteredProducts.length} products found for "${query}"`, 'success');
+      let filteredProducts = window.currentSearchResults || products;
+      
+      filteredProducts = filteredProducts.filter(product => {
+        const price = parsePrice(product.price);
+        return price >= minPrice && price <= maxPrice;
+      });
+      
+      renderSearchResults(filteredProducts);
+    }
+
+    function resetSearchPriceFilter() {
+      document.getElementById('searchMinPrice').value = '0';
+      document.getElementById('searchMaxPrice').value = '10000';
+      
+      // Reset slider
+      const minThumb = document.getElementById('searchPriceMinThumb');
+      const maxThumb = document.getElementById('searchPriceMaxThumb');
+      const priceSliderRange = document.getElementById('searchPriceSliderRange');
+      
+      if (minThumb && maxThumb && priceSliderRange) {
+        minThumb.style.left = '0%';
+        maxThumb.style.left = '100%';
+        priceSliderRange.style.left = '0%';
+        priceSliderRange.style.width = '100%';
       }
       
-      // Close search panel and blur active element (keyboard automatically hat jana chahie)
-      closeSearchPanel();
-      document.activeElement.blur();
+      let filteredProducts = window.currentSearchResults || products;
+      renderSearchResults(filteredProducts);
     }
 
     function addToRecentSearches(query) {
@@ -3153,7 +3328,8 @@
     }
 
     function shareProduct(product) {
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#product=' + product.id;
+      // FIXED: Unique product link - product-{id} format
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#product-' + product.id;
       
       if (navigator.share) {
         navigator.share({
@@ -3204,14 +3380,6 @@
       const container = document.getElementById('categoriesContainer');
       if (!container) return;
       
-      // Agar search results mode hai toh categories mat dikhao
-      if (isSearchResults) {
-        container.style.display = 'none';
-        return;
-      } else {
-        container.style.display = 'flex';
-      }
-      
       // Create document fragment for better performance
       const fragment = document.createDocumentFragment();
       
@@ -3220,7 +3388,6 @@
       allCategory.className = 'category-pill active';
       allCategory.textContent = 'All';
       allCategory.addEventListener('click', () => {
-        isSearchResults = false; // Clear search mode
         currentCategoryFilter = null;
         document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
         allCategory.classList.add('active');
@@ -3357,8 +3524,15 @@
       // Initialize gallery
       initProductDetailGallery(actualProduct);
       
-      // Update share link - FIXED: now uses #product=id format
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#product=' + actualProduct.id;
+      // Load size options
+      loadProductSizeOptions(actualProduct);
+      
+      // Set default quantity
+      const detailQtyInput = document.getElementById('detailQtySelect');
+      if (detailQtyInput) detailQtyInput.value = 1;
+      
+      // Update share link - FIXED: Unique product link
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#product-' + actualProduct.id;
       document.getElementById('productShareLink').value = shareLink;
       
       // Update wishlist button
@@ -3383,6 +3557,9 @@
         addToRecentlyViewed(actualProduct.id);
       }
       
+      // Update URL hash to product-specific link
+      window.history.pushState(null, '', `#product-${actualProduct.id}`);
+      
       // Show product detail page
       showPage('productDetailPage');
     }
@@ -3403,7 +3580,7 @@
       currentImageIndex = 0;
       updateMainImage();
       
-      // Create dots
+      // Create dots - FIXED: Image ke just neeche, thoda sa gap, clearly visible aur center aligned
       dotsContainer.innerHTML = '';
       currentProductImages.forEach((_, index) => {
         const dot = document.createElement('div');
@@ -3422,7 +3599,7 @@
       if (zoomBtn) {
         zoomBtn.addEventListener('click', () => {
           pauseSlide();
-          openProductImageModal();
+          openImageZoom(currentProductImages[currentImageIndex]);
           resumeSlideAfterDelay();
         });
       }
@@ -3610,13 +3787,13 @@
       document.getElementById('zoomImage').style.transform = 'scale(1)';
     }
 
-    // Similar products - FIXED: now properly loads from admin panel (via Firebase)
+    // Similar products - FIXED: Admin panel se add kiya hua dikhega
     function loadSimilarProducts(product) {
       const similarProducts = products
-        .filter(p => p.id !== product.id && p.category === product.category)
+        .filter(p => p.id !== product.id && p.category === product.category && p.status === 'active')
         .slice(0, 10);
       
-      renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
+      renderProductSlider(similarProducts.length > 0 ? similarProducts : products.filter(p => p.status === 'active').slice(0, 10), 'similarProductsSlider');
     }
 
     function loadSimilarProductsSmall(product) {
@@ -3624,7 +3801,7 @@
       if (!container) return;
       
       const similarProducts = products
-        .filter(p => p.id !== product.id && p.category === product.category)
+        .filter(p => p.id !== product.id && p.category === product.category && p.status === 'active')
         .slice(0, 6);
       
       if (similarProducts.length === 0) {
@@ -3664,6 +3841,9 @@
       if (!galleryMain || !dotsContainer) return;
       
       const productImages = getProductImagesForColor(currentProduct, currentSelectedColor);
+      if (productImages.length === 0) {
+        productImages = getProductImages(currentProduct);
+      }
       
       galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
       dotsContainer.innerHTML = '';
@@ -3713,9 +3893,9 @@
 
     // Order flow functions
     function toUserInfo() {
-      const selectedSize = document.querySelector('#sizeOptionsOrder .size-option.selected');
+      const selectedSize = document.querySelector('#sizeOptions .size-option.selected');
       if (!selectedSize) {
-        document.getElementById('sizeValidationErrorOrder').classList.add('show');
+        document.getElementById('sizeValidationError').classList.add('show');
         showToast('Please select a size to continue', 'error');
         return;
       }
@@ -3763,8 +3943,8 @@
       currentOrderId = orderId;
       
       const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      const quantity = parseInt(document.getElementById('qtySelectOrder').value) || 1;
-      const size = document.querySelector('#sizeOptionsOrder .size-option.selected')?.getAttribute('data-value') || 'Not specified';
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || 'Not specified';
       
       const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
@@ -3818,9 +3998,7 @@
         
       } catch (error) {
         console.error('Error placing order:', error);
-        showToast('Order placed successfully!', 'success');
-        document.getElementById('orderIdDisplay').textContent = orderId;
-        showPage('successPage');
+        showToast('Failed to place order. Please try again.', 'error');
       } finally {
         // Reset button
         const confirmBtn = document.getElementById('confirmOrder');
@@ -3842,7 +4020,7 @@
         return;
       }
       
-      const quantity = parseInt(document.getElementById('qtySelectOrder').value) || 1;
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
       const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
       
       const productPrice = parsePrice(currentProduct.price);
@@ -3869,57 +4047,25 @@
     // Quantity functions
     function decreaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
-      if (qtyInput) {
-        let value = parseInt(qtyInput.value);
-        if (value > 1) {
-          qtyInput.value = value - 1;
-        }
-        if (document.getElementById('paymentPage')?.classList.contains('active')) {
-          updatePaymentSummary();
-        }
+      let value = parseInt(qtyInput.value);
+      if (value > 1) {
+        qtyInput.value = value - 1;
+      }
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
       }
     }
 
     function increaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
-      if (qtyInput) {
-        let value = parseInt(qtyInput.value);
-        if (value < 3) {
-          qtyInput.value = value + 1;
-        } else {
-          showToast('Maximum 3 units per order', 'error');
-        }
-        if (document.getElementById('paymentPage')?.classList.contains('active')) {
-          updatePaymentSummary();
-        }
+      let value = parseInt(qtyInput.value);
+      if (value < 3) {
+        qtyInput.value = value + 1;
+      } else {
+        showToast('Maximum 3 units per order', 'error');
       }
-    }
-    
-    function decreaseQuantityOrder() {
-      const qtyInput = document.getElementById('qtySelectOrder');
-      if (qtyInput) {
-        let value = parseInt(qtyInput.value);
-        if (value > 1) {
-          qtyInput.value = value - 1;
-        }
-        if (document.getElementById('paymentPage')?.classList.contains('active')) {
-          updatePaymentSummary();
-        }
-      }
-    }
-
-    function increaseQuantityOrder() {
-      const qtyInput = document.getElementById('qtySelectOrder');
-      if (qtyInput) {
-        let value = parseInt(qtyInput.value);
-        if (value < 3) {
-          qtyInput.value = value + 1;
-        } else {
-          showToast('Maximum 3 units per order', 'error');
-        }
-        if (document.getElementById('paymentPage')?.classList.contains('active')) {
-          updatePaymentSummary();
-        }
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
       }
     }
 
@@ -3927,30 +4073,37 @@
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      // Copy selected size and quantity from detail page to order page
-      const selectedSize = document.querySelector('#sizeOptions .size-option.selected');
-      const selectedQty = document.getElementById('qtySelect').value;
+      const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
+      if (!selectedSize) {
+        showToast('Please select a size', 'error');
+        return;
+      }
+      
+      const quantity = parseInt(document.getElementById('detailQtySelect').value) || 1;
+      
+      // Clear any previously selected size
+      document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+      
+      // Set selected size in order page
+      setTimeout(() => {
+        const sizeOptions = document.querySelectorAll('#sizeOptions .size-option');
+        sizeOptions.forEach(opt => {
+          if (opt.getAttribute('data-value') === selectedSize.getAttribute('data-value')) {
+            opt.classList.add('selected');
+          }
+        });
+      }, 100);
+      
+      // Set quantity
+      document.getElementById('qtySelect').value = quantity;
       
       // Update order page
       document.getElementById('spTitle').textContent = currentProduct.name;
       document.getElementById('spPrice').textContent = currentProduct.price ? '₹' + parsePrice(currentProduct.price).toLocaleString() : '₹0';
       document.getElementById('spDesc').textContent = currentProduct.description || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.description || '';
-      
-      // Copy size selection to order page
-      setTimeout(() => {
-        if (selectedSize) {
-          const sizeValue = selectedSize.getAttribute('data-value');
-          document.querySelectorAll('#sizeOptionsOrder .size-option').forEach(opt => {
-            if (opt.getAttribute('data-value') === sizeValue) {
-              opt.classList.add('selected');
-            } else {
-              opt.classList.remove('selected');
-            }
-          });
-        }
-        document.getElementById('qtySelectOrder').value = selectedQty || '1';
-      }, 100);
       
       initOrderPageGallery();
       showPage('orderPage');
@@ -4098,8 +4251,6 @@
 
     // Filter functions
     function filterByCategory(categoryId) {
-      isSearchResults = false; // Clear search mode
-      
       if (!categoryId || categoryId === 'all') {
         currentCategoryFilter = null;
         
@@ -4146,9 +4297,9 @@
       const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
       const maxPrice = parseFloat(document.getElementById('maxPrice').value) || 10000;
       
-      let filteredProducts = isSearchResults ? products : products; // If search results, filter from all products
+      let filteredProducts = products;
       
-      if (!isSearchResults && currentCategoryFilter) {
+      if (currentCategoryFilter) {
         filteredProducts = filteredProducts.filter(product => 
           product.category === currentCategoryFilter
         );
@@ -4179,9 +4330,9 @@
         priceSliderRange.style.width = '100%';
       }
       
-      let filteredProducts = isSearchResults ? products : products;
+      let filteredProducts = products;
       
-      if (!isSearchResults && currentCategoryFilter) {
+      if (currentCategoryFilter) {
         filteredProducts = filteredProducts.filter(product => 
           product.category === currentCategoryFilter
         );
@@ -4205,9 +4356,7 @@
         productsCount.textContent = 'No products found';
       } else {
         noProductsMessage.style.display = 'none';
-        if (isSearchResults) {
-          productsCount.textContent = `${visibleProducts} products found for "${lastSearchQuery}"`;
-        } else if (currentCategoryFilter || document.getElementById('minPrice').value != '0' || document.getElementById('maxPrice').value != '10000') {
+        if (currentCategoryFilter || document.getElementById('minPrice').value != '0' || document.getElementById('maxPrice').value != '10000') {
           // If filter is applied
           productsCount.textContent = `${visibleProducts} products match your filters`;
         } else {
@@ -4428,7 +4577,7 @@
       };
     }
 
-    // Reviews and ratings - FIXED: now properly displays reviews
+    // Reviews and ratings - FIXED: Reviews ab page par dikhenge
     function setRating(rating) {
       const stars = document.querySelectorAll('#ratingInput .rating-star');
       stars.forEach((star, index) => {
@@ -4471,7 +4620,7 @@
           id: reviewId,
           productId: currentProduct.id,
           userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
+          userName: currentUser.displayName || currentUser.email.split('@')[0] || 'Anonymous',
           rating: rating,
           text: reviewTextValue,
           date: Date.now()
@@ -4536,8 +4685,8 @@
           return b.date - a.date;
         });
         
-        // Get top 5-star reviews (first 5)
-        const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 5);
+        // Get top 5-star reviews (first 3 for product page)
+        const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 3);
         
         // Render top reviews
         if (topReviewsList) {
@@ -4552,18 +4701,21 @@
           }
         }
         
-        // Render all reviews (only first 5 on product page)
+        // Render all reviews (first 3 for product page)
         if (reviewsList) {
           reviewsList.innerHTML = '';
           if (reviews.length === 0) {
             reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
           } else {
-            reviews.slice(0, 5).forEach(review => {
+            reviews.slice(0, 3).forEach(review => {
               const reviewItem = createReviewItem(review);
               reviewsList.appendChild(reviewItem);
             });
           }
         }
+        
+        // Store all reviews for view all page
+        window.currentProductAllReviews = reviews;
       } catch (error) {
         console.error('Error loading reviews:', error);
         const reviewsList = document.getElementById('reviewsList');
@@ -4619,6 +4771,32 @@
       }
     }
 
+    // Show all reviews - FIXED: View All button ab kaam karega
+    function showAllReviews() {
+      if (!currentProduct) return;
+      
+      const container = document.getElementById('allReviewsContainer');
+      const title = document.getElementById('allReviewsProductName');
+      
+      if (!container || !title) return;
+      
+      title.textContent = `All Reviews - ${currentProduct.name}`;
+      container.innerHTML = '';
+      
+      const reviews = window.currentProductAllReviews || [];
+      
+      if (reviews.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px;">No reviews yet for this product.</p>';
+      } else {
+        reviews.forEach(review => {
+          const reviewItem = createReviewItem(review);
+          container.appendChild(reviewItem);
+        });
+      }
+      
+      showPage('allReviewsPage');
+    }
+
     // Share link
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
@@ -4665,7 +4843,7 @@
       }
     }
 
-    // Orders functions - FIXED: now properly shows orders
+    // Orders functions - FIXED: Orders ab dikhenge
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -5147,12 +5325,12 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots position - FIXED: image ke just neeche, thoda gap, center aligned */
+    /* Carousel dots position - FIXED: Image ke just neeche, thoda sa gap, clearly visible aur center aligned */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 15px;
       margin-bottom: 20px;
       padding: 5px 0;
     }
@@ -5195,6 +5373,7 @@
     .review-item {
       border-bottom: 1px solid var(--border);
       padding: 15px 0;
+      position: relative;
     }
     
     .review-header {
@@ -5691,12 +5870,104 @@
     .order-detail-product-info {
       flex: 1;
     }
-
-    /* Categories container - hide during search results */
-    .categories {
+    
+    /* Size options styling */
+    .size-options {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .size-option {
+      min-width: 50px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--surface);
+      color: var(--text);
+    }
+    
+    .size-option.selected {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    
+    .size-option:hover {
+      border-color: var(--accent);
+    }
+    
+    /* Quantity control */
+    .quantity-control {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .quantity-control button {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .quantity-control button:hover {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .quantity-control input {
+      width: 60px;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+    }
+    
+    /* Product detail actions */
+    .product-detail-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      position: sticky;
+      bottom: 0;
+      background: var(--surface);
+      padding: 15px 20px;
+      border-top: 1px solid var(--border);
+      z-index: 90;
+    }
+    
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 5px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Search Results Page */
+    #searchResultsPage .price-filter {
       margin-bottom: 20px;
     }
   </style>
