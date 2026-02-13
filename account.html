@@ -1451,7 +1451,12 @@
           updateUIForUser(user);
           loadUserData(user);
           recordLoginActivity(user);
-          // Load all data initially
+          
+          // Load all data with loading states
+          showLoading('wishlistItems');
+          showLoading('ordersList');
+          showLoading('savedAddresses');
+          
           loadAddresses();
           loadWishlist();
           loadOrders();
@@ -1480,7 +1485,11 @@
       
       // Dark mode toggle in settings
       document.getElementById('darkModeToggle')?.addEventListener('change', function() {
-        toggleTheme();
+        const isDark = this.checked;
+        const theme = isDark ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        showToast(`${theme === 'dark' ? 'Dark' : 'Light'} mode enabled`, 'success');
       });
       
       // Logout button
@@ -1582,6 +1591,14 @@
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
+    }
+
+    // Loading state
+    function showLoading(containerId) {
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.innerHTML = '<div class="loading-spinner" style="margin:40px auto;"></div>';
+      }
     }
 
     // User interface updates
@@ -1718,25 +1735,38 @@
     }
 
     // Account functions
-    function saveProfile() {
+    async function saveProfile() {
       const name = document.getElementById('profileName').value;
       const phone = document.getElementById('profilePhone').value;
       
       if (!currentUser) return;
       
-      realtimeDb.ref('users/' + currentUser.uid).update({
-        name: name,
-        phone: phone,
-        updatedAt: Date.now()
-      }).then(() => {
+      if (!name) {
+        showToast('Please enter your name', 'error');
+        return;
+      }
+      
+      try {
+        await realtimeDb.ref('users/' + currentUser.uid).update({
+          name: name,
+          phone: phone,
+          updatedAt: Date.now()
+        });
+        
+        // Update localStorage for consistency
+        localStorage.setItem('userName', name);
+        
         showToast('Profile updated successfully', 'success');
+        updateUserProfile(currentUser);
+        
         // Update UI
         userName.textContent = name;
         userAvatarInitial.textContent = name.charAt(0).toUpperCase();
-      }).catch(error => {
+        document.getElementById('accountPageName').textContent = name;
+      } catch (error) {
         console.error('Error updating profile:', error);
         showToast('Failed to update profile', 'error');
-      });
+      }
     }
 
     function showChangePasswordModal() {
@@ -1842,17 +1872,20 @@
         });
     }
 
-    // Wishlist functions - FIXED
+    // Wishlist functions - UPDATED to sync with index.html
     function loadWishlist() {
       if (!currentUser) return;
+      
+      const container = document.getElementById('wishlistItems');
+      const emptyState = document.getElementById('wishlistEmptyState');
+      
+      // Get wishlist from localStorage first (to sync with index.html)
+      let localWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
       
       realtimeDb.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid)
         .once('value')
         .then(snapshot => {
-          const container = document.getElementById('wishlistItems');
-          const emptyState = document.getElementById('wishlistEmptyState');
-          
-          if (!snapshot.exists()) {
+          if (!snapshot.exists() && localWishlist.length === 0) {
             if (emptyState) emptyState.style.display = 'block';
             container.innerHTML = '';
             container.appendChild(emptyState);
@@ -1860,30 +1893,35 @@
           }
           
           if (emptyState) emptyState.style.display = 'none';
-          
-          const wishlist = snapshot.val();
           container.innerHTML = '';
           
-          Object.keys(wishlist).forEach(wishlistId => {
-            const item = wishlist[wishlistId];
-            const productCard = document.createElement('div');
-            productCard.className = 'product-card';
-            productCard.innerHTML = `
-              <img src="${item.image || 'https://via.placeholder.com/100x100?text=Product'}" alt="${item.name}" class="product-image">
-              <div class="product-info">
-                <div class="product-title">${item.name || 'Product Name'}</div>
-                <div class="product-price">₹${item.price || '0'}</div>
-                <div class="product-rating">
-                  ${'★'.repeat(Math.floor(item.rating || 4))}${'☆'.repeat(5 - Math.floor(item.rating || 4))}
-                  <span style="color:var(--muted);font-size:12px;">(${item.rating || 4})</span>
-                </div>
-                <div class="address-actions">
-                  <button class="btn secondary" onclick="removeFromWishlist('${wishlistId}')">Remove</button>
-                  <button class="btn" onclick="addToCart('${item.productId || wishlistId}')">Add to Cart</button>
-                </div>
-              </div>
-            `;
-            container.appendChild(productCard);
+          const firebaseWishlist = snapshot.exists() ? Object.values(snapshot.val()) : [];
+          const allWishlistItems = [...firebaseWishlist, ...localWishlist];
+          
+          // Remove duplicates based on productId
+          const uniqueItems = allWishlistItems.filter((item, index, self) =>
+            index === self.findIndex(i => i.productId === item.productId)
+          );
+          
+          // Fetch product details for each wishlist item
+          uniqueItems.forEach(item => {
+            realtimeDb.ref('products/' + item.productId).once('value')
+              .then(productSnapshot => {
+                const product = productSnapshot.val();
+                if (product) {
+                  const productCard = createProductCard({ id: item.productId, ...product });
+                  container.appendChild(productCard);
+                } else {
+                  // If product not in database, use item data
+                  const productCard = createProductCard(item);
+                  container.appendChild(productCard);
+                }
+              })
+              .catch(() => {
+                // Fallback to item data if product fetch fails
+                const productCard = createProductCard(item);
+                container.appendChild(productCard);
+              });
           });
         })
         .catch(error => {
@@ -1892,14 +1930,55 @@
         });
     }
 
-    function removeFromWishlist(wishlistId) {
+    function createProductCard(product) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      
+      card.innerHTML = `
+        <img src="${product.image || 'https://via.placeholder.com/100x100?text=Product'}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/100x100?text=Product'">
+        <div class="product-info">
+          <div class="product-title">${product.name || 'Product Name'}</div>
+          <div class="product-price">₹${product.price || '0'}</div>
+          <div class="product-rating">
+            ${'★'.repeat(Math.floor(product.rating || 4))}${'☆'.repeat(5 - Math.floor(product.rating || 4))}
+            <span style="color:var(--muted);font-size:12px;">(${product.rating || 4})</span>
+          </div>
+          <div class="address-actions">
+            <button class="btn secondary" onclick="removeFromWishlist('${product.id}')">Remove</button>
+            <button class="btn" onclick="viewProduct('${product.id}')">View Product</button>
+          </div>
+        </div>
+      `;
+      
+      return card;
+    }
+
+    function removeFromWishlist(productId) {
       if (!currentUser) return;
       
       if (confirm('Are you sure you want to remove this item from wishlist?')) {
-        realtimeDb.ref('wishlist/' + wishlistId).remove()
+        // Remove from Firebase
+        realtimeDb.ref('wishlist').orderByChild('productId').equalTo(productId)
+          .once('value')
+          .then(snapshot => {
+            if (snapshot.exists()) {
+              const updates = [];
+              snapshot.forEach(child => {
+                if (child.val().userId === currentUser.uid) {
+                  updates.push(child.ref.remove());
+                }
+              });
+              return Promise.all(updates);
+            }
+          })
           .then(() => {
+            // Also remove from localStorage to sync with index.html
+            let localWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+            localWishlist = localWishlist.filter(item => item.productId !== productId);
+            localStorage.setItem('wishlist', JSON.stringify(localWishlist));
+            
             showToast('Removed from wishlist', 'success');
-            loadWishlist();
+            loadWishlist(); // Reload wishlist
           })
           .catch(error => {
             console.error('Error removing from wishlist:', error);
@@ -1908,21 +1987,22 @@
       }
     }
 
-    function addToCart(productId) {
-      // This would normally add the product to cart
-      showToast('Product added to cart!', 'success');
+    function viewProduct(productId) {
+      // Store product ID in sessionStorage for index.html to load
+      sessionStorage.setItem('viewProduct', productId);
+      window.location.href = 'index.html#productDetailPage';
     }
 
-    // Orders functions - FIXED
+    // Orders functions - UPDATED
     function loadOrders() {
       if (!currentUser) return;
+      
+      const container = document.getElementById('ordersList');
+      const emptyState = document.getElementById('ordersEmptyState');
       
       realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
         .once('value')
         .then(snapshot => {
-          const container = document.getElementById('ordersList');
-          const emptyState = document.getElementById('ordersEmptyState');
-          
           if (!snapshot.exists()) {
             if (emptyState) emptyState.style.display = 'block';
             container.innerHTML = '';
@@ -1935,82 +2015,13 @@
           const orders = snapshot.val();
           container.innerHTML = '';
           
-          Object.keys(orders).forEach(orderId => {
-            const order = orders[orderId];
-            const orderCard = document.createElement('div');
-            orderCard.className = 'order-card';
-            
-            // Determine status class
-            let statusClass = 'processing';
-            let statusText = 'Processing';
-            if (order.status === 'delivered') {
-              statusClass = 'delivered';
-              statusText = 'Delivered';
-            } else if (order.status === 'shipped') {
-              statusClass = 'shipped';
-              statusText = 'Shipped';
-            } else if (order.status === 'cancelled') {
-              statusClass = 'error';
-              statusText = 'Cancelled';
-            }
-            
-            orderCard.innerHTML = `
-              <div class="order-header">
-                <div>
-                  <div class="order-id">Order #${orderId.slice(-8)}</div>
-                  <div style="font-size:12px;color:var(--muted);">Placed on ${new Date(order.timestamp || Date.now()).toLocaleDateString()}</div>
-                </div>
-                <div class="order-status ${statusClass}">${statusText}</div>
-              </div>
-              <div class="order-details">
-                <div>
-                  <div style="font-size:12px;color:var(--muted);">Total Amount</div>
-                  <div style="font-weight:700;font-size:18px;">₹${order.total || '0'}</div>
-                </div>
-                <div>
-                  <div style="font-size:12px;color:var(--muted);">Items</div>
-                  <div style="font-weight:600;">${order.items ? order.items.length || Object.keys(order.items).length : 0} items</div>
-                </div>
-                <div>
-                  <div style="font-size:12px;color:var(--muted);">Payment Method</div>
-                  <div style="font-weight:600;">${order.paymentMethod || 'Credit Card'}</div>
-                </div>
-              </div>
-              ${order.items ? `
-                <div style="margin-top:16px;">
-                  <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Items:</div>
-                  ${Array.isArray(order.items) ? 
-                    order.items.map(item => `
-                      <div class="order-item">
-                        <img src="${item.image || 'https://via.placeholder.com/60x60?text=Product'}" alt="${item.name}" class="order-item-image">
-                        <div>
-                          <div style="font-weight:600;">${item.name}</div>
-                          <div>Quantity: ${item.quantity || 1}</div>
-                          <div>₹${item.price || '0'} each</div>
-                        </div>
-                      </div>
-                    `).join('') :
-                    Object.keys(order.items).map(itemId => {
-                      const item = order.items[itemId];
-                      return `
-                        <div class="order-item">
-                          <img src="${item.image || 'https://via.placeholder.com/60x60?text=Product'}" alt="${item.name}" class="order-item-image">
-                          <div>
-                            <div style="font-weight:600;">${item.name}</div>
-                            <div>Quantity: ${item.quantity || 1}</div>
-                            <div>₹${item.price || '0'} each</div>
-                          </div>
-                        </div>
-                      `;
-                    }).join('')
-                  }
-                </div>
-              ` : ''}
-              <div class="address-actions" style="margin-top:16px;">
-                <button class="btn secondary" onclick="viewOrderDetails('${orderId}')">View Details</button>
-                <button class="btn" onclick="reorder('${orderId}')">Reorder</button>
-              </div>
-            `;
+          // Sort by date (newest first)
+          const sortedOrders = Object.keys(orders)
+            .map(key => ({ id: key, ...orders[key] }))
+            .sort((a, b) => (b.orderDate || b.timestamp || 0) - (a.orderDate || a.timestamp || 0));
+          
+          sortedOrders.forEach(order => {
+            const orderCard = createOrderCard(order);
             container.appendChild(orderCard);
           });
         })
@@ -2020,15 +2031,46 @@
         });
     }
 
+    function createOrderCard(order) {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      
+      const statusClass = order.status === 'delivered' ? 'delivered' : 
+                         order.status === 'shipped' ? 'shipped' : 'processing';
+      const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Processing';
+      const date = new Date(order.orderDate || order.timestamp || Date.now()).toLocaleDateString();
+      
+      card.innerHTML = `
+        <div class="order-header">
+          <div>
+            <div class="order-id">${order.orderId || '#' + order.id.slice(-8)}</div>
+            <div style="font-size:12px;color:var(--muted);">${date}</div>
+          </div>
+          <div class="order-status ${statusClass}">${statusText}</div>
+        </div>
+        <div class="order-details">
+          <div class="order-item">
+            <div style="flex:1">
+              <div style="font-weight:600;">${order.productName || order.items?.[0]?.name || 'Product'}</div>
+              <div style="font-size:12px;color:var(--muted);">Qty: ${order.quantity || order.items?.[0]?.quantity || 1} | Size: ${order.size || 'N/A'}</div>
+              <div style="font-weight:700;color:var(--accent);">₹${order.totalAmount || order.total || '0'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="address-actions">
+          <button class="btn secondary" onclick="viewOrderDetails('${order.id}')">View Details</button>
+        </div>
+      `;
+      
+      return card;
+    }
+
     function viewOrderDetails(orderId) {
-      showToast(`Viewing details for order ${orderId.slice(-8)}`, 'info');
+      sessionStorage.setItem('viewOrder', orderId);
+      window.location.href = 'index.html#orderDetailPage';
     }
 
-    function reorder(orderId) {
-      showToast(`Reordering items from order ${orderId.slice(-8)}`, 'success');
-    }
-
-    // Address functions - FIXED
+    // Address functions
     function showNewAddressForm() {
       document.getElementById('savedAddresses').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
@@ -2047,6 +2089,16 @@
       document.getElementById('savedAddresses').style.display = 'block';
       document.getElementById('newAddressForm').style.display = 'none';
       document.getElementById('addNewAddress').style.display = 'block';
+    }
+
+    function fillAddressForm(address) {
+      document.getElementById('addressName').value = address.name || '';
+      document.getElementById('addressMobile').value = address.mobile || '';
+      document.getElementById('addressPincode').value = address.pincode || '';
+      document.getElementById('addressCity').value = address.city || '';
+      document.getElementById('addressState').value = address.state || '';
+      document.getElementById('addressStreet').value = address.street || '';
+      document.getElementById('addressType').value = address.type || 'home';
     }
 
     function saveAddress() {
@@ -2158,13 +2210,7 @@
 
     function editAddress(address) {
       // Fill the form with address data
-      document.getElementById('addressName').value = address.name;
-      document.getElementById('addressMobile').value = address.mobile;
-      document.getElementById('addressPincode').value = address.pincode;
-      document.getElementById('addressCity').value = address.city;
-      document.getElementById('addressState').value = address.state;
-      document.getElementById('addressType').value = address.type || 'home';
-      document.getElementById('addressStreet').value = address.street;
+      fillAddressForm(address);
       
       // Show edit form
       showNewAddressForm();
@@ -2281,6 +2327,15 @@
       });
     }
 
+    // Check for sessionStorage on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if coming from product view
+      const viewProductId = sessionStorage.getItem('viewProduct');
+      if (viewProductId) {
+        sessionStorage.removeItem('viewProduct');
+      }
+    });
+
     // Initialize sample data if database is empty (for testing)
     function initializeSampleData() {
       if (!currentUser) return;
@@ -2339,10 +2394,14 @@
           const orderId = 'order_' + Date.now();
           realtimeDb.ref('orders/' + orderId).set({
             userId: currentUser.uid,
+            orderId: 'ORD' + Math.floor(Math.random() * 10000),
             timestamp: Date.now() - 86400000, // Yesterday
             total: 11498,
+            totalAmount: 11498,
             status: 'delivered',
             paymentMethod: 'Credit Card',
+            productName: 'Wireless Bluetooth Headphones',
+            quantity: 1,
             items: [
               {
                 name: 'Wireless Bluetooth Headphones',
