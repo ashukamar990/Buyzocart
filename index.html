@@ -79,7 +79,7 @@
       
       <!-- OFFERS -->
       <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();">
-        <svg xmlns="http://www.w3.org2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.5 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/>
         </svg>
         Offers
@@ -104,7 +104,7 @@
       </div>
       
       <!-- HELP & SUPPORT -->
-      <div class="menu-item" onclick="window.location.href='help-support.html'; closeMenu();">
+      <div class="menu-item" onclick="window.location.href='contact.html'; closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"></path>
@@ -184,7 +184,7 @@
         Login / Sign Up
       </div>
       
-      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="window.location.href='account.html'; closeMenu();">
+      <div class="menu-item" id="mobileUserProfile" style="display:none;" onclick="checkAuthAndShowPage('accountPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -272,7 +272,7 @@
         </button>
         
         <!-- User Profile - Position changed -->
-        <div class="user-profile" id="userProfile" style="display:none;" onclick="window.location.href='account.html'">
+        <div class="user-profile" id="userProfile" style="display:none;" onclick="checkAuthAndShowPage('accountPage')">
           <div class="user-avatar" id="userAvatar">
             <img class="user-avatar-img" id="userAvatarImg" style="display:none;" />
             <span id="userAvatarInitial">U</span>
@@ -484,7 +484,7 @@
         </svg>
         <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
         <p style="color:var(--muted-light)">Try adjusting your filters or search terms</p>
-        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid');">Reset All Filters</button>
+        <button class="btn" style="margin-top:16px" onclick="resetPriceFilter(); document.getElementById('categoriesContainer').querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active')); currentCategoryFilter = null; renderProducts(products, 'productGrid'); updateProductsCount();">Reset All Filters</button>
       </div>
     </section>
 
@@ -525,8 +525,8 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - MOVED ABOVE SIMILAR PRODUCTS -->
-              <div class="detail-carousel-dots" id="detailCarouselDots"></div>
+              <!-- Carousel Dots - FIXED POSITION (moved closer to image) -->
+              <div class="detail-carousel-dots" id="detailCarouselDots" style="margin-top: 10px; margin-bottom: 20px;"></div>
               
               <!-- Similar Products Section -->
               <div class="similar-products-small">
@@ -546,8 +546,39 @@
             <!-- Stock Status -->
             <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
             
+            <!-- Product Rating Display -->
+            <div class="product-rating-display" id="productRatingDisplay" style="margin: 10px 0;">
+              <div class="rating-stars"></div>
+              <span class="rating-count">(0 reviews)</span>
+            </div>
+            
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
+
+            <!-- Size and Quantity Section - MOVED ABOVE as per requirement #9 -->
+            <div class="product-selection-section">
+              <div class="selection-title">Select Size *</div>
+              <div class="size-options" id="detailSizeOptions">
+                <div class="size-option" data-value="S">S</div>
+                <div class="size-option" data-value="M">M</div>
+                <div class="size-option" data-value="L">L</div>
+                <div class="size-option" data-value="XL">XL</div>
+                <div class="size-option" data-value="XXL">XXL</div>
+              </div>
+              
+              <div style="margin-top: 20px;">
+                <div class="selection-title">Select Quantity</div>
+                <!-- Professional Quantity Control -->
+                <div class="quantity-control" style="max-width: 200px;">
+                  <button class="qty-minus">-</button>
+                  <input type="number" id="detailQtySelect" min="1" value="1" max="3" readonly>
+                  <button class="qty-plus">+</button>
+                </div>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
+              </div>
+              
+              <div class="size-validation-error" id="detailSizeValidationError">Please select a size to continue</div>
+            </div>
 
             <!-- Rating and Reviews Section -->
             <div class="review-section">
@@ -564,8 +595,16 @@
                 <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
               </div>
               
-              <div class="reviews-list" id="reviewsList">
-                <!-- Reviews will be dynamically inserted here -->
+              <!-- Top 5-star Reviews -->
+              <div class="top-reviews" id="topReviews">
+                <h3>Top Reviews</h3>
+                <div id="topReviewsList"></div>
+              </div>
+              
+              <!-- All Reviews -->
+              <div class="all-reviews" id="allReviews">
+                <h3>All Reviews <button class="btn secondary view-all-btn" id="viewAllReviews">View All</button></h3>
+                <div id="reviewsList"></div>
               </div>
             </div>
             
@@ -866,6 +905,117 @@
         </div>
       </div>
     </section>
+
+    <!-- Account Page -->
+    <section class="page" id="accountPage">
+      <div class="policy-page">
+        <div class="back-button" onclick="showPage('homePage')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
+        </div>
+        
+        <div class="orders-container">
+          <h2>My Account</h2>
+          <p style="color:var(--muted);margin-bottom:24px">Manage your account and preferences</p>
+          
+          <div class="account-sections">
+            <div class="account-section" onclick="window.location.href='account.html#address'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 4.418-8 12-8 12s-8-7.582-8-12a8 8 0 1 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span>Address</span>
+            </div>
+            <div class="account-section" onclick="window.location.href='account.html#wishlist'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+              <span>Wishlist</span>
+            </div>
+            <div class="account-section" onclick="window.location.href='account.html#orders'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+              <span>My Orders</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Clean Search Results Page -->
+    <section class="page" id="searchResultsPage">
+      <div class="policy-page">
+        <div class="back-button" onclick="showPage('homePage'); closeSearchPanel();">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
+        </div>
+        
+        <div class="orders-container">
+          <h2>Search Results</h2>
+          
+          <!-- Search Bar -->
+          <div class="header-search-container" style="position: static; margin-bottom: 20px;">
+            <div class="header-search-wrap">
+              <input id="searchResultsInput" placeholder="Search products..." autocomplete="off" />
+              <button class="header-search-btn" id="searchResultsBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Price Filter (Clean, without category) -->
+          <div class="price-filter">
+            <div class="price-filter-title">Filter by Price</div>
+            <div class="price-range-slider-container">
+              <div class="price-slider-track" id="searchPriceSliderTrack">
+                <div class="price-slider-range" id="searchPriceSliderRange"></div>
+                <div class="price-slider-thumb" id="searchPriceMinThumb" style="left: 0%;"></div>
+                <div class="price-slider-thumb" id="searchPriceMaxThumb" style="left: 100%;"></div>
+              </div>
+            </div>
+            <div class="price-range-inputs">
+              <div class="price-input-wrapper">
+                <span>₹</span>
+                <input type="number" class="price-input" id="searchMinPrice" placeholder="Min" min="0" max="10000" />
+              </div>
+              <div class="price-input-separator">-</div>
+              <div class="price-input-wrapper">
+                <span>₹</span>
+                <input type="number" class="price-input" id="searchMaxPrice" placeholder="Max" min="0" max="10000" />
+              </div>
+            </div>
+            <div class="price-filter-buttons">
+              <button class="btn" id="searchApplyPriceFilter">Apply Filter</button>
+              <button class="btn secondary" id="searchResetPriceFilter">Reset</button>
+            </div>
+          </div>
+          
+          <div class="product-grid" id="searchResultsGrid">
+            <!-- Search results will be loaded dynamically -->
+          </div>
+          
+          <div id="searchNoResultsMessage" class="card-panel center" style="display:none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
+            <p style="color:var(--muted-light)">Try different keywords or adjust your price filter</p>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Bottom Navigation -->
@@ -894,7 +1044,7 @@
       </svg>
       <span class="bottom-nav-label">Orders</span>
     </div>
-    <div class="bottom-nav-item" onclick="checkAuthAndShowPage('accountPage')">
+    <div class="bottom-nav-item" onclick="window.location.href='account.html'">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
@@ -990,7 +1140,7 @@
             <li><a onclick="showPage('sellProductPage')">Sell Product</a></li>
             <li><a href="terms.html">Terms & Conditions</a></li>
             <li><a href="privacy.html">Privacy Policy</a></li>
-            <li><a href="help-support.html">Help & Support</a></li>
+            <li><a href="contact.html">Help & Support</a></li>
             <li><a href="notifications.html">Notifications</a></li>
           </ul>
         </div>
@@ -1080,6 +1230,10 @@
         <div class="auth-form-group">
           <label>Password</label>
           <input type="password" id="signupPassword" placeholder="Create a password">
+        </div>
+        <div class="auth-form-group">
+          <label>Confirm Password</label>
+          <input type="password" id="signupConfirmPassword" placeholder="Confirm password">
         </div>
         <div id="signupError" style="color:red; font-size:14px; margin-bottom:12px;"></div>
         <button class="btn" id="signupBtn" style="width:100%">Sign Up</button>
@@ -1339,6 +1493,10 @@
       
       remove: function(key) {
         localStorage.removeItem(key);
+      },
+      
+      clearAll: function() {
+        localStorage.clear();
       }
     };
 
@@ -1480,6 +1638,265 @@
       
       // Fix search input
       setupSearchInput();
+      
+      // Check for product ID in URL
+      checkProductIdInUrl();
+      
+      // Setup search results page
+      setupSearchResultsPage();
+    }
+
+    // Check for product ID in URL
+    function checkProductIdInUrl() {
+      const hash = window.location.hash;
+      if (hash && hash.includes('product=')) {
+        const productId = hash.split('product=')[1].split('&')[0];
+        if (productId) {
+          setTimeout(() => {
+            const product = products.find(p => p.id === productId);
+            if (product) {
+              showProductDetail(product);
+            }
+          }, 1000); // Wait for products to load
+        }
+      }
+    }
+
+    // Setup search results page
+    function setupSearchResultsPage() {
+      const searchInput = document.getElementById('searchResultsInput');
+      const searchBtn = document.getElementById('searchResultsBtn');
+      
+      if (searchInput) {
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearchOnPage(this.value);
+            // Hide keyboard
+            this.blur();
+          }
+        });
+      }
+      
+      if (searchBtn) {
+        searchBtn.addEventListener('click', function() {
+          performSearchOnPage(searchInput.value);
+          searchInput.blur();
+        });
+      }
+      
+      // Setup price filter for search page
+      setupSearchPriceFilter();
+    }
+
+    // Setup price filter for search page
+    function setupSearchPriceFilter() {
+      const minThumb = document.getElementById('searchPriceMinThumb');
+      const maxThumb = document.getElementById('searchPriceMaxThumb');
+      const track = document.getElementById('searchPriceSliderTrack');
+      const range = document.getElementById('searchPriceSliderRange');
+      const minInput = document.getElementById('searchMinPrice');
+      const maxInput = document.getElementById('searchMaxPrice');
+      
+      if (minThumb && maxThumb && track) {
+        setupSearchPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput);
+      }
+      
+      document.getElementById('searchApplyPriceFilter')?.addEventListener('click', applySearchPriceFilter);
+      document.getElementById('searchResetPriceFilter')?.addEventListener('click', resetSearchPriceFilter);
+    }
+
+    function setupSearchPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput) {
+      let minPercent = 0;
+      let maxPercent = 100;
+      const minPrice = 0;
+      const maxPrice = 10000;
+      
+      function updateSlider() {
+        minThumb.style.left = minPercent + '%';
+        maxThumb.style.left = maxPercent + '%';
+        range.style.left = minPercent + '%';
+        range.style.width = (maxPercent - minPercent) + '%';
+        
+        const minValue = Math.round(minPrice + (minPercent / 100) * (maxPrice - minPrice));
+        const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - minPrice));
+        
+        minInput.value = minValue;
+        maxInput.value = maxValue;
+      }
+      
+      function onThumbMove(thumb, isMin) {
+        return function(e) {
+          e.preventDefault();
+          const trackRect = track.getBoundingClientRect();
+          let percent;
+          
+          if (e.type === 'touchmove') {
+            percent = ((e.touches[0].clientX - trackRect.left) / trackRect.width) * 100;
+          } else {
+            percent = ((e.clientX - trackRect.left) / trackRect.width) * 100;
+          }
+          
+          percent = Math.max(0, Math.min(100, percent));
+          
+          if (isMin) {
+            if (percent < maxPercent - 5) {
+              minPercent = percent;
+            }
+          } else {
+            if (percent > minPercent + 5) {
+              maxPercent = percent;
+            }
+          }
+          
+          updateSlider();
+        };
+      }
+      
+      function onThumbUp() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onThumbUp);
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onThumbUp);
+      }
+      
+      let onMouseMove, onTouchMove;
+      
+      function onThumbDown(isMin) {
+        return function(e) {
+          e.preventDefault();
+          
+          if (isMin) {
+            onMouseMove = onThumbMove(minThumb, true);
+            onTouchMove = onThumbMove(minThumb, true);
+          } else {
+            onMouseMove = onThumbMove(maxThumb, false);
+            onTouchMove = onThumbMove(maxThumb, false);
+          }
+          
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onThumbUp);
+          document.addEventListener('touchmove', onTouchMove);
+          document.addEventListener('touchend', onThumbUp);
+        };
+      }
+      
+      minThumb.addEventListener('mousedown', onThumbDown(true));
+      maxThumb.addEventListener('mousedown', onThumbDown(false));
+      minThumb.addEventListener('touchstart', onThumbDown(true));
+      maxThumb.addEventListener('touchstart', onThumbDown(false));
+      
+      minInput.addEventListener('input', function() {
+        const value = parseInt(this.value) || 0;
+        minPercent = ((value - minPrice) / (maxPrice - minPrice)) * 100;
+        if (minPercent >= maxPercent - 5) minPercent = maxPercent - 5;
+        updateSlider();
+      });
+      
+      maxInput.addEventListener('input', function() {
+        const value = parseInt(this.value) || maxPrice;
+        maxPercent = ((value - minPrice) / (maxPrice - minPrice)) * 100;
+        if (maxPercent <= minPercent + 5) maxPercent = minPercent + 5;
+        updateSlider();
+      });
+      
+      updateSlider();
+    }
+
+    function applySearchPriceFilter() {
+      const minPrice = parseFloat(document.getElementById('searchMinPrice').value) || 0;
+      const maxPrice = parseFloat(document.getElementById('searchMaxPrice').value) || 10000;
+      
+      const filteredProducts = window.lastSearchResults ? 
+        window.lastSearchResults.filter(product => {
+          const price = parsePrice(product.price);
+          return price >= minPrice && price <= maxPrice;
+        }) : [];
+      
+      renderSearchResults(filteredProducts);
+    }
+
+    function resetSearchPriceFilter() {
+      document.getElementById('searchMinPrice').value = '0';
+      document.getElementById('searchMaxPrice').value = '10000';
+      
+      const minThumb = document.getElementById('searchPriceMinThumb');
+      const maxThumb = document.getElementById('searchPriceMaxThumb');
+      const range = document.getElementById('searchPriceSliderRange');
+      
+      if (minThumb && maxThumb && range) {
+        minThumb.style.left = '0%';
+        maxThumb.style.left = '100%';
+        range.style.left = '0%';
+        range.style.width = '100%';
+      }
+      
+      renderSearchResults(window.lastSearchResults || []);
+    }
+
+    function performSearchOnPage(query) {
+      if (!query.trim()) return;
+      
+      // Add to recent searches
+      addToRecentSearches(query);
+      
+      // Filter products
+      const filteredProducts = products.filter(product => 
+        product.name?.toLowerCase().includes(query.toLowerCase()) ||
+        product.description?.toLowerCase().includes(query.toLowerCase()) ||
+        product.category?.toLowerCase().includes(query.toLowerCase()) ||
+        product.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+      );
+      
+      // If no exact matches found, show similar products
+      if (filteredProducts.length === 0) {
+        const similarProducts = products.filter(product => {
+          const queryWords = query.toLowerCase().split(' ');
+          const productNameWords = product.name?.toLowerCase().split(' ') || [];
+          const productDescWords = product.description?.toLowerCase().split(' ') || [];
+          
+          return queryWords.some(qWord => 
+            productNameWords.some(pWord => pWord.includes(qWord)) ||
+            productDescWords.some(pWord => pWord.includes(qWord))
+          );
+        });
+        
+        window.lastSearchResults = similarProducts.length > 0 ? similarProducts : [];
+        renderSearchResults(similarProducts);
+      } else {
+        window.lastSearchResults = filteredProducts;
+        renderSearchResults(filteredProducts);
+      }
+      
+      // Show search results page
+      showPage('searchResultsPage');
+    }
+
+    function renderSearchResults(results) {
+      const container = document.getElementById('searchResultsGrid');
+      const noResultsMessage = document.getElementById('searchNoResultsMessage');
+      
+      if (!container) return;
+      
+      if (results.length === 0) {
+        container.innerHTML = '';
+        if (noResultsMessage) noResultsMessage.style.display = 'block';
+        return;
+      }
+      
+      if (noResultsMessage) noResultsMessage.style.display = 'none';
+      
+      container.innerHTML = '';
+      
+      // Create document fragment for better performance
+      const fragment = document.createDocumentFragment();
+      
+      results.forEach(product => {
+        const productCard = createProductCard(product);
+        fragment.appendChild(productCard);
+      });
+      
+      container.appendChild(fragment);
     }
 
     // Setup search input
@@ -1488,7 +1905,11 @@
       if (searchInput) {
         searchInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
+            e.preventDefault();
             performSearch(this.value);
+            // Hide keyboard
+            this.blur();
+            closeSearchPanel();
           }
         });
         
@@ -1501,23 +1922,30 @@
     // Setup back button behavior
     function setupBackButton() {
       window.addEventListener('popstate', function(event) {
-        // Check current page and handle accordingly
-        const currentPage = document.querySelector('.page.active').id;
-        if (currentPage === 'productDetailPage') {
-          // If on product detail, go back to products page
-          showPage('productsPage');
-        } else if (currentPage === 'orderPage' || currentPage === 'userPage' || currentPage === 'paymentPage') {
-          // If in checkout flow, go back one step
-          if (currentPage === 'paymentPage') {
-            showPage('userPage');
-          } else if (currentPage === 'userPage') {
-            showPage('orderPage');
-          } else if (currentPage === 'orderPage') {
-            showPage('productsPage');
-          }
+        // Check for product ID in URL
+        if (window.location.hash && window.location.hash.includes('product=')) {
+          checkProductIdInUrl();
         } else {
-          // For other pages, go to home
-          showPage('homePage');
+          // Check current page and handle accordingly
+          const currentPage = document.querySelector('.page.active').id;
+          if (currentPage === 'productDetailPage') {
+            // If on product detail, go back to products page
+            showPage('productsPage');
+          } else if (currentPage === 'orderPage' || currentPage === 'userPage' || currentPage === 'paymentPage') {
+            // If in checkout flow, go back one step
+            if (currentPage === 'paymentPage') {
+              showPage('userPage');
+            } else if (currentPage === 'userPage') {
+              showPage('orderPage');
+            } else if (currentPage === 'orderPage') {
+              showPage('productsPage');
+            }
+          } else if (currentPage === 'searchResultsPage') {
+            showPage('homePage');
+          } else {
+            // For other pages, go to home
+            showPage('homePage');
+          }
         }
       });
     }
@@ -1571,9 +1999,12 @@
 
     // Load cached data
     function loadCachedData() {
+      console.log('Loading data from cache...');
+      
       // Load products from cache
       const cachedProducts = cacheManager.get('products');
       if (cachedProducts && cachedProducts.length > 0) {
+        console.log('Products loaded from cache:', cachedProducts.length);
         products = cachedProducts;
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
@@ -1587,11 +2018,14 @@
         }
         
         updateProductsCount();
+      } else {
+        console.log('No cached products found');
       }
       
       // Load categories from cache
       const cachedCategories = cacheManager.get('categories');
       if (cachedCategories && cachedCategories.length > 0) {
+        console.log('Categories loaded from cache:', cachedCategories.length);
         categories = cachedCategories;
         renderCategories();
         renderCategoryCircles();
@@ -1600,6 +2034,7 @@
       // Load banners from cache
       const cachedBanners = cacheManager.get('banners');
       if (cachedBanners && cachedBanners.length > 0) {
+        console.log('Banners loaded from cache:', cachedBanners.length);
         banners = cachedBanners;
         renderBannerCarousel();
       }
@@ -1607,8 +2042,20 @@
       // Load admin settings from cache
       const cachedSettings = cacheManager.get('adminSettings');
       if (cachedSettings) {
+        console.log('Admin settings loaded from cache');
         adminSettings = cachedSettings;
         updateAdminSettingsUI();
+      }
+      
+      // Load popular searches and search tags from cache
+      const cachedPopularSearches = cacheManager.get('popularSearches');
+      if (cachedPopularSearches) {
+        popularSearches = cachedPopularSearches;
+      }
+      
+      const cachedSearchTags = cacheManager.get('searchTags');
+      if (cachedSearchTags) {
+        searchTags = cachedSearchTags;
       }
     }
 
@@ -1618,6 +2065,8 @@
         console.error('Firebase not initialized');
         return;
       }
+      
+      console.log('Fetching live data from Firebase...');
       
       const database = window.firebase.database;
       const ref = window.firebase.ref;
@@ -1632,6 +2081,7 @@
             ...productsObj[key]
           }));
           
+          console.log('Products fetched from Firebase:', newProducts.length);
           products = newProducts;
           cacheManager.set('products', products);
           
@@ -1665,6 +2115,7 @@
             ...categoriesObj[key]
           }));
           
+          console.log('Categories fetched from Firebase:', newCategories.length);
           categories = newCategories;
           cacheManager.set('categories', categories);
           
@@ -1687,6 +2138,7 @@
             ...bannersObj[key]
           }));
           
+          console.log('Banners fetched from Firebase:', newBanners.length);
           banners = newBanners;
           cacheManager.set('banners', banners);
           
@@ -1710,6 +2162,30 @@
         console.error('Error fetching admin settings:', error);
       });
       
+      // Fetch popular searches
+      get(ref(database, 'popularSearches')).then(snapshot => {
+        const popularSearchesObj = snapshot.val();
+        if (popularSearchesObj) {
+          popularSearches = Object.values(popularSearchesObj);
+          cacheManager.set('popularSearches', popularSearches);
+          loadPopularSearches();
+        }
+      }).catch(error => {
+        console.error('Error fetching popular searches:', error);
+      });
+      
+      // Fetch search tags
+      get(ref(database, 'searchTags')).then(snapshot => {
+        const searchTagsObj = snapshot.val();
+        if (searchTagsObj) {
+          searchTags = Object.values(searchTagsObj);
+          cacheManager.set('searchTags', searchTags);
+          loadSearchTags();
+        }
+      }).catch(error => {
+        console.error('Error fetching search tags:', error);
+      });
+      
       // Fetch out of stock items
       get(ref(database, 'outOfStock')).then(snapshot => {
         const outOfStockObj = snapshot.val();
@@ -1730,6 +2206,8 @@
       const ref = window.firebase.ref;
       const onValue = window.firebase.onValue;
       
+      console.log('Setting up realtime listeners...');
+      
       // Products listener
       onValue(ref(database, 'products'), snapshot => {
         const productsObj = snapshot.val();
@@ -1741,6 +2219,7 @@
           
           products = newProducts;
           cacheManager.set('products', products);
+          console.log('Products updated via realtime:', products.length);
           
           if (document.getElementById('homePage')?.classList.contains('active') || 
               document.getElementById('productsPage')?.classList.contains('active') ||
@@ -1806,6 +2285,26 @@
           adminSettings = { ...adminSettings, ...settingsObj };
           cacheManager.set('adminSettings', adminSettings);
           updateAdminSettingsUI();
+        }
+      });
+      
+      // Popular searches listener
+      onValue(ref(database, 'popularSearches'), snapshot => {
+        const popularSearchesObj = snapshot.val();
+        if (popularSearchesObj) {
+          popularSearches = Object.values(popularSearchesObj);
+          cacheManager.set('popularSearches', popularSearches);
+          loadPopularSearches();
+        }
+      });
+      
+      // Search tags listener
+      onValue(ref(database, 'searchTags'), snapshot => {
+        const searchTagsObj = snapshot.val();
+        if (searchTagsObj) {
+          searchTags = Object.values(searchTagsObj);
+          cacheManager.set('searchTags', searchTags);
+          loadSearchTags();
         }
       });
       
@@ -1890,7 +2389,30 @@
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       
-      // Size options
+      // Size options for detail page
+      document.querySelectorAll('#detailSizeOptions .size-option').forEach(option => {
+        option.addEventListener('click', function() {
+          document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('detailSizeValidationError')?.classList.remove('show');
+        });
+      });
+      
+      // Detail quantity controls
+      document.querySelector('#detailQtySelect')?.parentElement?.querySelector('.qty-minus')?.addEventListener('click', () => {
+        const qtyInput = document.getElementById('detailQtySelect');
+        let value = parseInt(qtyInput.value);
+        if (value > 1) qtyInput.value = value - 1;
+      });
+      
+      document.querySelector('#detailQtySelect')?.parentElement?.querySelector('.qty-plus')?.addEventListener('click', () => {
+        const qtyInput = document.getElementById('detailQtySelect');
+        let value = parseInt(qtyInput.value);
+        if (value < 3) qtyInput.value = value + 1;
+        else showToast('Maximum 3 units per order', 'error');
+      });
+      
+      // Size options for order page
       document.querySelectorAll('#sizeOptions .size-option').forEach(option => {
         option.addEventListener('click', function() {
           document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
@@ -1941,6 +2463,23 @@
       
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       
+      // View All Reviews button
+      document.getElementById('viewAllReviews')?.addEventListener('click', function() {
+        const reviewsSection = document.getElementById('allReviews');
+        const reviewsList = document.getElementById('reviewsList');
+        
+        if (reviewsList) {
+          // Toggle between showing all reviews and just a preview
+          if (reviewsList.classList.contains('show-all')) {
+            reviewsList.classList.remove('show-all');
+            this.textContent = 'View All';
+          } else {
+            reviewsList.classList.add('show-all');
+            this.textContent = 'Show Less';
+          }
+        }
+      });
+      
       // Share link
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
       
@@ -1956,7 +2495,11 @@
       window.addEventListener('hashchange', function() {
         const hash = window.location.hash.substring(1);
         if (hash && document.getElementById(hash)) {
-          showPage(hash);
+          if (hash.includes('product=')) {
+            checkProductIdInUrl();
+          } else {
+            showPage(hash);
+          }
         }
       });
       
@@ -1964,7 +2507,11 @@
       if (window.location.hash) {
         const pageId = window.location.hash.substring(1);
         if (document.getElementById(pageId)) {
-          showPage(pageId);
+          if (pageId.includes('product=')) {
+            checkProductIdInUrl();
+          } else {
+            showPage(pageId);
+          }
         }
       }
       
@@ -1980,7 +2527,7 @@
       }
     }
 
-    // Banner touch events setup
+    // Banner touch events setup - FIXED SWIPE DIRECTION
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
@@ -2010,9 +2557,11 @@
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
+            // Swipe left - go to next slide
             const nextIndex = (activeIndex + 1) % banners.length;
             setBannerSlide(nextIndex);
           } else {
+            // Swipe right - go to previous slide
             const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
             setBannerSlide(prevIndex);
           }
@@ -2040,7 +2589,7 @@
       }, 5000);
     }
 
-    // Setup trending products auto-slide
+    // Setup trending products auto-slide - 2 SECONDS
     function setupTrendingAutoSlide() {
       const slider = document.getElementById('productSlider');
       if (!slider) return;
@@ -2055,14 +2604,14 @@
       // Clear any existing interval
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       
-      // Auto slide every 4 seconds - RIGHT ONLY
+      // Auto slide every 2 seconds - RIGHT ONLY
       trendingAutoSlideInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % totalSlides;
         slider.scrollTo({
           left: currentSlide * slides[0].offsetWidth,
           behavior: 'smooth'
         });
-      }, 4000);
+      }, 2000);
     }
 
     // Price slider setup
@@ -2218,7 +2767,7 @@
           updateProductsCount();
           break;
         case 'homePage':
-          // Setup auto slide for trending products
+          // Setup auto slide for trending products (2 seconds)
           setTimeout(setupTrendingAutoSlide, 1000);
           // Setup banner auto slide
           setTimeout(setupBannerAutoSlide, 1000);
@@ -2411,21 +2960,8 @@
           );
         });
         
-        // Redirect to products page with search results
-        showPage('productsPage');
-        
-        // Apply search filter
-        currentCategoryFilter = null;
-        document.querySelectorAll('.category-pill').forEach(pill => {
-          if (pill.textContent === 'All') {
-            pill.classList.add('active');
-          } else {
-            pill.classList.remove('active');
-          }
-        });
-        
-        renderProducts(similarProducts.length > 0 ? similarProducts : products, 'productGrid');
-        updateProductsCount();
+        window.lastSearchResults = similarProducts.length > 0 ? similarProducts : [];
+        renderSearchResults(similarProducts);
         
         if (similarProducts.length === 0) {
           showToast('No exact matches found. Showing all products.', 'info');
@@ -2433,25 +2969,12 @@
           showToast(`No exact matches for "${query}". Showing similar products.`, 'info');
         }
       } else {
-        // Redirect to products page with search results
-        showPage('productsPage');
-        
-        // Apply search filter
-        currentCategoryFilter = null;
-        document.querySelectorAll('.category-pill').forEach(pill => {
-          if (pill.textContent === 'All') {
-            pill.classList.add('active');
-          } else {
-            pill.classList.remove('active');
-          }
-        });
-        
-        renderProducts(filteredProducts, 'productGrid');
-        updateProductsCount();
+        window.lastSearchResults = filteredProducts;
+        renderSearchResults(filteredProducts);
       }
       
-      // Close search panel
-      closeSearchPanel();
+      // Show search results page
+      showPage('searchResultsPage');
     }
 
     function addToRecentSearches(query) {
@@ -2655,13 +3178,19 @@
       const name = document.getElementById('signupName').value;
       const email = document.getElementById('signupEmail').value;
       const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('signupConfirmPassword').value;
       const signupError = document.getElementById('signupError');
       const signupBtn = document.getElementById('signupBtn');
       
       signupError.textContent = '';
       
-      if (!name || !email || !password) {
+      if (!name || !email || !password || !confirmPassword) {
         signupError.textContent = 'Please fill in all fields';
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        signupError.textContent = 'Passwords do not match';
         return;
       }
       
@@ -2694,6 +3223,7 @@
         document.getElementById('signupName').value = '';
         document.getElementById('signupEmail').value = '';
         document.getElementById('signupPassword').value = '';
+        document.getElementById('signupConfirmPassword').value = '';
       } catch (err) {
         console.error('Signup error:', err);
         signupError.textContent = err.message;
@@ -3074,10 +3604,15 @@
       });
     }
 
-    // Product detail functions
+    // Product detail functions - FIXED TO SHOW ALL PRODUCTS
     function showProductDetail(product) {
-      // Find the actual product from products array
+      // Find the actual product from products array using ID
       const actualProduct = products.find(p => p.id === product.id) || product;
+      if (!actualProduct) {
+        showToast('Product not found', 'error');
+        return;
+      }
+      
       currentProduct = actualProduct;
       currentSelectedColor = product.defaultColor || 'black';
       currentSelectedColorName = colorNames[currentSelectedColor] || 'काला';
@@ -3187,13 +3722,10 @@
       }, { passive: true });
       
       mainImage.addEventListener('touchmove', (e) => {
-        if (!isBannerDragging) return;
         touchEndX = e.changedTouches[0].screenX;
       }, { passive: true });
       
       mainImage.addEventListener('touchend', (e) => {
-        if (!isBannerDragging) return;
-        
         touchEndX = e.changedTouches[0].screenX;
         handleSwipe();
         resumeSlideAfterDelay();
@@ -3228,10 +3760,10 @@
         
         if (Math.abs(difference) > minSwipeDistance) {
           if (difference > 0) {
-            // Swipe left
+            // Swipe left - go to next image
             nextDetailImage();
           } else {
-            // Swipe right
+            // Swipe right - go to previous image
             prevDetailImage();
           }
         }
@@ -3651,10 +4183,26 @@
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      // Clear any previously selected size
+      // Get size and quantity from detail page
+      const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
+      const detailQty = parseInt(document.getElementById('detailQtySelect').value) || 1;
+      
+      if (!selectedSize) {
+        document.getElementById('detailSizeValidationError').classList.add('show');
+        showToast('Please select a size to continue', 'error');
+        return;
+      }
+      
+      // Clear any previously selected size in order page
       document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
         opt.classList.remove('selected');
+        if (opt.getAttribute('data-value') === selectedSize.getAttribute('data-value')) {
+          opt.classList.add('selected');
+        }
       });
+      
+      // Set quantity in order page
+      document.getElementById('qtySelect').value = detailQty;
       
       // Update order page
       document.getElementById('spTitle').textContent = currentProduct.name;
@@ -3690,6 +4238,11 @@
       if (document.getElementById('wishlistPage')?.classList.contains('active')) {
         renderWishlist();
       }
+      
+      // Also update account.html if needed
+      try {
+        localStorage.setItem('wishlistSync', JSON.stringify(wishlist));
+      } catch (e) {}
     }
 
     function toggleWishlistFromDetail() {
@@ -3913,7 +4466,13 @@
         productsCount.textContent = 'No products found';
       } else {
         noProductsMessage.style.display = 'none';
-        productsCount.textContent = `${visibleProducts} products found`;
+        if (currentCategoryFilter || document.getElementById('minPrice').value != '0' || document.getElementById('maxPrice').value != '10000') {
+          // If filter is applied
+          productsCount.textContent = `${visibleProducts} products match your filters`;
+        } else {
+          // No filter applied
+          productsCount.textContent = 'Amazing Products Collection';
+        }
       }
     }
 
@@ -4062,6 +4621,11 @@
         
         showToast('Address saved successfully', 'success');
         loadSavedAddresses();
+        
+        // Sync with account.html
+        try {
+          localStorage.setItem('lastSavedAddress', JSON.stringify(addressData));
+        } catch (e) {}
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -4128,9 +4692,9 @@
       };
     }
 
-    // Reviews and ratings
+    // Reviews and ratings - COMPLETELY REWORKED
     function setRating(rating) {
-      const stars = document.querySelectorAll('.rating-star');
+      const stars = document.querySelectorAll('#ratingInput .rating-star');
       stars.forEach((star, index) => {
         if (index < rating) {
           star.classList.add('active');
@@ -4151,7 +4715,7 @@
         return;
       }
       
-      const activeStars = document.querySelectorAll('.rating-star.active');
+      const activeStars = document.querySelectorAll('#ratingInput .rating-star.active');
       const rating = activeStars.length;
       const reviewTextValue = document.getElementById('reviewText').value.trim();
       
@@ -4171,7 +4735,7 @@
           id: reviewId,
           productId: currentProduct.id,
           userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
+          userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
           rating: rating,
           text: reviewTextValue,
           date: Date.now()
@@ -4202,61 +4766,121 @@
         );
         
         const reviewsList = document.getElementById('reviewsList');
-        if (!reviewsList) return;
+        const topReviewsList = document.getElementById('topReviewsList');
+        const productRatingDisplay = document.getElementById('productRatingDisplay');
         
         if (!snapshot.exists()) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          if (reviewsList) reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          if (topReviewsList) topReviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No top reviews yet</p>';
+          if (productRatingDisplay) {
+            productRatingDisplay.querySelector('.rating-stars').innerHTML = '☆☆☆☆☆';
+            productRatingDisplay.querySelector('.rating-count').textContent = '(0 reviews)';
+          }
           return;
         }
         
         const reviewsObj = snapshot.val();
         const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
         
-        reviews.sort((a, b) => b.date - a.date);
+        // Calculate average rating
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
         
-        renderReviews(reviews);
+        // Update product rating display
+        if (productRatingDisplay) {
+          const stars = '★'.repeat(Math.round(averageRating)) + '☆'.repeat(5 - Math.round(averageRating));
+          productRatingDisplay.querySelector('.rating-stars').innerHTML = stars;
+          productRatingDisplay.querySelector('.rating-count').textContent = `(${reviews.length} reviews)`;
+        }
+        
+        // Sort reviews: 5-star reviews first, then by date
+        reviews.sort((a, b) => {
+          if (a.rating === 5 && b.rating !== 5) return -1;
+          if (b.rating === 5 && a.rating !== 5) return 1;
+          return b.date - a.date;
+        });
+        
+        // Get top 5-star reviews (first 5)
+        const top5StarReviews = reviews.filter(review => review.rating === 5).slice(0, 5);
+        
+        // Render top reviews
+        if (topReviewsList) {
+          if (top5StarReviews.length === 0) {
+            topReviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No 5-star reviews yet</p>';
+          } else {
+            topReviewsList.innerHTML = '';
+            top5StarReviews.forEach(review => {
+              const reviewItem = createReviewItem(review);
+              topReviewsList.appendChild(reviewItem);
+            });
+          }
+        }
+        
+        // Render all reviews
+        if (reviewsList) {
+          reviewsList.innerHTML = '';
+          if (reviews.length === 0) {
+            reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          } else {
+            // Show only first 3 reviews initially
+            const showCount = reviewsList.classList.contains('show-all') ? reviews.length : 3;
+            reviews.slice(0, showCount).forEach(review => {
+              const reviewItem = createReviewItem(review);
+              reviewsList.appendChild(reviewItem);
+            });
+            
+            // Add "View All" button if more than 3 reviews
+            if (reviews.length > 3 && !reviewsList.classList.contains('show-all')) {
+              const viewAllBtn = document.createElement('button');
+              viewAllBtn.className = 'btn secondary view-all-reviews';
+              viewAllBtn.textContent = 'View All Reviews';
+              viewAllBtn.style.marginTop = '10px';
+              viewAllBtn.addEventListener('click', function() {
+                reviewsList.classList.add('show-all');
+                loadProductReviews(productId); // Reload with show-all class
+              });
+              reviewsList.appendChild(viewAllBtn);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error loading reviews:', error);
         const reviewsList = document.getElementById('reviewsList');
         if (reviewsList) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
         }
       }
     }
 
-    function renderReviews(reviews) {
-      const reviewsList = document.getElementById('reviewsList');
-      if (!reviewsList) return;
+    function createReviewItem(review) {
+      const reviewItem = document.createElement('div');
+      reviewItem.className = 'review-item';
       
-      reviewsList.innerHTML = '';
+      const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+      const date = new Date(review.date).toLocaleDateString();
       
-      reviews.forEach(review => {
-        const reviewItem = document.createElement('div');
-        reviewItem.className = 'review-item';
-        
-        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
-        
-        reviewItem.innerHTML = `
-          <div class="review-header">
-            <div class="reviewer-name">${review.userName}</div>
-            <div class="review-date">${date}</div>
-          </div>
-          <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
-          ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
-        `;
-        
-        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', function() {
-            deleteReview(review.id);
-          });
-        }
-        
-        reviewsList.appendChild(reviewItem);
-      });
+      reviewItem.innerHTML = `
+        <div class="review-header">
+          <div class="reviewer-name">${review.userName}</div>
+          <div class="review-date">${date}</div>
+        </div>
+        <div class="review-rating">${stars}</div>
+        <div class="review-text">${review.text}</div>
+      `;
+      
+      // Add delete button only if current user is the reviewer or admin
+      if (currentUser && (review.userId === currentUser.uid)) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'review-delete-btn';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteReview(review.id);
+        });
+        reviewItem.appendChild(deleteBtn);
+      }
+      
+      return reviewItem;
     }
 
     async function deleteReview(reviewId) {
@@ -4267,7 +4891,9 @@
       try {
         await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
         showToast('Review deleted successfully', 'success');
-        loadProductReviews(currentProduct.id);
+        if (currentProduct) {
+          loadProductReviews(currentProduct.id);
+        }
       } catch (error) {
         console.error('Error deleting review:', error);
         showToast('Failed to delete review', 'error');
@@ -4320,7 +4946,7 @@
       }
     }
 
-    // Orders functions
+    // Orders functions - FIXED TO SHOW ALL ORDERS
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -4353,6 +4979,8 @@
         empty.style.display = 'none';
       } catch (error) {
         console.error('Error loading orders:', error);
+        const empty = document.getElementById('orders-empty');
+        if (empty) empty.style.display = 'block';
       }
     }
 
@@ -4362,27 +4990,33 @@
       
       container.innerHTML = '';
       
+      if (orders.length === 0) {
+        const empty = document.getElementById('orders-empty');
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      
       orders.forEach(order => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
         const statusClass = `status-${order.status}`;
-        const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+        const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending';
         
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
-              <div class="order-id">${order.orderId}</div>
-              <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
+              <div class="order-id">${order.orderId || 'N/A'}</div>
+              <div class="order-date">${order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
             <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${order.productName}</div>
-              <div class="order-product-price">₹${order.totalAmount}</div>
-              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}</div>
+              <div class="order-product-title">${order.productName || 'Product Name'}</div>
+              <div class="order-product-price">₹${order.totalAmount || '0'}</div>
+              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'} | Color: ${order.colorName || order.color || 'N/A'}</div>
             </div>
           </div>
         `;
@@ -4397,17 +5031,17 @@
       if (!container) return;
       
       const statusClass = `status-${order.status}`;
-      const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+      const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending';
       
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
-          <div class="order-detail-value">${order.orderId}</div>
+          <div class="order-detail-value">${order.orderId || 'N/A'}</div>
         </div>
         
         <div class="order-detail-section">
           <div class="order-detail-label">Order Date</div>
-          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString()}</div>
+          <div class="order-detail-value">${order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A'}</div>
         </div>
         
         <div class="order-detail-section">
@@ -4420,10 +5054,10 @@
           <div class="order-detail-product">
             <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
-              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
+              <div style="font-weight:600;margin-bottom:8px">${order.productName || 'Product Name'}</div>
+              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice || '0'}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}
+                Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'} | Color: ${order.colorName || order.color || 'N/A'}
               </div>
             </div>
           </div>
@@ -4434,11 +5068,11 @@
           <div class="order-detail-value">
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Subtotal:</span>
-              <span>₹${order.subtotal}</span>
+              <span>₹${order.subtotal || '0'}</span>
             </div>
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Delivery:</span>
-              <span>₹${order.deliveryCharge}</span>
+              <span>₹${order.deliveryCharge || '0'}</span>
             </div>
             ${order.gatewayCharge > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
@@ -4448,7 +5082,7 @@
             ` : ''}
             <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
               <span>Total Amount:</span>
-              <span>₹${order.totalAmount}</span>
+              <span>₹${order.totalAmount || '0'}</span>
             </div>
             <div style="margin-top:8px;color:var(--muted);font-size:14px">
               Payment Method: ${order.paymentMethod === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on Delivery'}
@@ -4767,7 +5401,7 @@
       background-color: #f8fafc;
       border-radius: var(--radius);
       overflow: hidden;
-      margin-bottom: 20px;
+      margin-bottom: 10px; /* Reduced margin */
       cursor: pointer;
     }
     
@@ -4794,13 +5428,14 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots position - MOVED ABOVE SIMILAR PRODUCTS */
+    /* Carousel dots position - FIXED (closer to image) */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
+      margin-top: 10px;
       margin-bottom: 20px;
-      padding: 10px 0;
+      padding: 5px 0;
     }
     
     .detail-carousel-dot {
@@ -4816,6 +5451,102 @@
     .detail-carousel-dot.active {
       background: var(--accent);
       transform: scale(1.2);
+    }
+    
+    /* Product rating display */
+    .product-rating-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .product-rating-display .rating-stars {
+      font-size: 18px;
+      color: #ffc107;
+      letter-spacing: 2px;
+    }
+    
+    .product-rating-display .rating-count {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    
+    /* Review items */
+    .review-item {
+      border-bottom: 1px solid var(--border);
+      padding: 15px 0;
+    }
+    
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .reviewer-name {
+      font-weight: 600;
+    }
+    
+    .review-date {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    
+    .review-rating {
+      color: #ffc107;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    
+    .review-text {
+      color: var(--text);
+      line-height: 1.5;
+    }
+    
+    .review-delete-btn {
+      background: none;
+      border: 1px solid var(--error);
+      color: var(--error);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+    
+    .review-delete-btn:hover {
+      background: var(--error);
+      color: white;
+    }
+    
+    /* Top reviews section */
+    .top-reviews {
+      margin: 20px 0;
+      padding: 15px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    
+    .top-reviews h3 {
+      margin-top: 0;
+    }
+    
+    .all-reviews {
+      margin: 20px 0;
+    }
+    
+    .all-reviews h3 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .view-all-btn {
+      font-size: 12px;
+      padding: 5px 10px;
     }
     
     /* Sticky order buttons - FIXED POSITION */
@@ -5021,6 +5752,264 @@
       font-size: 12px;
       color: var(--muted);
       margin-left: 5px;
+    }
+    
+    /* Order card styling */
+    .order-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 15px;
+      margin-bottom: 15px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .order-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    
+    .order-id {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    
+    .order-date {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    
+    .order-status {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-confirmed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    
+    .status-shipped {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .status-delivered {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    .status-cancelled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .order-details {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .order-product-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+    }
+    
+    .order-product-info {
+      flex: 1;
+    }
+    
+    .order-product-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    
+    .order-product-price {
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .order-product-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    /* Empty state styling */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      opacity: 0.5;
+      margin-bottom: 20px;
+    }
+    
+    .empty-state h3 {
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    
+    .empty-state p {
+      color: var(--muted-light);
+      margin-bottom: 20px;
+    }
+    
+    .empty-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    
+    /* Rating stars in input */
+    #ratingInput {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+    
+    #ratingInput .rating-star {
+      font-size: 24px;
+      color: #ddd;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    
+    #ratingInput .rating-star.active {
+      color: #ffc107;
+    }
+    
+    #ratingInput .rating-star:hover {
+      color: #ffc107;
+    }
+    
+    /* Review textarea */
+    .review-textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
+      margin-bottom: 15px;
+    }
+    
+    .review-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .review-submit-btn {
+      width: 100%;
+    }
+    
+    /* Order detail page styling */
+    .order-detail-section {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .order-detail-section:last-child {
+      border-bottom: none;
+    }
+    
+    .order-detail-label {
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    .order-detail-value {
+      color: var(--text);
+    }
+    
+    .order-detail-product {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .order-detail-image {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+    }
+    
+    .order-detail-product-info {
+      flex: 1;
+    }
+    
+    /* Account sections styling */
+    .account-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .account-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .account-section:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .account-section svg {
+      margin-bottom: 10px;
+      color: var(--accent);
+    }
+    
+    .account-section span {
+      display: block;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    /* Search results page styling */
+    #searchResultsPage .header-search-container {
+      position: static;
     }
   </style>
 </body>
