@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
   
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -487,56 +488,6 @@
       </div>
     </section>
 
-    <!-- Search Results Page (Clean, only price filter) -->
-    <section class="page" id="searchResultsPage">
-      <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <h2 style="margin:0">Search Results</h2>
-        <div style="font-size:14px;color:var(--muted)" id="searchResultsCount">0 products found</div>
-      </div>
-
-      <!-- Professional Price Filter -->
-      <div class="price-filter">
-        <div class="price-filter-title">Filter by Price</div>
-        <div class="price-range-slider-container">
-          <div class="price-slider-track" id="searchPriceSliderTrack">
-            <div class="price-slider-range" id="searchPriceSliderRange"></div>
-            <div class="price-slider-thumb" id="searchPriceMinThumb" style="left: 0%;"></div>
-            <div class="price-slider-thumb" id="searchPriceMaxThumb" style="left: 100%;"></div>
-          </div>
-        </div>
-        <div class="price-range-inputs">
-          <div class="price-input-wrapper">
-            <span>₹</span>
-            <input type="number" class="price-input" id="searchMinPrice" placeholder="Min" min="0" max="10000" />
-          </div>
-          <div class="price-input-separator">-</div>
-          <div class="price-input-wrapper">
-            <span>₹</span>
-            <input type="number" class="price-input" id="searchMaxPrice" placeholder="Max" min="0" max="10000" />
-          </div>
-        </div>
-        <div class="price-filter-buttons">
-          <button class="btn" id="applySearchPriceFilter">Apply Filter</button>
-          <button class="btn secondary" id="resetSearchPriceFilter">Reset</button>
-        </div>
-      </div>
-
-      <div class="product-grid" id="searchResultsGrid">
-        <!-- Search results will be loaded dynamically -->
-      </div>
-
-      <div id="noSearchResultsMessage" class="card-panel center" style="display:none;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="15" y1="9" x2="9" y2="15"></line>
-          <line x1="9" y1="9" x2="15" y2="15"></line>
-        </svg>
-        <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
-        <p style="color:var(--muted-light)">Try different keywords or adjust price filter</p>
-        <button class="btn" style="margin-top:16px" onclick="showPage('productsPage')">Browse All Products</button>
-      </div>
-    </section>
-
     <!-- Product Detail Page -->
     <section class="page" id="productDetailPage">
       <div class="product-detail-page">
@@ -574,22 +525,22 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - positioned below image with proper spacing -->
+              <!-- Carousel Dots - FIXED: Image ke just neeche, thoda gap ke saath, center aligned -->
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
-              <!-- Similar Products Section -->
+              <!-- Similar Products Section - Yahi se similar products dikhenge jo admin panel se add hote hain -->
               <div class="similar-products-small">
                 <h3 class="similar-products-title">Similar Products</h3>
                 <div class="similar-products-slider" id="similarProductsSmallSlider">
-                  <!-- Similar products will be loaded dynamically -->
+                  <!-- Similar products will be loaded dynamically from Firebase -->
                 </div>
               </div>
             </div>
           </div>
           
           <div class="product-detail-info">
-            <!-- Professional Size/Color Selection - Moved ABOVE product details -->
-            <div class="product-selection-section" style="margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 20px;">
+            <!-- FIX: Size aur Quantity options product details ke upar -->
+            <div class="product-selection-section" style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
               <div class="selection-title">Select Size *</div>
               <div class="size-options" id="detailSizeOptions">
                 <div class="size-option" data-value="S">S</div>
@@ -603,14 +554,16 @@
                 <div class="selection-title">Select Quantity</div>
                 <!-- Professional Quantity Control -->
                 <div class="quantity-control" style="max-width: 200px;">
-                  <button class="qty-minus">-</button>
+                  <button class="qty-minus" id="detailQtyMinus">-</button>
                   <input type="number" id="detailQtySelect" min="1" value="1" max="3" readonly>
-                  <button class="qty-plus">+</button>
+                  <button class="qty-plus" id="detailQtyPlus">+</button>
                 </div>
                 <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
               </div>
+              
+              <div class="size-validation-error" id="detailSizeValidationError" style="display: none; color: #ef4444; margin-top: 10px;">Please select a size to continue</div>
             </div>
-
+            
             <h1 class="product-detail-title" id="detailTitle"></h1>
             <!-- Product SKU -->
             <div class="product-sku" id="detailSku"></div>
@@ -672,7 +625,7 @@
           <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
         </div>
 
-        <!-- Similar Products Section -->
+        <!-- Similar Products Section - Full slider -->
         <div class="similar-products">
           <h2 class="similar-title">Similar Products</h2>
           <div class="slider-container">
@@ -681,19 +634,6 @@
         </div>
       </div>
     </section>
-
-    <!-- All Reviews Modal -->
-    <div class="modal-overlay" id="allReviewsModal">
-      <div class="reviews-modal-content">
-        <div class="reviews-modal-header">
-          <h2>All Reviews</h2>
-          <button class="reviews-modal-close" id="reviewsModalClose">×</button>
-        </div>
-        <div class="reviews-modal-body" id="allReviewsModalList">
-          <!-- All reviews will be loaded here -->
-        </div>
-      </div>
-    </div>
 
     <!-- Order Details Page -->
     <section class="page" id="orderPage">
@@ -834,7 +774,7 @@
           <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Product</div><div id="sumProduct">-</div></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Qty</div><div id="sumQty">-</div></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Price</div><div id="sumPrice">-</div></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Delivery</div><div id="sumDel">₹<span id="deliveryCharge">50</span></div></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div>Delivery</div><div id="sumDel">₹<span id="deliveryCharge">388</span></div></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--border)"><div>Payment Gateway Charge</div><div id="sumGateway">₹0</div></div>
           <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:8px;font-size:18px"><div>Total</div><div id="sumTotal">-</div></div>
         </div>
@@ -981,7 +921,8 @@
           <p style="color:var(--muted);margin-bottom:24px">Manage your account and preferences</p>
           
           <div class="card-panel">
-            <p>Redirecting to account page...</p>
+            <p>This is your account page. You can manage your profile, addresses, and preferences here.</p>
+            <p style="margin-top: 10px;">For account-related issues, please contact us at <strong>buyzocartshop@gmail.com</strong>.</p>
           </div>
         </div>
       </div>
@@ -1320,6 +1261,76 @@
     </div>
   </div>
 
+  <!-- View All Reviews Modal -->
+  <div class="modal-overlay" id="viewAllReviewsModal">
+    <div class="view-all-reviews-modal">
+      <div class="view-all-reviews-header">
+        <h3>All Reviews</h3>
+        <button class="view-all-reviews-close" id="viewAllReviewsClose">×</button>
+      </div>
+      <div class="view-all-reviews-content" id="viewAllReviewsContent">
+        <!-- All reviews will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Results Page (For Clean Search Results) -->
+  <section class="page" id="searchResultsPage">
+    <div class="search-results-page">
+      <div class="back-button" onclick="showPage('productsPage')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Products
+      </div>
+      
+      <h2 id="searchResultsTitle">Search Results</h2>
+      <p style="color:var(--muted);margin-bottom:24px" id="searchResultsCount"></p>
+      
+      <!-- Only Price Filter, No Categories -->
+      <div class="price-filter">
+        <div class="price-filter-title">Filter by Price</div>
+        <div class="price-range-slider-container">
+          <div class="price-slider-track" id="searchPriceSliderTrack">
+            <div class="price-slider-range" id="searchPriceSliderRange"></div>
+            <div class="price-slider-thumb" id="searchPriceMinThumb" style="left: 0%;"></div>
+            <div class="price-slider-thumb" id="searchPriceMaxThumb" style="left: 100%;"></div>
+          </div>
+        </div>
+        <div class="price-range-inputs">
+          <div class="price-input-wrapper">
+            <span>₹</span>
+            <input type="number" class="price-input" id="searchMinPrice" placeholder="Min" min="0" max="10000" />
+          </div>
+          <div class="price-input-separator">-</div>
+          <div class="price-input-wrapper">
+            <span>₹</span>
+            <input type="number" class="price-input" id="searchMaxPrice" placeholder="Max" min="0" max="10000" />
+          </div>
+        </div>
+        <div class="price-filter-buttons">
+          <button class="btn" id="searchApplyPriceFilter">Apply Filter</button>
+          <button class="btn secondary" id="searchResetPriceFilter">Reset</button>
+        </div>
+      </div>
+      
+      <div class="product-grid" id="searchResultsGrid">
+        <!-- Search results will be loaded here -->
+      </div>
+      
+      <div id="searchNoResults" class="card-panel center" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
+        <p style="color:var(--muted-light)">Try different search terms or adjust the price filter</p>
+        <button class="btn" style="margin-top:16px" onclick="showPage('productsPage')">Browse All Products</button>
+      </div>
+    </div>
+  </section>
+
   <!-- Firebase SDK -->
   <script type="module">
     // Import the functions you need from the SDKs you need
@@ -1411,7 +1422,7 @@
     let currentSelectedColor = 'black';
     let currentSelectedColorName = 'काला';
     let adminSettings = {
-      deliveryCharge: 50,
+      deliveryCharge: 388, // Changed from 50 to 388 as per your example
       gatewayChargePercent: 2,
       freeShippingOver: 999
     };
@@ -1608,29 +1619,6 @@
       
       // Fix search input
       setupSearchInput();
-
-      // Check for product ID in URL hash (for share links)
-      checkForProductInHash();
-    }
-
-    // Check for product ID in URL hash
-    function checkForProductInHash() {
-      const hash = window.location.hash;
-      if (hash && hash.includes('product=')) {
-        const productId = hash.split('product=')[1];
-        if (productId) {
-          // Wait for products to load
-          const checkProducts = setInterval(() => {
-            if (products.length > 0) {
-              clearInterval(checkProducts);
-              const product = products.find(p => p.id === productId);
-              if (product) {
-                showProductDetail(product);
-              }
-            }
-          }, 100);
-        }
-      }
     }
 
     // Setup search input
@@ -1639,9 +1627,8 @@
       if (searchInput) {
         searchInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent form submission
             performSearch(this.value);
-            // Hide keyboard on mobile
-            this.blur();
           }
         });
         
@@ -1654,9 +1641,6 @@
     // Setup back button behavior
     function setupBackButton() {
       window.addEventListener('popstate', function(event) {
-        // Check for product in hash
-        checkForProductInHash();
-        
         // Check current page and handle accordingly
         const currentPage = document.querySelector('.page.active').id;
         if (currentPage === 'productDetailPage') {
@@ -1671,6 +1655,9 @@
           } else if (currentPage === 'orderPage') {
             showPage('productsPage');
           }
+        } else if (currentPage === 'searchResultsPage') {
+          // If on search results page, go back to products page
+          showPage('productsPage');
         } else {
           // For other pages, go to home
           showPage('homePage');
@@ -1815,8 +1802,7 @@
           
           // Update UI if on relevant pages
           if (document.getElementById('homePage')?.classList.contains('active') || 
-              document.getElementById('productsPage')?.classList.contains('active') ||
-              document.getElementById('searchResultsPage')?.classList.contains('active')) {
+              document.getElementById('productsPage')?.classList.contains('active')) {
             renderProducts(products, 'homeProductGrid');
             renderProducts(products, 'productGrid');
             
@@ -2119,32 +2105,9 @@
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       
-      // Detail quantity controls
-      document.querySelector('#productDetailPage .qty-minus')?.addEventListener('click', function() {
-        const qtyInput = document.getElementById('detailQtySelect');
-        let value = parseInt(qtyInput.value);
-        if (value > 1) {
-          qtyInput.value = value - 1;
-        }
-      });
-      
-      document.querySelector('#productDetailPage .qty-plus')?.addEventListener('click', function() {
-        const qtyInput = document.getElementById('detailQtySelect');
-        let value = parseInt(qtyInput.value);
-        if (value < 3) {
-          qtyInput.value = value + 1;
-        } else {
-          showToast('Maximum 3 units per order', 'error');
-        }
-      });
-      
-      // Detail size options
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-        });
-      });
+      // Detail page quantity controls
+      document.getElementById('detailQtyMinus')?.addEventListener('click', decreaseDetailQuantity);
+      document.getElementById('detailQtyPlus')?.addEventListener('click', increaseDetailQuantity);
       
       // Size options
       document.querySelectorAll('#sizeOptions .size-option').forEach(option => {
@@ -2155,13 +2118,22 @@
         });
       });
       
+      // Detail page size options
+      document.querySelectorAll('#detailSizeOptions .size-option').forEach(option => {
+        option.addEventListener('click', function() {
+          document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('detailSizeValidationError')?.style.display = 'none';
+        });
+      });
+      
       // Price filter
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
       document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
       
-      // Search price filter
-      document.getElementById('applySearchPriceFilter')?.addEventListener('click', applySearchPriceFilter);
-      document.getElementById('resetSearchPriceFilter')?.addEventListener('click', resetSearchPriceFilter);
+      // Search results price filter
+      document.getElementById('searchApplyPriceFilter')?.addEventListener('click', applySearchPriceFilter);
+      document.getElementById('searchResetPriceFilter')?.addEventListener('click', resetSearchPriceFilter);
       
       // Price slider
       const minThumb = document.getElementById('priceMinThumb');
@@ -2214,13 +2186,9 @@
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       
       // View all reviews
-      document.getElementById('viewAllReviews')?.addEventListener('click', function() {
-        showAllReviews();
-      });
-      
-      // Reviews modal close
-      document.getElementById('reviewsModalClose')?.addEventListener('click', function() {
-        document.getElementById('allReviewsModal').classList.remove('active');
+      document.getElementById('viewAllReviews')?.addEventListener('click', viewAllReviews);
+      document.getElementById('viewAllReviewsClose')?.addEventListener('click', () => {
+        document.getElementById('viewAllReviewsModal').classList.remove('active');
       });
       
       // Share link
@@ -2236,8 +2204,47 @@
       
       // URL hash change
       window.addEventListener('hashchange', function() {
-        checkForProductInHash();
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+          if (hash.includes('?')) {
+            // Handle product detail links
+            const params = new URLSearchParams(hash.split('?')[1]);
+            const productId = params.get('product');
+            if (productId) {
+              const product = products.find(p => p.id === productId);
+              if (product) {
+                showProductDetail(product);
+              }
+            }
+          } else if (document.getElementById(hash)) {
+            showPage(hash);
+          }
+        }
       });
+      
+      // Initial page load from hash
+      if (window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        if (hash.includes('?')) {
+          // Handle product detail links
+          const params = new URLSearchParams(hash.split('?')[1]);
+          const productId = params.get('product');
+          if (productId) {
+            // Wait for products to load
+            const checkProducts = setInterval(() => {
+              if (products.length > 0) {
+                clearInterval(checkProducts);
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                  showProductDetail(product);
+                }
+              }
+            }, 100);
+          }
+        } else if (document.getElementById(hash)) {
+          showPage(hash);
+        }
+      }
       
       // Fix WhatsApp click
       const whatsappLink = document.querySelector('a[href*="wa.me"]');
@@ -2473,7 +2480,7 @@
         case 'productDetailPage':
           if (currentProduct) {
             loadProductReviews(currentProduct.id);
-            // Load similar products
+            // Load similar products from Firebase
             loadSimilarProducts(currentProduct);
             loadSimilarProductsSmall(currentProduct);
           }
@@ -2496,6 +2503,11 @@
           // Setup banner auto slide
           setTimeout(setupBannerAutoSlide, 1000);
           break;
+        case 'searchResultsPage':
+          // No category filter, only price filter
+          document.getElementById('searchMinPrice').value = '0';
+          document.getElementById('searchMaxPrice').value = '10000';
+          break;
       }
     }
 
@@ -2504,13 +2516,6 @@
         showLoginModal();
         return;
       }
-      
-      // For account page, redirect to account.html
-      if (pageId === 'accountPage') {
-        window.location.href = 'account.html';
-        return;
-      }
-      
       showPage(pageId);
     }
 
@@ -2532,6 +2537,9 @@
         case 'myOrdersPage':
         case 'orderDetailPage':
           document.querySelector('.bottom-nav-item:nth-child(3)')?.classList.add('active');
+          break;
+        case 'accountPage':
+          document.querySelector('.bottom-nav-item:nth-child(4)')?.classList.add('active');
           break;
       }
     }
@@ -2690,95 +2698,45 @@
           );
         });
         
-        // Redirect to search results page
+        // Redirect to search results page (clean page with only price filter)
         showPage('searchResultsPage');
         
         // Store search results globally
-        window.lastSearchResults = similarProducts.length > 0 ? similarProducts : [];
-        window.lastSearchQuery = query;
+        window.currentSearchResults = similarProducts.length > 0 ? similarProducts : products;
+        window.currentSearchQuery = query;
         
-        renderSearchResults(window.lastSearchResults);
+        // Update UI
+        document.getElementById('searchResultsTitle').textContent = `Search Results for "${query}"`;
+        document.getElementById('searchResultsCount').textContent = similarProducts.length > 0 
+          ? `${similarProducts.length} products found` 
+          : 'No exact matches found. Showing all products.';
+        
+        renderProducts(window.currentSearchResults, 'searchResultsGrid');
         
         if (similarProducts.length === 0) {
-          showToast('No products found for "' + query + '"', 'info');
+          document.getElementById('searchNoResults').style.display = 'block';
         } else {
-          showToast('Showing similar products for "' + query + '"', 'info');
+          document.getElementById('searchNoResults').style.display = 'none';
         }
       } else {
-        // Redirect to search results page
+        // Redirect to search results page (clean page with only price filter)
         showPage('searchResultsPage');
         
         // Store search results globally
-        window.lastSearchResults = filteredProducts;
-        window.lastSearchQuery = query;
+        window.currentSearchResults = filteredProducts;
+        window.currentSearchQuery = query;
         
-        renderSearchResults(filteredProducts);
+        // Update UI
+        document.getElementById('searchResultsTitle').textContent = `Search Results for "${query}"`;
+        document.getElementById('searchResultsCount').textContent = `${filteredProducts.length} products found`;
+        document.getElementById('searchNoResults').style.display = 'none';
+        
+        renderProducts(filteredProducts, 'searchResultsGrid');
       }
       
-      // Close search panel
+      // Close search panel and blur keyboard
       closeSearchPanel();
-    }
-
-    function renderSearchResults(productsToRender) {
-      const container = document.getElementById('searchResultsGrid');
-      const countElement = document.getElementById('searchResultsCount');
-      const noResultsMessage = document.getElementById('noSearchResultsMessage');
-      
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      if (productsToRender.length === 0) {
-        noResultsMessage.style.display = 'block';
-        countElement.textContent = '0 products found';
-        return;
-      }
-      
-      noResultsMessage.style.display = 'none';
-      countElement.textContent = productsToRender.length + ' products found';
-      
-      // Create document fragment for better performance
-      const fragment = document.createDocumentFragment();
-      
-      productsToRender.forEach(product => {
-        const productCard = createProductCard(product);
-        fragment.appendChild(productCard);
-      });
-      
-      container.appendChild(fragment);
-    }
-
-    function applySearchPriceFilter() {
-      const minPrice = parseFloat(document.getElementById('searchMinPrice').value) || 0;
-      const maxPrice = parseFloat(document.getElementById('searchMaxPrice').value) || 10000;
-      
-      let filteredProducts = window.lastSearchResults || [];
-      
-      filteredProducts = filteredProducts.filter(product => {
-        const price = parsePrice(product.price);
-        return price >= minPrice && price <= maxPrice;
-      });
-      
-      renderSearchResults(filteredProducts);
-    }
-
-    function resetSearchPriceFilter() {
-      document.getElementById('searchMinPrice').value = '0';
-      document.getElementById('searchMaxPrice').value = '10000';
-      
-      // Reset slider
-      const minThumb = document.getElementById('searchPriceMinThumb');
-      const maxThumb = document.getElementById('searchPriceMaxThumb');
-      const priceSliderRange = document.getElementById('searchPriceSliderRange');
-      
-      if (minThumb && maxThumb && priceSliderRange) {
-        minThumb.style.left = '0%';
-        maxThumb.style.left = '100%';
-        priceSliderRange.style.left = '0%';
-        priceSliderRange.style.width = '100%';
-      }
-      
-      renderSearchResults(window.lastSearchResults || []);
+      document.activeElement?.blur();
     }
 
     function addToRecentSearches(query) {
@@ -2881,6 +2839,56 @@
       recentSearches = [];
       localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
       loadRecentSearches();
+    }
+
+    // Search results price filter
+    function applySearchPriceFilter() {
+      const minPrice = parseFloat(document.getElementById('searchMinPrice').value) || 0;
+      const maxPrice = parseFloat(document.getElementById('searchMaxPrice').value) || 10000;
+      
+      if (!window.currentSearchResults) {
+        window.currentSearchResults = products;
+      }
+      
+      const filteredResults = window.currentSearchResults.filter(product => {
+        const price = parsePrice(product.price);
+        return price >= minPrice && price <= maxPrice;
+      });
+      
+      renderProducts(filteredResults, 'searchResultsGrid');
+      
+      if (filteredResults.length === 0) {
+        document.getElementById('searchNoResults').style.display = 'block';
+      } else {
+        document.getElementById('searchNoResults').style.display = 'none';
+      }
+      
+      document.getElementById('searchResultsCount').textContent = `${filteredResults.length} products found`;
+    }
+
+    function resetSearchPriceFilter() {
+      document.getElementById('searchMinPrice').value = '0';
+      document.getElementById('searchMaxPrice').value = '10000';
+      
+      // Reset slider
+      const minThumb = document.getElementById('searchPriceMinThumb');
+      const maxThumb = document.getElementById('searchPriceMaxThumb');
+      const priceSliderRange = document.getElementById('searchPriceSliderRange');
+      
+      if (minThumb && maxThumb && priceSliderRange) {
+        minThumb.style.left = '0%';
+        maxThumb.style.left = '100%';
+        priceSliderRange.style.left = '0%';
+        priceSliderRange.style.width = '100%';
+      }
+      
+      if (!window.currentSearchResults) {
+        window.currentSearchResults = products;
+      }
+      
+      renderProducts(window.currentSearchResults, 'searchResultsGrid');
+      document.getElementById('searchResultsCount').textContent = `${window.currentSearchResults.length} products found`;
+      document.getElementById('searchNoResults').style.display = 'none';
     }
 
     // Toast notification
@@ -3460,13 +3468,7 @@
         wishlistBtn.classList.remove('active');
       }
       
-      // Reset size selection
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-      
-      // Reset quantity
-      document.getElementById('detailQtySelect').value = 1;
-      
-      // Load similar products
+      // Load similar products from Firebase
       loadSimilarProducts(actualProduct);
       loadSimilarProductsSmall(actualProduct);
       
@@ -3498,7 +3500,7 @@
       currentImageIndex = 0;
       updateMainImage();
       
-      // Create dots
+      // Create dots - Image ke just neeche, thoda gap ke saath, center aligned
       dotsContainer.innerHTML = '';
       currentProductImages.forEach((_, index) => {
         const dot = document.createElement('div');
@@ -3705,8 +3707,11 @@
       document.getElementById('zoomImage').style.transform = 'scale(1)';
     }
 
-    // Similar products
-    function loadSimilarProducts(product) {
+    // Similar products - FIXED: Load from Firebase
+    async function loadSimilarProducts(product) {
+      if (!product || !product.category) return;
+      
+      // Get products from same category, excluding current product
       const similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category)
         .slice(0, 10);
@@ -3714,10 +3719,11 @@
       renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
     }
 
-    function loadSimilarProductsSmall(product) {
+    async function loadSimilarProductsSmall(product) {
       const container = document.getElementById('similarProductsSmallSlider');
-      if (!container) return;
+      if (!container || !product) return;
       
+      // Get products from same category, excluding current product
       const similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category)
         .slice(0, 6);
@@ -3866,7 +3872,7 @@
       
       const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const deliveryCharge = adminSettings.deliveryCharge || 388; // Updated to 388
       const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
       const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
       const total = subtotal + deliveryCharge + gatewayCharge;
@@ -3934,7 +3940,7 @@
         document.getElementById('sumProduct').textContent = '-';
         document.getElementById('sumQty').textContent = '-';
         document.getElementById('sumPrice').textContent = '-';
-        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
+        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 388}`;
         document.getElementById('sumGateway').textContent = '₹0';
         document.getElementById('sumTotal').textContent = '-';
         return;
@@ -3945,7 +3951,7 @@
       
       const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const deliveryCharge = adminSettings.deliveryCharge || 388;
       const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
       const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
       const total = subtotal + deliveryCharge + gatewayCharge;
@@ -3989,30 +3995,54 @@
       }
     }
 
+    // Detail page quantity functions
+    function decreaseDetailQuantity() {
+      const qtyInput = document.getElementById('detailQtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value > 1) {
+        qtyInput.value = value - 1;
+      }
+    }
+
+    function increaseDetailQuantity() {
+      const qtyInput = document.getElementById('detailQtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value < 3) {
+        qtyInput.value = value + 1;
+      } else {
+        showToast('Maximum 3 units per order', 'error');
+      }
+    }
+
     // Order from product detail
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      // Get selected size from detail page
+      // Check if size is selected
       const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
       if (!selectedSize) {
-        showToast('Please select a size', 'error');
+        document.getElementById('detailSizeValidationError').style.display = 'block';
+        showToast('Please select a size to continue', 'error');
         return;
       }
-      
-      const size = selectedSize.getAttribute('data-value');
       
       // Get quantity from detail page
       const quantity = parseInt(document.getElementById('detailQtySelect').value) || 1;
       
-      // Set these values in order page
+      // Clear any previously selected size in order page
       document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
         opt.classList.remove('selected');
-        if (opt.getAttribute('data-value') === size) {
+      });
+      
+      // Set size in order page
+      const sizeValue = selectedSize.getAttribute('data-value');
+      document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
+        if (opt.getAttribute('data-value') === sizeValue) {
           opt.classList.add('selected');
         }
       });
       
+      // Set quantity in order page
       document.getElementById('qtySelect').value = quantity;
       
       // Update order page
@@ -4493,7 +4523,7 @@
       };
     }
 
-    // Reviews and ratings - COMPLETELY REWORKED
+    // Reviews and ratings - FIXED: Reviews show properly
     function setRating(rating) {
       const stars = document.querySelectorAll('#ratingInput .rating-star');
       stars.forEach((star, index) => {
@@ -4536,7 +4566,7 @@
           id: reviewId,
           productId: currentProduct.id,
           userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
+          userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
           rating: rating,
           text: reviewTextValue,
           date: Date.now()
@@ -4630,8 +4660,8 @@
           }
         }
         
-        // Store all reviews globally for modal
-        window.currentProductReviews = reviews;
+        // Store all reviews for "View All" modal
+        window.allProductReviews = reviews;
       } catch (error) {
         console.error('Error loading reviews:', error);
         const reviewsList = document.getElementById('reviewsList');
@@ -4672,24 +4702,27 @@
       return reviewItem;
     }
 
-    function showAllReviews() {
-      const modal = document.getElementById('allReviewsModal');
-      const modalList = document.getElementById('allReviewsModalList');
-      
-      if (!modal || !modalList) return;
-      
-      modalList.innerHTML = '';
-      
-      if (!window.currentProductReviews || window.currentProductReviews.length === 0) {
-        modalList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No reviews yet</p>';
-      } else {
-        window.currentProductReviews.forEach(review => {
-          const reviewItem = createReviewItem(review);
-          modalList.appendChild(reviewItem);
-        });
+    // View all reviews function - FIXED: Opens modal with all reviews
+    function viewAllReviews() {
+      if (!window.allProductReviews || window.allProductReviews.length === 0) {
+        showToast('No reviews to display', 'info');
+        return;
       }
       
-      modal.classList.add('active');
+      const modalContent = document.getElementById('viewAllReviewsContent');
+      if (!modalContent) return;
+      
+      modalContent.innerHTML = '';
+      
+      // Sort by date (newest first)
+      const sortedReviews = [...window.allProductReviews].sort((a, b) => b.date - a.date);
+      
+      sortedReviews.forEach(review => {
+        const reviewItem = createReviewItem(review);
+        modalContent.appendChild(reviewItem);
+      });
+      
+      document.getElementById('viewAllReviewsModal').classList.add('active');
     }
 
     async function deleteReview(reviewId) {
@@ -4753,7 +4786,7 @@
       }
     }
 
-    // Orders functions - FIXED TO SHOW ALL ORDERS
+    // Orders functions - FIXED: Orders show properly in My Orders page
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -5208,7 +5241,7 @@
       background-color: #f8fafc;
       border-radius: var(--radius);
       overflow: hidden;
-      margin-bottom: 10px;
+      margin-bottom: 10px; /* Reduced margin */
       cursor: pointer;
     }
     
@@ -5235,13 +5268,13 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots - positioned below image with proper spacing */
+    /* Carousel dots position - FIXED: Image ke just neeche, thoda gap ke saath, center aligned */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin-top: 15px;
-      margin-bottom: 15px;
+      margin-top: 10px;
+      margin-bottom: 20px;
       padding: 5px 0;
     }
     
@@ -5780,53 +5813,51 @@
       flex: 1;
     }
     
-    /* All Reviews Modal */
-    #allReviewsModal {
-      z-index: 2000;
-    }
-    
-    .reviews-modal-content {
+    /* View All Reviews Modal */
+    .view-all-reviews-modal {
       background: var(--surface);
+      border-radius: var(--radius);
       width: 90%;
       max-width: 600px;
       max-height: 80vh;
-      border-radius: 12px;
+      overflow-y: auto;
+      position: relative;
       padding: 20px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
     }
     
-    .reviews-modal-header {
+    .view-all-reviews-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
-      padding-bottom: 15px;
+      padding-bottom: 10px;
       border-bottom: 1px solid var(--border);
     }
     
-    .reviews-modal-header h2 {
+    .view-all-reviews-header h3 {
       margin: 0;
-      font-size: 20px;
     }
     
-    .reviews-modal-close {
+    .view-all-reviews-close {
       background: none;
       border: none;
-      font-size: 28px;
+      font-size: 24px;
       cursor: pointer;
-      color: var(--muted);
-    }
-    
-    .reviews-modal-close:hover {
       color: var(--text);
     }
     
-    .reviews-modal-body {
+    .view-all-reviews-content {
+      max-height: calc(80vh - 100px);
       overflow-y: auto;
-      padding-right: 10px;
+    }
+    
+    /* Search Results Page */
+    .search-results-page {
+      padding: 20px;
+    }
+    
+    .search-results-page h2 {
+      margin-bottom: 10px;
     }
   </style>
 </body>
