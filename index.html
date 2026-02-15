@@ -417,7 +417,7 @@
         </div>
       </div>
 
-      <!-- Category Navigation -->
+      <!-- Category Navigation (Visible on All Products Page) -->
       <div class="categories" id="categoriesContainer">
         <!-- Categories will be loaded dynamically -->
       </div>
@@ -438,7 +438,7 @@
       </div>
     </section>
 
-    <!-- Search Results Page (NEW) -->
+    <!-- Search Results Page (NEW - Clean layout with only Search Bar and Price Filter) -->
     <section class="page" id="searchResultsPage">
       <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap; margin-bottom:20px;">
         <h2 style="margin:0">Search Results</h2>
@@ -535,10 +535,10 @@
                 </button>
               </div>
               
-              <!-- Carousel Dots - MOVED JUST BELOW THE IMAGE -->
+              <!-- Carousel Dots - MOVED JUST BELOW THE IMAGE (Requirement 11) -->
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
-              <!-- Similar Products Section -->
+              <!-- Similar Products Section (Fixed for Requirement 4) -->
               <div class="similar-products-small">
                 <h3 class="similar-products-title">Similar Products</h3>
                 <div class="similar-products-slider" id="similarProductsSmallSlider">
@@ -549,6 +549,28 @@
           </div>
           
           <div class="product-detail-info">
+            <!-- SIZE & QUANTITY MOVED ABOVE PRODUCT DETAILS (Requirement 9) -->
+            <!-- Size Selection Section -->
+            <div class="product-selection-section">
+              <div class="selection-title">Select Size *</div>
+              <div class="size-options" id="detailSizeOptions">
+                <!-- Sizes will be populated dynamically -->
+              </div>
+              
+              <div style="margin-top: 20px;">
+                <div class="selection-title">Select Quantity</div>
+                <!-- Professional Quantity Control -->
+                <div class="quantity-control" style="max-width: 200px;">
+                  <button class="qty-minus" id="detailQtyMinus">-</button>
+                  <input type="number" id="detailQtySelect" min="1" value="1" max="3" readonly>
+                  <button class="qty-plus" id="detailQtyPlus">+</button>
+                </div>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
+              </div>
+              
+              <div class="size-validation-error" id="detailSizeValidationError">Please select a size to continue</div>
+            </div>
+
             <h1 class="product-detail-title" id="detailTitle"></h1>
             <!-- Product SKU -->
             <div class="product-sku" id="detailSku"></div>
@@ -560,7 +582,7 @@
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
 
-            <!-- Rating and Reviews Section -->
+            <!-- Rating and Reviews Section (Fixed for Requirement 2) -->
             <div class="review-section">
               <div class="review-form">
                 <h3>Add Your Review</h3>
@@ -578,13 +600,13 @@
               <div class="reviews-list" id="reviewsList">
                 <!-- Reviews will be dynamically inserted here -->
               </div>
-              <!-- View All Ratings Button -->
+              <!-- View All Ratings Button (Fixed for Requirement 3) -->
               <div class="center" style="margin-top: 15px;">
                 <button class="btn secondary" id="viewAllRatingsBtn">View All Ratings</button>
               </div>
             </div>
             
-            <!-- Share Link Section -->
+            <!-- Share Link Section (Fixed for Requirement 10) -->
             <div class="product-detail-meta" style="margin-top: 20px;">
               <h4>Share This Product</h4>
               <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -593,6 +615,12 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Sticky Action Buttons -->
+        <div class="product-detail-actions">
+          <button class="btn" id="detailOrderBtn" style="flex: 2;">Order Now</button>
+          <button class="btn secondary" id="detailWishlistBtn" style="flex: 1;">Add to Wishlist</button>
         </div>
 
         <!-- Similar Products Section -->
@@ -776,7 +804,7 @@
       </div>
     </section>
 
-    <!-- My Orders Page -->
+    <!-- My Orders Page (Fixed for Requirement 5) -->
     <section class="page" id="myOrdersPage">
       <div class="policy-page">
         <div class="back-button" onclick="showPage('homePage')">
@@ -1531,7 +1559,7 @@
       background: rgba(0, 0, 0, 0.7);
     }
     
-    /* Carousel dots - MOVED JUST BELOW IMAGE */
+    /* Carousel dots - MOVED JUST BELOW IMAGE (Requirement 11) */
     .detail-carousel-dots {
       display: flex;
       justify-content: center;
@@ -1756,9 +1784,9 @@
       margin-bottom: 20px;
     }
 
-    /* Size & Quantity section on product detail page */
+    /* Size & Quantity section on product detail page (Requirement 9) */
     #productDetailPage .product-selection-section {
-      margin: 20px 0;
+      margin: 0 0 20px 0;
       padding: 15px;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -1819,7 +1847,7 @@
       display: block;
     }
 
-    /* View All Ratings button */
+    /* View All Ratings button (Requirement 3) */
     #viewAllRatingsBtn {
       margin-top: 10px;
       width: 100%;
@@ -1827,10 +1855,7 @@
   </style>
 
   <script>
-    // JavaScript implementation (all existing functions from original file remain the same)
-    // Only the fixes and new functions are added below
-    
-    // Global variables
+    // ==================== GLOBAL VARIABLES ====================
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -1862,7 +1887,7 @@
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
 
-    // Debounce function for performance
+    // ==================== HELPER FUNCTIONS ====================
     function debounce(func, wait) {
       let timeout;
       return function executedFunction(...args) {
@@ -1875,7 +1900,6 @@
       };
     }
 
-    // Parse price safely
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -1885,9 +1909,8 @@
       return 0;
     }
 
-    // Product Image Helper Function
     function getProductImage(product, idx = 0) {
-      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
+      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
@@ -1908,7 +1931,6 @@
       }
     }
 
-    // Order ID Generation Function
     function generateOrderId() {
         const date = new Date();
         const yyyy = date.getFullYear();
@@ -1918,7 +1940,6 @@
         return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
     }
 
-    // Cache Manager
     const cacheManager = {
       set: function(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
         const item = {
@@ -1953,7 +1974,7 @@
       }
     };
 
-    // Toast notification
+    // ==================== UI FUNCTIONS ====================
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       if (!toast) return;
@@ -1964,35 +1985,6 @@
         toast.classList.remove('show');
       }, 3000);
     }
-
-    // Initialize EmailJS
-    (function() {
-      emailjs.init("user_your_user_id_here"); // Replace with your EmailJS user ID
-    })();
-
-    // Color names mapping
-    const colorNames = {
-      'black': 'काला',
-      'white': 'सफेद',
-      'blue': 'नीला',
-      'red': 'लाल',
-      'green': 'हरा',
-      'yellow': 'पीला',
-      'pink': 'गुलाबी',
-      'purple': 'बैंगनी',
-      'orange': 'नारंगी',
-      'gray': 'ग्रे',
-      'brown': 'भूरा',
-      'navy': 'गहरा नीला',
-      'maroon': 'मैरून',
-      'teal': 'टील',
-      'olive': 'जैतूनी',
-      'silver': 'चांदी',
-      'gold': 'सोना',
-      'beige': 'बेज',
-      'burgundy': 'बरगंडी',
-      'charcoal': 'चारकोल'
-    };
 
     // Mobile menu functions
     function openMenu() {
@@ -2011,7 +2003,7 @@
       filterByCategory('all');
     }
 
-    // Search functions
+    // ==================== SEARCH FUNCTIONS ====================
     function openSearchPanel() {
       document.getElementById('searchPanel').classList.add('active');
       document.getElementById('searchPanelInput').focus();
@@ -2029,13 +2021,11 @@
     function performSearch(query) {
       if (!query.trim()) return;
       
-      // Hide mobile keyboard (blur the input)
+      // Hide mobile keyboard (Requirement 6)
       document.getElementById('searchPanelInput').blur();
       
-      // Add to recent searches
       addToRecentSearches(query);
       
-      // Filter products
       const filteredProducts = products.filter(product => 
         product.name?.toLowerCase().includes(query.toLowerCase()) ||
         product.description?.toLowerCase().includes(query.toLowerCase()) ||
@@ -2043,15 +2033,13 @@
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
       
-      // Save search query for results page
       window.currentSearchQuery = query;
       window.currentSearchResults = filteredProducts;
       
-      // Redirect to search results page
+      // Redirect to clean search results page (Requirement 7)
       showPage('searchResultsPage');
       renderSearchResults(filteredProducts, query);
       
-      // Close search panel
       closeSearchPanel();
     }
 
@@ -2201,7 +2189,7 @@
       });
     }
 
-    // Theme toggle
+    // ==================== THEME FUNCTIONS ====================
     function toggleTheme() {
       const currentTheme = document.documentElement.getAttribute('data-theme');
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -2209,8 +2197,9 @@
       localStorage.setItem('theme', newTheme);
     }
 
-    // Page Navigation
+    // ==================== PAGE NAVIGATION FUNCTIONS ====================
     function showPage(pageId) {
+      // Update URL with hash for product links (Requirement 10)
       const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
       window.history.pushState(null, '', newUrl);
       
@@ -2273,7 +2262,7 @@
         return;
       }
       if (pageId === 'accountPage') {
-        window.location.href = 'account.html';
+        window.location.href = 'account.html'; // (Requirement 12)
         return;
       }
       showPage(pageId);
@@ -2331,7 +2320,7 @@
       }
     }
 
-    // Search Results Page Functions
+    // ==================== SEARCH RESULTS PAGE FUNCTIONS ====================
     function renderSearchResults(results, query) {
       const grid = document.getElementById('searchResultsGrid');
       const count = document.getElementById('searchResultsCount');
@@ -2494,7 +2483,7 @@
       renderSearchResults(window.currentSearchResults, window.currentSearchQuery);
     }
 
-    // Product Card Creation
+    // ==================== PRODUCT CARD FUNCTIONS ====================
     function createProductCard(product) {
       const card = document.createElement('div');
       card.className = 'product-card';
@@ -2567,7 +2556,7 @@
     }
 
     function shareProduct(product) {
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + product.id;
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + product.id; // (Requirement 10)
       if (navigator.share) {
         navigator.share({
           title: product.name,
@@ -2586,7 +2575,7 @@
       }
     }
 
-    // Product detail functions
+    // ==================== PRODUCT DETAIL FUNCTIONS ====================
     function showProductDetail(product) {
       const actualProduct = products.find(p => p.id === product.id) || product;
       currentProduct = actualProduct;
@@ -2600,10 +2589,37 @@
       document.getElementById('detailSku').textContent = `SKU: ${actualProduct.sku || 'N/A'}`;
       document.getElementById('breadcrumbProductName').textContent = actualProduct.name || 'Product';
       
-      // Reset size selection
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => {
-        opt.classList.remove('selected');
-      });
+      // Populate size options from product data
+      const sizeOptionsContainer = document.getElementById('detailSizeOptions');
+      sizeOptionsContainer.innerHTML = '';
+      if (actualProduct.sizes && actualProduct.sizes.length > 0) {
+        actualProduct.sizes.forEach(size => {
+          const option = document.createElement('div');
+          option.className = 'size-option';
+          option.setAttribute('data-value', size);
+          option.textContent = size;
+          option.addEventListener('click', function() {
+            document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('detailSizeValidationError')?.classList.remove('show');
+          });
+          sizeOptionsContainer.appendChild(option);
+        });
+      } else {
+        // Default sizes if not specified
+        ['S', 'M', 'L', 'XL', 'XXL'].forEach(size => {
+          const option = document.createElement('div');
+          option.className = 'size-option';
+          option.setAttribute('data-value', size);
+          option.textContent = size;
+          option.addEventListener('click', function() {
+            document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('detailSizeValidationError')?.classList.remove('show');
+          });
+          sizeOptionsContainer.appendChild(option);
+        });
+      }
       
       const stockStatus = document.getElementById('detailStockStatus');
       const stock = actualProduct.stock || 'in';
@@ -2620,7 +2636,7 @@
       
       initProductDetailGallery(actualProduct);
       
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + actualProduct.id;
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + actualProduct.id; // (Requirement 10)
       document.getElementById('productShareLink').value = shareLink;
       
       const wishlistBtn = document.getElementById('detailWishlistBtn');
@@ -2804,7 +2820,7 @@
       });
     }
 
-    // Product image modal functions
+    // ==================== PRODUCT IMAGE MODAL FUNCTIONS ====================
     function openProductImageModal() {
       if (!currentProduct) return;
       currentProductModalIndex = currentImageIndex;
@@ -2844,7 +2860,7 @@
       updateProductModalImage();
     }
 
-    // Similar products
+    // ==================== SIMILAR PRODUCTS FUNCTIONS (Requirement 4) ====================
     function loadSimilarProducts(product) {
       const similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category)
@@ -2909,7 +2925,7 @@
       container.appendChild(fragment);
     }
 
-    // Wishlist functions
+    // ==================== WISHLIST FUNCTIONS ====================
     function isInWishlist(productId) {
       let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
       return wishlist.includes(productId);
@@ -2991,7 +3007,7 @@
       container.appendChild(fragment);
     }
 
-    // Order flow functions
+    // ==================== ORDER FLOW FUNCTIONS ====================
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
@@ -3228,7 +3244,7 @@
       }
     }
 
-    // Quantity functions
+    // ==================== QUANTITY FUNCTIONS ====================
     function decreaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
       let value = parseInt(qtyInput.value);
@@ -3291,7 +3307,7 @@
       });
     }
 
-    // Reviews and ratings
+    // ==================== REVIEWS AND RATINGS (Requirements 2 & 3) ====================
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
@@ -3437,7 +3453,7 @@
       }
     }
 
-    // View All Ratings button
+    // View All Ratings button (Requirement 3)
     function setupViewAllRatings() {
       const viewAllBtn = document.getElementById('viewAllRatingsBtn');
       if (viewAllBtn) {
@@ -3450,7 +3466,7 @@
       }
     }
 
-    // Share link
+    // ==================== SHARE LINK FUNCTIONS (Requirement 10) ====================
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
       shareLink.select();
@@ -3458,7 +3474,7 @@
       showToast('Link copied to clipboard', 'success');
     }
 
-    // Orders functions
+    // ==================== ORDERS FUNCTIONS (Requirement 5) ====================
     async function showMyOrders() {
       if (!currentUser) return;
       
@@ -3612,7 +3628,7 @@
       showPage('myOrdersPage');
     }
 
-    // Recently viewed functions
+    // ==================== RECENTLY VIEWED FUNCTIONS ====================
     async function addToRecentlyViewed(productId) {
       if (!currentUser) return;
       try {
@@ -3660,7 +3676,7 @@
       renderProductSlider(recentlyViewedProducts, 'recentlyViewedSlider');
     }
 
-    // Filter functions
+    // ==================== FILTER FUNCTIONS ====================
     function filterByCategory(categoryId) {
       if (!categoryId || categoryId === 'all') {
         currentCategoryFilter = null;
@@ -3914,7 +3930,7 @@
       }, 4000);
     }
 
-    // Auth functions
+    // ==================== AUTH FUNCTIONS ====================
     function showLoginModal() {
       document.getElementById('authModal').classList.add('active');
       switchAuthTab('login');
@@ -4091,7 +4107,7 @@
       }
     }
 
-    // User interface updates
+    // ==================== USER INTERFACE FUNCTIONS ====================
     function updateUIForUser(user) {
       document.getElementById('userProfile').style.display = 'flex';
       document.getElementById('openLoginTop').style.display = 'none';
@@ -4134,7 +4150,7 @@
       }
     }
 
-    // Logout
+    // ==================== LOGOUT FUNCTIONS ====================
     function showLogoutConfirmation() {
       document.getElementById('alertTitle').textContent = 'Logout Confirmation';
       document.getElementById('alertMessage').textContent = 'Are you sure you want to logout?';
@@ -4152,7 +4168,7 @@
       });
     }
 
-    // Address management
+    // ==================== ADDRESS FUNCTIONS ====================
     async function loadSavedAddresses() {
       if (!currentUser) return;
       
@@ -4356,7 +4372,7 @@
       };
     }
 
-    // Email functions
+    // ==================== EMAIL FUNCTIONS ====================
     function sendLoginNotification(email) {
       console.log('Login notification would be sent to:', email);
     }
@@ -4369,7 +4385,7 @@
       console.log('Order notification would be sent for:', orderId);
     }
 
-    // Hero messages rotation
+    // ==================== HERO MESSAGES ====================
     function setupHeroMessages() {
       const messages = document.querySelectorAll('#heroMessages span');
       let currentIndex = 0;
@@ -4380,7 +4396,7 @@
       }, 3000);
     }
 
-    // Load user data
+    // ==================== USER DATA LOADING ====================
     async function loadUserData(user) {
       try {
         const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'users/' + user.uid));
@@ -4393,13 +4409,13 @@
       }
     }
 
-    // Admin settings
+    // ==================== ADMIN SETTINGS ====================
     function updateAdminSettingsUI() {
       document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
     }
 
-    // Fetch live data from Firebase
+    // ==================== FETCH LIVE DATA FROM FIREBASE ====================
     function fetchLiveData() {
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
@@ -4500,7 +4516,7 @@
       });
     }
 
-    // Load cached data
+    // ==================== LOAD CACHED DATA ====================
     function loadCachedData() {
       const cachedProducts = cacheManager.get('products');
       if (cachedProducts && cachedProducts.length > 0) {
@@ -4539,7 +4555,7 @@
       }
     }
 
-    // Setup realtime listeners
+    // ==================== REALTIME LISTENERS ====================
     function setupRealtimeListeners() {
       if (!window.firebase || !window.firebase.database) return;
       
@@ -4639,7 +4655,7 @@
       });
     }
 
-    // Initialize app
+    // ==================== INITIALIZE APP ====================
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -4677,7 +4693,7 @@
       setupDetailSizeSelection();
       setupViewAllRatings();
       
-      // Handle product link from URL
+      // Handle product link from URL (Requirement 10)
       if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
         const productId = window.location.hash.split('=')[1];
         const product = products.find(p => p.id === productId);
@@ -4689,7 +4705,7 @@
       }
     }
 
-    // Setup header search bar scroll visibility
+    // ==================== SETUP FUNCTIONS ====================
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
@@ -4699,7 +4715,6 @@
       }, false);
     }
 
-    // Setup back button behavior
     function setupBackButton() {
       window.addEventListener('popstate', function(event) {
         const currentPage = document.querySelector('.page.active').id;
@@ -4719,7 +4734,6 @@
       });
     }
 
-    // Setup search input
     function setupSearchInput() {
       const searchInput = document.getElementById('searchPanelInput');
       if (searchInput) {
@@ -4776,7 +4790,6 @@
       }
     }
 
-    // Setup event listeners
     function setupEventListeners() {
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
@@ -4932,7 +4945,6 @@
       }
     }
 
-    // Banner touch events setup
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
@@ -4975,7 +4987,6 @@
       });
     }
 
-    // Price slider setup
     function setupPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput) {
       let minPercent = 0;
       let maxPercent = 100;
@@ -5073,7 +5084,6 @@
       updateSlider();
     }
 
-    // Image zoom functions
     function adjustZoom(delta) {
       currentZoomLevel += delta;
       currentZoomLevel = Math.max(0.5, Math.min(3, currentZoomLevel));
@@ -5085,7 +5095,6 @@
       document.getElementById('zoomImage').style.transform = 'scale(1)';
     }
 
-    // Newsletter
     function handleNewsletterSubscription() {
       const email = document.getElementById('newsletterEmail').value;
       if (!email) {
@@ -5095,6 +5104,30 @@
       showToast('Thank you for subscribing!', 'success');
       document.getElementById('newsletterEmail').value = '';
     }
+
+    // Color names mapping
+    const colorNames = {
+      'black': 'काला',
+      'white': 'सफेद',
+      'blue': 'नीला',
+      'red': 'लाल',
+      'green': 'हरा',
+      'yellow': 'पीला',
+      'pink': 'गुलाबी',
+      'purple': 'बैंगनी',
+      'orange': 'नारंगी',
+      'gray': 'ग्रे',
+      'brown': 'भूरा',
+      'navy': 'गहरा नीला',
+      'maroon': 'मैरून',
+      'teal': 'टील',
+      'olive': 'जैतूनी',
+      'silver': 'चांदी',
+      'gold': 'सोना',
+      'beige': 'बेज',
+      'burgundy': 'बरगंडी',
+      'charcoal': 'चारकोल'
+    };
 
     // Initialize on load
     document.addEventListener('DOMContentLoaded', function() {
