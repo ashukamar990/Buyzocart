@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
-  <link rel="stylesheet" href="style.css">
+  <!-- CSS is in external file - not included here -->
 </head>
 <body>
   <!-- Mobile Menu Overlay -->
@@ -1244,9 +1244,8 @@
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-  <!-- JavaScript code with fixes -->
   <script>
-    // ========== FIXED AND IMPROVED FUNCTIONS FOR ORDER MANAGEMENT ==========
+    // JavaScript implementation with FIXED order display issue
     
     // Global variables
     let currentUser = null;
@@ -2018,11 +2017,6 @@
       document.getElementById('detailSku').textContent = `SKU: ${actualProduct.sku || 'N/A'}`;
       document.getElementById('breadcrumbProductName').textContent = actualProduct.name || 'Product';
       
-      // Reset size selection - no longer on detail page, but kept for compatibility
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => {
-        opt.classList.remove('selected');
-      });
-      
       const stockStatus = document.getElementById('detailStockStatus');
       const stock = actualProduct.stock || 'in';
       if (stock === 'in' || actualProduct.quantity > 0) {
@@ -2409,353 +2403,6 @@
       container.appendChild(fragment);
     }
 
-    // ========== FIXED ORDER FUNCTIONS ==========
-    
-    // Save order to localStorage as backup
-    function saveOrderToLocalStorage(orderData) {
-      try {
-        // Load existing orders
-        let localOrders = JSON.parse(localStorage.getItem('localOrders') || '[]');
-        
-        // Add new order
-        localOrders.push(orderData);
-        
-        // Save back
-        localStorage.setItem('localOrders', JSON.stringify(localOrders));
-        
-        console.log('Order saved to localStorage:', orderData.orderId);
-      } catch (error) {
-        console.error('Error saving to localStorage:', error);
-      }
-    }
-
-    // FIXED confirmOrder function with localStorage backup
-    async function confirmOrder() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      
-      if (!userInfo.fullName || !userInfo.mobile) {
-        showToast('Please complete your information first', 'error');
-        showPage('userPage');
-        return;
-      }
-      
-      if (!currentProduct) {
-        showToast('No product selected', 'error');
-        showPage('productsPage');
-        return;
-      }
-      
-      const orderId = generateOrderId();
-      currentOrderId = orderId;
-      
-      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || 'Not specified';
-      
-      const productPrice = parsePrice(currentProduct.price);
-      const subtotal = productPrice * quantity;
-      const deliveryCharge = adminSettings.deliveryCharge || 50;
-      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
-      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
-      const total = subtotal + deliveryCharge + gatewayCharge;
-      
-      try {
-        const confirmBtn = document.getElementById('confirmOrder');
-        const originalText = confirmBtn.textContent;
-        confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
-        confirmBtn.disabled = true;
-        
-        const orderData = {
-          orderId: orderId,
-          userId: currentUser.uid,
-          username: userInfo.fullName,
-          userEmail: currentUser.email,
-          productId: currentProduct.id,
-          productName: currentProduct.name,
-          productPrice: productPrice,
-          quantity: quantity,
-          size: size,
-          color: currentSelectedColor,
-          colorName: currentSelectedColorName,
-          subtotal: subtotal,
-          deliveryCharge: deliveryCharge,
-          gatewayCharge: gatewayCharge,
-          totalAmount: total,
-          paymentMethod: paymentMethod,
-          status: 'confirmed',
-          orderDate: Date.now(),
-          userInfo: userInfo,
-          tracking: {
-            confirmed: Date.now(),
-            shipped: null,
-            delivered: null
-          }
-        };
-        
-        // Try to save to Firebase
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
-        
-        // Also save to localStorage as backup
-        saveOrderToLocalStorage(orderData);
-        
-        sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
-        
-        document.getElementById('orderIdDisplay').textContent = orderId;
-        showPage('successPage');
-        showToast('Order placed successfully!', 'success');
-        
-      } catch (error) {
-        console.error('Error placing order in Firebase:', error);
-        
-        // If Firebase fails, still save locally
-        const orderData = {
-          orderId: orderId,
-          userId: currentUser.uid,
-          username: userInfo.fullName,
-          userEmail: currentUser.email,
-          productId: currentProduct.id,
-          productName: currentProduct.name,
-          productPrice: productPrice,
-          quantity: quantity,
-          size: size,
-          color: currentSelectedColor,
-          colorName: currentSelectedColorName,
-          subtotal: subtotal,
-          deliveryCharge: deliveryCharge,
-          gatewayCharge: gatewayCharge,
-          totalAmount: total,
-          paymentMethod: paymentMethod,
-          status: 'confirmed',
-          orderDate: Date.now(),
-          userInfo: userInfo,
-          tracking: {
-            confirmed: Date.now(),
-            shipped: null,
-            delivered: null
-          }
-        };
-        
-        saveOrderToLocalStorage(orderData);
-        
-        document.getElementById('orderIdDisplay').textContent = orderId;
-        showPage('successPage');
-        showToast('Order placed successfully! (Saved locally)', 'success');
-      } finally {
-        const confirmBtn = document.getElementById('confirmOrder');
-        if (confirmBtn) {
-          confirmBtn.textContent = 'Confirm & Place Order';
-          confirmBtn.disabled = false;
-        }
-      }
-    }
-
-    // FIXED showMyOrders function - loads from both Firebase and localStorage
-    async function showMyOrders() {
-      if (!currentUser) return;
-      
-      try {
-        const ordersList = document.getElementById('ordersList');
-        const empty = document.getElementById('orders-empty');
-        
-        let allOrders = [];
-        
-        // Load from Firebase
-        try {
-          const snapshot = await window.firebase.get(
-            window.firebase.query(
-              window.firebase.ref(window.firebase.database, 'orders'),
-              window.firebase.orderByChild('userId'),
-              window.firebase.equalTo(currentUser.uid)
-            )
-          );
-          
-          if (snapshot.exists()) {
-            const ordersObj = snapshot.val();
-            const firebaseOrders = Object.keys(ordersObj).map(key => ({
-              id: key,
-              ...ordersObj[key]
-            }));
-            allOrders = [...allOrders, ...firebaseOrders];
-          }
-        } catch (error) {
-          console.error('Error loading Firebase orders:', error);
-        }
-        
-        // Load from localStorage
-        try {
-          const localOrders = JSON.parse(localStorage.getItem('localOrders') || '[]');
-          
-          // Filter only current user's orders
-          const userLocalOrders = localOrders.filter(order => order.userId === currentUser.uid);
-          
-          allOrders = [...allOrders, ...userLocalOrders];
-        } catch (error) {
-          console.error('Error loading local orders:', error);
-        }
-        
-        // Remove duplicates based on orderId
-        const uniqueOrders = [];
-        const orderIds = new Set();
-        
-        allOrders.forEach(order => {
-          if (!orderIds.has(order.orderId)) {
-            orderIds.add(order.orderId);
-            uniqueOrders.push(order);
-          }
-        });
-        
-        // Sort by date (newest first)
-        uniqueOrders.sort((a, b) => b.orderDate - a.orderDate);
-        
-        if (uniqueOrders.length === 0) {
-          ordersList.innerHTML = '';
-          empty.style.display = 'block';
-          return;
-        }
-        
-        renderOrders(uniqueOrders);
-        empty.style.display = 'none';
-      } catch (error) {
-        console.error('Error in showMyOrders:', error);
-      }
-    }
-
-    // FIXED renderOrders function
-    function renderOrders(orders) {
-      const container = document.getElementById('ordersList');
-      if (!container) return;
-      
-      container.innerHTML = '';
-      
-      orders.forEach(order => {
-        const orderCard = document.createElement('div');
-        orderCard.className = 'order-card';
-        
-        const statusClass = `status-${order.status}`;
-        const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-        
-        // Find product image
-        let productImage = 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=Product';
-        if (order.productId) {
-          const product = products.find(p => p.id === order.productId);
-          if (product) {
-            productImage = getProductImage(product);
-          }
-        }
-        
-        orderCard.innerHTML = `
-          <div class="order-header">
-            <div>
-              <div class="order-id">${order.orderId}</div>
-              <div class="order-date">${new Date(order.orderDate).toLocaleDateString()}</div>
-            </div>
-            <div class="order-status ${statusClass}">${statusText}</div>
-          </div>
-          <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${productImage}')"></div>
-            <div class="order-product-info">
-              <div class="order-product-title">${order.productName}</div>
-              <div class="order-product-price">₹${order.totalAmount}</div>
-              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}</div>
-            </div>
-          </div>
-        `;
-        
-        orderCard.addEventListener('click', () => showOrderDetail(order));
-        container.appendChild(orderCard);
-      });
-    }
-
-    function showOrderDetail(order) {
-      const container = document.getElementById('orderDetailContent');
-      if (!container) return;
-      
-      const statusClass = `status-${order.status}`;
-      const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-      
-      // Find product image
-      let productImage = 'https://via.placeholder.com/300x300/f3f4f6/64748b?text=Product';
-      if (order.productId) {
-        const product = products.find(p => p.id === order.productId);
-        if (product) {
-          productImage = getProductImage(product);
-        }
-      }
-      
-      container.innerHTML = `
-        <div class="order-detail-section">
-          <div class="order-detail-label">Order ID</div>
-          <div class="order-detail-value">${order.orderId}</div>
-        </div>
-        
-        <div class="order-detail-section">
-          <div class="order-detail-label">Order Date</div>
-          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString()}</div>
-        </div>
-        
-        <div class="order-detail-section">
-          <div class="order-detail-label">Status</div>
-          <div class="order-detail-value"><span class="order-status ${statusClass}">${statusText}</span></div>
-        </div>
-        
-        <div class="order-detail-section">
-          <div class="order-detail-label">Product</div>
-          <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${productImage}')"></div>
-            <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
-              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
-              <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="order-detail-section">
-          <div class="order-detail-label">Payment Details</div>
-          <div class="order-detail-value">
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-              <span>Subtotal:</span>
-              <span>₹${order.subtotal}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-              <span>Delivery:</span>
-              <span>₹${order.deliveryCharge}</span>
-            </div>
-            ${order.gatewayCharge > 0 ? `
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-              <span>Payment Gateway Charge:</span>
-              <span>₹${order.gatewayCharge.toFixed(2)}</span>
-            </div>
-            ` : ''}
-            <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-              <span>Total Amount:</span>
-              <span>₹${order.totalAmount}</span>
-            </div>
-            <div style="margin-top:8px;color:var(--muted);font-size:14px">
-              Payment Method: ${order.paymentMethod === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on Delivery'}
-            </div>
-          </div>
-        </div>
-        
-        <div class="order-detail-section">
-          <div class="order-detail-label">Delivery Address</div>
-          <div class="order-detail-value">
-            <div>${order.userInfo?.fullName || ''}</div>
-            <div>${order.userInfo?.house || ''}</div>
-            <div>${order.userInfo?.city || ''}, ${order.userInfo?.state || ''} - ${order.userInfo?.pincode || ''}</div>
-            <div>Mobile: ${order.userInfo?.mobile || ''}</div>
-          </div>
-        </div>
-      `;
-      
-      showPage('orderDetailPage');
-    }
-
     // Order flow functions
     function orderProductFromDetail() {
       if (!currentProduct) return;
@@ -2861,19 +2508,49 @@
       showPage('paymentPage');
     }
 
-    function updatePaymentSummary() {
-      if (!currentProduct) {
-        document.getElementById('sumProduct').textContent = '-';
-        document.getElementById('sumQty').textContent = '-';
-        document.getElementById('sumPrice').textContent = '-';
-        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
-        document.getElementById('sumGateway').textContent = '₹0';
-        document.getElementById('sumTotal').textContent = '-';
+    // ========== FIXED: Local Storage Order Functions ==========
+    function saveOrderToLocalStorage(orderData) {
+      try {
+        // Get existing orders from localStorage
+        let localOrders = JSON.parse(localStorage.getItem('localOrders') || '[]');
+        
+        // Add new order
+        localOrders.push(orderData);
+        
+        // Save back to localStorage
+        localStorage.setItem('localOrders', JSON.stringify(localOrders));
+        
+        console.log('Order saved to localStorage:', orderData.orderId);
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+    }
+
+    // ========== FIXED: confirmOrder Function with Local Storage Backup ==========
+    async function confirmOrder() {
+      if (!currentUser) {
+        showLoginModal();
         return;
       }
       
-      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      if (!userInfo.fullName || !userInfo.mobile) {
+        showToast('Please complete your information first', 'error');
+        showPage('userPage');
+        return;
+      }
+      
+      if (!currentProduct) {
+        showToast('No product selected', 'error');
+        showPage('productsPage');
+        return;
+      }
+      
+      const orderId = generateOrderId();
+      currentOrderId = orderId;
+      
       const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || 'Not specified';
       
       const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
@@ -2882,209 +2559,280 @@
       const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
       const total = subtotal + deliveryCharge + gatewayCharge;
       
-      document.getElementById('sumProduct').textContent = currentProduct.name;
-      document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
-      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
-      
-      const chargeNote = document.getElementById('paymentChargeNote');
-      if (chargeNote) {
-        chargeNote.style.display = paymentMethod === 'prepaid' ? 'block' : 'none';
-      }
-    }
-
-    // Quantity functions
-    function decreaseQuantity() {
-      const qtyInput = document.getElementById('qtySelect');
-      let value = parseInt(qtyInput.value);
-      if (value > 1) {
-        qtyInput.value = value - 1;
-      }
-      if (document.getElementById('paymentPage')?.classList.contains('active')) {
-        updatePaymentSummary();
-      }
-    }
-
-    function increaseQuantity() {
-      const qtyInput = document.getElementById('qtySelect');
-      let value = parseInt(qtyInput.value);
-      if (value < 3) {
-        qtyInput.value = value + 1;
-      } else {
-        showToast('Maximum 3 units per order', 'error');
-      }
-      if (document.getElementById('paymentPage')?.classList.contains('active')) {
-        updatePaymentSummary();
-      }
-    }
-
-    // Reviews and ratings
-    function setRating(rating) {
-      const stars = document.querySelectorAll('.rating-star');
-      stars.forEach((star, index) => {
-        if (index < rating) {
-          star.classList.add('active');
-        } else {
-          star.classList.remove('active');
+      // Create order data object
+      const orderData = {
+        orderId: orderId,
+        userId: currentUser.uid,
+        username: userInfo.fullName,
+        userEmail: currentUser.email,
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        productPrice: productPrice,
+        quantity: quantity,
+        size: size,
+        color: currentSelectedColor,
+        colorName: currentSelectedColorName,
+        subtotal: subtotal,
+        deliveryCharge: deliveryCharge,
+        gatewayCharge: gatewayCharge,
+        totalAmount: total,
+        paymentMethod: paymentMethod,
+        status: 'confirmed',
+        orderDate: Date.now(),
+        userInfo: userInfo,
+        tracking: {
+          confirmed: Date.now(),
+          shipped: null,
+          delivered: null
         }
-      });
-    }
-
-    async function submitProductReview() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      
-      if (!currentProduct) {
-        showToast('No product selected', 'error');
-        return;
-      }
-      
-      const activeStars = document.querySelectorAll('.rating-star.active');
-      const rating = activeStars.length;
-      const reviewTextValue = document.getElementById('reviewText').value.trim();
-      
-      if (rating === 0) {
-        showToast('Please select a rating', 'error');
-        return;
-      }
-      
-      if (!reviewTextValue) {
-        showToast('Please write a review', 'error');
-        return;
-      }
+      };
       
       try {
-        const reviewId = 'review_' + Date.now();
-        const reviewData = {
-          id: reviewId,
-          productId: currentProduct.id,
-          userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
-          rating: rating,
-          text: reviewTextValue,
-          date: Date.now()
-        };
+        const confirmBtn = document.getElementById('confirmOrder');
+        const originalText = confirmBtn.textContent;
+        confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
+        confirmBtn.disabled = true;
         
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
+        // Try to save to Firebase
+        try {
+          await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
+        } catch (firebaseError) {
+          console.error('Firebase save failed, using localStorage backup:', firebaseError);
+        }
         
-        showToast('Review submitted successfully', 'success');
+        // ALWAYS save to localStorage as backup
+        saveOrderToLocalStorage(orderData);
         
-        setRating(0);
-        document.getElementById('reviewText').value = '';
+        sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
         
-        loadProductReviews(currentProduct.id);
+        document.getElementById('orderIdDisplay').textContent = orderId;
+        showPage('successPage');
+        showToast('Order placed successfully!', 'success');
+        
       } catch (error) {
-        console.error('Error submitting review:', error);
-        showToast('Failed to submit review', 'error');
+        console.error('Error placing order:', error);
+        
+        // Even if everything fails, save to localStorage
+        saveOrderToLocalStorage(orderData);
+        
+        document.getElementById('orderIdDisplay').textContent = orderId;
+        showPage('successPage');
+        showToast('Order placed successfully! (Saved locally)', 'success');
+      } finally {
+        const confirmBtn = document.getElementById('confirmOrder');
+        if (confirmBtn) {
+          confirmBtn.textContent = 'Confirm & Place Order';
+          confirmBtn.disabled = false;
+        }
       }
     }
 
-    async function loadProductReviews(productId) {
+    // ========== FIXED: showMyOrders Function with Firebase + Local Storage ==========
+    async function showMyOrders() {
+      if (!currentUser) return;
+      
       try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'reviews'),
-            window.firebase.orderByChild('productId'),
-            window.firebase.equalTo(productId)
-          )
-        );
+        const ordersList = document.getElementById('ordersList');
+        const empty = document.getElementById('orders-empty');
         
-        const reviewsList = document.getElementById('reviewsList');
-        if (!reviewsList) return;
+        let allOrders = [];
         
-        if (!snapshot.exists()) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+        // 1. Load orders from Firebase
+        try {
+          const snapshot = await window.firebase.get(
+            window.firebase.query(
+              window.firebase.ref(window.firebase.database, 'orders'),
+              window.firebase.orderByChild('userId'),
+              window.firebase.equalTo(currentUser.uid)
+            )
+          );
+          
+          if (snapshot.exists()) {
+            const ordersObj = snapshot.val();
+            const firebaseOrders = Object.keys(ordersObj).map(key => ({
+              id: key,
+              ...ordersObj[key]
+            }));
+            allOrders = [...allOrders, ...firebaseOrders];
+          }
+        } catch (error) {
+          console.error('Error loading Firebase orders:', error);
+        }
+        
+        // 2. Load orders from localStorage
+        try {
+          const localOrders = JSON.parse(localStorage.getItem('localOrders') || '[]');
+          
+          // Filter only current user's orders
+          const userLocalOrders = localOrders.filter(order => order.userId === currentUser.uid);
+          
+          allOrders = [...allOrders, ...userLocalOrders];
+        } catch (error) {
+          console.error('Error loading local orders:', error);
+        }
+        
+        // 3. Remove duplicates based on orderId
+        const uniqueOrders = [];
+        const orderIds = new Set();
+        
+        allOrders.forEach(order => {
+          if (!orderIds.has(order.orderId)) {
+            orderIds.add(order.orderId);
+            uniqueOrders.push(order);
+          }
+        });
+        
+        // 4. Sort by date (newest first)
+        uniqueOrders.sort((a, b) => b.orderDate - a.orderDate);
+        
+        if (uniqueOrders.length === 0) {
+          ordersList.innerHTML = '';
+          empty.style.display = 'block';
           return;
         }
         
-        const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        reviews.sort((a, b) => b.date - a.date);
-        
-        renderReviews(reviews);
+        // 5. Render orders
+        renderOrders(uniqueOrders);
+        empty.style.display = 'none';
       } catch (error) {
-        console.error('Error loading reviews:', error);
-        const reviewsList = document.getElementById('reviewsList');
-        if (reviewsList) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
-        }
+        console.error('Error in showMyOrders:', error);
       }
     }
 
-    function renderReviews(reviews) {
-      const reviewsList = document.getElementById('reviewsList');
-      if (!reviewsList) return;
+    // ========== FIXED: renderOrders Function with Better Image Handling ==========
+    function renderOrders(orders) {
+      const container = document.getElementById('ordersList');
+      if (!container) return;
       
-      reviewsList.innerHTML = '';
+      container.innerHTML = '';
       
-      reviews.forEach(review => {
-        const reviewItem = document.createElement('div');
-        reviewItem.className = 'review-item';
+      orders.forEach(order => {
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
         
-        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
+        const statusClass = `status-${order.status}`;
+        const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
         
-        reviewItem.innerHTML = `
-          <div class="review-header">
-            <div class="reviewer-name">${review.userName}</div>
-            <div class="review-date">${date}</div>
-          </div>
-          <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
-          ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
-        `;
-        
-        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', function() {
-            deleteReview(review.id);
-          });
+        // Find product image
+        let productImage = 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=Product';
+        if (order.productId) {
+          const product = products.find(p => p.id === order.productId);
+          if (product) {
+            productImage = getProductImage(product);
+          }
         }
         
-        reviewsList.appendChild(reviewItem);
+        // Format date
+        const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A';
+        
+        orderCard.innerHTML = `
+          <div class="order-header">
+            <div>
+              <div class="order-id">${order.orderId}</div>
+              <div class="order-date">${orderDate}</div>
+            </div>
+            <div class="order-status ${statusClass}">${statusText}</div>
+          </div>
+          <div class="order-details">
+            <div class="order-product-image" style="background-image: url('${productImage}')"></div>
+            <div class="order-product-info">
+              <div class="order-product-title">${order.productName || 'Product'}</div>
+              <div class="order-product-price">₹${order.totalAmount || 0}</div>
+              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'} | Color: ${order.colorName || order.color || 'N/A'}</div>
+            </div>
+          </div>
+        `;
+        
+        orderCard.addEventListener('click', () => showOrderDetail(order));
+        container.appendChild(orderCard);
       });
     }
 
-    async function deleteReview(reviewId) {
-      if (!currentUser) return;
+    function showOrderDetail(order) {
+      const container = document.getElementById('orderDetailContent');
+      if (!container) return;
       
-      if (!confirm('Are you sure you want to delete this review?')) return;
+      const statusClass = `status-${order.status}`;
+      const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
       
-      try {
-        await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
-        showToast('Review deleted successfully', 'success');
-        loadProductReviews(currentProduct.id);
-      } catch (error) {
-        console.error('Error deleting review:', error);
-        showToast('Failed to delete review', 'error');
+      // Find product image
+      let productImage = 'https://via.placeholder.com/300x300/f3f4f6/64748b?text=Product';
+      if (order.productId) {
+        const product = products.find(p => p.id === order.productId);
+        if (product) {
+          productImage = getProductImage(product);
+        }
       }
-    }
-
-    // View All Ratings button
-    function setupViewAllRatings() {
-      const viewAllBtn = document.getElementById('viewAllRatingsBtn');
-      if (viewAllBtn) {
-        viewAllBtn.addEventListener('click', () => {
-          const reviewsSection = document.getElementById('reviewsList');
-          if (reviewsSection) {
-            reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        });
-      }
-    }
-
-    // Share link
-    function copyShareLink() {
-      const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      
+      container.innerHTML = `
+        <div class="order-detail-section">
+          <div class="order-detail-label">Order ID</div>
+          <div class="order-detail-value">${order.orderId}</div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Order Date</div>
+          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString()}</div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Status</div>
+          <div class="order-detail-value"><span class="order-status ${statusClass}">${statusText}</span></div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Product</div>
+          <div class="order-detail-product">
+            <div class="order-detail-image" style="background-image: url('${productImage}')"></div>
+            <div class="order-detail-product-info">
+              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
+              <div style="color:var(--muted);font-size:14px">
+                Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Payment Details</div>
+          <div class="order-detail-value">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span>Subtotal:</span>
+              <span>₹${order.subtotal}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span>Delivery:</span>
+              <span>₹${order.deliveryCharge}</span>
+            </div>
+            ${order.gatewayCharge > 0 ? `
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span>Payment Gateway Charge:</span>
+              <span>₹${order.gatewayCharge.toFixed(2)}</span>
+            </div>
+            ` : ''}
+            <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              <span>Total Amount:</span>
+              <span>₹${order.totalAmount}</span>
+            </div>
+            <div style="margin-top:8px;color:var(--muted);font-size:14px">
+              Payment Method: ${order.paymentMethod === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on Delivery'}
+            </div>
+          </div>
+        </div>
+        
+        <div class="order-detail-section">
+          <div class="order-detail-label">Delivery Address</div>
+          <div class="order-detail-value">
+            <div>${order.userInfo?.fullName || order.username || ''}</div>
+            <div>${order.userInfo?.house || ''}</div>
+            <div>${order.userInfo?.city || ''}, ${order.userInfo?.state || ''} - ${order.userInfo?.pincode || ''}</div>
+            <div>Mobile: ${order.userInfo?.mobile || ''}</div>
+          </div>
+        </div>
+      `;
+      
+      showPage('orderDetailPage');
     }
 
     // Recently viewed functions
@@ -4114,6 +3862,173 @@
       });
     }
 
+    // Reviews and ratings
+    function setRating(rating) {
+      const stars = document.querySelectorAll('.rating-star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    async function submitProductReview() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      if (!currentProduct) {
+        showToast('No product selected', 'error');
+        return;
+      }
+      
+      const activeStars = document.querySelectorAll('.rating-star.active');
+      const rating = activeStars.length;
+      const reviewTextValue = document.getElementById('reviewText').value.trim();
+      
+      if (rating === 0) {
+        showToast('Please select a rating', 'error');
+        return;
+      }
+      
+      if (!reviewTextValue) {
+        showToast('Please write a review', 'error');
+        return;
+      }
+      
+      try {
+        const reviewId = 'review_' + Date.now();
+        const reviewData = {
+          id: reviewId,
+          productId: currentProduct.id,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || 'Anonymous',
+          rating: rating,
+          text: reviewTextValue,
+          date: Date.now()
+        };
+        
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
+        
+        showToast('Review submitted successfully', 'success');
+        
+        setRating(0);
+        document.getElementById('reviewText').value = '';
+        
+        loadProductReviews(currentProduct.id);
+      } catch (error) {
+        console.error('Error submitting review:', error);
+        showToast('Failed to submit review', 'error');
+      }
+    }
+
+    async function loadProductReviews(productId) {
+      try {
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'reviews'),
+            window.firebase.orderByChild('productId'),
+            window.firebase.equalTo(productId)
+          )
+        );
+        
+        const reviewsList = document.getElementById('reviewsList');
+        if (!reviewsList) return;
+        
+        if (!snapshot.exists()) {
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          return;
+        }
+        
+        const reviewsObj = snapshot.val();
+        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
+        
+        reviews.sort((a, b) => b.date - a.date);
+        
+        renderReviews(reviews);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+        const reviewsList = document.getElementById('reviewsList');
+        if (reviewsList) {
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
+        }
+      }
+    }
+
+    function renderReviews(reviews) {
+      const reviewsList = document.getElementById('reviewsList');
+      if (!reviewsList) return;
+      
+      reviewsList.innerHTML = '';
+      
+      reviews.forEach(review => {
+        const reviewItem = document.createElement('div');
+        reviewItem.className = 'review-item';
+        
+        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+        const date = new Date(review.date).toLocaleDateString();
+        
+        reviewItem.innerHTML = `
+          <div class="review-header">
+            <div class="reviewer-name">${review.userName}</div>
+            <div class="review-date">${date}</div>
+          </div>
+          <div class="review-rating">${stars}</div>
+          <div class="review-text">${review.text}</div>
+          ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
+            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+        `;
+        
+        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function() {
+            deleteReview(review.id);
+          });
+        }
+        
+        reviewsList.appendChild(reviewItem);
+      });
+    }
+
+    async function deleteReview(reviewId) {
+      if (!currentUser) return;
+      
+      if (!confirm('Are you sure you want to delete this review?')) return;
+      
+      try {
+        await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
+        showToast('Review deleted successfully', 'success');
+        loadProductReviews(currentProduct.id);
+      } catch (error) {
+        console.error('Error deleting review:', error);
+        showToast('Failed to delete review', 'error');
+      }
+    }
+
+    // View All Ratings button
+    function setupViewAllRatings() {
+      const viewAllBtn = document.getElementById('viewAllRatingsBtn');
+      if (viewAllBtn) {
+        viewAllBtn.addEventListener('click', () => {
+          const reviewsSection = document.getElementById('reviewsList');
+          if (reviewsSection) {
+            reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }
+    }
+
+    // Share link
+    function copyShareLink() {
+      const shareLink = document.getElementById('productShareLink');
+      shareLink.select();
+      document.execCommand('copy');
+      showToast('Link copied to clipboard', 'success');
+    }
+
     // Initialize app
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
@@ -4556,6 +4471,65 @@
       });
       
       updateSlider();
+    }
+
+    // Quantity functions
+    function decreaseQuantity() {
+      const qtyInput = document.getElementById('qtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value > 1) {
+        qtyInput.value = value - 1;
+      }
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
+      }
+    }
+
+    function increaseQuantity() {
+      const qtyInput = document.getElementById('qtySelect');
+      let value = parseInt(qtyInput.value);
+      if (value < 3) {
+        qtyInput.value = value + 1;
+      } else {
+        showToast('Maximum 3 units per order', 'error');
+      }
+      if (document.getElementById('paymentPage')?.classList.contains('active')) {
+        updatePaymentSummary();
+      }
+    }
+
+    function updatePaymentSummary() {
+      if (!currentProduct) {
+        document.getElementById('sumProduct').textContent = '-';
+        document.getElementById('sumQty').textContent = '-';
+        document.getElementById('sumPrice').textContent = '-';
+        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
+        document.getElementById('sumGateway').textContent = '₹0';
+        document.getElementById('sumTotal').textContent = '-';
+        return;
+      }
+      
+      const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
+      const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
+      
+      const productPrice = parsePrice(currentProduct.price);
+      const subtotal = productPrice * quantity;
+      const deliveryCharge = adminSettings.deliveryCharge || 50;
+      const gatewayChargePercent = adminSettings.gatewayChargePercent || 2;
+      const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
+      const total = subtotal + deliveryCharge + gatewayCharge;
+      
+      document.getElementById('sumProduct').textContent = currentProduct.name;
+      document.getElementById('sumQty').textContent = quantity;
+      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
+      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
+      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
+      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
+      
+      const chargeNote = document.getElementById('paymentChargeNote');
+      if (chargeNote) {
+        chargeNote.style.display = paymentMethod === 'prepaid' ? 'block' : 'none';
+      }
     }
 
     // Image zoom functions
