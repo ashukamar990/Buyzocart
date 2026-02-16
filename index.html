@@ -495,22 +495,8 @@
             <!-- Stock Status -->
             <div class="stock-status in-stock" id="detailStockStatus">In Stock</div>
 
-            <!-- Size & Quantity Section (MOVED HERE - ABOVE DETAILS) -->
-            <div class="product-selection-section" id="detailSelectionSection">
-              <div class="selection-title">Select Size *</div>
-              <div class="size-options" id="detailSizeOptions"></div>
-
-              <div style="margin-top: 20px;">
-                <div class="selection-title">Select Quantity</div>
-                <div class="quantity-control" style="max-width: 200px;">
-                  <button class="qty-minus" id="detailQtyMinus">-</button>
-                  <input type="number" id="detailQtySelect" min="1" value="1" max="3" readonly />
-                  <button class="qty-plus" id="detailQtyPlus">+</button>
-                </div>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
-              </div>
-              <div class="size-validation-error" id="detailSizeValidationError">Please select a size to continue</div>
-            </div>
+            <!-- ❌ Size & Quantity Section REMOVED from product detail page (as requested) -->
+            <!-- ✅ ab sirf order page par aayega -->
 
             <div class="product-detail-desc" id="detailDesc"></div>
             <div class="product-detail-full-desc" id="detailFullDesc"></div>
@@ -589,7 +575,7 @@
               <p id="spFullDesc"></p>
             </div>
 
-            <!-- Professional Size/Color Selection -->
+            <!-- Professional Size/Color Selection (SIRF YAHAN AAYEGA) -->
             <div class="product-selection-section">
               <div class="selection-title">Select Size *</div>
               <div class="size-options" id="sizeOptions">
@@ -1735,7 +1721,7 @@
       margin-bottom: 20px;
     }
 
-    /* Size & Quantity section on product detail page */
+    /* Size & Quantity section on product detail page - HIDDEN as per request */
     .product-selection-section {
       margin: 20px 0;
       padding: 15px;
@@ -1870,9 +1856,6 @@
   </style>
 
   <script>
-    // JavaScript implementation (all existing functions from original file remain the same)
-    // Only the fixes and new functions are added below
-
     // Global variables
     let currentUser = null;
     let currentProduct = null;
@@ -1930,7 +1913,7 @@
 
     // Product Image Helper Function
     function getProductImage(product, idx = 0) {
-      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
+      if (!product) return "";
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
@@ -1939,7 +1922,7 @@
       if (product.img) return product.img;
       if (product.imageUrl) return product.imageUrl;
       if (product.photo) return product.photo;
-      return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+      return "";
     }
 
     function getProductImages(product) {
@@ -1947,7 +1930,8 @@
       if (Array.isArray(product.images) && product.images.length > 0) {
         return product.images;
       } else {
-        return [getProductImage(product)];
+        const img = getProductImage(product);
+        return img ? [img] : [];
       }
     }
 
@@ -2010,7 +1994,9 @@
 
     // Initialize EmailJS
     (function() {
-      emailjs.init("user_your_user_id_here"); // Replace with your EmailJS user ID
+      if (typeof emailjs !== 'undefined') {
+        emailjs.init("user_your_user_id_here");
+      }
     })();
 
     // Color names mapping
@@ -2072,13 +2058,9 @@
     function performSearch(query) {
       if (!query.trim()) return;
 
-      // Hide mobile keyboard (blur the input)
       document.getElementById('searchPanelInput').blur();
-
-      // Add to recent searches
       addToRecentSearches(query);
 
-      // Filter products
       const filteredProducts = products.filter(product => 
         product.name?.toLowerCase().includes(query.toLowerCase()) ||
         product.description?.toLowerCase().includes(query.toLowerCase()) ||
@@ -2086,15 +2068,11 @@
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
 
-      // Save search query for results page
       window.currentSearchQuery = query;
       window.currentSearchResults = filteredProducts;
 
-      // Redirect to search results page
       showPage('searchResultsPage');
       renderSearchResults(filteredProducts, query);
-
-      // Close search panel
       closeSearchPanel();
     }
 
@@ -2645,27 +2623,7 @@
       document.getElementById('detailSku').textContent = `SKU: ${actualProduct.sku || 'N/A'}`;
       document.getElementById('breadcrumbProductName').textContent = actualProduct.name || 'Product';
 
-      // Populate size options from product data
-      const sizeOptionsContainer = document.getElementById('detailSizeOptions');
-      sizeOptionsContainer.innerHTML = '';
-      const sizes = actualProduct.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
-      sizes.forEach(size => {
-        const option = document.createElement('div');
-        option.className = 'size-option';
-        option.setAttribute('data-value', size);
-        option.textContent = size;
-        option.addEventListener('click', function() {
-          document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('detailSizeValidationError')?.classList.remove('show');
-        });
-        sizeOptionsContainer.appendChild(option);
-      });
-
-      // Reset size selection
-      document.querySelectorAll('#detailSizeOptions .size-option').forEach(opt => {
-        opt.classList.remove('selected');
-      });
+      // ✅ Size options NOT rendered here - removed from product detail page
 
       const stockStatus = document.getElementById('detailStockStatus');
       const stock = actualProduct.stock || 'in';
@@ -2714,7 +2672,10 @@
 
       currentProductImages = getProductImages(product);
       if (currentProductImages.length === 0) {
-        currentProductImages = [getProductImage(product)];
+        currentProductImages = [];
+        mainImage.style.backgroundImage = '';
+        dotsContainer.innerHTML = '';
+        return;
       }
 
       currentImageIndex = 0;
@@ -2823,6 +2784,8 @@
       function updateMainImage() {
         if (currentProductImages[currentImageIndex]) {
           mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
+        } else {
+          mainImage.style.backgroundImage = '';
         }
       }
 
@@ -3061,23 +3024,8 @@
     function orderProductFromDetail() {
       if (!currentProduct) return;
 
-      // Get selected size from detail page
-      const selectedSize = document.querySelector('#detailSizeOptions .size-option.selected');
-      if (!selectedSize) {
-        document.getElementById('detailSizeValidationError').classList.add('show');
-        showToast('Please select a size to continue', 'error');
-        return;
-      }
-
-      document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
-        opt.classList.remove('selected');
-        if (opt.getAttribute('data-value') === selectedSize.getAttribute('data-value')) {
-          opt.classList.add('selected');
-        }
-      });
-
-      const qty = parseInt(document.getElementById('detailQtySelect').value) || 1;
-      document.getElementById('qtySelect').value = qty;
+      // Get selected size from order page will be done there
+      document.getElementById('qtySelect').value = 1;
 
       document.getElementById('spTitle').textContent = currentProduct.name;
       document.getElementById('spPrice').textContent = currentProduct.price ? '₹' + parsePrice(currentProduct.price).toLocaleString() : '₹0';
@@ -3098,7 +3046,9 @@
 
       const productImages = getProductImages(currentProduct);
       if (productImages.length === 0) {
-        productImages.push(getProductImage(currentProduct));
+        galleryMain.style.backgroundImage = '';
+        dotsContainer.innerHTML = '';
+        return;
       }
 
       galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
@@ -3316,36 +3266,14 @@
       }
     }
 
-    // Detail page quantity controls
+    // Detail page quantity controls (not needed now but keep for compatibility)
     function setupDetailQuantityControls() {
-      const minusBtn = document.getElementById('detailQtyMinus');
-      const plusBtn = document.getElementById('detailQtyPlus');
-      const qtyInput = document.getElementById('detailQtySelect');
-
-      if (minusBtn) {
-        minusBtn.addEventListener('click', () => {
-          let value = parseInt(qtyInput.value);
-          if (value > 1) {
-            qtyInput.value = value - 1;
-          }
-        });
-      }
-
-      if (plusBtn) {
-        plusBtn.addEventListener('click', () => {
-          let value = parseInt(qtyInput.value);
-          if (value < 3) {
-            qtyInput.value = value + 1;
-          } else {
-            showToast('Maximum 3 units per order', 'error');
-          }
-        });
-      }
+      // No size/quantity on detail page, so nothing to do
     }
 
-    // Detail page size selection
+    // Detail page size selection (not needed now)
     function setupDetailSizeSelection() {
-      // Size options are dynamically created in showProductDetail
+      // Nothing to do
     }
 
     // Reviews and ratings
@@ -3883,6 +3811,13 @@
 
       if (!track || !controls) return;
 
+      if (!banners || banners.length === 0) {
+        track.innerHTML = '';
+        controls.innerHTML = '';
+        document.getElementById('bannerCarousel')?.classList.remove('skeleton');
+        return;
+      }
+
       const trackFragment = document.createDocumentFragment();
       const controlsFragment = document.createDocumentFragment();
 
@@ -3928,7 +3863,7 @@
     }
 
     function setupBannerAutoSlide() {
-      if (banners.length <= 1) return;
+      if (!banners || banners.length <= 1) return;
 
       let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
@@ -4199,6 +4134,8 @@
     }
 
     // Address management
+    let currentEditingAddressId = null;  // ✅ Track which address is being edited
+
     async function loadSavedAddresses() {
       if (!currentUser) return;
 
@@ -4318,6 +4255,48 @@
 
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
 
+      // ✅ Agar editing mode mein hain to UPDATE karo, otherwise naya save karo
+      if (currentEditingAddressId) {
+        try {
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + currentEditingAddressId), {
+            name: fullname,
+            mobile: mobile,
+            pincode: pincode,
+            city: city,
+            state: state,
+            street: house,
+            type: addressType,
+            updatedAt: Date.now()
+          });
+
+          showToast('Address updated successfully', 'success');
+          currentEditingAddressId = null;  // Reset after update
+          document.getElementById('saveUserInfo').textContent = 'Save This Address'; // Change text back
+
+          loadSavedAddresses();
+        } catch (error) {
+          console.error('Error updating address:', error);
+          showToast('Failed to update address', 'error');
+        }
+        return;
+      }
+
+      // ✅ Agar same address already exist karta hai to save mat karo
+      const isDuplicate = savedAddresses.some(addr => 
+        addr.name === fullname &&
+        addr.mobile === mobile &&
+        addr.pincode === pincode &&
+        addr.city === city &&
+        addr.state === state &&
+        addr.street === house
+      );
+
+      if (isDuplicate) {
+        showToast('This address already exists!', 'error');
+        return;
+      }
+
+      // ✅ Naya address save karo
       const addressData = {
         name: fullname,
         mobile: mobile,
@@ -4345,6 +4324,8 @@
     function showNewAddressForm() {
       document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
+      currentEditingAddressId = null;  // Reset editing mode
+      document.getElementById('saveUserInfo').textContent = 'Save This Address'; // Reset button text
 
       document.getElementById('fullname').value = '';
       document.getElementById('mobile').value = '';
@@ -4360,28 +4341,8 @@
       document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
 
-      const saveBtn = document.getElementById('saveUserInfo');
-      saveBtn.textContent = 'Update Address';
-      saveBtn.onclick = async function() {
-        const addressData = {
-          name: document.getElementById('fullname').value,
-          mobile: document.getElementById('mobile').value,
-          pincode: document.getElementById('pincode').value,
-          city: document.getElementById('city').value,
-          state: document.getElementById('state').value,
-          street: document.getElementById('house').value,
-          type: document.getElementById('addressType').value
-        };
-
-        try {
-          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
-          showToast('Address updated successfully', 'success');
-          loadSavedAddresses();
-        } catch (error) {
-          console.error('Error updating address:', error);
-          showToast('Failed to update address', 'error');
-        }
-      };
+      currentEditingAddressId = address.id;  // ✅ Set editing ID
+      document.getElementById('saveUserInfo').textContent = 'Update Address'; // Change button text
     }
 
     function deleteAddressConfirmation(address) {
@@ -4398,11 +4359,12 @@
         } catch (error) {
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
+          document.getElementById('alertModal').classList.remove('active');
         }
       };
     }
 
-    // Email functions
+    // Email functions (dummy)
     function sendLoginNotification(email) {
       console.log('Login notification would be sent to:', email);
     }
@@ -4485,6 +4447,13 @@
 
               updateProductsCount();
             }
+          } else {
+            // ✅ No products in Firebase, clear all grids
+            products = [];
+            renderProducts([], 'homeProductGrid');
+            renderProducts([], 'productGrid');
+            renderProductSlider([], 'productSlider');
+            updateProductsCount();
           }
         })
         .catch(error => {
@@ -4506,6 +4475,10 @@
               renderCategories();
               renderCategoryCircles();
             }
+          } else {
+            categories = [];
+            renderCategories();
+            renderCategoryCircles();
           }
         })
         .catch(error => {
@@ -4526,6 +4499,9 @@
             if (document.getElementById('homePage')?.classList.contains('active')) {
               renderBannerCarousel();
             }
+          } else {
+            banners = [];
+            renderBannerCarousel();
           }
         })
         .catch(error => {
@@ -4613,36 +4589,39 @@
           }));
           products = newProducts;
           cacheManager.set('products', products);
+        } else {
+          products = [];
+          cacheManager.remove('products');
+        }
 
-          if (
-            document.getElementById('homePage')?.classList.contains('active') ||
-            document.getElementById('productsPage')?.classList.contains('active') ||
-            document.getElementById('productDetailPage')?.classList.contains('active') ||
-            document.getElementById('searchResultsPage')?.classList.contains('active')
-          ) {
-            renderProducts(products, 'homeProductGrid');
-            renderProducts(products, 'productGrid');
+        if (
+          document.getElementById('homePage')?.classList.contains('active') ||
+          document.getElementById('productsPage')?.classList.contains('active') ||
+          document.getElementById('productDetailPage')?.classList.contains('active') ||
+          document.getElementById('searchResultsPage')?.classList.contains('active')
+        ) {
+          renderProducts(products, 'homeProductGrid');
+          renderProducts(products, 'productGrid');
 
-            const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
-            renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+          const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
+          renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
 
-            const featuredProducts = products.filter(p => p.isFeatured);
-            if (featuredProducts.length > 0) {
-              renderProducts(featuredProducts, 'homeProductGrid');
-            }
+          const featuredProducts = products.filter(p => p.isFeatured);
+          if (featuredProducts.length > 0) {
+            renderProducts(featuredProducts, 'homeProductGrid');
+          }
 
-            updateProductsCount();
+          updateProductsCount();
 
-            if (document.getElementById('searchResultsPage')?.classList.contains('active') && window.currentSearchQuery) {
-              const filteredResults = products.filter(product => 
-                product.name?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                product.description?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                product.category?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                (product.tags && product.tags.some(tag => tag.toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-              );
-              window.currentSearchResults = filteredResults;
-              renderSearchResults(filteredResults, window.currentSearchQuery);
-            }
+          if (document.getElementById('searchResultsPage')?.classList.contains('active') && window.currentSearchQuery) {
+            const filteredResults = products.filter(product => 
+              product.name?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              product.description?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              product.category?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.tags && product.tags.some(tag => tag.toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
+            );
+            window.currentSearchResults = filteredResults;
+            renderSearchResults(filteredResults, window.currentSearchQuery);
           }
         }
       });
@@ -4656,11 +4635,14 @@
           }));
           categories = newCategories;
           cacheManager.set('categories', categories);
+        } else {
+          categories = [];
+          cacheManager.remove('categories');
+        }
 
-          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
+        if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
+          renderCategories();
+          renderCategoryCircles();
         }
       });
 
@@ -4673,10 +4655,13 @@
           }));
           banners = newBanners;
           cacheManager.set('banners', banners);
+        } else {
+          banners = [];
+          cacheManager.remove('banners');
+        }
 
-          if (document.getElementById('homePage')?.classList.contains('active')) {
-            renderBannerCarousel();
-          }
+        if (document.getElementById('homePage')?.classList.contains('active')) {
+          renderBannerCarousel();
         }
       });
 
@@ -4787,7 +4772,7 @@
       if (searchInput) {
         searchInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent form submission
+            e.preventDefault();
             performSearch(this.value);
           }
         });
