@@ -522,6 +522,11 @@
                   <span class="rating-star" data-rating="5">★</span>
                 </div>
                 <textarea class="review-textarea" id="reviewText" placeholder="Share your experience with this product..."></textarea>
+                <div class="review-file-upload" style="margin: 10px 0;">
+                  <label for="reviewFile" style="display: block; margin-bottom: 5px;">Upload Photo/Video (optional):</label>
+                  <input type="file" id="reviewFile" accept="image/jpeg,image/png,video/mp4" style="width: 100%; padding: 5px;">
+                  <small style="color: var(--muted);">Max size: 5MB. Supported: JPG, PNG, MP4</small>
+                </div>
                 <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
               </div>
               
@@ -1156,7 +1161,6 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
-      font-family: 'Inter', sans-serif;
     }
     
     img {
@@ -1518,18 +1522,31 @@
     
     .banner-carousel {
       touch-action: pan-y pinch-zoom;
-      position: relative;
       overflow: hidden;
     }
     
     .banner-track {
       display: flex;
-      transition: transform 0.3s ease;
+      transition: transform 0.5s ease;
       cursor: grab;
     }
     
     .banner-track:active {
       cursor: grabbing;
+    }
+    
+    .banner-slide {
+      flex: 0 0 100%;
+      height: 250px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 10px;
+      user-select: none;
+      pointer-events: none;
+    }
+    
+    .banner-slide.active {
+      pointer-events: auto;
     }
     
     @media (prefers-reduced-motion: reduce) {
@@ -1618,14 +1635,6 @@
     
     .slider-track::-webkit-scrollbar {
       display: none;
-    }
-    
-    .banner-slide {
-      flex: 0 0 100%;
-      height: 250px;
-      background-size: cover;
-      background-position: center;
-      border-radius: 10px;
     }
     
     .payment-charge-note {
@@ -1737,10 +1746,23 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
+      flex-wrap: wrap;
     }
     
     .reviewer-name {
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .verified-badge {
+      background: #10b981;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 12px;
+      display: inline-block;
     }
     
     .review-date {
@@ -1755,13 +1777,19 @@
     
     .review-text {
       margin-bottom: 10px;
-      padding-right: 80px;
+    }
+    
+    .review-file {
+      margin: 10px 0;
+      max-width: 200px;
+    }
+    
+    .review-file img, .review-file video {
+      width: 100%;
+      border-radius: 5px;
     }
     
     .review-delete-btn {
-      position: absolute;
-      bottom: 15px;
-      right: 15px;
       background: none;
       border: 1px solid #ef4444;
       color: #ef4444;
@@ -1769,11 +1797,20 @@
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
+      margin-top: 10px;
+      display: inline-block;
     }
     
     .review-delete-btn:hover {
       background: #ef4444;
       color: white;
+    }
+    
+    .review-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
     }
     
     .saved-address-card {
@@ -1802,6 +1839,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
+      flex-wrap: wrap;
     }
     
     .order-id {
@@ -1893,25 +1931,6 @@
       color: #3b82f6;
       border-color: #3b82f6;
     }
-    
-    .return-expired {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 5px;
-      display: block;
-    }
-
-    @media (max-width: 768px) {
-      .review-text {
-        padding-right: 0;
-        margin-bottom: 40px;
-      }
-      
-      .review-delete-btn {
-        bottom: 15px;
-        right: 15px;
-      }
-    }
   </style>
 
   <script>
@@ -1928,6 +1947,8 @@
     let currentCategoryFilter = null;
     let currentProductImages = [];
     let currentProductModalIndex = 0;
+    let currentSelectedColor = 'black';
+    let currentSelectedColorName = 'काला';
     let adminSettings = {
       deliveryCharge: 50,
       gatewayChargePercent: 2,
@@ -2046,6 +2067,29 @@
     (function() {
       emailjs.init("user_your_user_id_here");
     })();
+
+    const colorNames = {
+      'black': 'काला',
+      'white': 'सफेद',
+      'blue': 'नीला',
+      'red': 'लाल',
+      'green': 'हरा',
+      'yellow': 'पीला',
+      'pink': 'गुलाबी',
+      'purple': 'बैंगनी',
+      'orange': 'नारंगी',
+      'gray': 'ग्रे',
+      'brown': 'भूरा',
+      'navy': 'गहरा नीला',
+      'maroon': 'मैरून',
+      'teal': 'टील',
+      'olive': 'जैतूनी',
+      'silver': 'चांदी',
+      'gold': 'सोना',
+      'beige': 'बेज',
+      'burgundy': 'बरगंडी',
+      'charcoal': 'चारकोल'
+    };
 
     function openMenu() {
       document.getElementById('mobileMenu').classList.add('active');
@@ -2299,9 +2343,7 @@
         case 'homePage':
           setTimeout(setupTrendingAutoSlide, 1000);
           setTimeout(setupBannerAutoSlide, 1000);
-          if (currentUser) {
-            loadRecentlyViewed(currentUser);
-          }
+          loadRecentlyViewedForDisplay();
           break;
         case 'searchResultsPage':
           if (window.currentSearchQuery) {
@@ -2337,13 +2379,7 @@
         showLoginModal();
         return;
       }
-      if (recentlyViewed.length > 0) {
-        renderRecentlyViewed();
-        showPage('homePage');
-        document.getElementById('recentlyViewedSection').scrollIntoView({ behavior: 'smooth' });
-      } else {
-        showToast('No recently viewed products', 'info');
-      }
+      showPage('recentlyViewedPage');
     }
 
     function updateBottomNav() {
@@ -2573,7 +2609,7 @@
           <div class="product-card-title">${product.name || 'Product Name'}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
-            <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
+            <div class="product-card-review-count">(${product.reviewCount || ratingCounts[product.id] || '0'})</div>
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
@@ -2652,6 +2688,8 @@
     function showProductDetail(product) {
       const actualProduct = products.find(p => p.id === product.id) || product;
       currentProduct = actualProduct;
+      currentSelectedColor = product.defaultColor || 'black';
+      currentSelectedColorName = colorNames[currentSelectedColor] || 'काला';
       
       document.getElementById('detailTitle').textContent = actualProduct.name || 'Product Name';
       document.getElementById('detailPrice').textContent = actualProduct.price ? '₹' + parsePrice(actualProduct.price).toLocaleString() : '₹0';
@@ -3217,13 +3255,6 @@
         
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
         
-        if (currentProduct.stock !== undefined) {
-          const newStock = Math.max(0, (currentProduct.stock || 0) - quantity);
-          await window.firebase.update(window.firebase.ref(window.firebase.database, 'products/' + currentProduct.id), {
-            stock: newStock
-          });
-        }
-        
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
         
         document.getElementById('orderIdDisplay').textContent = orderId;
@@ -3232,9 +3263,7 @@
         
       } catch (error) {
         console.error('Error placing order:', error);
-        showToast('Order placed successfully!', 'success');
-        document.getElementById('orderIdDisplay').textContent = orderId;
-        showPage('successPage');
+        showToast('Failed to place order', 'error');
       } finally {
         const confirmBtn = document.getElementById('confirmOrder');
         if (confirmBtn) {
@@ -3268,7 +3297,7 @@
       document.getElementById('sumProduct').textContent = currentProduct.name;
       document.getElementById('sumQty').textContent = quantity;
       document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
+      document.getElementById('sumDel').innerHTML = `₹${deliveryCharge}`;
       document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
       document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
       
@@ -3313,83 +3342,13 @@
       });
     }
 
+    let ratingCounts = {};
+
     function calculateProductRating(productId) {
-      const product = products.find(p => p.id === productId);
-      if (product && product.reviews) {
-        const reviews = product.reviews;
-        if (reviews.length > 0) {
-          const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-          return sum / reviews.length;
-        }
+      if (ratingCounts[productId]) {
+        return ratingCounts[productId].average;
       }
       return 4.0;
-    }
-
-    async function submitProductReview() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      
-      if (!currentProduct) {
-        showToast('No product selected', 'error');
-        return;
-      }
-      
-      const activeStars = document.querySelectorAll('.rating-star.active');
-      const rating = activeStars.length;
-      const reviewTextValue = document.getElementById('reviewText').value.trim();
-      
-      if (rating === 0) {
-        showToast('Please select a rating', 'error');
-        return;
-      }
-      
-      if (!reviewTextValue) {
-        showToast('Please write a review', 'error');
-        return;
-      }
-      
-      try {
-        const reviewId = 'review_' + Date.now();
-        const reviewData = {
-          id: reviewId,
-          productId: currentProduct.id,
-          userId: currentUser.uid,
-          userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
-          rating: rating,
-          text: reviewTextValue,
-          date: Date.now()
-        };
-        
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
-        
-        const productRef = window.firebase.ref(window.firebase.database, 'products/' + currentProduct.id);
-        const snapshot = await window.firebase.get(productRef);
-        if (snapshot.exists()) {
-          const productData = snapshot.val();
-          const reviews = productData.reviews || [];
-          reviews.push(reviewData);
-          const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
-          const avgRating = sum / reviews.length;
-          
-          await window.firebase.update(productRef, {
-            reviews: reviews,
-            rating: avgRating,
-            reviewCount: reviews.length
-          });
-        }
-        
-        showToast('Review submitted successfully', 'success');
-        
-        setRating(0);
-        document.getElementById('reviewText').value = '';
-        
-        loadProductReviews(currentProduct.id);
-      } catch (error) {
-        console.error('Error submitting review:', error);
-        showToast('Failed to submit review', 'error');
-      }
     }
 
     async function loadProductReviews(productId) {
@@ -3405,24 +3364,54 @@
         const reviewsList = document.getElementById('reviewsList');
         if (!reviewsList) return;
         
-        if (!snapshot.exists()) {
+        let totalRating = 0;
+        let reviewCount = 0;
+        
+        if (snapshot.exists()) {
+          const reviewsObj = snapshot.val();
+          const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
+          
+          reviews.sort((a, b) => b.date - a.date);
+          
+          reviews.forEach(review => {
+            totalRating += review.rating;
+            reviewCount++;
+          });
+          
+          const averageRating = reviewCount > 0 ? (totalRating / reviewCount) : 0;
+          ratingCounts[productId] = {
+            average: averageRating,
+            count: reviewCount
+          };
+          
+          const product = products.find(p => p.id === productId);
+          if (product) {
+            product.reviewCount = reviewCount;
+            product.rating = averageRating;
+          }
+          
+          const topReviews = reviews.slice(0, 5);
+          renderReviews(topReviews, 'reviewsList');
+        } else {
           reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
-          return;
         }
         
-        const reviewsObj = snapshot.val();
-        const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
-        
-        reviews.sort((a, b) => b.date - a.date);
-        
-        const topReviews = reviews.slice(0, 8);
-        renderReviews(topReviews, 'reviewsList');
+        updateProductCards();
       } catch (error) {
         console.error('Error loading reviews:', error);
         const reviewsList = document.getElementById('reviewsList');
         if (reviewsList) {
           reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
         }
+      }
+    }
+
+    function updateProductCards() {
+      if (document.getElementById('homePage')?.classList.contains('active')) {
+        renderProducts(products, 'homeProductGrid');
+      }
+      if (document.getElementById('productsPage')?.classList.contains('active')) {
+        renderProducts(products, 'productGrid');
       }
     }
 
@@ -3442,23 +3431,35 @@
         reviewItem.className = 'review-item';
         
         const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        const date = new Date(review.date).toLocaleDateString();
+        
+        let fileHtml = '';
+        if (review.fileUrl) {
+          if (review.fileType?.startsWith('image/')) {
+            fileHtml = `<div class="review-file"><img src="${review.fileUrl}" alt="Review image"></div>`;
+          } else if (review.fileType?.startsWith('video/')) {
+            fileHtml = `<div class="review-file"><video src="${review.fileUrl}" controls style="max-width:200px"></video></div>`;
+          }
+        }
         
         reviewItem.innerHTML = `
           <div class="review-header">
-            <div class="reviewer-name">${review.userName}</div>
+            <div class="reviewer-name">
+              ${review.userName}
+              ${review.verified ? '<span class="verified-badge">Verified Purchase</span>' : ''}
+            </div>
             <div class="review-date">${date}</div>
           </div>
           <div class="review-rating">${stars}</div>
           <div class="review-text">${review.text}</div>
-          ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+          ${fileHtml}
+          <div class="review-footer">
+            <div></div>
+            ${currentUser && (review.userId === currentUser.uid) ? 
+              `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
+            ${currentUser && (currentUser.uid === 'admin') ? 
+              `<button class="review-delete-btn" data-review-id="${review.id}">Delete (Admin)</button>` : ''}
+          </div>
         `;
         
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
@@ -3514,6 +3515,97 @@
       } catch (error) {
         console.error('Error loading all ratings:', error);
         showToast('Failed to load all ratings', 'error');
+      }
+    }
+
+    async function submitProductReview() {
+      if (!currentUser) {
+        showLoginModal();
+        return;
+      }
+      
+      if (!currentProduct) {
+        showToast('No product selected', 'error');
+        return;
+      }
+      
+      const activeStars = document.querySelectorAll('.rating-star.active');
+      const rating = activeStars.length;
+      const reviewTextValue = document.getElementById('reviewText').value.trim();
+      const fileInput = document.getElementById('reviewFile');
+      
+      if (rating === 0) {
+        showToast('Please select a rating', 'error');
+        return;
+      }
+      
+      if (!reviewTextValue) {
+        showToast('Please write a review', 'error');
+        return;
+      }
+      
+      const ordersSnapshot = await window.firebase.get(
+        window.firebase.query(
+          window.firebase.ref(window.firebase.database, 'orders'),
+          window.firebase.orderByChild('userId'),
+          window.firebase.equalTo(currentUser.uid)
+        )
+      );
+      
+      let hasDeliveredOrder = false;
+      if (ordersSnapshot.exists()) {
+        const orders = Object.values(ordersSnapshot.val());
+        hasDeliveredOrder = orders.some(order => 
+          order.productId === currentProduct.id && order.status === 'delivered'
+        );
+      }
+      
+      if (!hasDeliveredOrder) {
+        showToast('Only customers who received this product can review', 'error');
+        return;
+      }
+      
+      try {
+        const reviewId = 'review_' + Date.now();
+        let fileUrl = null;
+        let fileType = null;
+        
+        if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          if (file.size > 5 * 1024 * 1024) {
+            showToast('File size should be less than 5MB', 'error');
+            return;
+          }
+          
+          fileUrl = URL.createObjectURL(file);
+          fileType = file.type;
+        }
+        
+        const reviewData = {
+          id: reviewId,
+          productId: currentProduct.id,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
+          rating: rating,
+          text: reviewTextValue,
+          date: Date.now(),
+          verified: true,
+          fileUrl: fileUrl,
+          fileType: fileType
+        };
+        
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
+        
+        showToast('Review submitted successfully', 'success');
+        
+        setRating(0);
+        document.getElementById('reviewText').value = '';
+        fileInput.value = '';
+        
+        loadProductReviews(currentProduct.id);
+      } catch (error) {
+        console.error('Error submitting review:', error);
+        showToast('Failed to submit review', 'error');
       }
     }
 
@@ -3590,15 +3682,11 @@
           }
         }
         
-        const daysSinceDelivery = order.status === 'delivered' && deliveredDate 
-          ? Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24))
-          : null;
-        
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
               <div class="order-id">${order.orderId}</div>
-              <div class="order-date">${orderDate.toLocaleDateString('en-IN')}</div>
+              <div class="order-date">${orderDate.toLocaleDateString()}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
@@ -3610,17 +3698,12 @@
               <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
           </div>
-          ${order.status === 'delivered' && daysSinceDelivery !== null && daysSinceDelivery <= 3 ? 
-            `<div class="order-actions">
-              <button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>
-              <span class="return-expired">(${3 - daysSinceDelivery} days left)</span>
-            </div>` : ''}
-          ${order.status === 'delivered' && daysSinceDelivery !== null && daysSinceDelivery > 3 ? 
-            `<div class="return-expired">Return/Replace period expired (${daysSinceDelivery} days ago)</div>` : ''}
-          ${order.status === 'confirmed' || order.status === 'shipped' ? 
-            `<div class="order-actions">
-              <button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>
-            </div>` : ''}
+          <div class="order-actions">
+            ${order.status === 'confirmed' || order.status === 'shipped' ? 
+              `<button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>` : ''}
+            ${showReturnReplace ? 
+              `<button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>` : ''}
+          </div>
         `;
         
         orderCard.addEventListener('click', (e) => {
@@ -3686,7 +3769,7 @@
         
         <div class="order-detail-section">
           <div class="order-detail-label">Order Date</div>
-          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString('en-IN')}</div>
+          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString()}</div>
         </div>
         
         <div class="order-detail-section">
@@ -3753,52 +3836,65 @@
       if (!currentUser) return;
       try {
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
-        loadRecentlyViewed(currentUser);
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
       }
     }
 
-    async function loadRecentlyViewed(user) {
+    async function loadRecentlyViewedForDisplay() {
+      if (!currentUser) return;
       try {
-        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + user.uid));
-        const recentlyViewedObj = snapshot.val();
-        if (recentlyViewedObj) {
-          const viewedEntries = Object.entries(recentlyViewedObj);
-          viewedEntries.sort((a, b) => b[1] - a[1]);
-          recentlyViewed = viewedEntries.map(entry => entry[0]).slice(0, 10);
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid));
+        if (snapshot.exists()) {
+          const viewedObj = snapshot.val();
+          const viewedIds = Object.keys(viewedObj)
+            .sort((a, b) => viewedObj[b] - viewedObj[a])
+            .slice(0, 10);
           
-          if (recentlyViewed.length > 0) {
-            renderRecentlyViewed();
-          } else {
-            document.getElementById('recentlyViewedSection').style.display = 'none';
+          if (viewedIds.length > 0) {
+            renderRecentlyViewed(viewedIds);
           }
-        } else {
-          recentlyViewed = [];
-          document.getElementById('recentlyViewedSection').style.display = 'none';
         }
       } catch (error) {
         console.error('Error loading recently viewed:', error);
       }
     }
 
-    function renderRecentlyViewed() {
+    function renderRecentlyViewed(viewedIds) {
       const section = document.getElementById('recentlyViewedSection');
       const slider = document.getElementById('recentlyViewedSlider');
       
       if (!section || !slider) return;
       
-      const recentlyViewedProducts = products.filter(product => 
-        recentlyViewed.includes(product.id)
-      ).slice(0, 10);
+      const viewedProducts = products.filter(product => 
+        viewedIds.includes(product.id)
+      );
       
-      if (recentlyViewedProducts.length === 0) {
+      if (viewedProducts.length === 0) {
         section.style.display = 'none';
         return;
       }
       
       section.style.display = 'block';
-      renderProductSlider(recentlyViewedProducts, 'recentlyViewedSlider');
+      
+      const fragment = document.createDocumentFragment();
+      viewedProducts.forEach(product => {
+        const sliderItem = document.createElement('div');
+        sliderItem.className = 'slider-item';
+        sliderItem.innerHTML = `
+          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="slider-item-body">
+            <div class="slider-item-title">${product.name || 'Product Name'}</div>
+            <div class="slider-item-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        
+        sliderItem.addEventListener('click', () => showProductDetail(product));
+        fragment.appendChild(sliderItem);
+      });
+      
+      slider.innerHTML = '';
+      slider.appendChild(fragment);
     }
 
     function filterByCategory(categoryId) {
@@ -3875,8 +3971,6 @@
       }
       
       showPage('productsPage');
-      renderProducts(products, 'productGrid');
-      updateProductsCount();
     }
 
     function resetAllFilters() {
@@ -3982,8 +4076,8 @@
       
       if (!track || !controls) return;
       
-      const trackFragment = document.createDocumentFragment();
-      const controlsFragment = document.createDocumentFragment();
+      track.innerHTML = '';
+      controls.innerHTML = '';
       
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
@@ -3991,24 +4085,19 @@
         slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
         
         if (banner.link) {
-          slide.style.cursor = 'pointer';
+          slide.classList.add('active');
           slide.addEventListener('click', () => {
             window.open(banner.link, '_blank');
           });
         }
         
-        trackFragment.appendChild(slide);
+        track.appendChild(slide);
         
         const dot = document.createElement('div');
         dot.className = `banner-dot ${index === 0 ? 'active' : ''}`;
         dot.addEventListener('click', () => setBannerSlide(index));
-        controlsFragment.appendChild(dot);
+        controls.appendChild(dot);
       });
-      
-      track.innerHTML = '';
-      controls.innerHTML = '';
-      track.appendChild(trackFragment);
-      controls.appendChild(controlsFragment);
       
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
       setupBannerTouchEvents();
@@ -4041,50 +4130,45 @@
     }
 
     function setupBannerTouchEvents() {
-      const bannerCarousel = document.getElementById('bannerCarousel');
       const track = document.getElementById('bannerTrack');
-      if (!bannerCarousel || !track) return;
+      if (!track) return;
       
-      let startX = 0;
-      let currentTranslate = 0;
-      let currentIndex = 0;
-      
-      bannerCarousel.addEventListener('touchstart', (e) => {
-        clearInterval(bannerAutoSlideInterval);
-        startX = e.touches[0].clientX;
+      track.addEventListener('touchstart', (e) => {
         isBannerDragging = true;
-        track.style.transition = 'none';
+        bannerTouchStartX = e.touches[0].clientX;
+        clearInterval(bannerAutoSlideInterval);
       }, { passive: true });
       
-      bannerCarousel.addEventListener('touchmove', (e) => {
+      track.addEventListener('touchmove', (e) => {
         if (!isBannerDragging) return;
+        e.preventDefault();
         const currentX = e.touches[0].clientX;
-        const diff = currentX - startX;
-        currentTranslate = -currentIndex * 100 + (diff / track.offsetWidth) * 100;
-        track.style.transform = `translateX(${currentTranslate}%)`;
-      }, { passive: true });
+        const diff = currentX - bannerTouchStartX;
+        const trackWidth = track.offsetWidth;
+        const currentIndex = Math.round(Math.abs(parseFloat(track.style.transform?.replace('translateX(-', '').replace('%)', '') || '0')));
+        track.style.transform = `translateX(calc(-${currentIndex * 100}% + ${diff}px))`;
+      }, { passive: false });
       
-      bannerCarousel.addEventListener('touchend', (e) => {
+      track.addEventListener('touchend', (e) => {
         if (!isBannerDragging) return;
         
-        const endX = e.changedTouches[0].clientX;
-        const diff = endX - startX;
-        const threshold = 50;
+        const diff = e.changedTouches[0].clientX - bannerTouchStartX;
+        const currentIndex = Math.round(Math.abs(parseFloat(track.style.transform?.replace('translateX(-', '').replace('%)', '') || '0')));
         
-        if (Math.abs(diff) > threshold) {
-          if (diff > 0 && currentIndex > 0) {
-            currentIndex--;
-          } else if (diff < 0 && currentIndex < banners.length - 1) {
-            currentIndex++;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            setBannerSlide(Math.max(0, currentIndex - 1));
+          } else {
+            setBannerSlide(Math.min(banners.length - 1, currentIndex + 1));
           }
+        } else {
+          setBannerSlide(currentIndex);
         }
         
-        track.style.transition = 'transform 0.3s ease';
-        setBannerSlide(currentIndex);
-        
         isBannerDragging = false;
-        setTimeout(setupBannerAutoSlide, 3000);
-      });
+        bannerTouchStartX = 0;
+        setupBannerAutoSlide();
+      }, { passive: true });
     }
 
     function setupPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput) {
@@ -4412,7 +4496,7 @@
       } else {
         userAvatarImg.style.display = 'none';
         userAvatarInitial.style.display = 'block';
-        userAvatarInitial.textContent = (user.displayName || user.email?.charAt(0) || 'U').toUpperCase();
+        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
       }
       
       const name = user.displayName || user.email?.split('@')[0] || 'User';
@@ -4659,7 +4743,13 @@
       document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
       document.getElementById('alertModal').classList.add('active');
       
-      document.getElementById('alertConfirmBtn').onclick = async function() {
+      const confirmBtn = document.getElementById('alertConfirmBtn');
+      const cancelBtn = document.getElementById('alertCancelBtn');
+      
+      const originalConfirmClick = confirmBtn.onclick;
+      const originalCancelClick = cancelBtn.onclick;
+      
+      confirmBtn.onclick = async function() {
         try {
           await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
           showToast('Address deleted successfully', 'success');
@@ -4669,10 +4759,15 @@
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
         }
+        
+        confirmBtn.onclick = originalConfirmClick;
+        cancelBtn.onclick = originalCancelClick;
       };
       
-      document.getElementById('alertCancelBtn').onclick = function() {
+      cancelBtn.onclick = function() {
         document.getElementById('alertModal').classList.remove('active');
+        confirmBtn.onclick = originalConfirmClick;
+        cancelBtn.onclick = originalCancelClick;
       };
     }
 
@@ -5237,7 +5332,7 @@
             currentUser = user;
             updateUIForUser(user);
             loadUserData(user);
-            loadRecentlyViewed(user);
+            loadRecentlyViewedForDisplay();
             loadSavedAddresses();
             document.getElementById('authModal')?.classList.remove('active');
           } else {
