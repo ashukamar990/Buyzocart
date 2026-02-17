@@ -1689,13 +1689,15 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Price Filter - Professional */
+    /* Price Filter - Professional - FIXED */
     .price-filter {
       background: var(--card);
       border-radius: var(--radius);
       padding: 16px;
       margin-bottom: 20px;
       border: 1px solid var(--border);
+      width: 100%;
+      overflow: hidden; /* Prevent any overflow */
     }
 
     .price-filter-title {
@@ -1707,13 +1709,28 @@
 
     .price-range-slider-container {
       margin: 20px 0;
+      width: 100%;
+      position: relative;
+      padding: 10px 0; /* Add padding for thumb space */
+    }
+
+    /* Slider track container - FIXED */
+    .price-slider-container {
+      position: relative;
+      width: 100%;
+      height: 40px; /* Fixed height to contain thumbs */
+      margin: 10px 0;
     }
 
     .price-slider-track {
+      width: 100%;
       height: 4px;
       background: #e5e7eb;
       border-radius: 2px;
-      position: relative;
+      position: absolute;
+      top: 18px; /* Center vertically */
+      left: 0;
+      right: 0;
     }
 
     .price-slider-range {
@@ -1721,30 +1738,98 @@
       height: 4px;
       background: var(--accent);
       border-radius: 2px;
+      top: 18px; /* Match track position */
     }
 
-    .price-slider-thumb {
+    /* Dual range input styles - FIXED */
+    .price-range-input {
+      position: relative;
+      width: 100%;
+      height: 40px;
+    }
+
+    .price-range-input input[type="range"] {
       position: absolute;
+      width: 100%;
+      height: 4px;
+      background: none;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+      top: 18px;
+      margin: 0;
+      padding: 0;
+      left: 0;
+    }
+
+    .price-range-input input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
       width: 20px;
       height: 20px;
       background: white;
       border: 2px solid var(--accent);
       border-radius: 50%;
-      top: -8px;
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      pointer-events: auto;
+      margin-top: -8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      position: relative;
+      z-index: 2;
     }
 
+    .price-range-input input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: white;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      position: relative;
+      z-index: 2;
+    }
+
+    .price-range-input input[type="range"]:focus {
+      outline: none;
+    }
+
+    /* Left thumb positioning */
+    .price-range-input input[type="range"]:nth-child(1) {
+      z-index: 1;
+    }
+
+    /* Right thumb positioning */
+    .price-range-input input[type="range"]:nth-child(2) {
+      z-index: 3;
+    }
+
+    /* Thumb hover effects */
+    .price-range-input input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: var(--accent);
+    }
+
+    .price-range-input input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.2);
+      background: var(--accent);
+    }
+
+    /* Price range inputs - FIXED */
     .price-range-inputs {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-top: 16px;
+      margin-top: 24px;
+      width: 100%;
+      flex-wrap: wrap; /* Allow wrapping on mobile */
     }
 
     .price-input-wrapper {
       flex: 1;
       position: relative;
+      min-width: 120px; /* Prevent too small on mobile */
     }
 
     .price-input-wrapper span {
@@ -1753,6 +1838,7 @@
       top: 50%;
       transform: translateY(-50%);
       color: var(--muted);
+      z-index: 1;
     }
 
     .price-input {
@@ -1762,17 +1848,26 @@
       width: 100%;
       background: var(--card);
       color: var(--ink);
+      font-size: 14px;
+      box-sizing: border-box; /* Include padding in width */
     }
 
     .price-input-separator {
       color: var(--muted);
       font-weight: 500;
+      flex-shrink: 0; /* Prevent shrinking */
     }
 
     .price-filter-buttons {
       display: flex;
       gap: 10px;
       margin-top: 16px;
+      flex-wrap: wrap; /* Allow wrapping */
+    }
+
+    .price-filter-buttons .btn {
+      flex: 1;
+      min-width: 100px; /* Minimum button width */
     }
 
     /* FIXED: Instant Wishlist Button Active State */
@@ -3640,6 +3735,32 @@
       .product-detail-actions {
         bottom: 60px;
       }
+
+      /* Price filter mobile responsive */
+      .price-range-inputs {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      
+      .price-input-wrapper {
+        width: 100%;
+        min-width: auto;
+      }
+      
+      .price-input-separator {
+        text-align: center;
+        padding: 5px 0;
+      }
+      
+      .price-filter-buttons {
+        flex-direction: column;
+      }
+      
+      .price-filter-buttons .btn {
+        width: 100%;
+        min-width: auto;
+      }
     }
 
     @media (max-width: 480px) {
@@ -3699,6 +3820,25 @@
 
       .bottom-nav-icon {
         font-size: 18px;
+      }
+
+      /* Price filter extra small */
+      .price-filter {
+        padding: 12px;
+      }
+      
+      .price-range-slider-container {
+        margin: 15px 0;
+      }
+      
+      .price-input {
+        padding: 8px 8px 8px 28px;
+        font-size: 13px;
+      }
+      
+      .price-input-wrapper span {
+        left: 8px;
+        font-size: 12px;
       }
     }
 
