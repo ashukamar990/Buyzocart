@@ -1156,6 +1156,7 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
+      font-family: 'Inter', sans-serif;
     }
     
     img {
@@ -1517,6 +1518,18 @@
     
     .banner-carousel {
       touch-action: pan-y pinch-zoom;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .banner-track {
+      display: flex;
+      transition: transform 0.3s ease;
+      cursor: grab;
+    }
+    
+    .banner-track:active {
+      cursor: grabbing;
     }
     
     @media (prefers-reduced-motion: reduce) {
@@ -1605,11 +1618,6 @@
     
     .slider-track::-webkit-scrollbar {
       display: none;
-    }
-    
-    .banner-track {
-      display: flex;
-      transition: transform 0.5s ease;
     }
     
     .banner-slide {
@@ -1721,6 +1729,7 @@
       padding: 15px;
       border: 1px solid var(--border);
       border-radius: var(--radius);
+      position: relative;
     }
     
     .review-header {
@@ -1746,9 +1755,13 @@
     
     .review-text {
       margin-bottom: 10px;
+      padding-right: 80px;
     }
     
     .review-delete-btn {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
       background: none;
       border: 1px solid #ef4444;
       color: #ef4444;
@@ -1756,7 +1769,6 @@
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
-      width: fit-content;
     }
     
     .review-delete-btn:hover {
@@ -1881,12 +1893,28 @@
       color: #3b82f6;
       border-color: #3b82f6;
     }
+    
+    .return-expired {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .review-text {
+        padding-right: 0;
+        margin-bottom: 40px;
+      }
+      
+      .review-delete-btn {
+        bottom: 15px;
+        right: 15px;
+      }
+    }
   </style>
 
   <script>
-    // ==================== UPDATED JAVASCRIPT CODE ====================
-    // SIRF DIYE GAYE 10 POINTS KE HISAB SE CHANGES KIYE GAYE HAIN
-    
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -1900,8 +1928,6 @@
     let currentCategoryFilter = null;
     let currentProductImages = [];
     let currentProductModalIndex = 0;
-    let currentSelectedColor = 'black';
-    let currentSelectedColorName = '';
     let adminSettings = {
       deliveryCharge: 50,
       gatewayChargePercent: 2,
@@ -1916,10 +1942,9 @@
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
-    let bannerStartX = 0;
-    let bannerCurrentX = 0;
+    let bannerTouchStartX = 0;
+    let bannerTouchEndX = 0;
     let isBannerDragging = false;
-    let currentBannerIndex = 0;
 
     function debounce(func, wait) {
       let timeout;
@@ -2113,7 +2138,7 @@
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || 'Product Name'}</div>
+            <div class="search-suggestion-name">${product.name}</div>
             <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
           </div>
         `;
@@ -2274,6 +2299,9 @@
         case 'homePage':
           setTimeout(setupTrendingAutoSlide, 1000);
           setTimeout(setupBannerAutoSlide, 1000);
+          if (currentUser) {
+            loadRecentlyViewed(currentUser);
+          }
           break;
         case 'searchResultsPage':
           if (window.currentSearchQuery) {
@@ -2309,28 +2337,13 @@
         showLoginModal();
         return;
       }
-      loadRecentlyViewedForMenu();
-    }
-    
-    function loadRecentlyViewedForMenu() {
-      if (!currentUser) return;
-      
-      const recentlyViewedProducts = products.filter(product => 
-        recentlyViewed.includes(product.id)
-      ).slice(0, 10);
-      
-      if (recentlyViewedProducts.length === 0) {
+      if (recentlyViewed.length > 0) {
+        renderRecentlyViewed();
+        showPage('homePage');
+        document.getElementById('recentlyViewedSection').scrollIntoView({ behavior: 'smooth' });
+      } else {
         showToast('No recently viewed products', 'info');
-        return;
       }
-      
-      showRecentlyViewedPage(recentlyViewedProducts);
-    }
-    
-    function showRecentlyViewedPage(products) {
-      // Create a temporary page or show in a modal
-      const productNames = products.map(p => p.name).join('\n');
-      alert('Recently Viewed Products:\n\n' + productNames);
     }
 
     function updateBottomNav() {
@@ -2639,8 +2652,6 @@
     function showProductDetail(product) {
       const actualProduct = products.find(p => p.id === product.id) || product;
       currentProduct = actualProduct;
-      currentSelectedColor = product.defaultColor || 'black';
-      currentSelectedColorName = '';
       
       document.getElementById('detailTitle').textContent = actualProduct.name || 'Product Name';
       document.getElementById('detailPrice').textContent = actualProduct.price ? '₹' + parsePrice(actualProduct.price).toLocaleString() : '₹0';
@@ -2918,7 +2929,7 @@
         item.innerHTML = `
           <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${product.name && product.name.length > 20 ? product.name.substring(0, 20) + '...' : (product.name || 'Product')}</div>
+            <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
             <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
           </div>
         `;
@@ -3177,9 +3188,6 @@
         confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
         confirmBtn.disabled = true;
         
-        const deliveredDate = null;
-        const cancelledDate = null;
-        
         const orderData = {
           orderId: orderId,
           userId: currentUser.uid,
@@ -3208,6 +3216,13 @@
         };
         
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
+        
+        if (currentProduct.stock !== undefined) {
+          const newStock = Math.max(0, (currentProduct.stock || 0) - quantity);
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'products/' + currentProduct.id), {
+            stock: newStock
+          });
+        }
         
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
         
@@ -3300,16 +3315,14 @@
 
     function calculateProductRating(productId) {
       const product = products.find(p => p.id === productId);
-      if (product && product.rating !== undefined) return product.rating;
-      
-      // Calculate from reviews if available
-      const productReviews = window.productReviews ? window.productReviews[productId] : null;
-      if (productReviews && productReviews.length > 0) {
-        const totalRating = productReviews.reduce((sum, review) => sum + review.rating, 0);
-        return totalRating / productReviews.length;
+      if (product && product.reviews) {
+        const reviews = product.reviews;
+        if (reviews.length > 0) {
+          const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+          return sum / reviews.length;
+        }
       }
-      
-      return 4.0; // Default rating
+      return 4.0;
     }
 
     async function submitProductReview() {
@@ -3351,6 +3364,22 @@
         
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
         
+        const productRef = window.firebase.ref(window.firebase.database, 'products/' + currentProduct.id);
+        const snapshot = await window.firebase.get(productRef);
+        if (snapshot.exists()) {
+          const productData = snapshot.val();
+          const reviews = productData.reviews || [];
+          reviews.push(reviewData);
+          const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+          const avgRating = sum / reviews.length;
+          
+          await window.firebase.update(productRef, {
+            reviews: reviews,
+            rating: avgRating,
+            reviewCount: reviews.length
+          });
+        }
+        
         showToast('Review submitted successfully', 'success');
         
         setRating(0);
@@ -3386,19 +3415,7 @@
         
         reviews.sort((a, b) => b.date - a.date);
         
-        // Store for rating calculation
-        if (!window.productReviews) window.productReviews = {};
-        window.productReviews[productId] = reviews;
-        
-        // Update product rating in products array
-        const productIndex = products.findIndex(p => p.id === productId);
-        if (productIndex !== -1) {
-          const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
-          products[productIndex].rating = totalRating / reviews.length;
-          products[productIndex].reviewCount = reviews.length;
-        }
-        
-        const topReviews = reviews.filter(r => r.rating === 5).slice(0, 8);
+        const topReviews = reviews.slice(0, 8);
         renderReviews(topReviews, 'reviewsList');
       } catch (error) {
         console.error('Error loading reviews:', error);
@@ -3425,7 +3442,13 @@
         reviewItem.className = 'review-item';
         
         const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
+        const date = new Date(review.date).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
         
         reviewItem.innerHTML = `
           <div class="review-header">
@@ -3434,10 +3457,8 @@
           </div>
           <div class="review-rating">${stars}</div>
           <div class="review-text">${review.text}</div>
-          ${currentUser && (review.userId === currentUser.uid) ? 
+          ${currentUser && (review.userId === currentUser.uid || currentUser.uid === 'admin') ? 
             `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
-          ${currentUser && (currentUser.uid === 'admin') ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete (Admin)</button>` : ''}
         `;
         
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
@@ -3569,31 +3590,37 @@
           }
         }
         
-        // No color display
-        const product = products.find(p => p.id === order.productId);
+        const daysSinceDelivery = order.status === 'delivered' && deliveredDate 
+          ? Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
         
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
               <div class="order-id">${order.orderId}</div>
-              <div class="order-date">${orderDate.toLocaleDateString()}</div>
+              <div class="order-date">${orderDate.toLocaleDateString('en-IN')}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
               <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
           </div>
-          <div class="order-actions">
-            ${order.status === 'confirmed' || order.status === 'shipped' ? 
-              `<button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>` : ''}
-            ${showReturnReplace ? 
-              `<button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>` : ''}
-          </div>
+          ${order.status === 'delivered' && daysSinceDelivery !== null && daysSinceDelivery <= 3 ? 
+            `<div class="order-actions">
+              <button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>
+              <span class="return-expired">(${3 - daysSinceDelivery} days left)</span>
+            </div>` : ''}
+          ${order.status === 'delivered' && daysSinceDelivery !== null && daysSinceDelivery > 3 ? 
+            `<div class="return-expired">Return/Replace period expired (${daysSinceDelivery} days ago)</div>` : ''}
+          ${order.status === 'confirmed' || order.status === 'shipped' ? 
+            `<div class="order-actions">
+              <button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>
+            </div>` : ''}
         `;
         
         orderCard.addEventListener('click', (e) => {
@@ -3651,8 +3678,6 @@
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
       
-      const product = products.find(p => p.id === order.productId);
-      
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
@@ -3661,7 +3686,7 @@
         
         <div class="order-detail-section">
           <div class="order-detail-label">Order Date</div>
-          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString()}</div>
+          <div class="order-detail-value">${new Date(order.orderDate).toLocaleString('en-IN')}</div>
         </div>
         
         <div class="order-detail-section">
@@ -3672,7 +3697,7 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
@@ -3728,15 +3753,7 @@
       if (!currentUser) return;
       try {
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
-        
-        // Update local recentlyViewed array
-        if (!recentlyViewed.includes(productId)) {
-          recentlyViewed.push(productId);
-          if (recentlyViewed.length > 20) {
-            recentlyViewed.shift();
-          }
-        }
-        
+        loadRecentlyViewed(currentUser);
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
       }
@@ -3747,13 +3764,41 @@
         const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + user.uid));
         const recentlyViewedObj = snapshot.val();
         if (recentlyViewedObj) {
-          recentlyViewed = Object.keys(recentlyViewedObj);
+          const viewedEntries = Object.entries(recentlyViewedObj);
+          viewedEntries.sort((a, b) => b[1] - a[1]);
+          recentlyViewed = viewedEntries.map(entry => entry[0]).slice(0, 10);
+          
+          if (recentlyViewed.length > 0) {
+            renderRecentlyViewed();
+          } else {
+            document.getElementById('recentlyViewedSection').style.display = 'none';
+          }
         } else {
           recentlyViewed = [];
+          document.getElementById('recentlyViewedSection').style.display = 'none';
         }
       } catch (error) {
         console.error('Error loading recently viewed:', error);
       }
+    }
+
+    function renderRecentlyViewed() {
+      const section = document.getElementById('recentlyViewedSection');
+      const slider = document.getElementById('recentlyViewedSlider');
+      
+      if (!section || !slider) return;
+      
+      const recentlyViewedProducts = products.filter(product => 
+        recentlyViewed.includes(product.id)
+      ).slice(0, 10);
+      
+      if (recentlyViewedProducts.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      
+      section.style.display = 'block';
+      renderProductSlider(recentlyViewedProducts, 'recentlyViewedSlider');
     }
 
     function filterByCategory(categoryId) {
@@ -3829,8 +3874,9 @@
         priceSliderRange.style.width = '100%';
       }
       
-      // Go back to products page
       showPage('productsPage');
+      renderProducts(products, 'productGrid');
+      updateProductsCount();
     }
 
     function resetAllFilters() {
@@ -3852,13 +3898,12 @@
       
       const visibleProducts = container.querySelectorAll('.product-card').length;
       
-      // Change text to "Amazing Products Collection" always
-      productsCount.textContent = 'Amazing Products Collection';
-      
       if (visibleProducts === 0) {
         noProductsMessage.style.display = 'block';
+        productsCount.textContent = 'Amazing Products Collection';
       } else {
         noProductsMessage.style.display = 'none';
+        productsCount.textContent = 'Amazing Products Collection';
       }
     }
 
@@ -3966,8 +4011,8 @@
       controls.appendChild(controlsFragment);
       
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
-      setupBannerAutoSlide();
       setupBannerTouchEvents();
+      setupBannerAutoSlide();
     }
 
     function setBannerSlide(index) {
@@ -3980,94 +4025,65 @@
       dots.forEach((dot, i) => {
         dot.classList.toggle('active', i === index);
       });
-      currentBannerIndex = index;
     }
 
     function setupBannerAutoSlide() {
       if (banners.length <= 1) return;
       
+      let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
-        currentBannerIndex = (currentBannerIndex + 1) % banners.length;
-        setBannerSlide(currentBannerIndex);
+        if (!isBannerDragging) {
+          currentBannerIndex = (currentBannerIndex + 1) % banners.length;
+          setBannerSlide(currentBannerIndex);
+        }
       }, 5000);
     }
 
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
-      if (!bannerCarousel) return;
+      const track = document.getElementById('bannerTrack');
+      if (!bannerCarousel || !track) return;
       
-      bannerStartX = 0;
-      bannerCurrentX = 0;
-      isBannerDragging = false;
+      let startX = 0;
+      let currentTranslate = 0;
+      let currentIndex = 0;
       
       bannerCarousel.addEventListener('touchstart', (e) => {
         clearInterval(bannerAutoSlideInterval);
-        bannerStartX = e.touches[0].clientX;
+        startX = e.touches[0].clientX;
         isBannerDragging = true;
+        track.style.transition = 'none';
       }, { passive: true });
       
       bannerCarousel.addEventListener('touchmove', (e) => {
         if (!isBannerDragging) return;
-        bannerCurrentX = e.touches[0].clientX;
+        const currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        currentTranslate = -currentIndex * 100 + (diff / track.offsetWidth) * 100;
+        track.style.transform = `translateX(${currentTranslate}%)`;
       }, { passive: true });
       
-      bannerCarousel.addEventListener('touchend', () => {
+      bannerCarousel.addEventListener('touchend', (e) => {
         if (!isBannerDragging) return;
         
-        const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = currentBannerIndex;
+        const endX = e.changedTouches[0].clientX;
+        const diff = endX - startX;
+        const threshold = 50;
         
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) {
-            currentBannerIndex = (activeIndex + 1) % banners.length;
-          } else {
-            currentBannerIndex = (activeIndex - 1 + banners.length) % banners.length;
+        if (Math.abs(diff) > threshold) {
+          if (diff > 0 && currentIndex > 0) {
+            currentIndex--;
+          } else if (diff < 0 && currentIndex < banners.length - 1) {
+            currentIndex++;
           }
-          setBannerSlide(currentBannerIndex);
         }
+        
+        track.style.transition = 'transform 0.3s ease';
+        setBannerSlide(currentIndex);
         
         isBannerDragging = false;
         setTimeout(setupBannerAutoSlide, 3000);
-      });
-      
-      // Mouse events for desktop
-      bannerCarousel.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        clearInterval(bannerAutoSlideInterval);
-        bannerStartX = e.clientX;
-        isBannerDragging = true;
-      });
-      
-      bannerCarousel.addEventListener('mousemove', (e) => {
-        if (!isBannerDragging) return;
-        bannerCurrentX = e.clientX;
-      });
-      
-      bannerCarousel.addEventListener('mouseup', () => {
-        if (!isBannerDragging) return;
-        
-        const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = currentBannerIndex;
-        
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) {
-            currentBannerIndex = (activeIndex + 1) % banners.length;
-          } else {
-            currentBannerIndex = (activeIndex - 1 + banners.length) % banners.length;
-          }
-          setBannerSlide(currentBannerIndex);
-        }
-        
-        isBannerDragging = false;
-        setTimeout(setupBannerAutoSlide, 3000);
-      });
-      
-      bannerCarousel.addEventListener('mouseleave', () => {
-        if (isBannerDragging) {
-          isBannerDragging = false;
-          setTimeout(setupBannerAutoSlide, 3000);
-        }
       });
     }
 
@@ -4396,7 +4412,7 @@
       } else {
         userAvatarImg.style.display = 'none';
         userAvatarInitial.style.display = 'block';
-        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
+        userAvatarInitial.textContent = (user.displayName || user.email?.charAt(0) || 'U').toUpperCase();
       }
       
       const name = user.displayName || user.email?.split('@')[0] || 'User';
@@ -4653,6 +4669,10 @@
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
         }
+      };
+      
+      document.getElementById('alertCancelBtn').onclick = function() {
+        document.getElementById('alertModal').classList.remove('active');
       };
     }
 
