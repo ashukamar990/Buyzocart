@@ -1756,6 +1756,7 @@
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
+      width: fit-content;
     }
     
     .review-delete-btn:hover {
@@ -1883,6 +1884,9 @@
   </style>
 
   <script>
+    // ==================== UPDATED JAVASCRIPT CODE ====================
+    // SIRF DIYE GAYE 10 POINTS KE HISAB SE CHANGES KIYE GAYE HAIN
+    
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -1897,7 +1901,7 @@
     let currentProductImages = [];
     let currentProductModalIndex = 0;
     let currentSelectedColor = 'black';
-    let currentSelectedColorName = 'काला';
+    let currentSelectedColorName = '';
     let adminSettings = {
       deliveryCharge: 50,
       gatewayChargePercent: 2,
@@ -1912,6 +1916,10 @@
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
+    let bannerStartX = 0;
+    let bannerCurrentX = 0;
+    let isBannerDragging = false;
+    let currentBannerIndex = 0;
 
     function debounce(func, wait) {
       let timeout;
@@ -2014,29 +2022,6 @@
       emailjs.init("user_your_user_id_here");
     })();
 
-    const colorNames = {
-      'black': 'काला',
-      'white': 'सफेद',
-      'blue': 'नीला',
-      'red': 'लाल',
-      'green': 'हरा',
-      'yellow': 'पीला',
-      'pink': 'गुलाबी',
-      'purple': 'बैंगनी',
-      'orange': 'नारंगी',
-      'gray': 'ग्रे',
-      'brown': 'भूरा',
-      'navy': 'गहरा नीला',
-      'maroon': 'मैरून',
-      'teal': 'टील',
-      'olive': 'जैतूनी',
-      'silver': 'चांदी',
-      'gold': 'सोना',
-      'beige': 'बेज',
-      'burgundy': 'बरगंडी',
-      'charcoal': 'चारकोल'
-    };
-
     function openMenu() {
       document.getElementById('mobileMenu').classList.add('active');
       document.getElementById('menuOverlay').classList.add('active');
@@ -2128,7 +2113,7 @@
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name}</div>
+            <div class="search-suggestion-name">${product.name || 'Product Name'}</div>
             <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
           </div>
         `;
@@ -2324,7 +2309,28 @@
         showLoginModal();
         return;
       }
-      showPage('recentlyViewedPage');
+      loadRecentlyViewedForMenu();
+    }
+    
+    function loadRecentlyViewedForMenu() {
+      if (!currentUser) return;
+      
+      const recentlyViewedProducts = products.filter(product => 
+        recentlyViewed.includes(product.id)
+      ).slice(0, 10);
+      
+      if (recentlyViewedProducts.length === 0) {
+        showToast('No recently viewed products', 'info');
+        return;
+      }
+      
+      showRecentlyViewedPage(recentlyViewedProducts);
+    }
+    
+    function showRecentlyViewedPage(products) {
+      // Create a temporary page or show in a modal
+      const productNames = products.map(p => p.name).join('\n');
+      alert('Recently Viewed Products:\n\n' + productNames);
     }
 
     function updateBottomNav() {
@@ -2634,7 +2640,7 @@
       const actualProduct = products.find(p => p.id === product.id) || product;
       currentProduct = actualProduct;
       currentSelectedColor = product.defaultColor || 'black';
-      currentSelectedColorName = colorNames[currentSelectedColor] || 'काला';
+      currentSelectedColorName = '';
       
       document.getElementById('detailTitle').textContent = actualProduct.name || 'Product Name';
       document.getElementById('detailPrice').textContent = actualProduct.price ? '₹' + parsePrice(actualProduct.price).toLocaleString() : '₹0';
@@ -2912,7 +2918,7 @@
         item.innerHTML = `
           <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
+            <div class="similar-product-small-title">${product.name && product.name.length > 20 ? product.name.substring(0, 20) + '...' : (product.name || 'Product')}</div>
             <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
           </div>
         `;
@@ -3171,6 +3177,9 @@
         confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
         confirmBtn.disabled = true;
         
+        const deliveredDate = null;
+        const cancelledDate = null;
+        
         const orderData = {
           orderId: orderId,
           userId: currentUser.uid,
@@ -3181,8 +3190,6 @@
           productPrice: productPrice,
           quantity: quantity,
           size: size,
-          color: currentSelectedColor,
-          colorName: currentSelectedColorName,
           subtotal: subtotal,
           deliveryCharge: deliveryCharge,
           gatewayCharge: gatewayCharge,
@@ -3294,7 +3301,15 @@
     function calculateProductRating(productId) {
       const product = products.find(p => p.id === productId);
       if (product && product.rating !== undefined) return product.rating;
-      return 4.0;
+      
+      // Calculate from reviews if available
+      const productReviews = window.productReviews ? window.productReviews[productId] : null;
+      if (productReviews && productReviews.length > 0) {
+        const totalRating = productReviews.reduce((sum, review) => sum + review.rating, 0);
+        return totalRating / productReviews.length;
+      }
+      
+      return 4.0; // Default rating
     }
 
     async function submitProductReview() {
@@ -3328,7 +3343,7 @@
           id: reviewId,
           productId: currentProduct.id,
           userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
+          userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
           rating: rating,
           text: reviewTextValue,
           date: Date.now()
@@ -3370,6 +3385,18 @@
         const reviews = Object.keys(reviewsObj).map(key => reviewsObj[key]);
         
         reviews.sort((a, b) => b.date - a.date);
+        
+        // Store for rating calculation
+        if (!window.productReviews) window.productReviews = {};
+        window.productReviews[productId] = reviews;
+        
+        // Update product rating in products array
+        const productIndex = products.findIndex(p => p.id === productId);
+        if (productIndex !== -1) {
+          const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+          products[productIndex].rating = totalRating / reviews.length;
+          products[productIndex].reviewCount = reviews.length;
+        }
         
         const topReviews = reviews.filter(r => r.rating === 5).slice(0, 8);
         renderReviews(topReviews, 'reviewsList');
@@ -3542,6 +3569,9 @@
           }
         }
         
+        // No color display
+        const product = products.find(p => p.id === order.productId);
+        
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
@@ -3551,11 +3581,11 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
-              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}</div>
+              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
           </div>
           <div class="order-actions">
@@ -3621,6 +3651,8 @@
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
       
+      const product = products.find(p => p.id === order.productId);
+      
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
@@ -3640,12 +3672,12 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}')"></div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${order.size} | Color: ${order.colorName || order.color || 'N/A'}
+                Qty: ${order.quantity} | Size: ${order.size}
               </div>
             </div>
           </div>
@@ -3696,7 +3728,15 @@
       if (!currentUser) return;
       try {
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
-        loadRecentlyViewed(currentUser);
+        
+        // Update local recentlyViewed array
+        if (!recentlyViewed.includes(productId)) {
+          recentlyViewed.push(productId);
+          if (recentlyViewed.length > 20) {
+            recentlyViewed.shift();
+          }
+        }
+        
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
       }
@@ -3711,32 +3751,9 @@
         } else {
           recentlyViewed = [];
         }
-        
-        if (recentlyViewed.length > 0) {
-          renderRecentlyViewed();
-        }
       } catch (error) {
         console.error('Error loading recently viewed:', error);
       }
-    }
-
-    function renderRecentlyViewed() {
-      const section = document.getElementById('recentlyViewedSection');
-      const slider = document.getElementById('recentlyViewedSlider');
-      
-      if (!section || !slider) return;
-      
-      const recentlyViewedProducts = products.filter(product => 
-        recentlyViewed.includes(product.id)
-      ).slice(0, 10);
-      
-      if (recentlyViewedProducts.length === 0) {
-        section.style.display = 'none';
-        return;
-      }
-      
-      section.style.display = 'block';
-      renderProductSlider(recentlyViewedProducts, 'recentlyViewedSlider');
     }
 
     function filterByCategory(categoryId) {
@@ -3811,6 +3828,9 @@
         priceSliderRange.style.left = '0%';
         priceSliderRange.style.width = '100%';
       }
+      
+      // Go back to products page
+      showPage('productsPage');
     }
 
     function resetAllFilters() {
@@ -3832,12 +3852,13 @@
       
       const visibleProducts = container.querySelectorAll('.product-card').length;
       
+      // Change text to "Amazing Products Collection" always
+      productsCount.textContent = 'Amazing Products Collection';
+      
       if (visibleProducts === 0) {
         noProductsMessage.style.display = 'block';
-        productsCount.textContent = 'No products found';
       } else {
         noProductsMessage.style.display = 'none';
-        productsCount.textContent = `${visibleProducts} products found`;
       }
     }
 
@@ -3946,6 +3967,7 @@
       
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
       setupBannerAutoSlide();
+      setupBannerTouchEvents();
     }
 
     function setBannerSlide(index) {
@@ -3958,12 +3980,12 @@
       dots.forEach((dot, i) => {
         dot.classList.toggle('active', i === index);
       });
+      currentBannerIndex = index;
     }
 
     function setupBannerAutoSlide() {
       if (banners.length <= 1) return;
       
-      let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
         currentBannerIndex = (currentBannerIndex + 1) % banners.length;
@@ -3975,9 +3997,9 @@
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
       
-      let bannerStartX = 0;
-      let bannerCurrentX = 0;
-      let isBannerDragging = false;
+      bannerStartX = 0;
+      bannerCurrentX = 0;
+      isBannerDragging = false;
       
       bannerCarousel.addEventListener('touchstart', (e) => {
         clearInterval(bannerAutoSlideInterval);
@@ -3994,22 +4016,58 @@
         if (!isBannerDragging) return;
         
         const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = banners.findIndex((_, index) => 
-          document.querySelector(`.banner-dot:nth-child(${index + 1})`)?.classList.contains('active')
-        );
+        const activeIndex = currentBannerIndex;
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
+            currentBannerIndex = (activeIndex + 1) % banners.length;
           } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
+            currentBannerIndex = (activeIndex - 1 + banners.length) % banners.length;
           }
+          setBannerSlide(currentBannerIndex);
         }
         
         isBannerDragging = false;
         setTimeout(setupBannerAutoSlide, 3000);
+      });
+      
+      // Mouse events for desktop
+      bannerCarousel.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        clearInterval(bannerAutoSlideInterval);
+        bannerStartX = e.clientX;
+        isBannerDragging = true;
+      });
+      
+      bannerCarousel.addEventListener('mousemove', (e) => {
+        if (!isBannerDragging) return;
+        bannerCurrentX = e.clientX;
+      });
+      
+      bannerCarousel.addEventListener('mouseup', () => {
+        if (!isBannerDragging) return;
+        
+        const diff = bannerStartX - bannerCurrentX;
+        const activeIndex = currentBannerIndex;
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            currentBannerIndex = (activeIndex + 1) % banners.length;
+          } else {
+            currentBannerIndex = (activeIndex - 1 + banners.length) % banners.length;
+          }
+          setBannerSlide(currentBannerIndex);
+        }
+        
+        isBannerDragging = false;
+        setTimeout(setupBannerAutoSlide, 3000);
+      });
+      
+      bannerCarousel.addEventListener('mouseleave', () => {
+        if (isBannerDragging) {
+          isBannerDragging = false;
+          setTimeout(setupBannerAutoSlide, 3000);
+        }
       });
     }
 
@@ -4341,7 +4399,7 @@
         userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
       }
       
-      const name = user.displayName || 'User';
+      const name = user.displayName || user.email?.split('@')[0] || 'User';
       if (headerUserNameShort) {
         const shortName = name.split(' ')[0];
         headerUserNameShort.textContent = shortName.length > 10 ? shortName.substring(0, 10) + '...' : shortName;
@@ -5075,8 +5133,6 @@
       
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
       document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
-      
-      setupBannerTouchEvents();
       
       document.getElementById('ratingInput')?.querySelectorAll('.rating-star').forEach(star => {
         star.addEventListener('click', function() {
