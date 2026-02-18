@@ -122,7 +122,7 @@
         </div>
         <div class="social-menu-item" onclick="window.open('https://www.instagram.com/buyzo.cart?igsh=d2Mxc2EwMW45cWwy', '_blank'); closeMenu();">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#E4405F" class="instagram-fixed">
-            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"></path>
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.069-1.644-.069-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"></path>
             <path d="M12 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
           </svg>
         </div>
@@ -2036,26 +2036,74 @@
       return 0;
     }
 
+    // UPDATED: More robust product image retrieval
     function getProductImage(product, idx = 0) {
-      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=Loading...";
+      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+      
+      // Check for different image field names
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
       }
-      if (product.image) return product.image;
-      if (product.img) return product.img;
-      if (product.imageUrl) return product.imageUrl;
-      if (product.photo) return product.photo;
+      
+      // Check all possible image field names
+      const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
+      for (const field of possibleImageFields) {
+        if (product[field]) {
+          if (typeof product[field] === 'string') {
+            return product[field];
+          }
+          if (Array.isArray(product[field]) && product[field].length > 0) {
+            return product[field][0];
+          }
+        }
+      }
+      
+      // If it's a string and looks like a URL, use it
+      if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
+        return product;
+      }
+      
+      // If the product itself has a value that might be an image
+      if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
+        return product.value;
+      }
+      
       return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
     }
 
+    // UPDATED: More robust product images array retrieval
     function getProductImages(product) {
       if (!product) return [];
+      
+      // If it's an array of images
       if (Array.isArray(product.images) && product.images.length > 0) {
         return product.images;
-      } else {
-        return [getProductImage(product)];
       }
+      
+      // Check for images in different formats
+      const possibleImageArrays = ['images', 'photos', 'gallery', 'pictures'];
+      for (const field of possibleImageArrays) {
+        if (Array.isArray(product[field]) && product[field].length > 0) {
+          return product[field];
+        }
+      }
+      
+      // Check for single image field
+      const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
+      for (const field of possibleImageFields) {
+        if (product[field]) {
+          if (typeof product[field] === 'string') {
+            return [product[field]];
+          }
+          if (Array.isArray(product[field]) && product[field].length > 0) {
+            return product[field];
+          }
+        }
+      }
+      
+      // If no images found, return a placeholder array
+      return ["https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image"];
     }
 
     function generateOrderId() {
@@ -2207,7 +2255,7 @@
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name}</div>
+            <div class="search-suggestion-name">${product.name || 'Product'}</div>
             <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
           </div>
         `;
@@ -2655,38 +2703,53 @@
       return sum / productReviews.length;
     }
 
+    // UPDATED: More robust product card creation with better error handling
     function createProductCard(product) {
+      if (!product) {
+        console.error('Attempted to create product card with null product');
+        return document.createElement('div');
+      }
+      
       const card = document.createElement('div');
       card.className = 'product-card';
-      card.setAttribute('data-product-id', product.id);
       
-      const isWishlisted = isInWishlist(product.id);
-      const rating = calculateProductRating(product.id);
+      // Get product ID from various possible fields
+      const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
+      card.setAttribute('data-product-id', productId);
+      
+      const isWishlisted = isInWishlist(productId);
+      const rating = calculateProductRating(productId);
+      const productName = product.name || product.title || 'Product Name';
+      const productPrice = product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0';
+      const productImage = getProductImage(product);
+      const productBadge = product.badge || product.tag || '';
+      const isTrending = product.isTrending || product.trending || false;
+      const isFeatured = product.isFeatured || product.featured || false;
       
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${getProductImage(product)}')">
-          ${product.badge ? `<div class="product-card-badge">${product.badge}</div>` : ''}
-          ${product.isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
-          ${product.isFeatured ? `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>` : ''}
+        <div class="product-card-image" style="background-image: url('${productImage}')">
+          ${productBadge ? `<div class="product-card-badge">${productBadge}</div>` : ''}
+          ${isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
+          ${isFeatured ? `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>` : ''}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${product.name || 'Product Name'}</div>
+          <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
           </div>
           <div class="product-card-price">
-            <div class="product-card-current-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+            <div class="product-card-current-price">${productPrice}</div>
             ${product.originalPrice ? `<div class="product-card-original-price">₹${parsePrice(product.originalPrice).toLocaleString()}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${product.id}" title="Wishlist">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${product.id}" title="Share">
+            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -2699,20 +2762,25 @@
         </div>
       `;
       
+      // Ensure product has an id property
+      if (!product.id) {
+        product.id = productId;
+      }
+      
       card.addEventListener('click', (e) => {
         if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) {
           return;
         }
         e.preventDefault();
         e.stopPropagation();
-        console.log('Opening product:', product.name);
+        console.log('Opening product:', product.name || product.title, product.id);
         showProductDetail(product);
       });
       
       const wishlistBtn = card.querySelector('.wishlist-btn');
       wishlistBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleWishlist(product.id);
+        toggleWishlist(productId);
       });
       
       const shareBtn = card.querySelector('.share-btn');
@@ -2736,11 +2804,12 @@
     }
 
     function shareProduct(product) {
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + product.id;
+      const productId = product.id || product.productId || product._id;
+      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + productId;
       if (navigator.share) {
         navigator.share({
-          title: product.name,
-          text: `Check out ${product.name} on Buyzo Cart`,
+          title: product.name || product.title,
+          text: `Check out ${product.name || product.title} on Buyzo Cart`,
           url: shareLink,
         })
         .then(() => console.log('Successful share'))
@@ -2755,6 +2824,7 @@
       }
     }
 
+    // UPDATED: Completely rewritten showProductDetail function to handle real products
     function showProductDetail(product) {
       if (!product) {
         console.error('No product provided');
@@ -2762,15 +2832,42 @@
         return;
       }
       
-      const freshProduct = products.find(p => p.id === product.id) || product;
+      console.log('Opening product detail:', product);
       
-      if (!freshProduct) {
-        console.error('Product not found in array:', product.id);
-        showToast('Product not found', 'error');
-        return;
+      // Get product ID from various possible fields
+      const productId = product.id || product.productId || product._id || product.key;
+      
+      if (!productId) {
+        console.error('Product has no ID:', product);
+        // If no ID, create a temporary one
+        product.id = 'temp-' + Date.now();
       }
       
-      console.log('Opening product:', freshProduct.id, freshProduct.name);
+      // Try to find the product in the products array
+      let freshProduct = null;
+      if (productId) {
+        freshProduct = products.find(p => 
+          p.id === productId || 
+          p.productId === productId || 
+          p._id === productId || 
+          p.key === productId
+        );
+      }
+      
+      // If not found in products array, use the provided product object
+      if (!freshProduct) {
+        console.log('Product not found in array, using provided product');
+        freshProduct = product;
+      }
+      
+      // Ensure the product has an id
+      if (!freshProduct.id && productId) {
+        freshProduct.id = productId;
+      } else if (!freshProduct.id) {
+        freshProduct.id = 'product-' + Date.now();
+      }
+      
+      console.log('Using product:', freshProduct.id, freshProduct.name || freshProduct.title);
       
       currentProduct = freshProduct;
       currentProductImages = getProductImages(freshProduct);
@@ -2786,23 +2883,29 @@
         mainProductImage: document.getElementById('mainProductImage')
       };
       
+      const productName = freshProduct.name || freshProduct.title || 'Product';
+      const productPrice = freshProduct.price ? '₹' + parsePrice(freshProduct.price).toLocaleString() : '₹0';
+      const productDescription = freshProduct.description || freshProduct.desc || '';
+      const productFullDesc = freshProduct.fullDescription || freshProduct.fullDesc || freshProduct.details || productDescription;
+      const productSku = freshProduct.sku || freshProduct.SKU || 'N/A';
+      
       if (elements.detailTitle) 
-        elements.detailTitle.textContent = freshProduct.name || 'Product';
+        elements.detailTitle.textContent = productName;
         
       if (elements.detailPrice) 
-        elements.detailPrice.textContent = freshProduct.price ? '₹' + parsePrice(freshProduct.price) : '₹0';
+        elements.detailPrice.textContent = productPrice;
         
       if (elements.detailDesc) 
-        elements.detailDesc.textContent = freshProduct.description || '';
+        elements.detailDesc.textContent = productDescription;
         
       if (elements.detailFullDesc) 
-        elements.detailFullDesc.textContent = freshProduct.fullDescription || freshProduct.description || '';
+        elements.detailFullDesc.textContent = productFullDesc;
         
       if (elements.detailSku) 
-        elements.detailSku.textContent = 'SKU: ' + (freshProduct.sku || 'N/A');
+        elements.detailSku.textContent = 'SKU: ' + productSku;
         
       if (elements.breadcrumbProductName) 
-        elements.breadcrumbProductName.textContent = freshProduct.name || 'Product';
+        elements.breadcrumbProductName.textContent = productName;
       
       if (elements.mainProductImage && currentProductImages.length > 0) {
         elements.mainProductImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
@@ -2810,7 +2913,8 @@
       
       const stockStatus = document.getElementById('detailStockStatus');
       if (stockStatus) {
-        if (freshProduct.quantity > 0) {
+        const quantity = freshProduct.quantity || freshProduct.stock || freshProduct.inventory || 0;
+        if (quantity > 0) {
           stockStatus.textContent = 'In Stock';
           stockStatus.className = 'stock-status in-stock';
         } else {
@@ -3076,7 +3180,7 @@
         item.innerHTML = `
           <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name}</div>
+            <div class="similar-product-small-title">${(product.name || product.title || '').length > 20 ? (product.name || product.title || '').substring(0, 20) + '...' : (product.name || product.title || 'Product')}</div>
             <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
           </div>
         `;
@@ -3102,7 +3206,7 @@
         sliderItem.innerHTML = `
           <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || 'Product Name'}</div>
+            <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
             <div class="slider-item-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
           </div>
         `;
@@ -3192,10 +3296,10 @@
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      document.getElementById('spTitle').textContent = currentProduct.name;
+      document.getElementById('spTitle').textContent = currentProduct.name || currentProduct.title || 'Product';
       document.getElementById('spPrice').textContent = currentProduct.price ? '₹' + parsePrice(currentProduct.price).toLocaleString() : '₹0';
-      document.getElementById('spDesc').textContent = currentProduct.description || '';
-      document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.description || '';
+      document.getElementById('spDesc').textContent = currentProduct.description || currentProduct.desc || '';
+      document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       
       document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
         opt.classList.remove('selected');
@@ -3336,7 +3440,7 @@
           username: userInfo.fullName,
           userEmail: currentUser.email,
           productId: currentProduct.id,
-          productName: currentProduct.name,
+          productName: currentProduct.name || currentProduct.title,
           productPrice: productPrice,
           quantity: quantity,
           size: size,
@@ -3400,7 +3504,7 @@
       const gatewayCharge = paymentMethod === 'prepaid' ? subtotal * (gatewayChargePercent / 100) : 0;
       const total = subtotal + deliveryCharge + gatewayCharge;
       
-      document.getElementById('sumProduct').textContent = currentProduct.name;
+      document.getElementById('sumProduct').textContent = currentProduct.name || currentProduct.title || 'Product';
       document.getElementById('sumQty').textContent = quantity;
       document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
       document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
@@ -4125,10 +4229,13 @@
       container.appendChild(fragment);
     }
 
-    // FIXED: This function now properly creates and attaches event listeners to each product card
+    // UPDATED: renderProducts function with better error handling
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
-      if (!container) return;
+      if (!container) {
+        console.error(`Container ${containerId} not found`);
+        return;
+      }
       
       container.innerHTML = '';
       
@@ -4140,7 +4247,9 @@
       const fragment = document.createDocumentFragment();
       
       productsToRender.forEach(product => {
-        fragment.appendChild(createProductCard(product));
+        if (product) {
+          fragment.appendChild(createProductCard(product));
+        }
       });
       
       container.appendChild(fragment);
@@ -4879,6 +4988,7 @@
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
     }
 
+    // UPDATED: fetchLiveData with better product normalization
     function fetchLiveData() {
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
@@ -4892,10 +5002,20 @@
       get(ref(database, 'products')).then(snapshot => {
         const productsObj = snapshot.val();
         if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => ({
-            id: key,
-            ...productsObj[key]
-          }));
+          const newProducts = Object.keys(productsObj).map(key => {
+            const product = productsObj[key];
+            // Normalize the product data to ensure consistent structure
+            return {
+              id: key, // Use Firebase key as ID
+              ...product,
+              // Ensure images is always an array
+              images: product.images ? 
+                (Array.isArray(product.images) ? product.images : [product.images]) : 
+                (product.image ? [product.image] : 
+                 (product.img ? [product.img] : 
+                  (product.imageUrl ? [product.imageUrl] : [])))
+            };
+          });
           
           products = newProducts;
           window.products = products;
@@ -4906,7 +5026,7 @@
           if (currentPage === 'homePage') {
             renderProducts(products, 'homeProductGrid');
             
-            const trendingProducts = products.filter(p => p.isTrending);
+            const trendingProducts = products.filter(p => p.isTrending || p.trending);
             if (trendingProducts.length > 0) {
               renderProductSlider(trendingProducts, 'productSlider');
             } else {
@@ -4916,6 +5036,15 @@
           } else if (currentPage === 'productsPage') {
             renderProducts(products, 'productGrid');
             updateProductsCount();
+          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
+            const filteredResults = products.filter(product => 
+              (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
+            );
+            window.currentSearchResults = filteredResults;
+            renderSearchResults(filteredResults, window.currentSearchQuery);
           }
           
           console.log(`Loaded ${products.length} products from Firebase`);
@@ -5021,6 +5150,7 @@
       }
     }
 
+    // UPDATED: setupRealtimeListeners with better product normalization
     function setupRealtimeListeners() {
       if (!window.firebase || !window.firebase.database) return;
       
@@ -5031,10 +5161,19 @@
       onValue(ref(database, 'products'), snapshot => {
         const productsObj = snapshot.val();
         if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => ({
-            id: key,
-            ...productsObj[key]
-          }));
+          const newProducts = Object.keys(productsObj).map(key => {
+            const product = productsObj[key];
+            // Normalize the product data
+            return {
+              id: key,
+              ...product,
+              images: product.images ? 
+                (Array.isArray(product.images) ? product.images : [product.images]) : 
+                (product.image ? [product.image] : 
+                 (product.img ? [product.img] : 
+                  (product.imageUrl ? [product.imageUrl] : [])))
+            };
+          });
           products = newProducts;
           window.products = products;
           cacheManager.set('products', products);
@@ -5061,10 +5200,10 @@
             
             if (document.getElementById('searchResultsPage')?.classList.contains('active') && window.currentSearchQuery) {
               const filteredResults = products.filter(product => 
-                product.name?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                product.description?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                product.category?.toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                (product.tags && product.tags.some(tag => tag.toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
+                (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+                (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+                (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+                (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
               );
               window.currentSearchResults = filteredResults;
               renderSearchResults(filteredResults, window.currentSearchQuery);
@@ -5199,10 +5338,10 @@
             if (query) {
               window.currentSearchQuery = query;
               const filteredResults = products.filter(product => 
-                product.name?.toLowerCase().includes(query.toLowerCase()) ||
-                product.description?.toLowerCase().includes(query.toLowerCase()) ||
-                product.category?.toLowerCase().includes(query.toLowerCase()) ||
-                (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
+                (product.name || '').toLowerCase().includes(query.toLowerCase()) ||
+                (product.description || '').toLowerCase().includes(query.toLowerCase()) ||
+                (product.category || '').toLowerCase().includes(query.toLowerCase()) ||
+                (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(query.toLowerCase())))
               );
               window.currentSearchResults = filteredResults;
               renderSearchResults(filteredResults, query);
@@ -5218,10 +5357,10 @@
           if (query) {
             window.currentSearchQuery = query;
             const filteredResults = products.filter(product => 
-              product.name?.toLowerCase().includes(query.toLowerCase()) ||
-              product.description?.toLowerCase().includes(query.toLowerCase()) ||
-              product.category?.toLowerCase().includes(query.toLowerCase()) ||
-              (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
+              (product.name || '').toLowerCase().includes(query.toLowerCase()) ||
+              (product.description || '').toLowerCase().includes(query.toLowerCase()) ||
+              (product.category || '').toLowerCase().includes(query.toLowerCase()) ||
+              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(query.toLowerCase())))
             );
             window.currentSearchResults = filteredResults;
             renderSearchResults(filteredResults, query);
