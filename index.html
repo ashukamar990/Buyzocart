@@ -262,10 +262,6 @@
         </div>
         <div class="slider-container">
           <div class="slider-track" id="productSlider">
-            <div class="slider-item skeleton" style="height: 200px;"></div>
-            <div class="slider-item skeleton" style="height: 200px;"></div>
-            <div class="slider-item skeleton" style="height: 200px;"></div>
-            <div class="slider-item skeleton" style="height: 200px;"></div>
           </div>
         </div>
       </div>
@@ -273,18 +269,6 @@
       <div class="category-circles">
         <h2 class="category-circles-title">Shop by Category</h2>
         <div class="category-circles-container" id="categoryCirclesContainer">
-          <div class="category-circle skeleton">
-            <div class="category-circle-image"></div>
-            <div class="category-circle-name"></div>
-          </div>
-          <div class="category-circle skeleton">
-            <div class="category-circle-image"></div>
-            <div class="category-circle-name"></div>
-          </div>
-          <div class="category-circle skeleton">
-            <div class="category-circle-image"></div>
-            <div class="category-circle-name"></div>
-          </div>
         </div>
       </div>
 
@@ -300,42 +284,6 @@
       </div>
 
       <div class="product-grid" id="homeProductGrid">
-        <div class="product-card skeleton">
-          <div class="product-card-image"></div>
-          <div class="product-card-body">
-            <div class="product-card-title"></div>
-            <div class="product-card-rating"></div>
-            <div class="product-card-price"></div>
-            <div class="product-card-actions"></div>
-          </div>
-        </div>
-        <div class="product-card skeleton">
-          <div class="product-card-image"></div>
-          <div class="product-card-body">
-            <div class="product-card-title"></div>
-            <div class="product-card-rating"></div>
-            <div class="product-card-price"></div>
-            <div class="product-card-actions"></div>
-          </div>
-        </div>
-        <div class="product-card skeleton">
-          <div class="product-card-image"></div>
-          <div class="product-card-body">
-            <div class="product-card-title"></div>
-            <div class="product-card-rating"></div>
-            <div class="product-card-price"></div>
-            <div class="product-card-actions"></div>
-          </div>
-        </div>
-        <div class="product-card skeleton">
-          <div class="product-card-image"></div>
-          <div class="product-card-body">
-            <div class="product-card-title"></div>
-            <div class="product-card-rating"></div>
-            <div class="product-card-price"></div>
-            <div class="product-card-actions"></div>
-          </div>
-        </div>
       </div>
 
       <div class="recently-viewed" id="recentlyViewedSection" style="display:none;">
@@ -591,11 +539,6 @@
             <div class="product-selection-section">
               <div class="selection-title">Select Size *</div>
               <div class="size-options" id="sizeOptions">
-                <div class="size-option" data-value="S">S</div>
-                <div class="size-option" data-value="M">M</div>
-                <div class="size-option" data-value="L">L</div>
-                <div class="size-option" data-value="XL">XL</div>
-                <div class="size-option" data-value="XXL">XXL</div>
               </div>
               
               <div style="margin-top: 20px;">
@@ -2036,17 +1979,12 @@
       return 0;
     }
 
-    // UPDATED: More robust product image retrieval
     function getProductImage(product, idx = 0) {
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
-      
-      // Check for different image field names
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
       }
-      
-      // Check all possible image field names
       const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
       for (const field of possibleImageFields) {
         if (product[field]) {
@@ -2058,38 +1996,26 @@
           }
         }
       }
-      
-      // If it's a string and looks like a URL, use it
       if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
         return product;
       }
-      
-      // If the product itself has a value that might be an image
       if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
         return product.value;
       }
-      
       return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
     }
 
-    // UPDATED: More robust product images array retrieval
     function getProductImages(product) {
       if (!product) return [];
-      
-      // If it's an array of images
       if (Array.isArray(product.images) && product.images.length > 0) {
         return product.images;
       }
-      
-      // Check for images in different formats
       const possibleImageArrays = ['images', 'photos', 'gallery', 'pictures'];
       for (const field of possibleImageArrays) {
         if (Array.isArray(product[field]) && product[field].length > 0) {
           return product[field];
         }
       }
-      
-      // Check for single image field
       const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
       for (const field of possibleImageFields) {
         if (product[field]) {
@@ -2101,8 +2027,6 @@
           }
         }
       }
-      
-      // If no images found, return a placeholder array
       return ["https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image"];
     }
 
@@ -2703,7 +2627,6 @@
       return sum / productReviews.length;
     }
 
-    // UPDATED: More robust product card creation with better error handling
     function createProductCard(product) {
       if (!product) {
         console.error('Attempted to create product card with null product');
@@ -2713,7 +2636,6 @@
       const card = document.createElement('div');
       card.className = 'product-card';
       
-      // Get product ID from various possible fields
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       
@@ -2762,7 +2684,6 @@
         </div>
       `;
       
-      // Ensure product has an id property
       if (!product.id) {
         product.id = productId;
       }
@@ -2824,7 +2745,6 @@
       }
     }
 
-    // UPDATED: Completely rewritten showProductDetail function to handle real products
     function showProductDetail(product) {
       if (!product) {
         console.error('No product provided');
@@ -2834,16 +2754,12 @@
       
       console.log('Opening product detail:', product);
       
-      // Get product ID from various possible fields
       const productId = product.id || product.productId || product._id || product.key;
       
       if (!productId) {
-        console.error('Product has no ID:', product);
-        // If no ID, create a temporary one
         product.id = 'temp-' + Date.now();
       }
       
-      // Try to find the product in the products array
       let freshProduct = null;
       if (productId) {
         freshProduct = products.find(p => 
@@ -2854,13 +2770,11 @@
         );
       }
       
-      // If not found in products array, use the provided product object
       if (!freshProduct) {
         console.log('Product not found in array, using provided product');
         freshProduct = product;
       }
       
-      // Ensure the product has an id
       if (!freshProduct.id && productId) {
         freshProduct.id = productId;
       } else if (!freshProduct.id) {
@@ -3156,8 +3070,77 @@
     function loadSimilarProducts(product) {
       const similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category)
-        .slice(0, 10);
-      renderProductSlider(similarProducts.length > 0 ? similarProducts : products.slice(0, 10), 'similarProductsSlider');
+        .slice(0, 20);
+      const firstRow = similarProducts.slice(0, 10);
+      const secondRow = similarProducts.slice(10, 20);
+      const container = document.getElementById('similarProductsSlider');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      const rowDiv = document.createElement('div');
+      rowDiv.style.display = 'flex';
+      rowDiv.style.flexDirection = 'column';
+      rowDiv.style.gap = '20px';
+      rowDiv.style.width = '100%';
+      
+      const row1Div = document.createElement('div');
+      row1Div.style.display = 'flex';
+      row1Div.style.overflowX = 'auto';
+      row1Div.style.gap = '15px';
+      row1Div.style.paddingBottom = '10px';
+      row1Div.style.scrollbarWidth = 'none';
+      row1Div.style.msOverflowStyle = 'none';
+      row1Div.className = 'slider-track';
+      const row2Div = document.createElement('div');
+      row2Div.style.display = 'flex';
+      row2Div.style.overflowX = 'auto';
+      row2Div.style.gap = '15px';
+      row2Div.style.paddingBottom = '10px';
+      row2Div.style.scrollbarWidth = 'none';
+      row2Div.style.msOverflowStyle = 'none';
+      row2Div.className = 'slider-track';
+      
+      firstRow.forEach(p => {
+        const sliderItem = document.createElement('div');
+        sliderItem.className = 'slider-item';
+        sliderItem.style.minWidth = '200px';
+        sliderItem.style.maxWidth = '200px';
+        sliderItem.innerHTML = `
+          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-body">
+            <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
+            <div class="slider-item-price">${p.price ? '₹' + parsePrice(p.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        sliderItem.addEventListener('click', () => showProductDetail(p));
+        row1Div.appendChild(sliderItem);
+      });
+      
+      secondRow.forEach(p => {
+        const sliderItem = document.createElement('div');
+        sliderItem.className = 'slider-item';
+        sliderItem.style.minWidth = '200px';
+        sliderItem.style.maxWidth = '200px';
+        sliderItem.innerHTML = `
+          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-body">
+            <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
+            <div class="slider-item-price">${p.price ? '₹' + parsePrice(p.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        sliderItem.addEventListener('click', () => showProductDetail(p));
+        row2Div.appendChild(sliderItem);
+      });
+      
+      if (firstRow.length > 0) rowDiv.appendChild(row1Div);
+      if (secondRow.length > 0) rowDiv.appendChild(row2Div);
+      
+      if (firstRow.length === 0 && secondRow.length === 0) {
+        rowDiv.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
+      }
+      
+      container.appendChild(rowDiv);
     }
 
     function loadSimilarProductsSmall(product) {
@@ -3301,8 +3284,20 @@
       document.getElementById('spDesc').textContent = currentProduct.description || currentProduct.desc || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       
-      document.querySelectorAll('#sizeOptions .size-option').forEach(opt => {
-        opt.classList.remove('selected');
+      const sizeOptionsContainer = document.getElementById('sizeOptions');
+      sizeOptionsContainer.innerHTML = '';
+      const sizesFromProduct = currentProduct.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
+      sizesFromProduct.forEach(sizeVal => {
+        const opt = document.createElement('div');
+        opt.className = 'size-option';
+        opt.setAttribute('data-value', sizeVal);
+        opt.textContent = sizeVal;
+        opt.addEventListener('click', function() {
+          document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('sizeValidationError')?.classList.remove('show');
+        });
+        sizeOptionsContainer.appendChild(opt);
       });
       
       document.getElementById('qtySelect').value = 1;
@@ -3430,7 +3425,6 @@
       
       try {
         const confirmBtn = document.getElementById('confirmOrder');
-        const originalText = confirmBtn.textContent;
         confirmBtn.innerHTML = '<div class="loading-spinner"></div> Placing Order...';
         confirmBtn.disabled = true;
         
@@ -3477,7 +3471,7 @@
       } finally {
         const confirmBtn = document.getElementById('confirmOrder');
         if (confirmBtn) {
-          confirmBtn.textContent = originalText || 'Confirm & Place Order';
+          confirmBtn.textContent = 'Confirm & Place Order';
           confirmBtn.disabled = false;
         }
       }
@@ -4229,7 +4223,6 @@
       container.appendChild(fragment);
     }
 
-    // UPDATED: renderProducts function with better error handling
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) {
@@ -4988,7 +4981,6 @@
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
     }
 
-    // UPDATED: fetchLiveData with better product normalization
     function fetchLiveData() {
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
@@ -5004,11 +4996,9 @@
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
             const product = productsObj[key];
-            // Normalize the product data to ensure consistent structure
             return {
-              id: key, // Use Firebase key as ID
+              id: key,
               ...product,
-              // Ensure images is always an array
               images: product.images ? 
                 (Array.isArray(product.images) ? product.images : [product.images]) : 
                 (product.image ? [product.image] : 
@@ -5150,7 +5140,6 @@
       }
     }
 
-    // UPDATED: setupRealtimeListeners with better product normalization
     function setupRealtimeListeners() {
       if (!window.firebase || !window.firebase.database) return;
       
@@ -5163,7 +5152,6 @@
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
             const product = productsObj[key];
-            // Normalize the product data
             return {
               id: key,
               ...product,
@@ -5457,14 +5445,6 @@
       
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
-      
-      document.querySelectorAll('#sizeOptions .size-option').forEach(option => {
-        option.addEventListener('click', function() {
-          document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('sizeValidationError')?.classList.remove('show');
-        });
-      });
       
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
       document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
