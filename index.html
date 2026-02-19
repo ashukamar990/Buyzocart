@@ -192,12 +192,12 @@
         <span></span>
         <span></span>
       </div>
-      <div class="brand" aria-label="Buyzo Cart brand" onclick="showPage('homePage')">
+      <div class="brand" onclick="showPage('homePage')">
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
       <div class="cta">
-        <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
+        <button class="theme-toggle" id="themeToggle">
           <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -220,7 +220,7 @@
           </div>
           <span id="headerUserNameShort" style="font-size:14px;margin-left:5px;"></span>
         </div>
-        <button class="btn secondary" id="openLoginTop" title="Login / Sign Up">Login / Sign Up</button>
+        <button class="btn secondary" id="openLoginTop">Login / Sign Up</button>
       </div>
     </div>
     <div class="header-search-container" id="headerSearchContainer">
@@ -444,7 +444,7 @@
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
               <div class="similar-products-small">
-                <h3 class="similar-products-title">Similar Products (Admin)</h3>
+                <h3 class="similar-products-title">Similar Products</h3>
                 <div class="similar-products-slider" id="similarProductsSmallSlider"></div>
               </div>
             </div>
@@ -510,7 +510,7 @@
         </div>
 
         <div class="similar-products">
-          <h2 class="similar-title">Similar Products (Auto by Category)</h2>
+          <h2 class="similar-title">Similar Products</h2>
           <div class="slider-container">
             <div class="slider-track" id="similarProductsSlider"></div>
           </div>
@@ -1928,15 +1928,16 @@
     #recentlyViewedGrid .product-card {
       margin-bottom: 20px;
     }
-
+    
     .success-animation {
-      animation: bounce 0.6s ease;
+      animation: bounce 0.6s cubic-bezier(0.28, 0.84, 0.42, 1);
     }
-
+    
     @keyframes bounce {
-      0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-      40% {transform: translateY(-20px);}
-      60% {transform: translateY(-10px);}
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      70% { transform: scale(0.9); opacity: 0.9; }
+      100% { transform: scale(1); opacity: 1; }
     }
   </style>
 
@@ -1970,7 +1971,6 @@
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
-    let bannerStartX = 0, bannerCurrentX = 0, isBannerDragging = false;
 
     function debounce(func, wait) {
       let timeout;
@@ -2346,7 +2346,15 @@
           if (currentUser) loadSavedAddresses();
           break;
         case 'orderPage':
-          if (currentProduct) initOrderPageGallery();
+          if (currentProduct) {
+            const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
+            if (stockQuantity <= 0) {
+              showToast('Product is out of stock', 'error');
+              showPage('productDetailPage');
+              return;
+            }
+            initOrderPageGallery();
+          }
           break;
         case 'productsPage':
           renderProducts(products, 'productGrid');
@@ -2636,7 +2644,7 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, hideFeaturedBadge = false) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -2656,12 +2664,20 @@
       const productBadge = product.badge || product.tag || '';
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
+      const stockQuantity = product.quantity || product.stock || product.inventory || 0;
+      const isOutOfStock = stockQuantity <= 0;
+      
+      let featuredBadgeHtml = '';
+      if (isFeatured && !hideFeaturedBadge) {
+        featuredBadgeHtml = '<div class="professional-badge" style="background:#22c55e;">FEATURED</div>';
+      }
       
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}')">
+          ${isOutOfStock ? '<div class="out-of-stock-badge" style="position:absolute;top:10px;left:10px;background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:600;">Out of Stock</div>' : ''}
           ${productBadge ? `<div class="product-card-badge">${productBadge}</div>` : ''}
-          ${isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
-          ${isFeatured ? `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>` : ''}
+          ${isTrending ? '<div class="professional-badge">TRENDING</div>' : ''}
+          ${featuredBadgeHtml}
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
@@ -2756,6 +2772,12 @@
     function showProductDetail(product) {
       if (!product) {
         showToast('Product not found', 'error');
+        return;
+      }
+      
+      const stockQuantity = product.quantity || product.stock || product.inventory || 0;
+      if (stockQuantity <= 0) {
+        showToast('Product is out of stock', 'error');
         return;
       }
       
@@ -3417,6 +3439,13 @@
         return;
       }
       
+      const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
+      if (stockQuantity <= 0) {
+        showToast('Product is out of stock', 'error');
+        showPage('productDetailPage');
+        return;
+      }
+      
       const orderId = generateOrderId();
       currentOrderId = orderId;
       
@@ -3879,7 +3908,8 @@
           }
         }
         
-        const productImage = getProductImage(products.find(p => p.id === order.productId) || {});
+        const product = products.find(p => p.id === order.productId);
+        const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/80';
         
         orderCard.innerHTML = `
           <div class="order-header">
@@ -3890,7 +3920,7 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${productImage}')"></div>
+            <div class="order-product-image" style="background-image: url('${productImage}')" data-product-id="${order.productId}"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
@@ -3963,9 +3993,10 @@
       const container = document.getElementById('orderDetailContent');
       if (!container) return;
       
+      const product = products.find(p => p.id === order.productId);
+      const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/300';
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-      const productImage = getProductImage(products.find(p => p.id === order.productId) || {});
       
       container.innerHTML = `
         <div class="order-detail-section">
@@ -3988,7 +4019,7 @@
           <div class="order-detail-product">
             <div class="order-detail-image" style="background-image: url('${productImage}'); cursor: pointer;" onclick="showProductFromOrder('${order.productId}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px; cursor: pointer;" onclick="showProductFromOrder('${order.productId}')">${order.productName}</div>
+              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
               <div style="color:var(--muted);font-size:14px">
                 Qty: ${order.quantity} | Size: ${order.size}
@@ -4261,9 +4292,11 @@
       
       const fragment = document.createDocumentFragment();
       
+      const hideFeaturedBadge = containerId === 'homeProductGrid';
+      
       productsToRender.forEach(product => {
         if (product) {
-          fragment.appendChild(createProductCard(product));
+          fragment.appendChild(createProductCard(product, hideFeaturedBadge));
         }
       });
       
@@ -4305,7 +4338,6 @@
       controls.appendChild(controlsFragment);
       
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
-      setupBannerTouchEvents();
       setupBannerAutoSlide();
     }
 
@@ -4327,10 +4359,8 @@
       let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
-        if (!isBannerDragging && !slidePaused) {
-          currentBannerIndex = (currentBannerIndex + 1) % banners.length;
-          setBannerSlide(currentBannerIndex);
-        }
+        currentBannerIndex = (currentBannerIndex + 1) % banners.length;
+        setBannerSlide(currentBannerIndex);
       }, 5000);
     }
 
@@ -4338,15 +4368,14 @@
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
       
-      bannerStartX = 0;
-      bannerCurrentX = 0;
-      isBannerDragging = false;
+      let bannerStartX = 0;
+      let bannerCurrentX = 0;
+      let isBannerDragging = false;
       
       bannerCarousel.addEventListener('touchstart', (e) => {
         clearInterval(bannerAutoSlideInterval);
-        slidePaused = true;
-        isBannerDragging = true;
         bannerStartX = e.touches[0].clientX;
+        isBannerDragging = true;
       }, { passive: true });
       
       bannerCarousel.addEventListener('touchmove', (e) => {
@@ -4372,10 +4401,7 @@
         }
         
         isBannerDragging = false;
-        setTimeout(() => {
-          slidePaused = false;
-          setupBannerAutoSlide();
-        }, 3000);
+        setTimeout(setupBannerAutoSlide, 3000);
       });
     }
 
@@ -4488,13 +4514,11 @@
       let currentSlide = 0;
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       trendingAutoSlideInterval = setInterval(() => {
-        if (!slidePaused) {
-          currentSlide = (currentSlide + 1) % totalSlides;
-          slider.scrollTo({
-            left: currentSlide * slides[0].offsetWidth,
-            behavior: 'smooth'
-          });
-        }
+        currentSlide = (currentSlide + 1) % totalSlides;
+        slider.scrollTo({
+          left: currentSlide * slides[0].offsetWidth,
+          behavior: 'smooth'
+        });
       }, 4000);
     }
 
@@ -4760,7 +4784,6 @@
           ...addressesObj[key]
         }));
         
-        addresses.sort((a, b) => b.createdAt - a.createdAt);
         savedAddresses = addresses;
         
         if (addresses.length > 0) {
@@ -4779,6 +4802,8 @@
       if (!addressesList) return;
       
       addressesList.innerHTML = '';
+      
+      savedAddresses.sort((a, b) => b.createdAt - a.createdAt);
       
       savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
@@ -5497,6 +5522,8 @@
       
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
       document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
+      
+      setupBannerTouchEvents();
       
       document.getElementById('ratingInput')?.querySelectorAll('.rating-star').forEach(star => {
         star.addEventListener('click', function() {
