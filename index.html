@@ -573,7 +573,7 @@
         <h3 style="margin-top:0">Your Contact & Delivery Address</h3>
         <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
 
-        <div class="card-panel" id="savedAddressesSection" style="display:none; margin-bottom: 20px;">
+        <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
           <h4 style="margin-top:0">Select Saved Address</h4>
           <div id="savedAddressesList"></div>
           <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">Add New Address</button>
@@ -655,8 +655,8 @@
     </section>
 
     <section class="page center" id="successPage">
-      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px;animation: successPop 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px; animation: checkBounce 0.6s ease;">
+      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px; animation: successPop 0.5s ease;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px; animation: successCheck 0.5s ease;">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
@@ -1093,6 +1093,34 @@
       </div>
     </div>
   </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
+      authDomain: "buyzocart.firebaseapp.com",
+      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
+      projectId: "buyzocart",
+      storageBucket: "buyzocart.firebasestorage.app",
+      messagingSenderId: "640560737762",
+      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+    
+    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      initApp();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <style>
     * {
@@ -1899,45 +1927,16 @@
     }
 
     @keyframes successPop {
-      0% { transform: scale(0.5); opacity: 0; }
-      80% { transform: scale(1.1); }
+      0% { transform: scale(0.8); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
-
-    @keyframes checkBounce {
-      0% { transform: scale(0); }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); }
+    
+    @keyframes successCheck {
+      0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+      50% { transform: scale(1.2) rotate(10deg); }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
     }
   </style>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
-      authDomain: "buyzocart.firebaseapp.com",
-      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
-      projectId: "buyzocart",
-      storageBucket: "buyzocart.firebasestorage.app",
-      messagingSenderId: "640560737762",
-      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
-    const auth = getAuth(app);
-    
-    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
-    
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
-    });
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <script>
     let currentUser = null;
@@ -1964,12 +1963,13 @@
     let popularSearches = ['T-Shirt', 'Sneakers', 'Jeans', 'Watch', 'Headphones', 'Mobile', 'Laptop', 'Shoes'];
     let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
     let deliveredOrders = [];
-    let adminSimilarProducts = [];
     
     let autoSlideInterval;
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
+    let touchStartX = 0, touchEndX = 0;
+    let isBannerDragging = false, bannerTouchStartX = 0, bannerTouchEndX = 0;
 
     function debounce(func, wait) {
       let timeout;
@@ -2022,6 +2022,9 @@
       if (!product) return [];
       if (Array.isArray(product.images) && product.images.length > 0) {
         return product.images;
+      }
+      if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin)) {
+        return product.similarFromAdmin;
       }
       const possibleImageArrays = ['images', 'photos', 'gallery', 'pictures'];
       for (const field of possibleImageArrays) {
@@ -2657,23 +2660,17 @@
       const isFeatured = product.isFeatured || product.featured || false;
       
       let badgeHtml = '';
-      if (productBadge) {
-        badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
-      }
-      
-      let featuredBadgeHtml = '';
       if (isFeatured) {
-        const currentPage = document.querySelector('.page.active')?.id;
-        if (currentPage === 'productsPage') {
-          featuredBadgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
-        }
+        badgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
+      } else if (isTrending) {
+        badgeHtml = `<div class="professional-badge">TRENDING</div>`;
+      } else if (productBadge) {
+        badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}')">
           ${badgeHtml}
-          ${isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
-          ${featuredBadgeHtml}
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
@@ -2840,16 +2837,17 @@
       }
       
       const stockStatus = document.getElementById('detailStockStatus');
+      const orderBtn = document.getElementById('detailOrderBtn');
       if (stockStatus) {
         const quantity = freshProduct.quantity || freshProduct.stock || freshProduct.inventory || 0;
         if (quantity > 0) {
           stockStatus.textContent = 'In Stock';
           stockStatus.className = 'stock-status in-stock';
-          document.getElementById('detailOrderBtn').disabled = false;
+          if (orderBtn) orderBtn.disabled = false;
         } else {
           stockStatus.textContent = 'Out of Stock';
           stockStatus.className = 'stock-status out-of-stock';
-          document.getElementById('detailOrderBtn').disabled = true;
+          if (orderBtn) orderBtn.disabled = true;
         }
       }
       
@@ -3083,7 +3081,7 @@
       updateProductModalImage();
     }
 
-    async function loadSimilarProducts(product) {
+    function loadSimilarProducts(product) {
       const similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category)
         .slice(0, 20);
@@ -3159,44 +3157,44 @@
       container.appendChild(rowDiv);
     }
 
-    async function loadSimilarProductsSmall(product) {
+    function loadSimilarProductsSmall(product) {
       const container = document.getElementById('similarProductsSmallSlider');
       if (!container) return;
       
-      try {
-        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'adminSimilarProducts'));
-        if (snapshot.exists()) {
-          const adminProducts = snapshot.val();
-          adminSimilarProducts = Object.keys(adminProducts).map(key => ({
-            id: key,
-            ...adminProducts[key]
-          }));
-        }
-      } catch (error) {
-        console.error('Error loading admin similar products:', error);
-        adminSimilarProducts = [];
+      let similarProducts = [];
+      if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin) && product.similarFromAdmin.length > 0) {
+        similarProducts = product.similarFromAdmin.map(id => products.find(p => p.id === id)).filter(p => p);
       }
       
-      if (adminSimilarProducts.length > 0) {
-        const fragment = document.createDocumentFragment();
-        adminSimilarProducts.slice(0, 6).forEach(item => {
-          const productItem = document.createElement('div');
-          productItem.className = 'similar-product-small';
-          productItem.innerHTML = `
-            <div class="similar-product-small-img" style="background-image: url('${getProductImage(item)}')"></div>
-            <div class="similar-product-small-info">
-              <div class="similar-product-small-title">${(item.name || '').length > 20 ? (item.name || '').substring(0, 20) + '...' : (item.name || 'Product')}</div>
-              <div class="similar-product-small-price">${item.price ? '₹' + parsePrice(item.price).toLocaleString() : '₹0'}</div>
-            </div>
-          `;
-          productItem.addEventListener('click', () => showProductDetail(item));
-          fragment.appendChild(productItem);
-        });
-        container.innerHTML = '';
-        container.appendChild(fragment);
-      } else {
-        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products from admin</p>';
+      if (similarProducts.length === 0) {
+        similarProducts = products
+          .filter(p => p.id !== product.id && p.category === product.category)
+          .slice(0, 6);
       }
+      
+      if (similarProducts.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
+        return;
+      }
+      
+      const fragment = document.createDocumentFragment();
+      similarProducts.slice(0, 6).forEach(simProduct => {
+        const item = document.createElement('div');
+        item.className = 'similar-product-small';
+        item.innerHTML = `
+          <div class="similar-product-small-img" style="background-image: url('${getProductImage(simProduct)}')"></div>
+          <div class="similar-product-small-info">
+            <div class="similar-product-small-title">${(simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product')}</div>
+            <div class="similar-product-small-price">${simProduct.price ? '₹' + parsePrice(simProduct.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => showProductDetail(simProduct));
+        fragment.appendChild(item);
+      });
+      
+      container.innerHTML = '';
+      container.appendChild(fragment);
     }
 
     function renderProductSlider(productsToRender, containerId) {
@@ -3304,7 +3302,7 @@
       
       const quantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
       if (quantity <= 0) {
-        showToast('This product is out of stock', 'error');
+        showToast('Product is out of stock', 'error');
         return;
       }
       
@@ -3911,9 +3909,9 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(product)}'); cursor: pointer;" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
             <div class="order-product-info">
-              <div class="order-product-title" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))" style="cursor: pointer;">${order.productName}</div>
+              <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
               <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
@@ -3927,8 +3925,11 @@
         `;
         
         orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('order-product-image') && !e.target.classList.contains('order-product-title')) {
-            showOrderDetail(order);
+          if (e.target.tagName !== 'BUTTON') {
+            const product = products.find(p => p.id === order.productId);
+            if (product) {
+              showProductDetail(product);
+            }
           }
         });
         
@@ -3980,7 +3981,6 @@
       
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-      const product = products.find(p => p.id === order.productId);
       
       container.innerHTML = `
         <div class="order-detail-section">
@@ -4001,9 +4001,9 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}'); cursor: pointer;" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px; cursor: pointer;" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))">${order.productName}</div>
+              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
               <div style="color:var(--muted);font-size:14px">
                 Qty: ${order.quantity} | Size: ${order.size}
@@ -4316,6 +4316,7 @@
       
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
       setupBannerAutoSlide();
+      setupBannerTouchEvents();
     }
 
     function setBannerSlide(index) {
@@ -4340,39 +4341,33 @@
           currentBannerIndex = (currentBannerIndex + 1) % banners.length;
           setBannerSlide(currentBannerIndex);
         }
-      }, 5000);
+      }, 3000);
     }
 
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
       
-      let bannerStartX = 0;
-      let bannerCurrentX = 0;
+      let bannerTouchStartX = 0;
+      let bannerTouchEndX = 0;
       let isBannerDragging = false;
-      let bannerTouchStartTime = 0;
       
       bannerCarousel.addEventListener('touchstart', (e) => {
-        clearInterval(bannerAutoSlideInterval);
-        slidePaused = true;
-        bannerStartX = e.touches[0].clientX;
-        bannerTouchStartTime = Date.now();
+        pauseSlide();
+        bannerTouchStartX = e.touches[0].clientX;
         isBannerDragging = true;
       }, { passive: true });
       
       bannerCarousel.addEventListener('touchmove', (e) => {
         if (!isBannerDragging) return;
-        e.preventDefault();
-        bannerCurrentX = e.touches[0].clientX;
-      }, { passive: false });
+        bannerTouchEndX = e.touches[0].clientX;
+      }, { passive: true });
       
-      bannerCarousel.addEventListener('touchend', () => {
+      bannerCarousel.addEventListener('touchend', (e) => {
         if (!isBannerDragging) return;
         
-        const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = banners.findIndex((_, index) => 
-          document.querySelector(`.banner-dot:nth-child(${index + 1})`)?.classList.contains('active')
-        );
+        const diff = bannerTouchStartX - bannerTouchEndX;
+        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
@@ -4385,8 +4380,45 @@
         }
         
         isBannerDragging = false;
-        slidePaused = false;
-        setTimeout(setupBannerAutoSlide, 3000);
+        resumeSlideAfterDelay();
+      });
+      
+      bannerCarousel.addEventListener('mousedown', (e) => {
+        pauseSlide();
+        bannerTouchStartX = e.clientX;
+        isBannerDragging = true;
+      });
+      
+      bannerCarousel.addEventListener('mousemove', (e) => {
+        if (!isBannerDragging) return;
+        bannerTouchEndX = e.clientX;
+      });
+      
+      bannerCarousel.addEventListener('mouseup', (e) => {
+        if (!isBannerDragging) return;
+        
+        const diff = bannerTouchStartX - bannerTouchEndX;
+        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            const nextIndex = (activeIndex + 1) % banners.length;
+            setBannerSlide(nextIndex);
+          } else {
+            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+            setBannerSlide(prevIndex);
+          }
+        }
+        
+        isBannerDragging = false;
+        resumeSlideAfterDelay();
+      });
+      
+      bannerCarousel.addEventListener('mouseleave', () => {
+        if (isBannerDragging) {
+          isBannerDragging = false;
+          resumeSlideAfterDelay();
+        }
       });
     }
 
@@ -4771,7 +4803,7 @@
           ...addressesObj[key]
         }));
         
-        savedAddresses = addresses;
+        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
         
         if (addresses.length > 0) {
           savedAddressesSection.style.display = 'block';
@@ -4790,9 +4822,7 @@
       
       addressesList.innerHTML = '';
       
-      const sortedAddresses = [...savedAddresses].sort((a, b) => (a.isDefault ? -1 : 1));
-      
-      sortedAddresses.forEach(address => {
+      savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
         addressCard.className = 'saved-address-card';
         addressCard.innerHTML = `
@@ -4817,7 +4847,7 @@
         });
         
         addressCard.addEventListener('click', function(e) {
-          if (e.target.type !== 'radio' && !e.target.classList.contains('edit-address') && !e.target.classList.contains('delete-address')) {
+          if (e.target.type !== 'radio') {
             radio.checked = true;
             fillAddressForm(address);
           }
@@ -4865,20 +4895,6 @@
 
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       
-      const isDuplicate = savedAddresses.some(addr => 
-        addr.name === fullname && 
-        addr.mobile === mobile && 
-        addr.pincode === pincode && 
-        addr.city === city && 
-        addr.state === state && 
-        addr.street === house
-      );
-      
-      if (isDuplicate) {
-        showToast('This address already exists', 'error');
-        return;
-      }
-      
       const addressData = {
         name: fullname,
         mobile: mobile,
@@ -4896,8 +4912,8 @@
         const addressId = 'address_' + Date.now();
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
         showToast('Address saved successfully', 'success');
-        loadSavedAddresses();
-        showNewAddressForm();
+        await loadSavedAddresses();
+        document.getElementById('savedAddressesSection').style.display = 'block';
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -4905,7 +4921,7 @@
     }
 
     function showNewAddressForm() {
-      document.getElementById('savedAddressesSection').style.display = 'block';
+      document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
       
       document.getElementById('fullname').value = '';
@@ -4923,7 +4939,7 @@
 
     function editAddress(address) {
       fillAddressForm(address);
-      document.getElementById('savedAddressesSection').style.display = 'block';
+      document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
       
       const saveBtn = document.getElementById('saveUserInfo');
@@ -4952,9 +4968,9 @@
         try {
           await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
           showToast('Address updated successfully', 'success');
-          loadSavedAddresses();
           document.getElementById('savedAddressesSection').style.display = 'block';
           document.getElementById('newAddressForm').style.display = 'block';
+          await loadSavedAddresses();
         } catch (error) {
           console.error('Error updating address:', error);
           showToast('Failed to update address', 'error');
@@ -4972,8 +4988,8 @@
           await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
           showToast('Address deleted successfully', 'success');
           document.getElementById('alertModal').classList.remove('active');
-          loadSavedAddresses();
-          showNewAddressForm();
+          await loadSavedAddresses();
+          document.getElementById('savedAddressesSection').style.display = savedAddresses.length ? 'block' : 'none';
         } catch (error) {
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
@@ -5079,9 +5095,16 @@
             window.currentSearchResults = filteredResults;
             renderSearchResults(filteredResults, window.currentSearchQuery);
           }
+        } else {
+          products = [];
+          renderProducts([], 'homeProductGrid');
+          renderProducts([], 'productGrid');
         }
       }).catch(error => {
         console.error('Error fetching products:', error);
+        products = [];
+        renderProducts([], 'homeProductGrid');
+        renderProducts([], 'productGrid');
       });
       
       get(ref(database, 'categories')).then(snapshot => {
@@ -5099,9 +5122,12 @@
             renderCategories();
             renderCategoryCircles();
           }
+        } else {
+          categories = [];
         }
       }).catch(error => {
         console.error('Error fetching categories:', error);
+        categories = [];
       });
       
       get(ref(database, 'banners')).then(snapshot => {
@@ -5117,9 +5143,12 @@
           if (document.getElementById('homePage')?.classList.contains('active')) {
             renderBannerCarousel();
           }
+        } else {
+          banners = [];
         }
       }).catch(error => {
         console.error('Error fetching banners:', error);
+        banners = [];
       });
       
       get(ref(database, 'adminSettings')).then(snapshot => {
@@ -5238,6 +5267,8 @@
               renderSearchResults(filteredResults, window.currentSearchQuery);
             }
           }
+        } else {
+          products = [];
         }
       });
       
@@ -5256,6 +5287,8 @@
             renderCategories();
             renderCategoryCircles();
           }
+        } else {
+          categories = [];
         }
       });
       
@@ -5272,6 +5305,8 @@
           if (document.getElementById('homePage')?.classList.contains('active')) {
             renderBannerCarousel();
           }
+        } else {
+          banners = [];
         }
       });
       
@@ -5511,8 +5546,6 @@
       
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
       document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
-      
-      setupBannerTouchEvents();
       
       document.getElementById('ratingInput')?.querySelectorAll('.rating-star').forEach(star => {
         star.addEventListener('click', function() {
