@@ -443,9 +443,9 @@
               
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
-              <div class="similar-products-small" id="adminSimilarSmallContainer">
+              <div class="similar-products-small">
                 <h3 class="similar-products-title">Similar Products (Admin)</h3>
-                <div class="similar-products-slider" id="similarProductsSmallSliderAdmin"></div>
+                <div class="similar-products-slider" id="similarProductsSmallSlider"></div>
               </div>
             </div>
           </div>
@@ -510,7 +510,7 @@
         </div>
 
         <div class="similar-products">
-          <h2 class="similar-title">Similar Products (Category based)</h2>
+          <h2 class="similar-title">Similar Products (Auto by Category)</h2>
           <div class="slider-container">
             <div class="slider-track" id="similarProductsSlider"></div>
           </div>
@@ -655,18 +655,13 @@
     </section>
 
     <section class="page center" id="successPage">
-      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px; animation: successPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-        <style>
-          @keyframes successPop {
-            0% { transform: scale(0.7); opacity: 0; }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); opacity: 1; }
-          }
-        </style>
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
+      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px">
+        <div class="success-animation">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
         <div style="font-size:24px;font-weight:700;color:var(--success);margin-bottom:8px" id="successTitle">Your Order is Placed ✅</div>
         <div style="margin-top:10px;color:var(--muted)" id="successMessage">
           Order ID: <strong id="orderIdDisplay"></strong><br>
@@ -1642,6 +1637,10 @@
       margin-bottom: 20px;
     }
 
+    #productDetailPage .product-selection-section {
+      display: none;
+    }
+
     .size-option {
       display: inline-block;
       padding: 8px 16px;
@@ -1929,6 +1928,16 @@
     #recentlyViewedGrid .product-card {
       margin-bottom: 20px;
     }
+
+    .success-animation {
+      animation: bounce 0.6s ease;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+      40% {transform: translateY(-20px);}
+      60% {transform: translateY(-10px);}
+    }
   </style>
 
   <script>
@@ -1961,6 +1970,7 @@
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
+    let bannerStartX = 0, bannerCurrentX = 0, isBannerDragging = false;
 
     function debounce(func, wait) {
       let timeout;
@@ -2326,7 +2336,7 @@
           if (currentProduct) {
             loadProductReviews(currentProduct.id);
             loadSimilarProducts(currentProduct);
-            loadSimilarProductsSmallAdmin();
+            loadSimilarProductsSmall(currentProduct);
           }
           break;
         case 'paymentPage':
@@ -2829,14 +2839,6 @@
         }
       }
       
-      const orderBtn = document.getElementById('detailOrderBtn');
-      if (orderBtn) {
-        const quantity = freshProduct.quantity || freshProduct.stock || freshProduct.inventory || 0;
-        orderBtn.disabled = quantity <= 0;
-        orderBtn.style.opacity = quantity <= 0 ? '0.5' : '1';
-        orderBtn.style.cursor = quantity <= 0 ? 'not-allowed' : 'pointer';
-      }
-      
       const shareLink = document.getElementById('productShareLink');
       if (shareLink) {
         const url = window.location.origin + window.location.pathname + '#productDetailPage?product=' + freshProduct.id;
@@ -2856,7 +2858,7 @@
       
       initProductDetailGallery(freshProduct);
       loadSimilarProducts(freshProduct);
-      loadSimilarProductsSmallAdmin();
+      loadSimilarProductsSmall(freshProduct);
       loadProductReviews(freshProduct.id);
       
       if (currentUser) {
@@ -2865,30 +2867,6 @@
       
       showPage('productDetailPage');
       window.scrollTo(0, 0);
-    }
-
-    function loadSimilarProductsSmallAdmin() {
-      const container = document.getElementById('similarProductsSmallSliderAdmin');
-      if (!container) return;
-      const adminSimilar = products.filter(p => p.adminSimilar && p.adminSimilar === true).slice(0, 6);
-      if (adminSimilar.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No admin similar products</p>';
-        return;
-      }
-      container.innerHTML = '';
-      adminSimilar.forEach(product => {
-        const item = document.createElement('div');
-        item.className = 'similar-product-small';
-        item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
-          <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${(product.name || product.title || '').length > 20 ? (product.name || product.title || '').substring(0, 20) + '...' : (product.name || product.title || 'Product')}</div>
-            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
-          </div>
-        `;
-        item.addEventListener('click', () => showProductDetail(product));
-        container.appendChild(item);
-      });
     }
 
     function initProductDetailGallery(product) {
@@ -3167,6 +3145,39 @@
       container.appendChild(rowDiv);
     }
 
+    function loadSimilarProductsSmall(product) {
+      const container = document.getElementById('similarProductsSmallSlider');
+      if (!container) return;
+      
+      const similarProducts = products
+        .filter(p => p.id !== product.id && p.adminSimilar === true)
+        .slice(0, 6);
+      
+      if (similarProducts.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
+        return;
+      }
+      
+      const fragment = document.createDocumentFragment();
+      similarProducts.forEach(product => {
+        const item = document.createElement('div');
+        item.className = 'similar-product-small';
+        item.innerHTML = `
+          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="similar-product-small-info">
+            <div class="similar-product-small-title">${(product.name || product.title || '').length > 20 ? (product.name || product.title || '').substring(0, 20) + '...' : (product.name || product.title || 'Product')}</div>
+            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => showProductDetail(product));
+        fragment.appendChild(item);
+      });
+      
+      container.innerHTML = '';
+      container.appendChild(fragment);
+    }
+
     function renderProductSlider(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -3269,8 +3280,9 @@
 
     function orderProductFromDetail() {
       if (!currentProduct) return;
-      const quantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
-      if (quantity <= 0) {
+      
+      const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
+      if (stockQuantity <= 0) {
         showToast('Product is out of stock', 'error');
         return;
       }
@@ -3850,7 +3862,6 @@
       container.innerHTML = '';
       
       orders.forEach(order => {
-        const product = products.find(p => p.id === order.productId) || { name: order.productName };
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
@@ -3868,6 +3879,8 @@
           }
         }
         
+        const productImage = getProductImage(products.find(p => p.id === order.productId) || {});
+        
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
@@ -3877,7 +3890,7 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')" data-product-id="${order.productId}"></div>
+            <div class="order-product-image" style="background-image: url('${productImage}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
@@ -3892,23 +3905,17 @@
           </div>
         `;
         
+        orderCard.querySelector('.order-product-image').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const product = products.find(p => p.id === order.productId);
+          if (product) showProductDetail(product);
+        });
+        
         orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON' && !e.target.closest('.order-product-image')) {
+          if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('order-product-image')) {
             showOrderDetail(order);
           }
         });
-        
-        const productImageDiv = orderCard.querySelector('.order-product-image');
-        if (productImageDiv) {
-          productImageDiv.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const productId = productImageDiv.dataset.productId;
-            const targetProduct = products.find(p => p.id === productId);
-            if (targetProduct) {
-              showProductDetail(targetProduct);
-            }
-          });
-        }
         
         container.appendChild(orderCard);
       });
@@ -3958,6 +3965,7 @@
       
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+      const productImage = getProductImage(products.find(p => p.id === order.productId) || {});
       
       container.innerHTML = `
         <div class="order-detail-section">
@@ -3978,9 +3986,9 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-detail-image" style="background-image: url('${productImage}'); cursor: pointer;" onclick="showProductFromOrder('${order.productId}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+              <div style="font-weight:600;margin-bottom:8px; cursor: pointer;" onclick="showProductFromOrder('${order.productId}')">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
               <div style="color:var(--muted);font-size:14px">
                 Qty: ${order.quantity} | Size: ${order.size}
@@ -4028,6 +4036,11 @@
       `;
       
       showPage('orderDetailPage');
+    }
+
+    function showProductFromOrder(productId) {
+      const product = products.find(p => p.id === productId);
+      if (product) showProductDetail(product);
     }
 
     async function addToRecentlyViewed(productId) {
@@ -4292,6 +4305,7 @@
       controls.appendChild(controlsFragment);
       
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
+      setupBannerTouchEvents();
       setupBannerAutoSlide();
     }
 
@@ -4309,15 +4323,13 @@
 
     function setupBannerAutoSlide() {
       if (banners.length <= 1) return;
+      
+      let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
-        if (!slidePaused) {
-          const activeDot = document.querySelector('.banner-dot.active');
-          if (activeDot) {
-            const currentIndex = Array.from(document.querySelectorAll('.banner-dot')).indexOf(activeDot);
-            const nextIndex = (currentIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
-          }
+        if (!isBannerDragging && !slidePaused) {
+          currentBannerIndex = (currentBannerIndex + 1) % banners.length;
+          setBannerSlide(currentBannerIndex);
         }
       }, 5000);
     }
@@ -4326,15 +4338,15 @@
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
       
-      let bannerStartX = 0;
-      let bannerCurrentX = 0;
-      let isBannerDragging = false;
+      bannerStartX = 0;
+      bannerCurrentX = 0;
+      isBannerDragging = false;
       
       bannerCarousel.addEventListener('touchstart', (e) => {
         clearInterval(bannerAutoSlideInterval);
         slidePaused = true;
-        bannerStartX = e.touches[0].clientX;
         isBannerDragging = true;
+        bannerStartX = e.touches[0].clientX;
       }, { passive: true });
       
       bannerCarousel.addEventListener('touchmove', (e) => {
@@ -4347,23 +4359,21 @@
         if (!isBannerDragging) return;
         
         const diff = bannerStartX - bannerCurrentX;
-        const activeDot = document.querySelector('.banner-dot.active');
-        if (activeDot) {
-          const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).indexOf(activeDot);
-          if (Math.abs(diff) > 50) {
-            if (diff > 0) {
-              const nextIndex = (activeIndex + 1) % banners.length;
-              setBannerSlide(nextIndex);
-            } else {
-              const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-              setBannerSlide(prevIndex);
-            }
+        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            const nextIndex = (activeIndex + 1) % banners.length;
+            setBannerSlide(nextIndex);
+          } else {
+            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+            setBannerSlide(prevIndex);
           }
         }
         
         isBannerDragging = false;
-        slidePaused = false;
         setTimeout(() => {
+          slidePaused = false;
           setupBannerAutoSlide();
         }, 3000);
       });
@@ -4750,7 +4760,8 @@
           ...addressesObj[key]
         }));
         
-        savedAddresses = addresses.sort((a, b) => b.createdAt - a.createdAt);
+        addresses.sort((a, b) => b.createdAt - a.createdAt);
+        savedAddresses = addresses;
         
         if (addresses.length > 0) {
           savedAddressesSection.style.display = 'block';
@@ -4812,7 +4823,7 @@
           deleteAddressConfirmation(address);
         });
         
-        addressesList.prepend(addressCard);
+        addressesList.appendChild(addressCard);
       });
     }
 
@@ -5486,8 +5497,6 @@
       
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
       document.querySelector('.detail-carousel-control.next')?.addEventListener('click', nextDetailImage);
-      
-      setupBannerTouchEvents();
       
       document.getElementById('ratingInput')?.querySelectorAll('.rating-star').forEach(star => {
         star.addEventListener('click', function() {
