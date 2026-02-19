@@ -192,12 +192,12 @@
         <span></span>
         <span></span>
       </div>
-      <div class="brand" onclick="showPage('homePage')">
+      <div class="brand" aria-label="Buyzo Cart brand" onclick="showPage('homePage')">
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
       <div class="cta">
-        <button class="theme-toggle" id="themeToggle">
+        <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
           <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -220,7 +220,7 @@
           </div>
           <span id="headerUserNameShort" style="font-size:14px;margin-left:5px;"></span>
         </div>
-        <button class="btn secondary" id="openLoginTop">Login / Sign Up</button>
+        <button class="btn secondary" id="openLoginTop" title="Login / Sign Up">Login / Sign Up</button>
       </div>
     </div>
     <div class="header-search-container" id="headerSearchContainer">
@@ -656,12 +656,10 @@
 
     <section class="page center" id="successPage">
       <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px">
-        <div class="success-animation">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
+        <svg class="success-checkmark" xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
         <div style="font-size:24px;font-weight:700;color:var(--success);margin-bottom:8px" id="successTitle">Your Order is Placed ✅</div>
         <div style="margin-top:10px;color:var(--muted)" id="successMessage">
           Order ID: <strong id="orderIdDisplay"></strong><br>
@@ -1928,16 +1926,28 @@
     #recentlyViewedGrid .product-card {
       margin-bottom: 20px;
     }
-    
-    .success-animation {
-      animation: bounce 0.6s cubic-bezier(0.28, 0.84, 0.42, 1);
-    }
-    
+
     @keyframes bounce {
-      0% { transform: scale(0.3); opacity: 0; }
-      50% { transform: scale(1.05); opacity: 0.8; }
-      70% { transform: scale(0.9); opacity: 0.9; }
-      100% { transform: scale(1); opacity: 1; }
+      0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+      40% {transform: translateY(-20px);}
+      60% {transform: translateY(-10px);}
+    }
+
+    .success-checkmark {
+      animation: bounce 0.6s ease;
+    }
+
+    .professional-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #3b82f6;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 2;
     }
   </style>
 
@@ -2346,15 +2356,7 @@
           if (currentUser) loadSavedAddresses();
           break;
         case 'orderPage':
-          if (currentProduct) {
-            const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
-            if (stockQuantity <= 0) {
-              showToast('Product is out of stock', 'error');
-              showPage('productDetailPage');
-              return;
-            }
-            initOrderPageGallery();
-          }
+          if (currentProduct) initOrderPageGallery();
           break;
         case 'productsPage':
           renderProducts(products, 'productGrid');
@@ -2669,14 +2671,14 @@
       
       let featuredBadgeHtml = '';
       if (isFeatured && !hideFeaturedBadge) {
-        featuredBadgeHtml = '<div class="professional-badge" style="background:#22c55e;">FEATURED</div>';
+        featuredBadgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
       }
       
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}')">
-          ${isOutOfStock ? '<div class="out-of-stock-badge" style="position:absolute;top:10px;left:10px;background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:600;">Out of Stock</div>' : ''}
+          ${isOutOfStock ? '<div class="out-of-stock-badge" style="position:absolute;top:10px;right:10px;background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:12px;">Out of Stock</div>' : ''}
           ${productBadge ? `<div class="product-card-badge">${productBadge}</div>` : ''}
-          ${isTrending ? '<div class="professional-badge">TRENDING</div>' : ''}
+          ${isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
           ${featuredBadgeHtml}
         </div>
         <div class="product-card-body">
@@ -2776,10 +2778,6 @@
       }
       
       const stockQuantity = product.quantity || product.stock || product.inventory || 0;
-      if (stockQuantity <= 0) {
-        showToast('Product is out of stock', 'error');
-        return;
-      }
       
       const productId = product.id || product.productId || product._id || product.key;
       
@@ -2851,8 +2849,7 @@
       
       const stockStatus = document.getElementById('detailStockStatus');
       if (stockStatus) {
-        const quantity = freshProduct.quantity || freshProduct.stock || freshProduct.inventory || 0;
-        if (quantity > 0) {
+        if (stockQuantity > 0) {
           stockStatus.textContent = 'In Stock';
           stockStatus.className = 'stock-status in-stock';
         } else {
@@ -3442,7 +3439,6 @@
       const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
       if (stockQuantity <= 0) {
         showToast('Product is out of stock', 'error');
-        showPage('productDetailPage');
         return;
       }
       
@@ -3908,9 +3904,6 @@
           }
         }
         
-        const product = products.find(p => p.id === order.productId);
-        const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/80';
-        
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
@@ -3920,7 +3913,7 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${productImage}')" data-product-id="${order.productId}"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')" onclick="showProductFromOrder('${order.productId}')"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
@@ -3935,20 +3928,19 @@
           </div>
         `;
         
-        orderCard.querySelector('.order-product-image').addEventListener('click', (e) => {
-          e.stopPropagation();
-          const product = products.find(p => p.id === order.productId);
-          if (product) showProductDetail(product);
-        });
-        
         orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('order-product-image')) {
+          if (e.target.tagName !== 'BUTTON') {
             showOrderDetail(order);
           }
         });
         
         container.appendChild(orderCard);
       });
+    }
+
+    function showProductFromOrder(productId) {
+      const product = products.find(p => p.id === productId);
+      if (product) showProductDetail(product);
     }
 
     function cancelOrder(orderId) {
@@ -3994,7 +3986,6 @@
       if (!container) return;
       
       const product = products.find(p => p.id === order.productId);
-      const productImage = product ? getProductImage(product) : 'https://via.placeholder.com/300';
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
       
@@ -4017,7 +4008,7 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${productImage}'); cursor: pointer;" onclick="showProductFromOrder('${order.productId}')"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}'); cursor: pointer;" onclick="showProductFromOrder('${order.productId}')"></div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
@@ -4067,11 +4058,6 @@
       `;
       
       showPage('orderDetailPage');
-    }
-
-    function showProductFromOrder(productId) {
-      const product = products.find(p => p.id === productId);
-      if (product) showProductDetail(product);
     }
 
     async function addToRecentlyViewed(productId) {
@@ -4290,9 +4276,9 @@
         return;
       }
       
-      const fragment = document.createDocumentFragment();
-      
       const hideFeaturedBadge = containerId === 'homeProductGrid';
+      
+      const fragment = document.createDocumentFragment();
       
       productsToRender.forEach(product => {
         if (product) {
@@ -4388,7 +4374,9 @@
         if (!isBannerDragging) return;
         
         const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
+        const activeIndex = banners.findIndex((_, index) => 
+          document.querySelector(`.banner-dot:nth-child(${index + 1})`)?.classList.contains('active')
+        );
         
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
@@ -4784,6 +4772,7 @@
           ...addressesObj[key]
         }));
         
+        addresses.sort((a, b) => b.createdAt - a.createdAt);
         savedAddresses = addresses;
         
         if (addresses.length > 0) {
@@ -4802,8 +4791,6 @@
       if (!addressesList) return;
       
       addressesList.innerHTML = '';
-      
-      savedAddresses.sort((a, b) => b.createdAt - a.createdAt);
       
       savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
@@ -4862,6 +4849,17 @@
       document.getElementById('addressType').value = address.type || 'home';
     }
 
+    function checkDuplicateAddress(newAddress) {
+      return savedAddresses.some(addr => 
+        addr.name === newAddress.name && 
+        addr.mobile === newAddress.mobile && 
+        addr.pincode === newAddress.pincode && 
+        addr.city === newAddress.city && 
+        addr.state === newAddress.state && 
+        addr.street === newAddress.street
+      );
+    }
+
     async function saveUserInfoAndAddress() {
       const fullname = document.getElementById('fullname').value;
       const mobile = document.getElementById('mobile').value;
@@ -4878,16 +4876,17 @@
 
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       
-      const isDuplicate = savedAddresses.some(addr => 
-        addr.name === fullname && 
-        addr.mobile === mobile && 
-        addr.pincode === pincode && 
-        addr.city === city && 
-        addr.state === state && 
-        addr.street === house
-      );
+      const newAddress = {
+        name: fullname,
+        mobile: mobile,
+        pincode: pincode,
+        city: city,
+        state: state,
+        street: house,
+        type: addressType
+      };
       
-      if (isDuplicate) {
+      if (checkDuplicateAddress(newAddress)) {
         showToast('This address already exists', 'error');
         return;
       }
