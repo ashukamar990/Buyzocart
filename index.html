@@ -443,9 +443,9 @@
               
               <div class="detail-carousel-dots" id="detailCarouselDots"></div>
               
-              <div class="similar-products-small">
-                <h3 class="similar-products-title">Similar Products</h3>
-                <div class="similar-products-slider" id="similarProductsSmallSlider"></div>
+              <div class="similar-products-small" id="adminSimilarSmallContainer">
+                <h3 class="similar-products-title">Similar Products (Admin)</h3>
+                <div class="similar-products-slider" id="similarProductsSmallSliderAdmin"></div>
               </div>
             </div>
           </div>
@@ -510,7 +510,7 @@
         </div>
 
         <div class="similar-products">
-          <h2 class="similar-title">Similar Products</h2>
+          <h2 class="similar-title">Similar Products (Category based)</h2>
           <div class="slider-container">
             <div class="slider-track" id="similarProductsSlider"></div>
           </div>
@@ -655,8 +655,15 @@
     </section>
 
     <section class="page center" id="successPage">
-      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px">
+      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px; animation: successPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <style>
+          @keyframes successPop {
+            0% { transform: scale(0.7); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        </style>
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
@@ -1635,10 +1642,6 @@
       margin-bottom: 20px;
     }
 
-    #productDetailPage .product-selection-section {
-      display: none;
-    }
-
     .size-option {
       display: inline-block;
       padding: 8px 16px;
@@ -1875,6 +1878,7 @@
       background-position: center;
       border-radius: var(--radius);
       flex-shrink: 0;
+      cursor: pointer;
     }
     
     .order-product-title {
@@ -2322,7 +2326,7 @@
           if (currentProduct) {
             loadProductReviews(currentProduct.id);
             loadSimilarProducts(currentProduct);
-            loadSimilarProductsSmall(currentProduct);
+            loadSimilarProductsSmallAdmin();
           }
           break;
         case 'paymentPage':
@@ -2825,6 +2829,14 @@
         }
       }
       
+      const orderBtn = document.getElementById('detailOrderBtn');
+      if (orderBtn) {
+        const quantity = freshProduct.quantity || freshProduct.stock || freshProduct.inventory || 0;
+        orderBtn.disabled = quantity <= 0;
+        orderBtn.style.opacity = quantity <= 0 ? '0.5' : '1';
+        orderBtn.style.cursor = quantity <= 0 ? 'not-allowed' : 'pointer';
+      }
+      
       const shareLink = document.getElementById('productShareLink');
       if (shareLink) {
         const url = window.location.origin + window.location.pathname + '#productDetailPage?product=' + freshProduct.id;
@@ -2844,7 +2856,7 @@
       
       initProductDetailGallery(freshProduct);
       loadSimilarProducts(freshProduct);
-      loadSimilarProductsSmall(freshProduct);
+      loadSimilarProductsSmallAdmin();
       loadProductReviews(freshProduct.id);
       
       if (currentUser) {
@@ -2853,6 +2865,30 @@
       
       showPage('productDetailPage');
       window.scrollTo(0, 0);
+    }
+
+    function loadSimilarProductsSmallAdmin() {
+      const container = document.getElementById('similarProductsSmallSliderAdmin');
+      if (!container) return;
+      const adminSimilar = products.filter(p => p.adminSimilar && p.adminSimilar === true).slice(0, 6);
+      if (adminSimilar.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No admin similar products</p>';
+        return;
+      }
+      container.innerHTML = '';
+      adminSimilar.forEach(product => {
+        const item = document.createElement('div');
+        item.className = 'similar-product-small';
+        item.innerHTML = `
+          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="similar-product-small-info">
+            <div class="similar-product-small-title">${(product.name || product.title || '').length > 20 ? (product.name || product.title || '').substring(0, 20) + '...' : (product.name || product.title || 'Product')}</div>
+            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+          </div>
+        `;
+        item.addEventListener('click', () => showProductDetail(product));
+        container.appendChild(item);
+      });
     }
 
     function initProductDetailGallery(product) {
@@ -3131,39 +3167,6 @@
       container.appendChild(rowDiv);
     }
 
-    function loadSimilarProductsSmall(product) {
-      const container = document.getElementById('similarProductsSmallSlider');
-      if (!container) return;
-      
-      const similarProducts = products
-        .filter(p => p.id !== product.id && p.category === product.category)
-        .slice(0, 6);
-      
-      if (similarProducts.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
-        return;
-      }
-      
-      const fragment = document.createDocumentFragment();
-      similarProducts.forEach(product => {
-        const item = document.createElement('div');
-        item.className = 'similar-product-small';
-        item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
-          <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${(product.name || product.title || '').length > 20 ? (product.name || product.title || '').substring(0, 20) + '...' : (product.name || product.title || 'Product')}</div>
-            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
-          </div>
-        `;
-        
-        item.addEventListener('click', () => showProductDetail(product));
-        fragment.appendChild(item);
-      });
-      
-      container.innerHTML = '';
-      container.appendChild(fragment);
-    }
-
     function renderProductSlider(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -3266,6 +3269,11 @@
 
     function orderProductFromDetail() {
       if (!currentProduct) return;
+      const quantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
+      if (quantity <= 0) {
+        showToast('Product is out of stock', 'error');
+        return;
+      }
       
       document.getElementById('spTitle').textContent = currentProduct.name || currentProduct.title || 'Product';
       document.getElementById('spPrice').textContent = currentProduct.price ? '₹' + parsePrice(currentProduct.price).toLocaleString() : '₹0';
@@ -3842,6 +3850,7 @@
       container.innerHTML = '';
       
       orders.forEach(order => {
+        const product = products.find(p => p.id === order.productId) || { name: order.productName };
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
@@ -3868,7 +3877,7 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')" data-product-id="${order.productId}"></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
@@ -3884,10 +3893,22 @@
         `;
         
         orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON') {
+          if (e.target.tagName !== 'BUTTON' && !e.target.closest('.order-product-image')) {
             showOrderDetail(order);
           }
         });
+        
+        const productImageDiv = orderCard.querySelector('.order-product-image');
+        if (productImageDiv) {
+          productImageDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const productId = productImageDiv.dataset.productId;
+            const targetProduct = products.find(p => p.id === productId);
+            if (targetProduct) {
+              showProductDetail(targetProduct);
+            }
+          });
+        }
         
         container.appendChild(orderCard);
       });
@@ -4288,12 +4309,16 @@
 
     function setupBannerAutoSlide() {
       if (banners.length <= 1) return;
-      
-      let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
-        currentBannerIndex = (currentBannerIndex + 1) % banners.length;
-        setBannerSlide(currentBannerIndex);
+        if (!slidePaused) {
+          const activeDot = document.querySelector('.banner-dot.active');
+          if (activeDot) {
+            const currentIndex = Array.from(document.querySelectorAll('.banner-dot')).indexOf(activeDot);
+            const nextIndex = (currentIndex + 1) % banners.length;
+            setBannerSlide(nextIndex);
+          }
+        }
       }, 5000);
     }
 
@@ -4307,6 +4332,7 @@
       
       bannerCarousel.addEventListener('touchstart', (e) => {
         clearInterval(bannerAutoSlideInterval);
+        slidePaused = true;
         bannerStartX = e.touches[0].clientX;
         isBannerDragging = true;
       }, { passive: true });
@@ -4321,22 +4347,25 @@
         if (!isBannerDragging) return;
         
         const diff = bannerStartX - bannerCurrentX;
-        const activeIndex = banners.findIndex((_, index) => 
-          document.querySelector(`.banner-dot:nth-child(${index + 1})`)?.classList.contains('active')
-        );
-        
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
-          } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
+        const activeDot = document.querySelector('.banner-dot.active');
+        if (activeDot) {
+          const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).indexOf(activeDot);
+          if (Math.abs(diff) > 50) {
+            if (diff > 0) {
+              const nextIndex = (activeIndex + 1) % banners.length;
+              setBannerSlide(nextIndex);
+            } else {
+              const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+              setBannerSlide(prevIndex);
+            }
           }
         }
         
         isBannerDragging = false;
-        setTimeout(setupBannerAutoSlide, 3000);
+        slidePaused = false;
+        setTimeout(() => {
+          setupBannerAutoSlide();
+        }, 3000);
       });
     }
 
@@ -4449,11 +4478,13 @@
       let currentSlide = 0;
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       trendingAutoSlideInterval = setInterval(() => {
-        currentSlide = (currentSlide + 1) % totalSlides;
-        slider.scrollTo({
-          left: currentSlide * slides[0].offsetWidth,
-          behavior: 'smooth'
-        });
+        if (!slidePaused) {
+          currentSlide = (currentSlide + 1) % totalSlides;
+          slider.scrollTo({
+            left: currentSlide * slides[0].offsetWidth,
+            behavior: 'smooth'
+          });
+        }
       }, 4000);
     }
 
@@ -4719,7 +4750,7 @@
           ...addressesObj[key]
         }));
         
-        savedAddresses = addresses;
+        savedAddresses = addresses.sort((a, b) => b.createdAt - a.createdAt);
         
         if (addresses.length > 0) {
           savedAddressesSection.style.display = 'block';
@@ -4781,7 +4812,7 @@
           deleteAddressConfirmation(address);
         });
         
-        addressesList.appendChild(addressCard);
+        addressesList.prepend(addressCard);
       });
     }
 
@@ -5002,7 +5033,6 @@
           
           if (currentPage === 'homePage') {
             renderProducts(products, 'homeProductGrid');
-            document.getElementById("homeProductGrid").style.opacity = "1";
             
             const trendingProducts = products.filter(p => p.isTrending || p.trending);
             if (trendingProducts.length > 0) {
@@ -5092,9 +5122,16 @@
       const cachedProducts = cacheManager.get('products');
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
+        renderProducts(products, 'homeProductGrid');
+        renderProducts(products, 'productGrid');
         
         const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
         renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+        
+        const featuredProducts = products.filter(p => p.isFeatured);
+        if (featuredProducts.length > 0) {
+          renderProducts(featuredProducts, 'homeProductGrid');
+        }
         
         updateProductsCount();
       }
@@ -5152,7 +5189,6 @@
             
             if (currentPage === 'homePage') {
               renderProducts(products, 'homeProductGrid');
-              document.getElementById("homeProductGrid").style.opacity = "1";
               
               const trendingProducts = products.filter(p => p.isTrending);
               if (trendingProducts.length > 0) {
@@ -5525,8 +5561,6 @@
     }
 
     function initApp() {
-      document.getElementById("homeProductGrid").style.opacity = "0";
-      
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       
