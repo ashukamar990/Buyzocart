@@ -655,8 +655,8 @@
     </section>
 
     <section class="page center" id="successPage">
-      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px">
-        <svg class="success-checkmark" xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px">
+      <div class="card-panel" style="max-width:520px;margin:32px auto;padding:32px;animation: successPop 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px; animation: checkBounce 0.6s ease;">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
@@ -1093,34 +1093,6 @@
       </div>
     </div>
   </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
-      authDomain: "buyzocart.firebaseapp.com",
-      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
-      projectId: "buyzocart",
-      storageBucket: "buyzocart.firebasestorage.app",
-      messagingSenderId: "640560737762",
-      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
-    const auth = getAuth(app);
-    
-    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
-    
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
-    });
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <style>
     * {
@@ -1875,7 +1847,6 @@
       background-position: center;
       border-radius: var(--radius);
       flex-shrink: 0;
-      cursor: pointer;
     }
     
     .order-product-title {
@@ -1927,29 +1898,46 @@
       margin-bottom: 20px;
     }
 
-    @keyframes bounce {
-      0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-      40% {transform: translateY(-20px);}
-      60% {transform: translateY(-10px);}
+    @keyframes successPop {
+      0% { transform: scale(0.5); opacity: 0; }
+      80% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
     }
 
-    .success-checkmark {
-      animation: bounce 0.6s ease;
-    }
-
-    .professional-badge {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: #3b82f6;
-      color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-      z-index: 2;
+    @keyframes checkBounce {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
     }
   </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
+      authDomain: "buyzocart.firebaseapp.com",
+      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
+      projectId: "buyzocart",
+      storageBucket: "buyzocart.firebasestorage.app",
+      messagingSenderId: "640560737762",
+      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+    
+    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      initApp();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <script>
     let currentUser = null;
@@ -1976,6 +1964,7 @@
     let popularSearches = ['T-Shirt', 'Sneakers', 'Jeans', 'Watch', 'Headphones', 'Mobile', 'Laptop', 'Shoes'];
     let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
     let deliveredOrders = [];
+    let adminSimilarProducts = [];
     
     let autoSlideInterval;
     let slidePaused = false;
@@ -2646,7 +2635,7 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product, hideFeaturedBadge = false) {
+    function createProductCard(product) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -2666,18 +2655,23 @@
       const productBadge = product.badge || product.tag || '';
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
-      const stockQuantity = product.quantity || product.stock || product.inventory || 0;
-      const isOutOfStock = stockQuantity <= 0;
+      
+      let badgeHtml = '';
+      if (productBadge) {
+        badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
+      }
       
       let featuredBadgeHtml = '';
-      if (isFeatured && !hideFeaturedBadge) {
-        featuredBadgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
+      if (isFeatured) {
+        const currentPage = document.querySelector('.page.active')?.id;
+        if (currentPage === 'productsPage') {
+          featuredBadgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
+        }
       }
       
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}')">
-          ${isOutOfStock ? '<div class="out-of-stock-badge" style="position:absolute;top:10px;right:10px;background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:12px;">Out of Stock</div>' : ''}
-          ${productBadge ? `<div class="product-card-badge">${productBadge}</div>` : ''}
+          ${badgeHtml}
           ${isTrending ? `<div class="professional-badge">TRENDING</div>` : ''}
           ${featuredBadgeHtml}
         </div>
@@ -2777,8 +2771,6 @@
         return;
       }
       
-      const stockQuantity = product.quantity || product.stock || product.inventory || 0;
-      
       const productId = product.id || product.productId || product._id || product.key;
       
       if (!productId) {
@@ -2849,12 +2841,15 @@
       
       const stockStatus = document.getElementById('detailStockStatus');
       if (stockStatus) {
-        if (stockQuantity > 0) {
+        const quantity = freshProduct.quantity || freshProduct.stock || freshProduct.inventory || 0;
+        if (quantity > 0) {
           stockStatus.textContent = 'In Stock';
           stockStatus.className = 'stock-status in-stock';
+          document.getElementById('detailOrderBtn').disabled = false;
         } else {
           stockStatus.textContent = 'Out of Stock';
           stockStatus.className = 'stock-status out-of-stock';
+          document.getElementById('detailOrderBtn').disabled = true;
         }
       }
       
@@ -3088,7 +3083,7 @@
       updateProductModalImage();
     }
 
-    function loadSimilarProducts(product) {
+    async function loadSimilarProducts(product) {
       const similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category)
         .slice(0, 20);
@@ -3164,37 +3159,44 @@
       container.appendChild(rowDiv);
     }
 
-    function loadSimilarProductsSmall(product) {
+    async function loadSimilarProductsSmall(product) {
       const container = document.getElementById('similarProductsSmallSlider');
       if (!container) return;
       
-      const similarProducts = products
-        .filter(p => p.id !== product.id && p.adminSimilar === true)
-        .slice(0, 6);
-      
-      if (similarProducts.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
-        return;
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'adminSimilarProducts'));
+        if (snapshot.exists()) {
+          const adminProducts = snapshot.val();
+          adminSimilarProducts = Object.keys(adminProducts).map(key => ({
+            id: key,
+            ...adminProducts[key]
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading admin similar products:', error);
+        adminSimilarProducts = [];
       }
       
-      const fragment = document.createDocumentFragment();
-      similarProducts.forEach(product => {
-        const item = document.createElement('div');
-        item.className = 'similar-product-small';
-        item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(product)}')"></div>
-          <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${(product.name || product.title || '').length > 20 ? (product.name || product.title || '').substring(0, 20) + '...' : (product.name || product.title || 'Product')}</div>
-            <div class="similar-product-small-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
-          </div>
-        `;
-        
-        item.addEventListener('click', () => showProductDetail(product));
-        fragment.appendChild(item);
-      });
-      
-      container.innerHTML = '';
-      container.appendChild(fragment);
+      if (adminSimilarProducts.length > 0) {
+        const fragment = document.createDocumentFragment();
+        adminSimilarProducts.slice(0, 6).forEach(item => {
+          const productItem = document.createElement('div');
+          productItem.className = 'similar-product-small';
+          productItem.innerHTML = `
+            <div class="similar-product-small-img" style="background-image: url('${getProductImage(item)}')"></div>
+            <div class="similar-product-small-info">
+              <div class="similar-product-small-title">${(item.name || '').length > 20 ? (item.name || '').substring(0, 20) + '...' : (item.name || 'Product')}</div>
+              <div class="similar-product-small-price">${item.price ? '₹' + parsePrice(item.price).toLocaleString() : '₹0'}</div>
+            </div>
+          `;
+          productItem.addEventListener('click', () => showProductDetail(item));
+          fragment.appendChild(productItem);
+        });
+        container.innerHTML = '';
+        container.appendChild(fragment);
+      } else {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products from admin</p>';
+      }
     }
 
     function renderProductSlider(productsToRender, containerId) {
@@ -3300,9 +3302,9 @@
     function orderProductFromDetail() {
       if (!currentProduct) return;
       
-      const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
-      if (stockQuantity <= 0) {
-        showToast('Product is out of stock', 'error');
+      const quantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
+      if (quantity <= 0) {
+        showToast('This product is out of stock', 'error');
         return;
       }
       
@@ -3433,12 +3435,6 @@
       if (!currentProduct) {
         showToast('No product selected', 'error');
         showPage('productsPage');
-        return;
-      }
-      
-      const stockQuantity = currentProduct.quantity || currentProduct.stock || currentProduct.inventory || 0;
-      if (stockQuantity <= 0) {
-        showToast('Product is out of stock', 'error');
         return;
       }
       
@@ -3904,6 +3900,8 @@
           }
         }
         
+        const product = products.find(p => p.id === order.productId);
+        
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
@@ -3913,9 +3911,9 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')" onclick="showProductFromOrder('${order.productId}')"></div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(product)}'); cursor: pointer;" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${order.productName}</div>
+              <div class="order-product-title" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))" style="cursor: pointer;">${order.productName}</div>
               <div class="order-product-price">₹${order.totalAmount}</div>
               <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
@@ -3929,18 +3927,13 @@
         `;
         
         orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON') {
+          if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('order-product-image') && !e.target.classList.contains('order-product-title')) {
             showOrderDetail(order);
           }
         });
         
         container.appendChild(orderCard);
       });
-    }
-
-    function showProductFromOrder(productId) {
-      const product = products.find(p => p.id === productId);
-      if (product) showProductDetail(product);
     }
 
     function cancelOrder(orderId) {
@@ -3985,9 +3978,9 @@
       const container = document.getElementById('orderDetailContent');
       if (!container) return;
       
-      const product = products.find(p => p.id === order.productId);
       const statusClass = `status-${order.status}`;
       const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+      const product = products.find(p => p.id === order.productId);
       
       container.innerHTML = `
         <div class="order-detail-section">
@@ -4008,9 +4001,9 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}'); cursor: pointer;" onclick="showProductFromOrder('${order.productId}')"></div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(product)}'); cursor: pointer;" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+              <div style="font-weight:600;margin-bottom:8px; cursor: pointer;" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
               <div style="color:var(--muted);font-size:14px">
                 Qty: ${order.quantity} | Size: ${order.size}
@@ -4276,13 +4269,11 @@
         return;
       }
       
-      const hideFeaturedBadge = containerId === 'homeProductGrid';
-      
       const fragment = document.createDocumentFragment();
       
       productsToRender.forEach(product => {
         if (product) {
-          fragment.appendChild(createProductCard(product, hideFeaturedBadge));
+          fragment.appendChild(createProductCard(product));
         }
       });
       
@@ -4345,8 +4336,10 @@
       let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
-        currentBannerIndex = (currentBannerIndex + 1) % banners.length;
-        setBannerSlide(currentBannerIndex);
+        if (!slidePaused) {
+          currentBannerIndex = (currentBannerIndex + 1) % banners.length;
+          setBannerSlide(currentBannerIndex);
+        }
       }, 5000);
     }
 
@@ -4357,10 +4350,13 @@
       let bannerStartX = 0;
       let bannerCurrentX = 0;
       let isBannerDragging = false;
+      let bannerTouchStartTime = 0;
       
       bannerCarousel.addEventListener('touchstart', (e) => {
         clearInterval(bannerAutoSlideInterval);
+        slidePaused = true;
         bannerStartX = e.touches[0].clientX;
+        bannerTouchStartTime = Date.now();
         isBannerDragging = true;
       }, { passive: true });
       
@@ -4389,6 +4385,7 @@
         }
         
         isBannerDragging = false;
+        slidePaused = false;
         setTimeout(setupBannerAutoSlide, 3000);
       });
     }
@@ -4502,11 +4499,13 @@
       let currentSlide = 0;
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       trendingAutoSlideInterval = setInterval(() => {
-        currentSlide = (currentSlide + 1) % totalSlides;
-        slider.scrollTo({
-          left: currentSlide * slides[0].offsetWidth,
-          behavior: 'smooth'
-        });
+        if (!slidePaused) {
+          currentSlide = (currentSlide + 1) % totalSlides;
+          slider.scrollTo({
+            left: currentSlide * slides[0].offsetWidth,
+            behavior: 'smooth'
+          });
+        }
       }, 4000);
     }
 
@@ -4772,7 +4771,6 @@
           ...addressesObj[key]
         }));
         
-        addresses.sort((a, b) => b.createdAt - a.createdAt);
         savedAddresses = addresses;
         
         if (addresses.length > 0) {
@@ -4792,7 +4790,9 @@
       
       addressesList.innerHTML = '';
       
-      savedAddresses.forEach(address => {
+      const sortedAddresses = [...savedAddresses].sort((a, b) => (a.isDefault ? -1 : 1));
+      
+      sortedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
         addressCard.className = 'saved-address-card';
         addressCard.innerHTML = `
@@ -4817,7 +4817,7 @@
         });
         
         addressCard.addEventListener('click', function(e) {
-          if (e.target.type !== 'radio') {
+          if (e.target.type !== 'radio' && !e.target.classList.contains('edit-address') && !e.target.classList.contains('delete-address')) {
             radio.checked = true;
             fillAddressForm(address);
           }
@@ -4849,17 +4849,6 @@
       document.getElementById('addressType').value = address.type || 'home';
     }
 
-    function checkDuplicateAddress(newAddress) {
-      return savedAddresses.some(addr => 
-        addr.name === newAddress.name && 
-        addr.mobile === newAddress.mobile && 
-        addr.pincode === newAddress.pincode && 
-        addr.city === newAddress.city && 
-        addr.state === newAddress.state && 
-        addr.street === newAddress.street
-      );
-    }
-
     async function saveUserInfoAndAddress() {
       const fullname = document.getElementById('fullname').value;
       const mobile = document.getElementById('mobile').value;
@@ -4876,17 +4865,16 @@
 
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       
-      const newAddress = {
-        name: fullname,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        street: house,
-        type: addressType
-      };
+      const isDuplicate = savedAddresses.some(addr => 
+        addr.name === fullname && 
+        addr.mobile === mobile && 
+        addr.pincode === pincode && 
+        addr.city === city && 
+        addr.state === state && 
+        addr.street === house
+      );
       
-      if (checkDuplicateAddress(newAddress)) {
+      if (isDuplicate) {
         showToast('This address already exists', 'error');
         return;
       }
@@ -4909,6 +4897,7 @@
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
         showToast('Address saved successfully', 'success');
         loadSavedAddresses();
+        showNewAddressForm();
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -4916,7 +4905,7 @@
     }
 
     function showNewAddressForm() {
-      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('savedAddressesSection').style.display = 'block';
       document.getElementById('newAddressForm').style.display = 'block';
       
       document.getElementById('fullname').value = '';
@@ -4934,7 +4923,7 @@
 
     function editAddress(address) {
       fillAddressForm(address);
-      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('savedAddressesSection').style.display = 'block';
       document.getElementById('newAddressForm').style.display = 'block';
       
       const saveBtn = document.getElementById('saveUserInfo');
@@ -4963,9 +4952,9 @@
         try {
           await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
           showToast('Address updated successfully', 'success');
+          loadSavedAddresses();
           document.getElementById('savedAddressesSection').style.display = 'block';
           document.getElementById('newAddressForm').style.display = 'block';
-          loadSavedAddresses();
         } catch (error) {
           console.error('Error updating address:', error);
           showToast('Failed to update address', 'error');
@@ -4984,6 +4973,7 @@
           showToast('Address deleted successfully', 'success');
           document.getElementById('alertModal').classList.remove('active');
           loadSavedAddresses();
+          showNewAddressForm();
         } catch (error) {
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
