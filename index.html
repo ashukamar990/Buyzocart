@@ -1925,64 +1925,6 @@
     #recentlyViewedGrid .product-card {
       margin-bottom: 20px;
     }
-
-    .skeleton {
-      animation: skeleton-loading 1s linear infinite alternate;
-    }
-
-    .skeleton-image {
-      width: 100%;
-      height: 200px;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.5s infinite;
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
-
-    .skeleton-text {
-      height: 20px;
-      width: 100%;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.5s infinite;
-      border-radius: 4px;
-      margin: 10px 0;
-    }
-
-    .skeleton-banner {
-      width: 100%;
-      height: 250px;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.5s infinite;
-      border-radius: 10px;
-    }
-
-    @keyframes skeleton-shimmer {
-      0% {
-        background-position: 200% 0;
-      }
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    @keyframes skeleton-loading {
-      0% {
-        opacity: 0.6;
-      }
-      100% {
-        opacity: 1;
-      }
-    }
-
-    .product-card.skeleton {
-      pointer-events: none;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
   </style>
 
   <script>
@@ -5026,117 +4968,15 @@
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
     }
 
-    function showLoadingSkeletons() {
-      const skeletonContainers = [
-        'homeProductGrid',
-        'productGrid',
-        'productSlider',
-        'recentlyViewedSlider',
-        'similarProductsSlider',
-        'similarProductsSmallSlider',
-        'wishlistItems',
-        'searchResultsGrid'
-      ];
-      
-      skeletonContainers.forEach(containerId => {
-        const container = document.getElementById(containerId);
-        if (container) {
-          container.innerHTML = '';
-          for (let i = 0; i < 6; i++) {
-            const skeleton = document.createElement('div');
-            skeleton.className = 'product-card skeleton';
-            skeleton.innerHTML = `
-              <div class="product-card-image skeleton-image"></div>
-              <div class="product-card-body">
-                <div class="product-card-title skeleton-text"></div>
-                <div class="product-card-price skeleton-text"></div>
-              </div>
-            `;
-            container.appendChild(skeleton);
-          }
-        }
-      });
-      
-      const bannerTrack = document.getElementById('bannerTrack');
-      if (bannerTrack) {
-        bannerTrack.innerHTML = '<div class="banner-slide skeleton-banner"></div>';
-      }
-    }
-
-    function hideLoadingSkeletons() {
-      document.querySelectorAll('.product-card.skeleton').forEach(el => {
-        el.remove();
-      });
-      
-      document.querySelectorAll('.skeleton-banner').forEach(el => {
-        el.remove();
-      });
-    }
-
-    function renderAllPages() {
-      const currentPage = document.querySelector('.page.active')?.id;
-      
-      renderProducts(products, 'homeProductGrid');
-      
-      const trendingProducts = products.filter(p => p.isTrending || p.trending);
-      if (trendingProducts.length > 0) {
-        renderProductSlider(trendingProducts, 'productSlider');
-      } else {
-        renderProductSlider(products.slice(0, 10), 'productSlider');
-      }
-      
-      if (currentPage === 'productsPage') {
-        renderProducts(products, 'productGrid');
-        updateProductsCount();
-      }
-      
-      renderCategories();
-      renderCategoryCircles();
-      
-      renderBannerCarousel();
-      
-      updateAdminSettingsUI();
-      
-      if (currentUser && recentlyViewed.length > 0) {
-        renderRecentlyViewed();
-      }
-      
-      if (currentPage === 'wishlistPage') {
-        renderWishlist();
-      }
-      
-      if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
-        const filteredResults = products.filter(product => 
-          (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-          (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-          (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-          (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-        );
-        window.currentSearchResults = filteredResults;
-        renderSearchResults(filteredResults, window.currentSearchQuery);
-      }
-    }
-
-    function fetchLiveData(callback) {
+    function fetchLiveData() {
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
-        if (callback) callback();
         return;
       }
       
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const get = window.firebase.get;
-      
-      let loadedCount = 0;
-      const totalLoads = 5;
-      
-      function checkAllLoaded() {
-        loadedCount++;
-        if (loadedCount === totalLoads && callback) {
-          callback();
-        }
-      }
       
       get(ref(database, 'products')).then(snapshot => {
         const productsObj = snapshot.val();
@@ -5153,14 +4993,40 @@
                   (product.imageUrl ? [product.imageUrl] : [])))
             };
           });
+          
           products = newProducts;
           window.products = products;
           cacheManager.set('products', products);
+          
+          const currentPage = document.querySelector('.page.active')?.id;
+          
+          if (currentPage === 'homePage') {
+            renderProducts(products, 'homeProductGrid');
+            document.getElementById("homeProductGrid").style.opacity = "1";
+            
+            const trendingProducts = products.filter(p => p.isTrending || p.trending);
+            if (trendingProducts.length > 0) {
+              renderProductSlider(trendingProducts, 'productSlider');
+            } else {
+              renderProductSlider(products.slice(0, 10), 'productSlider');
+            }
+            
+          } else if (currentPage === 'productsPage') {
+            renderProducts(products, 'productGrid');
+            updateProductsCount();
+          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
+            const filteredResults = products.filter(product => 
+              (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
+              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
+            );
+            window.currentSearchResults = filteredResults;
+            renderSearchResults(filteredResults, window.currentSearchQuery);
+          }
         }
-        checkAllLoaded();
       }).catch(error => {
         console.error('Error fetching products:', error);
-        checkAllLoaded();
       });
       
       get(ref(database, 'categories')).then(snapshot => {
@@ -5172,11 +5038,15 @@
           }));
           categories = newCategories;
           cacheManager.set('categories', categories);
+          
+          if (document.getElementById('homePage')?.classList.contains('active') || 
+              document.getElementById('productsPage')?.classList.contains('active')) {
+            renderCategories();
+            renderCategoryCircles();
+          }
         }
-        checkAllLoaded();
       }).catch(error => {
         console.error('Error fetching categories:', error);
-        checkAllLoaded();
       });
       
       get(ref(database, 'banners')).then(snapshot => {
@@ -5188,11 +5058,13 @@
           }));
           banners = newBanners;
           cacheManager.set('banners', banners);
+          
+          if (document.getElementById('homePage')?.classList.contains('active')) {
+            renderBannerCarousel();
+          }
         }
-        checkAllLoaded();
       }).catch(error => {
         console.error('Error fetching banners:', error);
-        checkAllLoaded();
       });
       
       get(ref(database, 'adminSettings')).then(snapshot => {
@@ -5200,11 +5072,10 @@
         if (settingsObj) {
           adminSettings = { ...adminSettings, ...settingsObj };
           cacheManager.set('adminSettings', adminSettings);
+          updateAdminSettingsUI();
         }
-        checkAllLoaded();
       }).catch(error => {
         console.error('Error fetching admin settings:', error);
-        checkAllLoaded();
       });
       
       get(ref(database, 'outOfStock')).then(snapshot => {
@@ -5212,11 +5083,40 @@
         if (outOfStockObj) {
           window.outOfStockItems = outOfStockObj;
         }
-        checkAllLoaded();
       }).catch(error => {
         console.error('Error fetching out of stock items:', error);
-        checkAllLoaded();
       });
+    }
+
+    function loadCachedData() {
+      const cachedProducts = cacheManager.get('products');
+      if (cachedProducts && cachedProducts.length > 0) {
+        products = cachedProducts;
+        
+        const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
+        renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
+        
+        updateProductsCount();
+      }
+      
+      const cachedCategories = cacheManager.get('categories');
+      if (cachedCategories && cachedCategories.length > 0) {
+        categories = cachedCategories;
+        renderCategories();
+        renderCategoryCircles();
+      }
+      
+      const cachedBanners = cacheManager.get('banners');
+      if (cachedBanners && cachedBanners.length > 0) {
+        banners = cachedBanners;
+        renderBannerCarousel();
+      }
+      
+      const cachedSettings = cacheManager.get('adminSettings');
+      if (cachedSettings) {
+        adminSettings = cachedSettings;
+        updateAdminSettingsUI();
+      }
     }
 
     function setupRealtimeListeners() {
@@ -5252,6 +5152,7 @@
             
             if (currentPage === 'homePage') {
               renderProducts(products, 'homeProductGrid');
+              document.getElementById("homeProductGrid").style.opacity = "1";
               
               const trendingProducts = products.filter(p => p.isTrending);
               if (trendingProducts.length > 0) {
@@ -5624,27 +5525,14 @@
     }
 
     function initApp() {
+      document.getElementById("homeProductGrid").style.opacity = "0";
+      
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       
       recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
       
       setupEventListeners();
-      
-      showLoadingSkeletons();
-      
-      fetchLiveData(() => {
-        hideLoadingSkeletons();
-        
-        cacheManager.set('products', products);
-        cacheManager.set('categories', categories);
-        cacheManager.set('banners', banners);
-        cacheManager.set('adminSettings', adminSettings);
-        
-        renderAllPages();
-      });
-      
-      setupRealtimeListeners();
       
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
@@ -5662,6 +5550,9 @@
         });
       }
       
+      loadCachedData();
+      fetchLiveData();
+      setupRealtimeListeners();
       showPage('homePage');
       setupHeroMessages();
       updateBottomNav();
