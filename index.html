@@ -121,9 +121,11 @@
           </svg>
         </div>
         <div class="social-menu-item" onclick="window.open('https://www.instagram.com/buyzo.cart?igsh=d2Mxc2EwMW45cWwy', '_blank'); closeMenu();">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#E4405F" class="instagram-fixed">
-            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.069-1.644-.069-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"></path>
-            <path d="M12 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#instaGradMobile)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <defs><linearGradient id="instaGradMobile" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#405DE6"/><stop offset="25%" stop-color="#5851DB"/><stop offset="50%" stop-color="#833AB4"/><stop offset="75%" stop-color="#C13584"/><stop offset="100%" stop-color="#E1306C"/></linearGradient></defs>
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="url(#instaGradMobile)" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="4" fill="none" stroke="url(#instaGradMobile)" stroke-width="1.5"/>
+            <circle cx="18" cy="6" r="1.2" fill="url(#instaGradMobile)"/>
           </svg>
         </div>
         <div class="social-menu-item" onclick="window.open('https://www.youtube.com/@BuyzoCart', '_blank'); closeMenu();">
@@ -2175,38 +2177,72 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       
-      const suggestions = products.filter(product => 
+      const matchedProducts = products.filter(product => 
         product.name?.toLowerCase().includes(query.toLowerCase()) ||
-        product.description?.toLowerCase().includes(query.toLowerCase()) ||
-        product.category?.toLowerCase().includes(query.toLowerCase()) ||
-        (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-      ).slice(0, 10);
+        product.description?.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      const avgRatingMap = new Map();
+      matchedProducts.forEach(p => {
+        if (window.reviews && Array.isArray(window.reviews)) {
+          const productReviews = window.reviews.filter(r => r.productId === p.id);
+          if (productReviews.length > 0) {
+            const avg = productReviews.reduce((acc, r) => acc + r.rating, 0) / productReviews.length;
+            avgRatingMap.set(p.id, avg);
+          } else {
+            avgRatingMap.set(p.id, 0);
+          }
+        } else {
+          avgRatingMap.set(p.id, 0);
+        }
+      });
+      
+      matchedProducts.sort((a, b) => (avgRatingMap.get(b.id) || 0) - (avgRatingMap.get(a.id) || 0));
+      const topThreeProducts = matchedProducts.slice(0, 3);
+      
+      const matchedCategories = categories.filter(cat => 
+        cat.name?.toLowerCase().includes(query.toLowerCase())
+      );
       
       suggestionsContainer.innerHTML = '';
       
-      if (suggestions.length === 0) {
-        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products found</div>';
-        return;
+      if (topThreeProducts.length > 0) {
+        topThreeProducts.forEach(product => {
+          const suggestion = document.createElement('div');
+          suggestion.className = 'search-suggestion';
+          suggestion.innerHTML = `
+            <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="search-suggestion-info">
+              <div class="search-suggestion-name">${product.name || 'Product'}</div>
+              <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
+            </div>
+          `;
+          suggestion.addEventListener('click', () => {
+            showProductDetail(product);
+            closeSearchPanel();
+          });
+          suggestionsContainer.appendChild(suggestion);
+        });
       }
       
-      suggestions.forEach(product => {
-        const suggestion = document.createElement('div');
-        suggestion.className = 'search-suggestion';
-        suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
-          <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || 'Product'}</div>
-            <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
-          </div>
-        `;
-        
-        suggestion.addEventListener('click', () => {
-          showProductDetail(product);
-          closeSearchPanel();
+      if (matchedCategories.length > 0) {
+        matchedCategories.forEach(category => {
+          const catDiv = document.createElement('div');
+          catDiv.className = 'search-suggestion';
+          catDiv.style.justifyContent = 'center';
+          catDiv.style.color = 'var(--accent)';
+          catDiv.innerHTML = `<span>📁 Category: ${category.name}</span>`;
+          catDiv.addEventListener('click', () => {
+            filterByCategory(category.id);
+            closeSearchPanel();
+          });
+          suggestionsContainer.appendChild(catDiv);
         });
-        
-        suggestionsContainer.appendChild(suggestion);
-      });
+      }
+      
+      if (topThreeProducts.length === 0 && matchedCategories.length === 0) {
+        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products or categories found</div>';
+      }
     }
 
     function clearSearchSuggestions() {
@@ -2632,7 +2668,7 @@
     }
 
     function calculateProductRating(productId) {
-      const productReviews = reviews.filter(r => r.productId === productId);
+      const productReviews = window.reviews ? window.reviews.filter(r => r.productId === productId) : [];
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
@@ -2913,7 +2949,7 @@
       if (zoomBtn) {
         zoomBtn.addEventListener('click', () => {
           pauseSlide();
-          openProductImageModal();
+          openZoomModal(currentProductImages[currentImageIndex]);
           resumeSlideAfterDelay();
         });
       }
@@ -3042,6 +3078,30 @@
       });
     }
 
+    function openZoomModal(imageUrl) {
+      document.getElementById('zoomImage').src = imageUrl;
+      document.getElementById('zoomModal').classList.add('active');
+      resetZoom();
+      
+      const zoomImage = document.getElementById('zoomImage');
+      let zoomTouchStartX = 0, zoomTouchEndX = 0;
+      zoomImage.addEventListener('touchstart', (e) => {
+        zoomTouchStartX = e.touches[0].clientX;
+      });
+      zoomImage.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        zoomTouchEndX = e.touches[0].clientX;
+      });
+      zoomImage.addEventListener('touchend', () => {
+        const diff = zoomTouchStartX - zoomTouchEndX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) nextProductModalImage();
+          else prevProductModalImage();
+        }
+        zoomTouchStartX = zoomTouchEndX = 0;
+      });
+    }
+
     function openProductImageModal() {
       if (!currentProduct) return;
       currentProductModalIndex = currentImageIndex;
@@ -3082,9 +3142,12 @@
     }
 
     function loadSimilarProducts(product) {
-      const similarProducts = products
-        .filter(p => p.id !== product.id && p.category === product.category)
-        .slice(0, 20);
+      let similarProducts = [];
+      if (product.category) {
+        similarProducts = products.filter(p => p.id !== product.id && p.category === product.category);
+      } else {
+        similarProducts = products.filter(p => p.id !== product.id).slice(0, 20);
+      }
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -3164,12 +3227,6 @@
       let similarProducts = [];
       if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin) && product.similarFromAdmin.length > 0) {
         similarProducts = product.similarFromAdmin.map(id => products.find(p => p.id === id)).filter(p => p);
-      }
-      
-      if (similarProducts.length === 0) {
-        similarProducts = products
-          .filter(p => p.id !== product.id && p.category === product.category)
-          .slice(0, 6);
       }
       
       if (similarProducts.length === 0) {
@@ -4269,9 +4326,21 @@
         return;
       }
       
+      const ratingMap = new Map();
+      productsToRender.forEach(p => {
+        const avgRating = calculateProductRating(p.id);
+        ratingMap.set(p.id, avgRating);
+      });
+      
+      const sortedProducts = [...productsToRender].sort((a, b) => {
+        const ratingA = ratingMap.get(a.id) || 0;
+        const ratingB = ratingMap.get(b.id) || 0;
+        return ratingB - ratingA;
+      });
+      
       const fragment = document.createDocumentFragment();
       
-      productsToRender.forEach(product => {
+      sortedProducts.forEach(product => {
         if (product) {
           fragment.appendChild(createProductCard(product));
         }
