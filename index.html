@@ -121,11 +121,9 @@
           </svg>
         </div>
         <div class="social-menu-item" onclick="window.open('https://www.instagram.com/buyzo.cart?igsh=d2Mxc2EwMW45cWwy', '_blank'); closeMenu();">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#instaGradMobile)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <defs><linearGradient id="instaGradMobile" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#405DE6"/><stop offset="25%" stop-color="#5851DB"/><stop offset="50%" stop-color="#833AB4"/><stop offset="75%" stop-color="#C13584"/><stop offset="100%" stop-color="#E1306C"/></linearGradient></defs>
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="url(#instaGradMobile)" stroke-width="1.5"/>
-            <circle cx="12" cy="12" r="4" fill="none" stroke="url(#instaGradMobile)" stroke-width="1.5"/>
-            <circle cx="18" cy="6" r="1.2" fill="url(#instaGradMobile)"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#E4405F">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.069-1.644-.069-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"></path>
+            <path d="M12 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
           </svg>
         </div>
         <div class="social-menu-item" onclick="window.open('https://www.youtube.com/@BuyzoCart', '_blank'); closeMenu();">
@@ -2177,71 +2175,65 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       
-      const matchedProducts = products.filter(product => 
+      let suggestions = products.filter(product => 
         product.name?.toLowerCase().includes(query.toLowerCase()) ||
-        product.description?.toLowerCase().includes(query.toLowerCase())
+        product.description?.toLowerCase().includes(query.toLowerCase()) ||
+        product.category?.toLowerCase().includes(query.toLowerCase()) ||
+        (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
       
-      const avgRatingMap = new Map();
-      matchedProducts.forEach(p => {
-        if (window.reviews && Array.isArray(window.reviews)) {
-          const productReviews = window.reviews.filter(r => r.productId === p.id);
-          if (productReviews.length > 0) {
-            const avg = productReviews.reduce((acc, r) => acc + r.rating, 0) / productReviews.length;
-            avgRatingMap.set(p.id, avg);
-          } else {
-            avgRatingMap.set(p.id, 0);
-          }
+      const ratingMap = {};
+      suggestions.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
         } else {
-          avgRatingMap.set(p.id, 0);
+          ratingMap[p.id] = 0;
         }
       });
+      suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       
-      matchedProducts.sort((a, b) => (avgRatingMap.get(b.id) || 0) - (avgRatingMap.get(a.id) || 0));
-      const topThreeProducts = matchedProducts.slice(0, 3);
-      
-      const matchedCategories = categories.filter(cat => 
-        cat.name?.toLowerCase().includes(query.toLowerCase())
-      );
+      const topThree = suggestions.slice(0, 3);
       
       suggestionsContainer.innerHTML = '';
       
-      if (topThreeProducts.length > 0) {
-        topThreeProducts.forEach(product => {
-          const suggestion = document.createElement('div');
-          suggestion.className = 'search-suggestion';
-          suggestion.innerHTML = `
-            <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
-            <div class="search-suggestion-info">
-              <div class="search-suggestion-name">${product.name || 'Product'}</div>
-              <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
-            </div>
-          `;
-          suggestion.addEventListener('click', () => {
-            showProductDetail(product);
-            closeSearchPanel();
-          });
-          suggestionsContainer.appendChild(suggestion);
-        });
+      if (topThree.length === 0) {
+        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products found</div>';
+        return;
       }
       
-      if (matchedCategories.length > 0) {
-        matchedCategories.forEach(category => {
-          const catDiv = document.createElement('div');
-          catDiv.className = 'search-suggestion';
-          catDiv.style.justifyContent = 'center';
-          catDiv.style.color = 'var(--accent)';
-          catDiv.innerHTML = `<span>📁 Category: ${category.name}</span>`;
-          catDiv.addEventListener('click', () => {
-            filterByCategory(category.id);
-            closeSearchPanel();
-          });
-          suggestionsContainer.appendChild(catDiv);
+      topThree.forEach(product => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'search-suggestion';
+        suggestion.innerHTML = `
+          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="search-suggestion-info">
+            <div class="search-suggestion-name">${product.name || 'Product'}</div>
+            <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
+          </div>
+        `;
+        
+        suggestion.addEventListener('click', () => {
+          showProductDetail(product);
+          closeSearchPanel();
         });
-      }
+        
+        suggestionsContainer.appendChild(suggestion);
+      });
       
-      if (topThreeProducts.length === 0 && matchedCategories.length === 0) {
-        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products or categories found</div>';
+      if (suggestions.length > 3) {
+        const categorySuggestion = document.createElement('div');
+        categorySuggestion.className = 'search-suggestion';
+        categorySuggestion.innerHTML = `
+          <div class="search-suggestion-info" style="padding-left:0;">
+            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
+          </div>
+        `;
+        categorySuggestion.addEventListener('click', () => {
+          performSearch(query);
+        });
+        suggestionsContainer.appendChild(categorySuggestion);
       }
     }
 
@@ -2667,8 +2659,10 @@
       renderSearchResults(window.currentSearchResults, window.currentSearchQuery);
     }
 
+    let reviews = [];
+
     function calculateProductRating(productId) {
-      const productReviews = window.reviews ? window.reviews.filter(r => r.productId === productId) : [];
+      const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
@@ -2947,9 +2941,10 @@
       });
       
       if (zoomBtn) {
-        zoomBtn.addEventListener('click', () => {
+        zoomBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           pauseSlide();
-          openZoomModal(currentProductImages[currentImageIndex]);
+          openProductImageModal();
           resumeSlideAfterDelay();
         });
       }
@@ -2960,17 +2955,26 @@
       
       mainImage.addEventListener('touchstart', (e) => {
         pauseSlide();
-        touchStartX = e.changedTouches[0].screenX;
+        touchStartX = e.touches[0].screenX;
         isDragging = true;
       }, { passive: true });
       
       mainImage.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        touchEndX = e.changedTouches[0].screenX;
-      }, { passive: true });
+        e.preventDefault();
+        touchEndX = e.touches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 10) {
+          mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
+          mainImage.style.transition = 'none';
+        }
+      }, { passive: false });
       
       mainImage.addEventListener('touchend', (e) => {
         if (!isDragging) return;
+        
+        mainImage.style.transform = '';
+        mainImage.style.transition = '';
         
         touchEndX = e.changedTouches[0].screenX;
         handleSwipe();
@@ -2986,11 +2990,21 @@
       
       mainImage.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
+        e.preventDefault();
         touchEndX = e.clientX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 10) {
+          mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
+          mainImage.style.transition = 'none';
+        }
       });
       
       mainImage.addEventListener('mouseup', (e) => {
         if (!isDragging) return;
+        
+        mainImage.style.transform = '';
+        mainImage.style.transition = '';
+        
         touchEndX = e.clientX;
         handleSwipe();
         resumeSlideAfterDelay();
@@ -2999,6 +3013,8 @@
       
       mainImage.addEventListener('mouseleave', () => {
         if (isDragging) {
+          mainImage.style.transform = '';
+          mainImage.style.transition = '';
           resumeSlideAfterDelay();
           isDragging = false;
         }
@@ -3078,35 +3094,42 @@
       });
     }
 
-    function openZoomModal(imageUrl) {
-      document.getElementById('zoomImage').src = imageUrl;
-      document.getElementById('zoomModal').classList.add('active');
-      resetZoom();
-      
-      const zoomImage = document.getElementById('zoomImage');
-      let zoomTouchStartX = 0, zoomTouchEndX = 0;
-      zoomImage.addEventListener('touchstart', (e) => {
-        zoomTouchStartX = e.touches[0].clientX;
-      });
-      zoomImage.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        zoomTouchEndX = e.touches[0].clientX;
-      });
-      zoomImage.addEventListener('touchend', () => {
-        const diff = zoomTouchStartX - zoomTouchEndX;
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) nextProductModalImage();
-          else prevProductModalImage();
-        }
-        zoomTouchStartX = zoomTouchEndX = 0;
-      });
-    }
-
     function openProductImageModal() {
       if (!currentProduct) return;
       currentProductModalIndex = currentImageIndex;
       updateProductModalImage();
       document.getElementById('productImageModal').classList.add('active');
+      
+      const modalImage = document.getElementById('productImageModalImage');
+      modalImage.addEventListener('touchstart', handleModalTouchStart, { passive: true });
+      modalImage.addEventListener('touchmove', handleModalTouchMove, { passive: false });
+      modalImage.addEventListener('touchend', handleModalTouchEnd);
+    }
+    
+    let modalTouchStartX = 0;
+    let modalTouchEndX = 0;
+    
+    function handleModalTouchStart(e) {
+      modalTouchStartX = e.touches[0].screenX;
+    }
+    
+    function handleModalTouchMove(e) {
+      e.preventDefault();
+      modalTouchEndX = e.touches[0].screenX;
+    }
+    
+    function handleModalTouchEnd(e) {
+      const diff = modalTouchStartX - modalTouchEndX;
+      const minSwipeDistance = 50;
+      if (Math.abs(diff) > minSwipeDistance) {
+        if (diff > 0) {
+          nextProductModalImage();
+        } else {
+          prevProductModalImage();
+        }
+      }
+      modalTouchStartX = 0;
+      modalTouchEndX = 0;
     }
 
     function updateProductModalImage() {
@@ -3142,12 +3165,22 @@
     }
 
     function loadSimilarProducts(product) {
-      let similarProducts = [];
-      if (product.category) {
-        similarProducts = products.filter(p => p.id !== product.id && p.category === product.category);
-      } else {
-        similarProducts = products.filter(p => p.id !== product.id).slice(0, 20);
-      }
+      let similarProducts = products
+        .filter(p => p.id !== product.id && p.category === product.category)
+        .slice(0, 20);
+      
+      const ratingMap = {};
+      similarProducts.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else {
+          ratingMap[p.id] = 0;
+        }
+      });
+      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+      
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -3227,6 +3260,24 @@
       let similarProducts = [];
       if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin) && product.similarFromAdmin.length > 0) {
         similarProducts = product.similarFromAdmin.map(id => products.find(p => p.id === id)).filter(p => p);
+      }
+      
+      if (similarProducts.length === 0) {
+        similarProducts = products
+          .filter(p => p.id !== product.id && p.category === product.category)
+          .slice(0, 6);
+        
+        const ratingMap = {};
+        similarProducts.forEach(p => {
+          const productReviews = reviews.filter(r => r.productId === p.id);
+          if (productReviews.length) {
+            const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+            ratingMap[p.id] = sum / productReviews.length;
+          } else {
+            ratingMap[p.id] = 0;
+          }
+        });
+        similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       }
       
       if (similarProducts.length === 0) {
@@ -3629,8 +3680,6 @@
         }
       });
     }
-
-    let reviews = [];
 
     async function loadProductReviews(productId) {
       try {
@@ -4177,9 +4226,21 @@
       
       currentCategoryFilter = category.id;
       
-      const filteredProducts = products.filter(product => 
+      let filteredProducts = products.filter(product => 
         product.category === category.id || product.category === category.name
       );
+      
+      const ratingMap = {};
+      filteredProducts.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else {
+          ratingMap[p.id] = 0;
+        }
+      });
+      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       
       showPage('productsPage');
       
@@ -4210,6 +4271,18 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
+      
+      const ratingMap = {};
+      filteredProducts.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else {
+          ratingMap[p.id] = 0;
+        }
+      });
+      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
@@ -4319,28 +4392,29 @@
         return;
       }
       
+      const ratingMap = {};
+      productsToRender.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else {
+          ratingMap[p.id] = 0;
+        }
+      });
+      
+      const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+      
       container.innerHTML = '';
       
-      if (!productsToRender || productsToRender.length === 0) {
+      if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div class="card-panel center">No products found</div>';
         return;
       }
       
-      const ratingMap = new Map();
-      productsToRender.forEach(p => {
-        const avgRating = calculateProductRating(p.id);
-        ratingMap.set(p.id, avgRating);
-      });
-      
-      const sortedProducts = [...productsToRender].sort((a, b) => {
-        const ratingA = ratingMap.get(a.id) || 0;
-        const ratingB = ratingMap.get(b.id) || 0;
-        return ratingB - ratingA;
-      });
-      
       const fragment = document.createDocumentFragment();
       
-      sortedProducts.forEach(product => {
+      sorted.forEach(product => {
         if (product) {
           fragment.appendChild(createProductCard(product));
         }
@@ -4983,6 +5057,7 @@
         showToast('Address saved successfully', 'success');
         await loadSavedAddresses();
         document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -5059,6 +5134,7 @@
           document.getElementById('alertModal').classList.remove('active');
           await loadSavedAddresses();
           document.getElementById('savedAddressesSection').style.display = savedAddresses.length ? 'block' : 'none';
+          document.getElementById('newAddressForm').style.display = 'block';
         } catch (error) {
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
