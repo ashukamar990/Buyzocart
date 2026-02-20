@@ -197,6 +197,27 @@
         <span>Cart</span>
       </div>
       <div class="cta">
+        <!-- Currency Selector -->
+        <div class="currency-selector" id="currencySelector">
+          <button class="currency-btn" onclick="toggleCurrencyMenu()">
+            <span id="selectedCurrencySymbol">₹</span>
+            <span id="selectedCurrencyCode">INR</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="currency-menu" id="currencyMenu">
+            <div class="currency-option" data-currency="INR" data-symbol="₹" onclick="setCurrency('INR', '₹')">
+              <span class="currency-symbol">₹</span>
+              <span class="currency-name">Indian Rupee (INR)</span>
+            </div>
+            <div class="currency-option" data-currency="USD" data-symbol="$" onclick="setCurrency('USD', '$')">
+              <span class="currency-symbol">$</span>
+              <span class="currency-name">US Dollar (USD)</span>
+            </div>
+          </div>
+        </div>
+        
         <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
           <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"></circle>
@@ -239,14 +260,14 @@
   <main class="container">
     <section class="page active" id="homePage">
       <section class="hero">
-        <h1>Welcome to <span style="color:var(--accent)">Buyzo Cart</span></h1>
-        <p>Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
+        <h1 id="heroTitle">Welcome to <span style="color:var(--accent)">Buyzo Cart</span></h1>
+        <p id="heroSubtitle">Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
         <div class="hero-messages" id="heroMessages">
-          <span class="active">🔥 Big Sale Today</span>
-          <span>🚚 Free Shipping over ₹999</span>
-          <span>✨ New Arrivals Just Dropped</span>
+          <span class="active" id="heroMessage1">🔥 Big Sale Today</span>
+          <span id="heroMessage2">🚚 Free Shipping over ₹999</span>
+          <span id="heroMessage3">✨ New Arrivals Just Dropped</span>
         </div>
-        <div class="highlight-strip" onclick="showPage('productsPage')">
+        <div class="highlight-strip" onclick="showPage('productsPage')" id="heroHighlight">
           Limited Time Offer: Flat 40% OFF on all Fashion Items — <u>Shop Now →</u>
         </div>
       </section>
@@ -320,12 +341,12 @@
         </div>
         <div class="price-range-inputs">
           <div class="price-input-wrapper">
-            <span>₹</span>
+            <span id="minPriceSymbol">₹</span>
             <input type="number" class="price-input" id="minPrice" placeholder="Min" min="0" max="10000" />
           </div>
           <div class="price-input-separator">-</div>
           <div class="price-input-wrapper">
-            <span>₹</span>
+            <span id="maxPriceSymbol">₹</span>
             <input type="number" class="price-input" id="maxPrice" placeholder="Max" min="0" max="10000" />
           </div>
         </div>
@@ -380,12 +401,12 @@
         </div>
         <div class="price-range-inputs">
           <div class="price-input-wrapper">
-            <span>₹</span>
+            <span id="searchMinPriceSymbol">₹</span>
             <input type="number" class="price-input" id="searchMinPrice" placeholder="Min" min="0" max="10000" />
           </div>
           <div class="price-input-separator">-</div>
           <div class="price-input-wrapper">
-            <span>₹</span>
+            <span id="searchMaxPriceSymbol">₹</span>
             <input type="number" class="price-input" id="searchMaxPrice" placeholder="Max" min="0" max="10000" />
           </div>
         </div>
@@ -1926,6 +1947,68 @@
       margin-bottom: 20px;
     }
 
+    /* Currency Selector Styles */
+    .currency-selector {
+      position: relative;
+      display: inline-block;
+    }
+
+    .currency-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .currency-btn:hover {
+      background: var(--hover);
+    }
+
+    .currency-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 200px;
+      display: none;
+    }
+
+    .currency-menu.show {
+      display: block;
+    }
+
+    .currency-option {
+      padding: 10px 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.2s;
+    }
+
+    .currency-option:hover {
+      background: var(--hover);
+    }
+
+    .currency-symbol {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .currency-name {
+      color: var(--text);
+    }
+
     @keyframes successPop {
       0% { transform: scale(0.8); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
@@ -1956,13 +2039,19 @@
     let adminSettings = {
       deliveryCharge: 50,
       gatewayChargePercent: 2,
-      freeShippingOver: 999
+      freeShippingOver: 999,
+      exchangeRate: 83, // 1 USD = 83 INR (default)
+      defaultCurrency: 'INR'
     };
     let savedAddresses = [];
     let recentSearches = [];
-    let popularSearches = ['T-Shirt', 'Sneakers', 'Jeans', 'Watch', 'Headphones', 'Mobile', 'Laptop', 'Shoes'];
-    let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
+    let popularSearches = []; // Will be loaded from admin panel
+    let searchTags = []; // Will be loaded from admin panel
     let deliveredOrders = [];
+    
+    // Currency settings
+    let currentCurrency = localStorage.getItem('preferredCurrency') || 'INR';
+    let currentCurrencySymbol = localStorage.getItem('preferredCurrencySymbol') || '₹';
     
     let autoSlideInterval;
     let slidePaused = false;
@@ -1986,14 +2075,22 @@
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
-        const num = parseFloat(p.replace(/[₹,]/g, ""));
+        const num = parseFloat(p.replace(/[₹$,]/g, ""));
         return isNaN(num) ? 0 : num;
       }
       return 0;
     }
 
+    function formatPrice(priceInINR, currency = currentCurrency, symbol = currentCurrencySymbol) {
+      if (currency === 'USD') {
+        const usdPrice = priceInINR / adminSettings.exchangeRate;
+        return symbol + usdPrice.toFixed(2);
+      }
+      return symbol + priceInINR.toLocaleString('en-IN');
+    }
+
     function getProductImage(product, idx = 0) {
-      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+      if (!product) return "";
       if (Array.isArray(product.images) && product.images.length > 0) {
         if (idx < product.images.length) return product.images[idx];
         return product.images[0];
@@ -2009,13 +2106,7 @@
           }
         }
       }
-      if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
-        return product;
-      }
-      if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
-        return product.value;
-      }
-      return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+      return "";
     }
 
     function getProductImages(product) {
@@ -2043,7 +2134,7 @@
           }
         }
       }
-      return ["https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image"];
+      return [];
     }
 
     function generateOrderId() {
@@ -2098,6 +2189,51 @@
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
+    }
+
+    // Currency Functions
+    function toggleCurrencyMenu() {
+      document.getElementById('currencyMenu').classList.toggle('show');
+    }
+
+    function setCurrency(currency, symbol) {
+      currentCurrency = currency;
+      currentCurrencySymbol = symbol;
+      localStorage.setItem('preferredCurrency', currency);
+      localStorage.setItem('preferredCurrencySymbol', symbol);
+      
+      // Update all price displays
+      updateAllPrices();
+      
+      // Update currency symbols in inputs
+      document.getElementById('minPriceSymbol').textContent = symbol;
+      document.getElementById('maxPriceSymbol').textContent = symbol;
+      document.getElementById('searchMinPriceSymbol').textContent = symbol;
+      document.getElementById('searchMaxPriceSymbol').textContent = symbol;
+      document.getElementById('selectedCurrencySymbol').textContent = symbol;
+      document.getElementById('selectedCurrencyCode').textContent = currency;
+      
+      document.getElementById('currencyMenu').classList.remove('show');
+      
+      showToast(`Currency changed to ${currency} (${symbol})`, 'success');
+    }
+
+    function updateAllPrices() {
+      // Refresh current page displays
+      const currentPage = document.querySelector('.page.active')?.id;
+      
+      if (currentPage === 'homePage') {
+        renderProducts(products, 'homeProductGrid');
+        renderProductSlider(products.slice(0, 10), 'productSlider');
+      } else if (currentPage === 'productsPage') {
+        renderProducts(products, 'productGrid');
+      } else if (currentPage === 'searchResultsPage' && window.currentSearchResults) {
+        renderSearchResults(window.currentSearchResults, window.currentSearchQuery);
+      } else if (currentPage === 'productDetailPage' && currentProduct) {
+        showProductDetail(currentProduct);
+      } else if (currentPage === 'orderPage' && currentProduct) {
+        document.getElementById('spPrice').textContent = formatPrice(parsePrice(currentProduct.price));
+      }
     }
 
     (function() {
@@ -2210,7 +2346,7 @@
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
             <div class="search-suggestion-name">${product.name || 'Product'}</div>
-            <div class="search-suggestion-price">₹${parsePrice(product.price).toLocaleString()}</div>
+            <div class="search-suggestion-price">${formatPrice(parsePrice(product.price))}</div>
           </div>
         `;
         
@@ -2302,7 +2438,13 @@
     function loadPopularSearches() {
       const container = document.getElementById('popularSearches');
       if (!container) return;
+      
       container.innerHTML = '';
+      if (!popularSearches || popularSearches.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">No popular searches</div>';
+        return;
+      }
+      
       popularSearches.forEach(search => {
         const tag = document.createElement('div');
         tag.className = 'popular-search-tag';
@@ -2318,7 +2460,13 @@
     function loadSearchTags() {
       const container = document.getElementById('searchTags');
       if (!container) return;
+      
       container.innerHTML = '';
+      if (!searchTags || searchTags.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">No search tags</div>';
+        return;
+      }
+      
       searchTags.forEach(tag => {
         const element = document.createElement('div');
         element.className = 'search-tag';
@@ -2683,7 +2831,7 @@
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
-      const productPrice = product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0';
+      const productPrice = formatPrice(parsePrice(product.price));
       const productImage = getProductImage(product);
       const productBadge = product.badge || product.tag || '';
       const isTrending = product.isTrending || product.trending || false;
@@ -2698,8 +2846,13 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       
+      // Only show image if it exists
+      const imageHtml = productImage ? 
+        `style="background-image: url('${productImage}')"` : 
+        `style="background-color: #f0f0f0;"`;
+      
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image" ${imageHtml}>
           ${badgeHtml}
         </div>
         <div class="product-card-body">
@@ -2710,7 +2863,7 @@
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${productPrice}</div>
-            ${product.originalPrice ? `<div class="product-card-original-price">₹${parsePrice(product.originalPrice).toLocaleString()}</div>` : ''}
+            ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(parsePrice(product.originalPrice))}</div>` : ''}
           </div>
           <div class="product-card-actions">
             <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
@@ -2839,7 +2992,7 @@
       };
       
       const productName = freshProduct.name || freshProduct.title || 'Product';
-      const productPrice = freshProduct.price ? '₹' + parsePrice(freshProduct.price).toLocaleString() : '₹0';
+      const productPrice = formatPrice(parsePrice(freshProduct.price));
       const productDescription = freshProduct.description || freshProduct.desc || '';
       const productFullDesc = freshProduct.fullDescription || freshProduct.fullDesc || freshProduct.details || productDescription;
       const productSku = freshProduct.sku || freshProduct.SKU || 'N/A';
@@ -2864,6 +3017,9 @@
       
       if (elements.mainProductImage && currentProductImages.length > 0) {
         elements.mainProductImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
+      } else {
+        elements.mainProductImage.style.backgroundImage = 'none';
+        elements.mainProductImage.style.backgroundColor = '#f0f0f0';
       }
       
       const stockStatus = document.getElementById('detailStockStatus');
@@ -2920,31 +3076,35 @@
       
       currentProductImages = getProductImages(product);
       if (currentProductImages.length === 0) {
-        currentProductImages = [getProductImage(product)];
+        currentProductImages = [];
       }
       
       currentImageIndex = 0;
       updateMainImage();
       
       dotsContainer.innerHTML = '';
-      currentProductImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          pauseSlide();
-          currentImageIndex = index;
-          updateMainImage();
-          updateDots();
-          resumeSlideAfterDelay();
+      if (currentProductImages.length > 0) {
+        currentProductImages.forEach((_, index) => {
+          const dot = document.createElement('div');
+          dot.className = `detail-carousel-dot ${index === 0 ? 'active' : ''}`;
+          dot.addEventListener('click', () => {
+            pauseSlide();
+            currentImageIndex = index;
+            updateMainImage();
+            updateDots();
+            resumeSlideAfterDelay();
+          });
+          dotsContainer.appendChild(dot);
         });
-        dotsContainer.appendChild(dot);
-      });
+      }
       
       if (zoomBtn) {
         zoomBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           pauseSlide();
-          openProductImageModal();
+          if (currentProductImages.length > 0) {
+            openProductImageModal();
+          }
           resumeSlideAfterDelay();
         });
       }
@@ -2954,13 +3114,14 @@
       let isDragging = false;
       
       mainImage.addEventListener('touchstart', (e) => {
+        if (currentProductImages.length <= 1) return;
         pauseSlide();
         touchStartX = e.touches[0].screenX;
         isDragging = true;
       }, { passive: true });
       
       mainImage.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
+        if (!isDragging || currentProductImages.length <= 1) return;
         e.preventDefault();
         touchEndX = e.touches[0].screenX;
         const diff = touchStartX - touchEndX;
@@ -2971,7 +3132,7 @@
       }, { passive: false });
       
       mainImage.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
+        if (!isDragging || currentProductImages.length <= 1) return;
         
         mainImage.style.transform = '';
         mainImage.style.transition = '';
@@ -2981,46 +3142,6 @@
         resumeSlideAfterDelay();
         isDragging = false;
       }, { passive: true });
-      
-      mainImage.addEventListener('mousedown', (e) => {
-        pauseSlide();
-        touchStartX = e.clientX;
-        isDragging = true;
-      });
-      
-      mainImage.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        touchEndX = e.clientX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 10) {
-          mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
-          mainImage.style.transition = 'none';
-        }
-      });
-      
-      mainImage.addEventListener('mouseup', (e) => {
-        if (!isDragging) return;
-        
-        mainImage.style.transform = '';
-        mainImage.style.transition = '';
-        
-        touchEndX = e.clientX;
-        handleSwipe();
-        resumeSlideAfterDelay();
-        isDragging = false;
-      });
-      
-      mainImage.addEventListener('mouseleave', () => {
-        if (isDragging) {
-          mainImage.style.transform = '';
-          mainImage.style.transition = '';
-          resumeSlideAfterDelay();
-          isDragging = false;
-        }
-        touchStartX = 0;
-        touchEndX = 0;
-      });
       
       function handleSwipe() {
         const minSwipeDistance = 50;
@@ -3038,11 +3159,12 @@
         touchEndX = 0;
       }
       
-      startAutoSlide();
-      
       function updateMainImage() {
-        if (currentProductImages[currentImageIndex]) {
+        if (currentProductImages.length > 0 && currentProductImages[currentImageIndex]) {
           mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
+        } else {
+          mainImage.style.backgroundImage = 'none';
+          mainImage.style.backgroundColor = '#f0f0f0';
         }
       }
       
@@ -3051,25 +3173,6 @@
           dot.classList.toggle('active', index === currentImageIndex);
         });
       }
-    }
-
-    function startAutoSlide() {
-      if (autoSlideInterval) clearInterval(autoSlideInterval);
-      autoSlideInterval = setInterval(() => {
-        if (!slidePaused && currentProductImages && currentProductImages.length > 1) {
-          nextDetailImage();
-        }
-      }, 3000);
-    }
-
-    function pauseSlide() {
-      slidePaused = true;
-    }
-
-    function resumeSlideAfterDelay() {
-      setTimeout(() => {
-        slidePaused = false;
-      }, 3000);
     }
 
     function prevDetailImage() {
@@ -3095,7 +3198,7 @@
     }
 
     function openProductImageModal() {
-      if (!currentProduct) return;
+      if (!currentProduct || currentProductImages.length === 0) return;
       currentProductModalIndex = currentImageIndex;
       updateProductModalImage();
       document.getElementById('productImageModal').classList.add('active');
@@ -3138,7 +3241,9 @@
       
       if (!modalImage || !dotsContainer) return;
       
-      modalImage.src = currentProductImages[currentProductModalIndex];
+      if (currentProductImages[currentProductModalIndex]) {
+        modalImage.src = currentProductImages[currentProductModalIndex];
+      }
       
       dotsContainer.innerHTML = '';
       currentProductImages.forEach((_, index) => {
@@ -3212,15 +3317,20 @@
       row2Div.className = 'slider-track';
       
       firstRow.forEach(p => {
+        const productImage = getProductImage(p);
+        const imageStyle = productImage ? 
+          `style="background-image: url('${productImage}')"` : 
+          `style="background-color: #f0f0f0;"`;
+          
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
         sliderItem.style.minWidth = '200px';
         sliderItem.style.maxWidth = '200px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-img" ${imageStyle}></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
-            <div class="slider-item-price">${p.price ? '₹' + parsePrice(p.price).toLocaleString() : '₹0'}</div>
+            <div class="slider-item-price">${formatPrice(parsePrice(p.price))}</div>
           </div>
         `;
         sliderItem.addEventListener('click', () => showProductDetail(p));
@@ -3228,15 +3338,20 @@
       });
       
       secondRow.forEach(p => {
+        const productImage = getProductImage(p);
+        const imageStyle = productImage ? 
+          `style="background-image: url('${productImage}')"` : 
+          `style="background-color: #f0f0f0;"`;
+          
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
         sliderItem.style.minWidth = '200px';
         sliderItem.style.maxWidth = '200px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-img" ${imageStyle}></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
-            <div class="slider-item-price">${p.price ? '₹' + parsePrice(p.price).toLocaleString() : '₹0'}</div>
+            <div class="slider-item-price">${formatPrice(parsePrice(p.price))}</div>
           </div>
         `;
         sliderItem.addEventListener('click', () => showProductDetail(p));
@@ -3287,13 +3402,18 @@
       
       const fragment = document.createDocumentFragment();
       similarProducts.slice(0, 6).forEach(simProduct => {
+        const productImage = getProductImage(simProduct);
+        const imageStyle = productImage ? 
+          `style="background-image: url('${productImage}')"` : 
+          `style="background-color: #f0f0f0;"`;
+          
         const item = document.createElement('div');
         item.className = 'similar-product-small';
         item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(simProduct)}')"></div>
+          <div class="similar-product-small-img" ${imageStyle}></div>
           <div class="similar-product-small-info">
             <div class="similar-product-small-title">${(simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product')}</div>
-            <div class="similar-product-small-price">${simProduct.price ? '₹' + parsePrice(simProduct.price).toLocaleString() : '₹0'}</div>
+            <div class="similar-product-small-price">${formatPrice(parsePrice(simProduct.price))}</div>
           </div>
         `;
         
@@ -3313,13 +3433,18 @@
       
       const fragment = document.createDocumentFragment();
       productsToRender.forEach(product => {
+        const productImage = getProductImage(product);
+        const imageStyle = productImage ? 
+          `style="background-image: url('${productImage}')"` : 
+          `style="background-color: #f0f0f0;"`;
+          
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="slider-item-img" ${imageStyle}></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
-            <div class="slider-item-price">${product.price ? '₹' + parsePrice(product.price).toLocaleString() : '₹0'}</div>
+            <div class="slider-item-price">${formatPrice(parsePrice(product.price))}</div>
           </div>
         `;
         
@@ -3415,7 +3540,7 @@
       }
       
       document.getElementById('spTitle').textContent = currentProduct.name || currentProduct.title || 'Product';
-      document.getElementById('spPrice').textContent = currentProduct.price ? '₹' + parsePrice(currentProduct.price).toLocaleString() : '₹0';
+      document.getElementById('spPrice').textContent = formatPrice(parsePrice(currentProduct.price));
       document.getElementById('spDesc').textContent = currentProduct.description || currentProduct.desc || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       
@@ -3450,21 +3575,26 @@
       if (!galleryMain || !dotsContainer) return;
       
       const productImages = getProductImages(currentProduct);
-      if (productImages.length === 0) {
-        productImages.push(getProductImage(currentProduct));
+      
+      if (productImages.length > 0) {
+        galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
+      } else {
+        galleryMain.style.backgroundImage = 'none';
+        galleryMain.style.backgroundColor = '#f0f0f0';
       }
       
-      galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
       dotsContainer.innerHTML = '';
       
-      productImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => {
-          setOrderPageImage(index, productImages);
+      if (productImages.length > 0) {
+        productImages.forEach((_, index) => {
+          const dot = document.createElement('div');
+          dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+          dot.addEventListener('click', () => {
+            setOrderPageImage(index, productImages);
+          });
+          dotsContainer.appendChild(dot);
         });
-        dotsContainer.appendChild(dot);
-      });
+      }
       
       const prevBtn = galleryMain.querySelector('.carousel-control.prev');
       const nextBtn = galleryMain.querySelector('.carousel-control.next');
@@ -3617,8 +3747,8 @@
         document.getElementById('sumProduct').textContent = '-';
         document.getElementById('sumQty').textContent = '-';
         document.getElementById('sumPrice').textContent = '-';
-        document.getElementById('sumDel').textContent = `₹${adminSettings.deliveryCharge || 50}`;
-        document.getElementById('sumGateway').textContent = '₹0';
+        document.getElementById('sumDel').textContent = `${currentCurrencySymbol}${adminSettings.deliveryCharge || 50}`;
+        document.getElementById('sumGateway').textContent = `${currentCurrencySymbol}0`;
         document.getElementById('sumTotal').textContent = '-';
         return;
       }
@@ -3635,10 +3765,10 @@
       
       document.getElementById('sumProduct').textContent = currentProduct.name || currentProduct.title || 'Product';
       document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `₹${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `₹${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `₹${gatewayCharge.toFixed(2)}`;
-      document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
+      document.getElementById('sumPrice').textContent = formatPrice(subtotal);
+      document.getElementById('sumDel').textContent = formatPrice(deliveryCharge);
+      document.getElementById('sumGateway').textContent = formatPrice(gatewayCharge);
+      document.getElementById('sumTotal').textContent = formatPrice(total);
       
       const chargeNote = document.getElementById('paymentChargeNote');
       if (chargeNote) {
@@ -4005,6 +4135,10 @@
         }
         
         const product = products.find(p => p.id === order.productId);
+        const productImage = product ? getProductImage(product) : '';
+        const imageStyle = productImage ? 
+          `style="background-image: url('${productImage}')"` : 
+          `style="background-color: #f0f0f0;"`;
         
         orderCard.innerHTML = `
           <div class="order-header">
@@ -4015,10 +4149,10 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="order-product-image" ${imageStyle}></div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
-              <div class="order-product-price">₹${order.totalAmount}</div>
+              <div class="order-product-price">${formatPrice(order.totalAmount)}</div>
               <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
           </div>
@@ -4110,7 +4244,7 @@
             <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
-              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">₹${order.productPrice}</div>
+              <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
               <div style="color:var(--muted);font-size:14px">
                 Qty: ${order.quantity} | Size: ${order.size}
               </div>
@@ -4123,21 +4257,21 @@
           <div class="order-detail-value">
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Subtotal:</span>
-              <span>₹${order.subtotal}</span>
+              <span>${formatPrice(order.subtotal)}</span>
             </div>
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Delivery:</span>
-              <span>₹${order.deliveryCharge}</span>
+              <span>${formatPrice(order.deliveryCharge)}</span>
             </div>
             ${order.gatewayCharge > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <span>Payment Gateway Charge:</span>
-              <span>₹${order.gatewayCharge.toFixed(2)}</span>
+              <span>${formatPrice(order.gatewayCharge)}</span>
             </div>
             ` : ''}
             <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
               <span>Total Amount:</span>
-              <span>₹${order.totalAmount}</span>
+              <span>${formatPrice(order.totalAmount)}</span>
             </div>
             <div style="margin-top:8px;color:var(--muted);font-size:14px">
               Payment Method: ${order.paymentMethod === 'prepaid' ? 'Prepaid (UPI/Card)' : 'Cash on Delivery'}
@@ -4368,12 +4502,22 @@
       const container = document.getElementById('categoryCirclesContainer');
       if (!container) return;
       
+      if (!categories || categories.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;width:100%;padding:20px;">No categories available</p>';
+        return;
+      }
+      
       const fragment = document.createDocumentFragment();
       categories.forEach(category => {
+        const categoryImage = getProductImage(category);
+        const imageStyle = categoryImage ? 
+          `style="background-image: url('${categoryImage}')"` : 
+          `style="background-color: #f0f0f0;"`;
+          
         const circle = document.createElement('div');
         circle.className = 'category-circle';
         circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
+          <div class="category-circle-image" ${imageStyle}></div>
           <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
         
@@ -4429,13 +4573,25 @@
       
       if (!track || !controls) return;
       
+      if (!banners || banners.length === 0) {
+        document.getElementById('bannerCarousel')?.classList.add('skeleton');
+        track.innerHTML = '';
+        controls.innerHTML = '';
+        return;
+      }
+      
       const trackFragment = document.createDocumentFragment();
       const controlsFragment = document.createDocumentFragment();
       
       banners.forEach((banner, index) => {
+        const bannerImage = getProductImage(banner);
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        if (bannerImage) {
+          slide.style.backgroundImage = `url('${bannerImage}')`;
+        } else {
+          slide.style.backgroundColor = '#f0f0f0';
+        }
         
         if (banner.link) {
           slide.style.cursor = 'pointer';
@@ -4475,7 +4631,7 @@
     }
 
     function setupBannerAutoSlide() {
-      if (banners.length <= 1) return;
+      if (!banners || banners.length <= 1) return;
       
       let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
@@ -5160,12 +5316,14 @@
 
     function setupHeroMessages() {
       const messages = document.querySelectorAll('#heroMessages span');
-      let currentIndex = 0;
-      setInterval(() => {
-        messages.forEach(msg => msg.classList.remove('active'));
-        currentIndex = (currentIndex + 1) % messages.length;
-        messages[currentIndex].classList.add('active');
-      }, 3000);
+      if (messages.length > 0) {
+        let currentIndex = 0;
+        setInterval(() => {
+          messages.forEach(msg => msg.classList.remove('active'));
+          currentIndex = (currentIndex + 1) % messages.length;
+          messages[currentIndex].classList.add('active');
+        }, 3000);
+      }
     }
 
     async function loadUserData(user) {
@@ -5183,6 +5341,25 @@
     function updateAdminSettingsUI() {
       document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
+      
+      // Update hero section from admin settings
+      if (adminSettings.heroTitle) {
+        document.getElementById('heroTitle').innerHTML = adminSettings.heroTitle;
+      }
+      if (adminSettings.heroSubtitle) {
+        document.getElementById('heroSubtitle').textContent = adminSettings.heroSubtitle;
+      }
+      if (adminSettings.heroMessages && Array.isArray(adminSettings.heroMessages)) {
+        const heroMessages = document.querySelectorAll('#heroMessages span');
+        adminSettings.heroMessages.forEach((msg, index) => {
+          if (heroMessages[index]) {
+            heroMessages[index].textContent = msg;
+          }
+        });
+      }
+      if (adminSettings.heroHighlight) {
+        document.getElementById('heroHighlight').innerHTML = adminSettings.heroHighlight;
+      }
     }
 
     function fetchLiveData() {
@@ -5269,6 +5446,9 @@
           }
         } else {
           categories = [];
+          if (document.getElementById('homePage')?.classList.contains('active')) {
+            renderCategoryCircles();
+          }
         }
       }).catch(error => {
         console.error('Error fetching categories:', error);
@@ -5290,6 +5470,9 @@
           }
         } else {
           banners = [];
+          if (document.getElementById('homePage')?.classList.contains('active')) {
+            renderBannerCarousel();
+          }
         }
       }).catch(error => {
         console.error('Error fetching banners:', error);
@@ -5305,6 +5488,36 @@
         }
       }).catch(error => {
         console.error('Error fetching admin settings:', error);
+      });
+      
+      // Load popular searches from admin panel
+      get(ref(database, 'popularSearches')).then(snapshot => {
+        const searchesObj = snapshot.val();
+        if (searchesObj) {
+          popularSearches = Object.values(searchesObj);
+          loadPopularSearches();
+        } else {
+          popularSearches = [];
+          loadPopularSearches();
+        }
+      }).catch(error => {
+        console.error('Error fetching popular searches:', error);
+        popularSearches = [];
+      });
+      
+      // Load search tags from admin panel
+      get(ref(database, 'searchTags')).then(snapshot => {
+        const tagsObj = snapshot.val();
+        if (tagsObj) {
+          searchTags = Object.values(tagsObj);
+          loadSearchTags();
+        } else {
+          searchTags = [];
+          loadSearchTags();
+        }
+      }).catch(error => {
+        console.error('Error fetching search tags:', error);
+        searchTags = [];
       });
       
       get(ref(database, 'outOfStock')).then(snapshot => {
@@ -5339,6 +5552,8 @@
       if (cachedCategories && cachedCategories.length > 0) {
         categories = cachedCategories;
         renderCategories();
+        renderCategoryCircles();
+      } else {
         renderCategoryCircles();
       }
       
@@ -5434,6 +5649,9 @@
           }
         } else {
           categories = [];
+          if (document.getElementById('homePage')?.classList.contains('active')) {
+            renderCategoryCircles();
+          }
         }
       });
       
@@ -5452,6 +5670,9 @@
           }
         } else {
           banners = [];
+          if (document.getElementById('homePage')?.classList.contains('active')) {
+            renderBannerCarousel();
+          }
         }
       });
       
@@ -5461,6 +5682,28 @@
           adminSettings = { ...adminSettings, ...settingsObj };
           cacheManager.set('adminSettings', adminSettings);
           updateAdminSettingsUI();
+        }
+      });
+      
+      onValue(ref(database, 'popularSearches'), snapshot => {
+        const searchesObj = snapshot.val();
+        if (searchesObj) {
+          popularSearches = Object.values(searchesObj);
+          loadPopularSearches();
+        } else {
+          popularSearches = [];
+          loadPopularSearches();
+        }
+      });
+      
+      onValue(ref(database, 'searchTags'), snapshot => {
+        const tagsObj = snapshot.val();
+        if (tagsObj) {
+          searchTags = Object.values(tagsObj);
+          loadSearchTags();
+        } else {
+          searchTags = [];
+          loadSearchTags();
         }
       });
       
@@ -5761,6 +6004,15 @@
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => {
         document.getElementById('returnReplaceModal').classList.remove('active');
       });
+      
+      // Close currency menu when clicking outside
+      document.addEventListener('click', function(e) {
+        const currencySelector = document.getElementById('currencySelector');
+        const currencyMenu = document.getElementById('currencyMenu');
+        if (currencySelector && currencyMenu && !currencySelector.contains(e.target)) {
+          currencyMenu.classList.remove('show');
+        }
+      });
     }
 
     function initApp() {
@@ -5768,6 +6020,20 @@
       document.documentElement.setAttribute('data-theme', savedTheme);
       
       recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+      
+      // Load user's preferred currency
+      const savedCurrency = localStorage.getItem('preferredCurrency');
+      const savedSymbol = localStorage.getItem('preferredCurrencySymbol');
+      if (savedCurrency && savedSymbol) {
+        currentCurrency = savedCurrency;
+        currentCurrencySymbol = savedSymbol;
+        document.getElementById('selectedCurrencySymbol').textContent = savedSymbol;
+        document.getElementById('selectedCurrencyCode').textContent = savedCurrency;
+        document.getElementById('minPriceSymbol').textContent = savedSymbol;
+        document.getElementById('maxPriceSymbol').textContent = savedSymbol;
+        document.getElementById('searchMinPriceSymbol').textContent = savedSymbol;
+        document.getElementById('searchMaxPriceSymbol').textContent = savedSymbol;
+      }
       
       setupEventListeners();
       
