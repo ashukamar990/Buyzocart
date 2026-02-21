@@ -239,8 +239,8 @@
   <main class="container">
     <section class="page active" id="homePage">
       <section class="hero">
-        <h1 id="heroTitle">Welcome to <span style="color:var(--accent)">Buyzo Cart</span></h1>
-        <p id="heroSubtitle">Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
+        <h1><span id="heroHeading">Welcome to <span style="color:var(--accent)">Buyzo Cart</span></span></h1>
+        <p id="heroSubheading">Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
         <div class="hero-messages" id="heroMessages">
           <span class="active">🔥 Big Sale Today</span>
           <span>🚚 Free Shipping over ₹999</span>
@@ -320,12 +320,12 @@
         </div>
         <div class="price-range-inputs">
           <div class="price-input-wrapper">
-            <span id="currencySymbolFilter">₹</span>
+            <span id="currencySymbolMinFilter">₹</span>
             <input type="number" class="price-input" id="minPrice" placeholder="Min" min="0" max="10000" />
           </div>
           <div class="price-input-separator">-</div>
           <div class="price-input-wrapper">
-            <span id="currencySymbolFilter2">₹</span>
+            <span id="currencySymbolMaxFilter">₹</span>
             <input type="number" class="price-input" id="maxPrice" placeholder="Max" min="0" max="10000" />
           </div>
         </div>
@@ -380,12 +380,12 @@
         </div>
         <div class="price-range-inputs">
           <div class="price-input-wrapper">
-            <span id="searchCurrencySymbol">₹</span>
+            <span id="currencySymbolMinSearch">₹</span>
             <input type="number" class="price-input" id="searchMinPrice" placeholder="Min" min="0" max="10000" />
           </div>
           <div class="price-input-separator">-</div>
           <div class="price-input-wrapper">
-            <span id="searchCurrencySymbol2">₹</span>
+            <span id="currencySymbolMaxSearch">₹</span>
             <input type="number" class="price-input" id="searchMaxPrice" placeholder="Max" min="0" max="10000" />
           </div>
         </div>
@@ -1092,6 +1092,11 @@
         <button class="btn" id="alertConfirmBtn">Yes</button>
       </div>
     </div>
+  </div>
+
+  <div class="currency-selector" style="position: fixed; bottom: 120px; right: 20px; z-index: 1000; background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 5px; display: flex; gap: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <button class="currency-btn" data-currency="INR" style="padding: 8px 12px; border: none; background: var(--accent); color: white; border-radius: 25px; cursor: pointer; font-weight: 600;">₹ INR</button>
+    <button class="currency-btn" data-currency="USD" style="padding: 8px 12px; border: none; background: var(--surface); color: var(--text); border-radius: 25px; cursor: pointer; font-weight: 600;">$ USD</button>
   </div>
 
   <script type="module">
@@ -1936,6 +1941,15 @@
       50% { transform: scale(1.2) rotate(10deg); }
       100% { transform: scale(1) rotate(0); opacity: 1; }
     }
+
+    .currency-btn[data-currency="INR"] {
+      background: var(--accent);
+      color: white;
+    }
+    .currency-btn[data-currency="USD"] {
+      background: var(--surface);
+      color: var(--text);
+    }
   </style>
 
   <script>
@@ -1957,18 +1971,14 @@
       deliveryCharge: 50,
       gatewayChargePercent: 2,
       freeShippingOver: 999,
-      currencySymbol: '₹',
-      currencyCode: 'INR',
-      exchangeRate: 1,
-      popularSearches: ['T-Shirt', 'Sneakers', 'Jeans', 'Watch', 'Headphones', 'Mobile', 'Laptop', 'Shoes'],
-      searchTags: ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'],
-      heroTitle: 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>',
-      heroSubtitle: 'Clean, fast checkout. Hand‑picked products. Fully responsive UI.',
-      heroMessages: ['🔥 Big Sale Today', '🚚 Free Shipping over ₹999', '✨ New Arrivals Just Dropped']
+      heroHeading: 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>',
+      heroSubheading: 'Clean, fast checkout. Hand‑picked products. Fully responsive UI.',
+      currency: 'INR'
     };
     let savedAddresses = [];
     let recentSearches = [];
-    
+    let popularSearches = ['T-Shirt', 'Sneakers', 'Jeans', 'Watch', 'Headphones', 'Mobile', 'Laptop', 'Shoes'];
+    let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
     let deliveredOrders = [];
     
     let autoSlideInterval;
@@ -1999,12 +2009,13 @@
       return 0;
     }
 
-    function formatPrice(price) {
-      if (adminSettings.currencySymbol === '$') {
-        const usdPrice = price * (adminSettings.exchangeRate || 83);
-        return '$' + usdPrice.toFixed(2);
+    function formatPrice(price, currency = adminSettings.currency || 'INR') {
+      const value = parsePrice(price);
+      if (currency === 'USD') {
+        const usdValue = value / 83;
+        return '$' + usdValue.toFixed(2);
       }
-      return '₹' + price.toLocaleString();
+      return '₹' + value.toLocaleString();
     }
 
     function getProductImage(product, idx = 0) {
@@ -2225,7 +2236,7 @@
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
             <div class="search-suggestion-name">${product.name || 'Product'}</div>
-            <div class="search-suggestion-price">${formatPrice(parsePrice(product.price))}</div>
+            <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
         
@@ -2318,7 +2329,7 @@
       const container = document.getElementById('popularSearches');
       if (!container) return;
       container.innerHTML = '';
-      adminSettings.popularSearches.forEach(search => {
+      popularSearches.forEach(search => {
         const tag = document.createElement('div');
         tag.className = 'popular-search-tag';
         tag.textContent = search;
@@ -2334,7 +2345,7 @@
       const container = document.getElementById('searchTags');
       if (!container) return;
       container.innerHTML = '';
-      adminSettings.searchTags.forEach(tag => {
+      searchTags.forEach(tag => {
         const element = document.createElement('div');
         element.className = 'search-tag';
         element.textContent = tag;
@@ -2412,6 +2423,21 @@
           renderRecentlyViewedPage();
           break;
       }
+      
+      updateCurrencySymbols();
+    }
+
+    function updateCurrencySymbols() {
+      const symbol = adminSettings.currency === 'USD' ? '$' : '₹';
+      document.querySelectorAll('#currencySymbolMinFilter, #currencySymbolMaxFilter, #currencySymbolMinSearch, #currencySymbolMaxSearch, .price-input-wrapper span').forEach(el => {
+        if (el) el.textContent = symbol;
+      });
+      document.querySelectorAll('.product-card-current-price, .slider-item-price, .product-detail-price, #spPrice, .order-product-price').forEach(el => {
+        if (el && el.textContent.includes('₹')) {
+          const price = parsePrice(el.textContent);
+          el.textContent = formatPrice(price);
+        }
+      });
     }
 
     function renderRecentlyViewedPage() {
@@ -2559,7 +2585,7 @@
           range.style.width = (maxPercent - minPercent) + '%';
           
           const minValue = Math.round(minPrice + (minPercent / 100) * (maxPrice - minPrice));
-          const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - maxPrice));
+          const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - minPrice));
           
           minInput.value = minValue;
           maxInput.value = maxValue;
@@ -2698,7 +2724,7 @@
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
-      const productPrice = formatPrice(parsePrice(product.price));
+      const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
       const productBadge = product.badge || product.tag || '';
       const isTrending = product.isTrending || product.trending || false;
@@ -2725,7 +2751,7 @@
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${productPrice}</div>
-            ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(parsePrice(product.originalPrice))}</div>` : ''}
+            ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
             <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
@@ -2854,7 +2880,7 @@
       };
       
       const productName = freshProduct.name || freshProduct.title || 'Product';
-      const productPrice = freshProduct.price ? formatPrice(parsePrice(freshProduct.price)) : formatPrice(0);
+      const productPrice = formatPrice(freshProduct.price);
       const productDescription = freshProduct.description || freshProduct.desc || '';
       const productFullDesc = freshProduct.fullDescription || freshProduct.fullDesc || freshProduct.details || productDescription;
       const productSku = freshProduct.sku || freshProduct.SKU || 'N/A';
@@ -3235,7 +3261,7 @@
           <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
-            <div class="slider-item-price">${formatPrice(parsePrice(p.price))}</div>
+            <div class="slider-item-price">${formatPrice(p.price)}</div>
           </div>
         `;
         sliderItem.addEventListener('click', () => showProductDetail(p));
@@ -3251,7 +3277,7 @@
           <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
-            <div class="slider-item-price">${formatPrice(parsePrice(p.price))}</div>
+            <div class="slider-item-price">${formatPrice(p.price)}</div>
           </div>
         `;
         sliderItem.addEventListener('click', () => showProductDetail(p));
@@ -3308,7 +3334,7 @@
           <div class="similar-product-small-img" style="background-image: url('${getProductImage(simProduct)}')"></div>
           <div class="similar-product-small-info">
             <div class="similar-product-small-title">${(simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product')}</div>
-            <div class="similar-product-small-price">${formatPrice(parsePrice(simProduct.price))}</div>
+            <div class="similar-product-small-price">${formatPrice(simProduct.price)}</div>
           </div>
         `;
         
@@ -3334,7 +3360,7 @@
           <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
-            <div class="slider-item-price">${formatPrice(parsePrice(product.price))}</div>
+            <div class="slider-item-price">${formatPrice(product.price)}</div>
           </div>
         `;
         
@@ -3430,7 +3456,7 @@
       }
       
       document.getElementById('spTitle').textContent = currentProduct.name || currentProduct.title || 'Product';
-      document.getElementById('spPrice').textContent = formatPrice(parsePrice(currentProduct.price));
+      document.getElementById('spPrice').textContent = formatPrice(currentProduct.price);
       document.getElementById('spDesc').textContent = currentProduct.description || currentProduct.desc || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       
@@ -3632,8 +3658,8 @@
         document.getElementById('sumProduct').textContent = '-';
         document.getElementById('sumQty').textContent = '-';
         document.getElementById('sumPrice').textContent = '-';
-        document.getElementById('sumDel').textContent = `${adminSettings.currencySymbol}${adminSettings.deliveryCharge || 50}`;
-        document.getElementById('sumGateway').textContent = `${adminSettings.currencySymbol}0`;
+        document.getElementById('sumDel').textContent = `${adminSettings.currency === 'USD' ? '$' : '₹'}${adminSettings.deliveryCharge || 50}`;
+        document.getElementById('sumGateway').textContent = `${adminSettings.currency === 'USD' ? '$' : '₹'}0`;
         document.getElementById('sumTotal').textContent = '-';
         return;
       }
@@ -3650,10 +3676,10 @@
       
       document.getElementById('sumProduct').textContent = currentProduct.name || currentProduct.title || 'Product';
       document.getElementById('sumQty').textContent = quantity;
-      document.getElementById('sumPrice').textContent = `${adminSettings.currencySymbol}${subtotal.toLocaleString()}`;
-      document.getElementById('sumDel').textContent = `${adminSettings.currencySymbol}${deliveryCharge}`;
-      document.getElementById('sumGateway').textContent = `${adminSettings.currencySymbol}${gatewayCharge.toFixed(2)}`;
-      document.getElementById('sumTotal').textContent = `${adminSettings.currencySymbol}${total.toLocaleString()}`;
+      document.getElementById('sumPrice').textContent = formatPrice(subtotal);
+      document.getElementById('sumDel').innerHTML = `${adminSettings.currency === 'USD' ? '$' : '₹'}${deliveryCharge}`;
+      document.getElementById('sumGateway').textContent = formatPrice(gatewayCharge);
+      document.getElementById('sumTotal').textContent = formatPrice(total);
       
       const chargeNote = document.getElementById('paymentChargeNote');
       if (chargeNote) {
@@ -4593,7 +4619,7 @@
         range.style.width = (maxPercent - minPercent) + '%';
         
         const minValue = Math.round(minPrice + (minPercent / 100) * (maxPrice - minPrice));
-        const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - maxPrice));
+        const maxValue = Math.round(minPrice + (maxPercent / 100) * (maxPrice - minPrice));
         
         minInput.value = minValue;
         maxInput.value = maxValue;
@@ -5198,20 +5224,9 @@
     function updateAdminSettingsUI() {
       document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
       document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
-      const currencySymbolElements = document.querySelectorAll('[id$="currencySymbol"], [id$="CurrencySymbol"]');
-      currencySymbolElements.forEach(el => {
-        el.textContent = adminSettings.currencySymbol;
-      });
-      document.getElementById('heroTitle').innerHTML = adminSettings.heroTitle;
-      document.getElementById('heroSubtitle').textContent = adminSettings.heroSubtitle;
-      const heroMessagesContainer = document.getElementById('heroMessages');
-      heroMessagesContainer.innerHTML = '';
-      adminSettings.heroMessages.forEach((msg, index) => {
-        const span = document.createElement('span');
-        span.textContent = msg;
-        if (index === 0) span.classList.add('active');
-        heroMessagesContainer.appendChild(span);
-      });
+      document.getElementById('heroHeading').innerHTML = adminSettings.heroHeading || 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
+      document.getElementById('heroSubheading').textContent = adminSettings.heroSubheading || 'Clean, fast checkout. Hand‑picked products. Fully responsive UI.';
+      updateCurrencySymbols();
     }
 
     function fetchLiveData() {
@@ -5344,6 +5359,16 @@
       }).catch(error => {
         console.error('Error fetching out of stock items:', error);
       });
+      
+      get(ref(database, 'popularSearches')).then(snapshot => {
+        if (snapshot.exists()) popularSearches = snapshot.val();
+        loadPopularSearches();
+      }).catch(console.error);
+      
+      get(ref(database, 'searchTags')).then(snapshot => {
+        if (snapshot.exists()) searchTags = snapshot.val();
+        loadSearchTags();
+      }).catch(console.error);
     }
 
     function loadCachedData() {
@@ -5499,6 +5524,20 @@
           window.outOfStockItems = outOfStockObj;
         }
       });
+      
+      onValue(ref(database, 'popularSearches'), snapshot => {
+        if (snapshot.exists()) {
+          popularSearches = snapshot.val();
+          loadPopularSearches();
+        }
+      });
+      
+      onValue(ref(database, 'searchTags'), snapshot => {
+        if (snapshot.exists()) {
+          searchTags = snapshot.val();
+          loadSearchTags();
+        }
+      });
     }
 
     function adjustZoom(delta) {
@@ -5631,6 +5670,34 @@
             reader.readAsDataURL(file);
           }
         });
+      }
+    }
+
+    function setupCurrencySelector() {
+      document.querySelectorAll('.currency-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const currency = this.dataset.currency;
+          adminSettings.currency = currency;
+          localStorage.setItem('preferredCurrency', currency);
+          document.querySelectorAll('.currency-btn').forEach(b => {
+            b.style.background = b === this ? 'var(--accent)' : 'var(--surface)';
+            b.style.color = b === this ? 'white' : 'var(--text)';
+          });
+          updateCurrencySymbols();
+          if (currentProduct) {
+            document.getElementById('detailPrice').textContent = formatPrice(currentProduct.price);
+          }
+          if (document.getElementById('paymentPage')?.classList.contains('active')) {
+            updatePaymentSummary();
+          }
+          renderProducts(products, 'homeProductGrid');
+          renderProducts(products, 'productGrid');
+        });
+      });
+      const savedCurrency = localStorage.getItem('preferredCurrency');
+      if (savedCurrency) {
+        adminSettings.currency = savedCurrency;
+        document.querySelector(`.currency-btn[data-currency="${savedCurrency}"]`)?.click();
       }
     }
 
@@ -5799,6 +5866,7 @@
       recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
       
       setupEventListeners();
+      setupCurrencySelector();
       
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
