@@ -89,6 +89,7 @@
       font-size: 20px;
       font-weight: 700;
       flex: 1;
+      cursor: pointer;
     }
 
     .chip {
@@ -288,6 +289,11 @@
     .badge-system {
       background: rgba(34, 197, 94, 0.1);
       color: var(--success-color);
+    }
+
+    .badge-warning {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
     }
 
     /* Empty State */
@@ -587,12 +593,36 @@
       to { transform: rotate(360deg); }
     }
   </style>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
+      authDomain: "buyzocart.firebaseapp.com",
+      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
+      projectId: "buyzocart",
+      storageBucket: "buyzocart.firebasestorage.app",
+      messagingSenderId: "640560737762",
+      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+    
+    window.firebase = { app, database, auth, ref, get, onValue };
+  </script>
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
   <div class="header">
     <div class="header-content">
       <button class="back-btn" onclick="goBack()">←</button>
-      <div class="brand">
+      <div class="brand" onclick="goToHome()">
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
@@ -621,11 +651,11 @@
     </div>
 
     <div class="tabs">
-      <div class="tab active" onclick="filterNotifications('all')">All</div>
-      <div class="tab" onclick="filterNotifications('unread')">Unread</div>
-      <div class="tab" onclick="filterNotifications('orders')">Orders</div>
-      <div class="tab" onclick="filterNotifications('offers')">Offers</div>
-      <div class="tab" onclick="filterNotifications('system')">System</div>
+      <div class="tab active" onclick="filterNotifications('all', this)">All</div>
+      <div class="tab" onclick="filterNotifications('unread', this)">Unread</div>
+      <div class="tab" onclick="filterNotifications('orders', this)">Orders</div>
+      <div class="tab" onclick="filterNotifications('offers', this)">Offers</div>
+      <div class="tab" onclick="filterNotifications('system', this)">System</div>
     </div>
 
     <div id="notificationsList" class="notifications-container">
@@ -717,14 +747,19 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // Sample notifications data
+    // Initialize EmailJS
+    (function() {
+      emailjs.init("user_your_user_id_here");
+    })();
+
+    // Sample notifications data with real timestamps
     let notifications = [
       {
         id: 1,
         type: 'order',
         title: 'Order Confirmed',
         message: 'Your order #ORDER-20250221-123456 has been confirmed and will be shipped soon.',
-        time: '5 minutes ago',
+        timestamp: Date.now() - 5 * 60 * 1000, // 5 minutes ago
         read: false,
         badge: 'Order Update'
       },
@@ -733,7 +768,7 @@
         type: 'offer',
         title: 'Flash Sale! 40% Off',
         message: 'Limited time offer on all fashion items. Use code FLASH40 at checkout.',
-        time: '2 hours ago',
+        timestamp: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
         read: false,
         badge: 'Special Offer'
       },
@@ -742,7 +777,7 @@
         type: 'order',
         title: 'Order Shipped',
         message: 'Your order #ORDER-20250220-789012 has been shipped. Track your package now.',
-        time: '1 day ago',
+        timestamp: Date.now() - 24 * 60 * 60 * 1000, // 1 day ago
         read: true,
         badge: 'Shipping Update'
       },
@@ -751,7 +786,7 @@
         type: 'system',
         title: 'Welcome to Buyzo Cart!',
         message: 'Thank you for joining us. Complete your profile to get personalized recommendations.',
-        time: '3 days ago',
+        timestamp: Date.now() - 3 * 24 * 60 * 60 * 1000, // 3 days ago
         read: true,
         badge: 'Welcome'
       },
@@ -760,7 +795,7 @@
         type: 'offer',
         title: 'New Year Sale',
         message: 'Start the year with amazing deals. Up to 60% off on electronics.',
-        time: '1 week ago',
+        timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000, // 1 week ago
         read: true,
         badge: 'Seasonal Sale'
       },
@@ -769,7 +804,7 @@
         type: 'order',
         title: 'Order Delivered',
         message: 'Your order #ORDER-20250218-345678 has been delivered. Hope you love your purchase!',
-        time: '1 week ago',
+        timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000, // 1 week ago
         read: true,
         badge: 'Delivered'
       },
@@ -778,7 +813,7 @@
         type: 'warning',
         title: 'Payment Failed',
         message: 'Payment for order #ORDER-20250217-901234 failed. Please update your payment method.',
-        time: '2 weeks ago',
+        timestamp: Date.now() - 14 * 24 * 60 * 60 * 1000, // 2 weeks ago
         read: true,
         badge: 'Action Required'
       },
@@ -787,7 +822,7 @@
         type: 'system',
         title: 'Password Changed',
         message: 'Your account password was successfully changed.',
-        time: '2 weeks ago',
+        timestamp: Date.now() - 14 * 24 * 60 * 60 * 1000, // 2 weeks ago
         read: true,
         badge: 'Security'
       }
@@ -795,12 +830,35 @@
 
     let currentFilter = 'all';
     let currentCurrency = localStorage.getItem('userCurrency') || '₹';
+    let currentUser = null;
+
+    // Format time ago
+    function timeAgo(timestamp) {
+      const seconds = Math.floor((Date.now() - timestamp) / 1000);
+      
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + ' years ago';
+      
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + ' months ago';
+      
+      interval = seconds / 86400;
+      if (interval > 1) return Math.floor(interval) + ' days ago';
+      
+      interval = seconds / 3600;
+      if (interval > 1) return Math.floor(interval) + ' hours ago';
+      
+      interval = seconds / 60;
+      if (interval > 1) return Math.floor(interval) + ' minutes ago';
+      
+      return Math.floor(seconds) + ' seconds ago';
+    }
 
     function loadNotifications() {
       const container = document.getElementById('notificationsList');
       const emptyState = document.getElementById('emptyNotifications');
       
-      let filteredNotifications = notifications;
+      let filteredNotifications = [...notifications];
       
       if (currentFilter === 'unread') {
         filteredNotifications = notifications.filter(n => !n.read);
@@ -811,6 +869,9 @@
       } else if (currentFilter === 'system') {
         filteredNotifications = notifications.filter(n => n.type === 'system');
       }
+      
+      // Sort by timestamp (newest first)
+      filteredNotifications.sort((a, b) => b.timestamp - a.timestamp);
       
       if (filteredNotifications.length === 0) {
         container.style.display = 'none';
@@ -835,6 +896,8 @@
       div.setAttribute('data-id', notification.id);
       
       let iconSvg = '';
+      let iconClass = notification.type;
+      
       if (notification.type === 'order') {
         iconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>';
       } else if (notification.type === 'offer') {
@@ -845,14 +908,16 @@
         iconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
       }
       
+      const timeAgoText = timeAgo(notification.timestamp);
+      
       div.innerHTML = `
-        <div class="notification-icon ${notification.type}">
+        <div class="notification-icon ${iconClass}">
           ${iconSvg}
         </div>
         <div class="notification-content">
           <div class="notification-header">
             <span class="notification-title">${notification.title}</span>
-            <span class="notification-time">${notification.time}</span>
+            <span class="notification-time">${timeAgoText}</span>
           </div>
           <div class="notification-message">${notification.message}</div>
           <div class="notification-badge badge-${notification.type}">${notification.badge}</div>
@@ -864,31 +929,51 @@
       return div;
     }
 
-    function filterNotifications(filter) {
+    function filterNotifications(filter, element) {
       currentFilter = filter;
       
       document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
       });
       
-      event.target.classList.add('active');
+      element.classList.add('active');
       
       loadNotifications();
     }
 
     function markAsRead(id) {
       const notification = notifications.find(n => n.id === id);
-      if (notification) {
+      if (notification && !notification.read) {
         notification.read = true;
         loadNotifications();
         showToast('Notification marked as read');
+        
+        // Update unread count in header if needed
+        updateUnreadCount();
       }
     }
 
     function markAllAsRead() {
-      notifications.forEach(n => n.read = true);
-      loadNotifications();
-      showToast('All notifications marked as read');
+      let hasUnread = false;
+      notifications.forEach(n => {
+        if (!n.read) {
+          n.read = true;
+          hasUnread = true;
+        }
+      });
+      
+      if (hasUnread) {
+        loadNotifications();
+        showToast('All notifications marked as read');
+        updateUnreadCount();
+      } else {
+        showToast('No unread notifications');
+      }
+    }
+
+    function updateUnreadCount() {
+      const unreadCount = notifications.filter(n => !n.read).length;
+      // Can update header badge here if needed
     }
 
     function setCurrency(currency) {
@@ -949,6 +1034,30 @@
       window.location.href = 'index.html';
     }
 
+    // Firebase Auth State Observer
+    if (window.firebase && window.firebase.auth) {
+      window.firebase.onAuthStateChanged(window.firebase.auth, (user) => {
+        if (user) {
+          currentUser = user;
+          // Load user-specific notifications from Firebase if needed
+          loadUserNotifications(user.uid);
+        }
+      });
+    }
+
+    async function loadUserNotifications(userId) {
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'notifications/' + userId));
+        if (snapshot.exists()) {
+          const firebaseNotifications = snapshot.val();
+          // Merge with existing notifications or replace
+          // This is just a sample - implement as needed
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
       // Load theme
@@ -969,6 +1078,7 @@
       
       loadSettings();
       loadNotifications();
+      updateUnreadCount();
     });
   </script>
 </body>
