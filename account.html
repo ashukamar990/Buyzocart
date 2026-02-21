@@ -2,192 +2,195 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>My Account - Buyzocart Shop</title>
-  <meta name="description" content="Manage your Buyzo Cart account, orders, wishlist, and settings."/>
-  <meta name="robots" content="noindex, follow">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Account - BuyzoCart</title>
+  <meta name="description" content="Manage your BuyzoCart account, orders, wishlist, and preferences in one place." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #3b82f6;
+      --secondary: #64748b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --dark: #0f172a;
+      --light: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-400: #94a3b8;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
       --bg: #ffffff;
-      --card: #ffffff;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --muted: #64748b;
-      --muted-light: #94a3b8;
-      --success: #22c55e;
-      --error: #ef4444;
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
-      --ring: #dbeafe;
-      --ink: #0f172a;
-      --ink-2: #334155;
+      --bg-secondary: #f8fafc;
+      --text: #0f172a;
+      --text-secondary: #475569;
       --border: #e2e8f0;
+      --card-bg: #ffffff;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
       --radius: 12px;
-      --transition: all 0.3s ease;
+      --radius-sm: 8px;
+      --transition: all 0.2s ease;
     }
 
     [data-theme="dark"] {
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --primary-light: #60a5fa;
       --bg: #0f172a;
-      --card: #1e293b;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --muted: #94a3b8;
-      --muted-light: #64748b;
-      --success: #22c55e;
-      --error: #ef4444;
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.3);
-      --ring: #1e3a8a;
-      --ink: #f1f5f9;
-      --ink-2: #cbd5e1;
+      --bg-secondary: #1e293b;
+      --text: #f1f5f9;
+      --text-secondary: #cbd5e1;
       --border: #334155;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
+      --card-bg: #1e293b;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+      --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
     }
 
     body {
-      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: "Inter", sans-serif;
       background: var(--bg);
-      color: var(--ink);
+      color: var(--text);
       line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
       transition: var(--transition);
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* Header */
     header {
-      background: var(--card);
-      box-shadow: var(--shadow);
-      padding: 16px 24px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 50;
-      border-bottom: 1px solid var(--border);
-      transition: var(--transition);
+      backdrop-filter: blur(8px);
+      background: rgba(var(--card-bg-rgb), 0.95);
     }
 
     .header-inner {
-      max-width: 1100px;
+      max-width: 1280px;
       margin: 0 auto;
+      padding: 1rem 2rem;
       display: flex;
       align-items: center;
-      gap: 16px;
       justify-content: space-between;
     }
 
     .brand {
-      font-weight: 800;
-      color: var(--ink);
-      font-size: 20px;
-      white-space: nowrap;
       display: flex;
       align-items: center;
-      gap: 8px;
-      cursor: pointer;
-    }
-
-    .brand .chip {
-      background: var(--accent);
-      color: #fff;
+      gap: 0.5rem;
       font-weight: 700;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    .cta {
-      display: flex;
-      gap: 10px;
-      position: relative;
-      align-items: center;
-    }
-
-    .btn {
-      background: var(--accent);
-      color: #fff;
-      border: 0;
-      padding: 10px 16px;
-      border-radius: var(--radius);
+      font-size: 1.5rem;
+      color: var(--text);
       cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: all 0.2s ease;
+    }
+
+    .brand-chip {
+      background: var(--primary);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Buttons */
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      font-size: 0.875rem;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      background: var(--primary);
+      color: white;
     }
 
     .btn:hover {
-      background: var(--accent-hover);
+      background: var(--primary-dark);
       transform: translateY(-1px);
     }
 
-    .btn.secondary {
-      background: #f1f5f9;
-      color: var(--ink-2);
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
     }
 
-    .btn.secondary:hover {
-      background: #e2e8f0;
-      transform: translateY(-1px);
+    .btn-outline:hover {
+      background: var(--bg-secondary);
+      border-color: var(--primary);
     }
 
-    .btn.error {
-      background: var(--error);
+    .btn-danger {
+      background: var(--danger);
     }
 
-    .btn.error:hover {
-      background: #dc2626;
+    .btn-danger:hover {
+      background: var(--danger-dark);
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
     }
 
     .btn:disabled {
-      opacity: 0.6;
+      opacity: 0.5;
       cursor: not-allowed;
-      transform: none;
+      pointer-events: none;
     }
 
-    /* Theme Toggle Button */
+    /* Theme Toggle */
     .theme-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 8px;
-      border-radius: 50%;
-      transition: all 0.2s ease;
-      color: var(--ink);
+      cursor: pointer;
+      color: var(--text);
+      transition: var(--transition);
     }
 
     .theme-toggle:hover {
-      background: var(--border);
-    }
-
-    .theme-toggle svg {
-      width: 20px;
-      height: 20px;
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
     .theme-toggle .moon-icon {
@@ -202,410 +205,448 @@
       display: block;
     }
 
-    /* Container */
-    .container {
-      max-width: 1100px;
-      margin: 28px auto;
-      padding: 0 20px;
-      min-height: 70vh;
-    }
-
-    /* Pages */
-    .page {
-      display: none;
-    }
-
-    .page.active {
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .card-panel {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      margin-bottom: 16px;
-      border: 1px solid var(--border);
-      transition: var(--transition);
-    }
-
-    label {
-      display: block;
-      font-size: 14px;
-      color: var(--muted);
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-
-    input, select, textarea {
-      width: 100%;
-      padding: 12px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background: var(--card);
-      outline: none;
-      font-family: inherit;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      color: var(--ink);
-    }
-
-    input:focus, select:focus, textarea:focus {
-      box-shadow: 0 0 0 3px var(--ring);
-      border-color: var(--accent);
-    }
-
-    .row {
-      display: flex;
-      gap: 16px;
-    }
-
-    .col {
-      flex: 1;
-    }
-
-    .center {
-      text-align: center;
-    }
-
-    footer {
-      margin-top: 48px;
-      text-align: center;
-      color: var(--muted);
-      padding: 28px 0;
-      border-top: 1px solid var(--border);
-      transition: var(--transition);
-    }
-
     /* User Profile */
     .user-profile {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      border-radius: 40px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
       cursor: pointer;
-      position: relative;
+      transition: var(--transition);
     }
-    
+
+    .user-profile:hover {
+      border-color: var(--primary);
+    }
+
     .user-avatar {
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: var(--accent);
+      background: var(--primary);
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 0.875rem;
     }
-    
+
     .user-avatar-img {
       width: 32px;
       height: 32px;
       border-radius: 50%;
       object-fit: cover;
     }
-    
+
     .user-name {
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1280px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    /* Pages */
+    .page {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
       font-weight: 600;
-      color: var(--ink);
+      color: var(--text);
     }
 
-    /* Toast Notification */
-    .toast {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--card);
-      color: var(--ink);
-      padding: 16px 20px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-hover);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      z-index: 1000;
-      transform: translateX(-50%) translateY(-100px);
-      opacity: 0;
-      transition: all 0.3s ease;
-      max-width: 90%;
-      text-align: center;
-    }
-    
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-    }
-    
-    .toast.success {
-      border-left: 4px solid var(--success);
-    }
-    
-    .toast.error {
-      border-left: 4px solid var(--error);
-    }
-    
-    .toast-icon {
-      font-size: 20px;
-    }
-    
-    .toast.success .toast-icon {
-      color: var(--success);
-    }
-    
-    .toast.error .toast-icon {
-      color: var(--error);
+    /* Forms */
+    .form-group {
+      margin-bottom: 1.25rem;
     }
 
-    /* Alert Modal */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.3s ease;
-    }
-    
-    .modal-overlay.active {
-      opacity: 1;
-      visibility: visible;
-    }
-    
-    .alert-modal {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow-hover);
-      max-width: 500px;
-      width: 90%;
-      text-align: center;
-    }
-    
-    .alert-modal h3 {
-      margin-top: 0;
-      margin-bottom: 16px;
-      color: var(--ink);
-    }
-    
-    .alert-modal p {
-      margin-bottom: 20px;
-      line-height: 1.6;
-    }
-    
-    .alert-modal .alert-icon {
-      font-size: 48px;
-      color: var(--error);
-      margin-bottom: 16px;
-    }
-    
-    .alert-modal-buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 20px;
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
     }
 
-    /* Account Page Styles */
-    .account-page {
-      padding: 20px;
+    .form-control {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.875rem;
+      transition: var(--transition);
     }
 
-    .back-button {
-      display: inline-flex;
-      align-items: center;
-      margin-bottom: 20px;
-      color: var(--accent);
-      font-weight: 600;
-      cursor: pointer;
-      padding: 8px 16px;
-      border-radius: var(--radius);
-      background: #f1f5f9;
-      transition: all 0.2s ease;
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
-    [data-theme="dark"] .back-button {
-      background: #1e293b;
-    }
-    
-    .back-button:hover {
-      background: #e2e8f0;
-      color: var(--accent-hover);
+    .form-control:read-only {
+      background: var(--bg-secondary);
+      cursor: not-allowed;
     }
 
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Account Header */
     .account-header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
+      gap: 2rem;
+      margin-bottom: 2rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: var(--radius);
+      color: white;
     }
 
     .account-avatar {
-      width: 80px;
-      height: 80px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
-      background: var(--accent);
-      color: white;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
-      font-weight: 700;
+      font-size: 2.5rem;
+      font-weight: 600;
+      border: 3px solid rgba(255, 255, 255, 0.3);
     }
 
     .account-avatar-img {
-      width: 80px;
-      height: 80px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       object-fit: cover;
     }
 
-    .account-info h2 {
-      margin: 0 0 4px 0;
-      font-size: 24px;
+    .account-info h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
     }
 
     .account-info p {
-      margin: 0;
-      color: var(--muted);
+      opacity: 0.9;
+      font-size: 1rem;
     }
 
-    .account-menu {
+    /* Menu Grid */
+    .menu-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
 
-    .account-menu-item {
-      background: var(--card);
+    .menu-item {
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 1.5rem 1rem;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 0.75rem;
       cursor: pointer;
-      transition: all 0.2s ease;
-      text-align: center;
+      transition: var(--transition);
     }
 
-    .account-menu-item:hover {
+    .menu-item:hover {
+      border-color: var(--primary);
       transform: translateY(-2px);
-      box-shadow: var(--shadow-hover);
-      border-color: var(--accent);
+      box-shadow: var(--shadow-md);
     }
 
-    .account-menu-item svg {
+    .menu-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-icon svg {
       width: 24px;
       height: 24px;
-      color: var(--accent);
     }
 
-    .account-menu-item span {
+    .menu-label {
       font-weight: 600;
-      font-size: 14px;
+      color: var(--text);
     }
 
-    .account-section {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow);
-      margin-bottom: 24px;
-      border: 1px solid var(--border);
-    }
-
-    .account-section h3 {
-      margin-top: 0;
-      margin-bottom: 16px;
-      color: var(--accent);
-      font-size: 18px;
-    }
-
-    .profile-form {
+    /* Product Card */
+    .product-card {
       display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .address-card {
-      background: #f8fafc;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 12px;
-      transition: all 0.2s ease;
+      transition: var(--transition);
+      margin-bottom: 1rem;
     }
 
-    [data-theme="dark"] .address-card {
-      background: #1e293b;
+    .product-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .product-image {
+      width: 100px;
+      height: 100px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+    }
+
+    .product-details {
+      flex: 1;
+    }
+
+    .product-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .product-price {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .product-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .star {
+      color: #fbbf24;
+    }
+
+    .star.inactive {
+      color: var(--gray-300);
+    }
+
+    /* Order Card */
+    .order-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      transition: var(--transition);
+    }
+
+    .order-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .order-id {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .order-status {
+      padding: 0.25rem 1rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .order-status.delivered {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .order-status.processing {
+      background: #fed7aa;
+      color: #92400e;
+    }
+
+    .order-status.shipped {
+      background: #bfdbfe;
+      color: #1e40af;
+    }
+
+    .order-items {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .order-item {
+      display: flex;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+    }
+
+    .order-item-image {
+      width: 60px;
+      height: 60px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+    }
+
+    /* Address Card */
+    .address-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      transition: var(--transition);
     }
 
     .address-card:hover {
-      border-color: var(--accent);
+      border-color: var(--primary);
     }
 
-    .address-card.selected {
-      border-color: var(--accent);
-      background: var(--ring);
+    .address-card.default {
+      border-left: 4px solid var(--primary);
+    }
+
+    .address-name {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .address-details {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .address-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: var(--primary-light);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: capitalize;
+      margin-right: 0.5rem;
+    }
+
+    .address-badge.default {
+      background: var(--success);
     }
 
     .address-actions {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 0.5rem;
+      margin-top: 1rem;
     }
 
-    .setting-item {
+    /* Settings Item */
+    .settings-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
+      padding: 1rem 0;
       border-bottom: 1px solid var(--border);
     }
 
-    .setting-item:last-child {
+    .settings-item:last-child {
       border-bottom: none;
     }
 
-    .setting-info h4 {
-      margin: 0 0 4px 0;
-      font-size: 14px;
+    .settings-info h4 {
+      font-size: 0.875rem;
       font-weight: 600;
+      margin-bottom: 0.25rem;
     }
 
-    .setting-info p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 12px;
+    .settings-info p {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
     }
 
-    .toggle-switch {
+    /* Toggle Switch */
+    .toggle {
       position: relative;
       display: inline-block;
-      width: 50px;
+      width: 48px;
       height: 24px;
     }
 
-    .toggle-switch input {
+    .toggle input {
       opacity: 0;
       width: 0;
       height: 0;
@@ -618,206 +659,173 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #ccc;
-      transition: .4s;
+      background: var(--gray-300);
+      transition: .3s;
       border-radius: 24px;
     }
 
     .toggle-slider:before {
       position: absolute;
       content: "";
-      height: 16px;
-      width: 16px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      transition: .3s;
       border-radius: 50%;
     }
 
     input:checked + .toggle-slider {
-      background-color: var(--accent);
+      background: var(--primary);
     }
 
     input:checked + .toggle-slider:before {
-      transform: translateX(26px);
+      transform: translateX(24px);
     }
 
-    /* Logout Button */
-    .logout-btn {
-      background: var(--error);
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      display: inline-flex;
+    /* Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(4px);
     }
 
-    .logout-btn:hover {
-      background: #dc2626;
-      transform: translateY(-1px);
+    .modal.active {
+      opacity: 1;
+      visibility: visible;
     }
 
-    /* Professional Account Section Styles */
-    .account-section.professional {
-      border-left: 4px solid var(--accent);
+    .modal-content {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
     }
 
-    .account-section.danger-zone {
-      border-left: 4px solid var(--error);
-      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+    .modal.active .modal-content {
+      transform: translateY(0);
     }
 
-    [data-theme="dark"] .account-section.danger-zone {
-      background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--card-bg);
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.5rem;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 1000;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast.success {
+      border-left-color: var(--success);
+    }
+
+    .toast.error {
+      border-left-color: var(--danger);
+    }
+
+    .toast.warning {
+      border-left-color: var(--warning);
     }
 
     /* Loading Spinner */
-    .loading-spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #f3f3f3;
-      border-top: 2px solid var(--accent);
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
       border-radius: 50%;
       animation: spin 1s linear infinite;
+      margin: 2rem auto;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
-    /* Product Card Styles */
-    .product-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 16px;
-      display: flex;
-      gap: 16px;
-      transition: all 0.2s ease;
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--text-secondary);
     }
 
-    .product-card:hover {
-      box-shadow: var(--shadow-hover);
-      border-color: var(--accent);
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
     }
 
-    .product-image {
-      width: 100px;
-      height: 100px;
-      border-radius: 8px;
-      object-fit: cover;
-    }
-
-    .product-info {
-      flex: 1;
-    }
-
-    .product-title {
+    .empty-state-title {
+      font-size: 1.125rem;
       font-weight: 600;
-      margin-bottom: 4px;
-      font-size: 16px;
+      margin-bottom: 0.5rem;
     }
 
-    .product-price {
-      color: var(--accent);
-      font-weight: 700;
-      font-size: 18px;
-      margin-bottom: 8px;
+    .empty-state-description {
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
     }
 
-    .product-rating {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-
-    .star {
-      color: #fbbf24;
-    }
-
-    .order-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 16px;
-      transition: all 0.2s ease;
-    }
-
-    .order-card:hover {
-      box-shadow: var(--shadow-hover);
-      border-color: var(--accent);
-    }
-
-    .order-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .order-id {
-      font-weight: 600;
-      color: var(--accent);
-    }
-
-    .order-status {
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .order-status.delivered {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .order-status.processing {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .order-status.shipped {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    .order-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .order-item {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .order-item-image {
-      width: 60px;
-      height: 60px;
-      border-radius: 8px;
-      object-fit: cover;
-    }
-
-    /* Login Activity Styles */
+    /* Activity List */
     .activity-list {
       max-height: 400px;
       overflow-y: auto;
@@ -827,13 +835,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 16px;
+      padding: 1rem;
       border-bottom: 1px solid var(--border);
-      transition: all 0.2s ease;
     }
 
-    .activity-item:hover {
-      background: var(--ring);
+    .activity-item:last-child {
+      border-bottom: none;
     }
 
     .activity-info {
@@ -841,71 +848,58 @@
     }
 
     .activity-time {
-      font-size: 12px;
-      color: var(--muted);
+      font-size: 0.875rem;
+      font-weight: 500;
     }
 
     .activity-device {
-      font-size: 12px;
-      color: var(--accent);
-      margin-top: 2px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
     }
 
     .activity-status {
-      font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 12px;
+      padding: 0.25rem 0.75rem;
       background: var(--success);
       color: white;
-    }
-
-    /* Change Password Modal Specific Styles */
-    .change-password-form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 20px;
-    }
-
-    /* Empty State Styles */
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--muted);
-    }
-
-    .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state-title {
-      font-size: 18px;
+      border-radius: 20px;
+      font-size: 0.75rem;
       font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--ink);
     }
 
-    .empty-state-description {
-      font-size: 14px;
-      max-width: 400px;
-      margin: 0 auto 20px;
+    /* Danger Zone */
+    .danger-zone {
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      border-left: 4px solid var(--danger);
+    }
+
+    [data-theme="dark"] .danger-zone {
+      background: linear-gradient(135deg, #7f1d1d, #991b1b);
     }
 
     /* Responsive */
     @media (max-width: 768px) {
-      .account-menu {
-        grid-template-columns: 1fr;
+      .header-inner {
+        padding: 1rem;
+      }
+
+      .container {
+        padding: 0 1rem;
+        margin: 1rem auto;
       }
 
       .account-header {
         flex-direction: column;
         text-align: center;
+        padding: 1.5rem;
       }
 
-      .header-inner {
-        flex-wrap: wrap;
+      .menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
       }
 
       .product-card {
@@ -920,21 +914,39 @@
       .order-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: 0.5rem;
+      }
+
+      .toast {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        transform: translateY(100px);
+      }
+
+      .toast.show {
+        transform: translateY(0);
       }
     }
 
     @media (max-width: 480px) {
-      .container {
-        padding: 0 16px;
-      }
-      
-      .row {
-        flex-direction: column;
+      .menu-grid {
+        grid-template-columns: 1fr;
       }
 
-      .address-actions {
-        flex-direction: column;
+      .account-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+      }
+
+      .account-avatar-img {
+        width: 80px;
+        height: 80px;
+      }
+
+      .account-info h1 {
+        font-size: 1.5rem;
       }
     }
   </style>
@@ -944,35 +956,38 @@
   <header>
     <div class="header-inner">
       <div class="brand" onclick="window.location.href='index.html'">
-        <span class="chip">BUYZO</span>
+        <span class="brand-chip">BUYZO</span>
         <span>Cart</span>
       </div>
-      <div class="cta">
-        <!-- Theme Toggle Button -->
-        <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
-          <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      <div class="header-actions">
+        <button class="theme-toggle" id="themeToggle">
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
-          <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
-        
-        <button class="btn secondary" onclick="window.location.href='index.html'">Back to Home</button>
-        <div class="user-profile" id="userProfile" style="display:none;">
+        <button class="btn-outline btn-sm" onclick="window.location.href='index.html'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
+        </button>
+        <div class="user-profile" id="userProfile" style="display: none;">
           <div class="user-avatar" id="userAvatar">
-            <img class="user-avatar-img" id="userAvatarImg" style="display:none;" />
+            <img class="user-avatar-img" id="userAvatarImg" style="display: none;" />
             <span id="userAvatarInitial">U</span>
           </div>
-          <div class="user-name" id="userName">User</div>
+          <span class="user-name" id="userName">User</span>
         </div>
       </div>
     </div>
@@ -981,427 +996,382 @@
   <main class="container">
     <!-- Account Page -->
     <section class="page active" id="accountPage">
-      <div class="account-page">
-        <div class="back-button" onclick="window.location.href='index.html'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to Home
+      <div class="account-header">
+        <div class="account-avatar" id="accountPageAvatar">
+          <img class="account-avatar-img" id="accountPageAvatarImg" style="display: none;" />
+          <span id="accountPageAvatarInitial">U</span>
         </div>
-        
-        <div class="account-header">
-          <div class="account-avatar" id="accountPageAvatar">
-            <img class="account-avatar-img" id="accountPageAvatarImg" style="display:none;" />
-            <span id="accountPageAvatarInitial">U</span>
-          </div>
-          <div class="account-info">
-            <h2 id="accountPageName">User Name</h2>
-            <p id="accountPageEmail">user@example.com</p>
-          </div>
+        <div class="account-info">
+          <h1 id="accountPageName">User Name</h1>
+          <p id="accountPageEmail">user@example.com</p>
         </div>
-        
-        <div class="account-menu">
-          <div class="account-menu-item" onclick="showPage('ordersPage')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+      </div>
+
+      <div class="menu-grid">
+        <div class="menu-item" onclick="showPage('ordersPage')">
+          <div class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
             </svg>
-            <span>My Orders</span>
           </div>
-          <div class="account-menu-item" onclick="showPage('wishlistPage')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-            <span>Wishlist</span>
-          </div>
-          <div class="account-menu-item" onclick="showPage('addressPage')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            <span>Addresses</span>
-          </div>
-          <div class="account-menu-item" onclick="showPage('settingsPage')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-            <span>Settings</span>
-          </div>
+          <span class="menu-label">My Orders</span>
         </div>
-        
-        <div class="account-section professional">
-          <h3>Profile Information</h3>
-          <div class="profile-form">
-            <div>
-              <label>Full Name</label>
-              <input type="text" id="profileName" placeholder="Enter your full name">
-            </div>
-            <div>
-              <label>Email Address</label>
-              <input type="email" id="profileEmail" placeholder="Enter your email" readonly>
-            </div>
-            <div>
-              <label>Phone Number</label>
-              <input type="tel" id="profilePhone" placeholder="Enter your phone number">
-            </div>
-            <button class="btn" id="saveProfile">Save Changes</button>
+        <div class="menu-item" onclick="showPage('wishlistPage')">
+          <div class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
           </div>
+          <span class="menu-label">Wishlist</span>
         </div>
-        
-        <div class="account-section professional">
-          <h3>Account Security</h3>
-          <div class="setting-item">
-            <div class="setting-info">
+        <div class="menu-item" onclick="showPage('addressPage')">
+          <div class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <span class="menu-label">Addresses</span>
+        </div>
+        <div class="menu-item" onclick="showPage('settingsPage')">
+          <div class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+          <span class="menu-label">Settings</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Profile Information</h3>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="profileName" placeholder="Enter your full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="profileEmail" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="tel" class="form-control" id="profilePhone" placeholder="Enter your phone number">
+          </div>
+          <button class="btn" id="saveProfile">Save Changes</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Account Security</h3>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Change Password</h4>
-              <p>Update your password regularly to keep your account secure</p>
+              <p>Update your password regularly</p>
             </div>
-            <button class="btn secondary" id="changePasswordBtn">Change</button>
+            <button class="btn-outline btn-sm" id="changePasswordBtn">Change</button>
           </div>
-          <div class="setting-item">
-            <div class="setting-info">
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Two-Factor Authentication</h4>
-              <p>Add an extra layer of security to your account</p>
+              <p>Add extra security to your account</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="twoFactorToggle">
               <span class="toggle-slider"></span>
             </label>
           </div>
-        </div>
-        
-        <div class="account-section professional">
-          <h3>Login Activity</h3>
-          <p>Last login: <span id="lastLoginTime">Loading...</span></p>
-          <button class="btn secondary" id="viewLoginActivity">View All Activity</button>
+          <div class="settings-item">
+            <div class="settings-info">
+              <h4>Last Login</h4>
+              <p id="lastLoginTime">Loading...</p>
+            </div>
+            <button class="btn-outline btn-sm" id="viewLoginActivity">View All</button>
+          </div>
         </div>
 
-        <!-- Logout Section -->
-        <div class="account-section professional">
-          <h3>Session</h3>
-          <p>Sign out from your account on this device.</p>
-          <button class="logout-btn" id="accountLogoutBtn" style="margin-top: 16px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Session</h3>
+          </div>
+          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Sign out from your account on this device.</p>
+          <button class="btn-danger" id="accountLogoutBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
             Logout
           </button>
         </div>
-        
-        <div class="account-section danger-zone">
-          <h3>Danger Zone</h3>
-          <p>Once you delete your account, there is no going back. Please be certain.</p>
-          <button class="btn error" id="deleteAccountBtn">Delete Account</button>
+
+        <div class="card danger-zone">
+          <div class="card-header">
+            <h3 class="card-title">Danger Zone</h3>
+          </div>
+          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Once you delete your account, there is no going back.</p>
+          <button class="btn-danger" id="deleteAccountBtn">Delete Account</button>
         </div>
       </div>
     </section>
 
     <!-- Settings Page -->
     <section class="page" id="settingsPage">
-      <div class="account-page">
-        <div class="back-button" onclick="showPage('accountPage')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to Account
-        </div>
-        
-        <h2>Settings</h2>
-        
-        <div class="account-section professional">
-          <h3>Notifications</h3>
-          <div class="setting-item">
-            <div class="setting-info">
+      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Account
+      </button>
+
+      <h2 style="margin-bottom: 1.5rem;">Settings</h2>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Notifications</h3>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Email Notifications</h4>
-              <p>Receive order updates and promotional emails</p>
+              <p>Receive order updates and promotions</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="emailNotifications" checked>
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="setting-item">
-            <div class="setting-info">
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>SMS Notifications</h4>
               <p>Receive order updates via SMS</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="smsNotifications" checked>
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="setting-item">
-            <div class="setting-info">
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Push Notifications</h4>
-              <p>Receive push notifications on your device</p>
+              <p>Receive push notifications</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="pushNotifications" checked>
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
-        
-        <div class="account-section professional">
-          <h3>Privacy</h3>
-          <div class="setting-item">
-            <div class="setting-info">
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Privacy</h3>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Personalized Recommendations</h4>
-              <p>Get product recommendations based on your browsing history</p>
+              <p>Get recommendations based on history</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="personalizedRecs" checked>
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="setting-item">
-            <div class="setting-info">
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Data Sharing</h4>
-              <p>Allow us to use your data to improve our services</p>
+              <p>Allow us to improve our services</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="dataSharing" checked>
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
-        
-        <div class="account-section professional">
-          <h3>Appearance</h3>
-          <div class="setting-item">
-            <div class="setting-info">
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Appearance</h3>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Dark Mode</h4>
-              <p>Toggle between light and dark theme</p>
+              <p>Toggle light/dark theme</p>
             </div>
-            <label class="toggle-switch">
+            <label class="toggle">
               <input type="checkbox" id="darkModeToggle">
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="setting-item">
-            <div class="setting-info">
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Language</h4>
               <p>Select your preferred language</p>
             </div>
-            <select id="languageSelect">
+            <select class="form-control" id="languageSelect" style="width: auto;">
               <option value="en">English</option>
-              <option value="hi">Hindi</option>
+              <option value="hi">हिन्दी</option>
             </select>
           </div>
-        </div>
-        
-        <div class="account-section professional">
-          <h3>Preferences</h3>
-          <div class="setting-item">
-            <div class="setting-info">
+          <div class="settings-item">
+            <div class="settings-info">
               <h4>Currency</h4>
               <p>Select your preferred currency</p>
             </div>
-            <select id="currencySelect">
-              <option value="INR">Indian Rupee (₹)</option>
-              <option value="USD">US Dollar ($)</option>
+            <select class="form-control" id="currencySelect" style="width: auto;">
+              <option value="INR">₹ INR</option>
+              <option value="USD">$ USD</option>
             </select>
           </div>
         </div>
-        
-        <button class="btn" id="saveSettings">Save Settings</button>
       </div>
+
+      <button class="btn" id="saveSettings" style="margin-top: 1.5rem;">Save Settings</button>
     </section>
 
     <!-- Address Page -->
     <section class="page" id="addressPage">
-      <div class="account-page">
-        <div class="back-button" onclick="showPage('accountPage')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to Account
-        </div>
-        
+      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Account
+      </button>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h2>My Addresses</h2>
-        
-        <div class="account-section professional">
-          <h3>Saved Addresses</h3>
-          <div id="savedAddresses">
-            <div class="empty-state" id="addressesEmptyState">
-              <div class="empty-state-icon">🏠</div>
-              <div class="empty-state-title">No addresses saved yet</div>
-              <div class="empty-state-description">Add your first address to make checkout faster</div>
-            </div>
-            <!-- Address cards will be dynamically inserted here -->
-          </div>
-          <button class="btn" id="addNewAddress" style="margin-top: 16px;">Add New Address</button>
+        <button class="btn" id="addNewAddress">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add New Address
+        </button>
+      </div>
+
+      <div id="savedAddresses"></div>
+
+      <div class="card" id="newAddressForm" style="display: none;">
+        <div class="card-header">
+          <h3 class="card-title">Add New Address</h3>
         </div>
-        
-        <div class="account-section professional" id="newAddressForm" style="display: none;">
-          <h3>Add New Address</h3>
-          <div class="profile-form">
-            <div>
-              <label>Full Name *</label>
-              <input type="text" id="addressName" placeholder="Enter full name">
-            </div>
-            <div>
-              <label>Mobile Number *</label>
-              <input type="tel" id="addressMobile" placeholder="10-digit mobile number">
-            </div>
-            <div class="row">
-              <div class="col">
-                <label>Pincode *</label>
-                <input type="text" id="addressPincode" placeholder="Pincode">
-              </div>
-              <div class="col">
-                <label>City *</label>
-                <input type="text" id="addressCity" placeholder="City">
-              </div>
-            </div>
-            <div class="row">
-              <div class="col">
-                <label>State *</label>
-                <input type="text" id="addressState" placeholder="State">
-              </div>
-              <div class="col">
-                <label>Address Type</label>
-                <select id="addressType">
-                  <option value="home">Home</option>
-                  <option value="work">Work</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label>House / Street *</label>
-              <textarea id="addressStreet" placeholder="House no., Building, Street, Area" rows="3"></textarea>
-            </div>
-            <div class="row">
-              <div class="col">
-                <button class="btn" id="saveAddress">Save Address</button>
-              </div>
-              <div class="col">
-                <button class="btn secondary" id="cancelAddAddress">Cancel</button>
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-control" id="addressName" placeholder="Enter full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile Number *</label>
+          <input type="tel" class="form-control" id="addressMobile" placeholder="10-digit mobile number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pincode *</label>
+          <input type="text" class="form-control" id="addressPincode" placeholder="Pincode">
+        </div>
+        <div class="form-group">
+          <label class="form-label">City *</label>
+          <input type="text" class="form-control" id="addressCity" placeholder="City">
+        </div>
+        <div class="form-group">
+          <label class="form-label">State *</label>
+          <input type="text" class="form-control" id="addressState" placeholder="State">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address Type</label>
+          <select class="form-control" id="addressType">
+            <option value="home">Home</option>
+            <option value="work">Work</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">House / Street *</label>
+          <textarea class="form-control" id="addressStreet" placeholder="House no., Building, Street, Area" rows="3"></textarea>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button class="btn" id="saveAddress">Save Address</button>
+          <button class="btn-outline" id="cancelAddAddress">Cancel</button>
         </div>
       </div>
     </section>
 
     <!-- Wishlist Page -->
     <section class="page" id="wishlistPage">
-      <div class="account-page">
-        <div class="back-button" onclick="showPage('accountPage')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to Account
-        </div>
-        
-        <h2>My Wishlist</h2>
-        
-        <div class="account-section professional">
-          <h3>Saved Products</h3>
-          <div id="wishlistItems">
-            <div class="empty-state" id="wishlistEmptyState">
-              <div class="empty-state-icon">❤️</div>
-              <div class="empty-state-title">Your wishlist is empty</div>
-              <div class="empty-state-description">Start adding products you love to your wishlist</div>
-            </div>
-            <!-- Wishlist products will be dynamically inserted here -->
-          </div>
-        </div>
-      </div>
+      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Account
+      </button>
+
+      <h2 style="margin-bottom: 1.5rem;">My Wishlist</h2>
+      <div id="wishlistItems"></div>
     </section>
 
     <!-- Orders Page -->
     <section class="page" id="ordersPage">
-      <div class="account-page">
-        <div class="back-button" onclick="showPage('accountPage')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to Account
-        </div>
-        
-        <h2>My Orders</h2>
-        
-        <div class="account-section professional">
-          <h3>Order History</h3>
-          <div id="ordersList">
-            <div class="empty-state" id="ordersEmptyState">
-              <div class="empty-state-icon">📦</div>
-              <div class="empty-state-title">You have no orders yet</div>
-              <div class="empty-state-description">Start shopping to see your orders here</div>
-            </div>
-            <!-- Orders will be dynamically inserted here -->
-          </div>
-        </div>
-      </div>
+      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Account
+      </button>
+
+      <h2 style="margin-bottom: 1.5rem;">My Orders</h2>
+      <div id="ordersList"></div>
     </section>
   </main>
 
-  <!-- Footer -->
-  <footer>
-    <div style="max-width: 1100px; margin: 0 auto; padding: 0 20px;">
-      <p style="color: var(--muted); margin-bottom: 16px;">
-        &copy; 2024 Buyzo Cart. Your trusted online shopping destination.
-      </p>
-      <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
-        <a href="index.html" style="color: var(--accent);">Home</a>
-        <a href="index.html#productsPage" style="color: var(--accent);">Products</a>
-        <a href="contact.html" style="color: var(--accent);">Contact Us</a>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Toast Notification -->
+  <!-- Toast -->
   <div class="toast" id="toast"></div>
 
-  <!-- Alert Modal -->
-  <div class="modal-overlay" id="alertModal">
-    <div class="alert-modal">
-      <div class="alert-icon">⚠️</div>
-      <h3 id="alertTitle">Alert</h3>
-      <p id="alertMessage">This is an alert message.</p>
-      <div class="alert-modal-buttons">
-        <button class="btn secondary" id="alertCancelBtn">Cancel</button>
-        <button class="btn" id="alertConfirmBtn">Yes</button>
+  <!-- Modals -->
+  <div class="modal" id="alertModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="alertTitle">Alert</h3>
+        <button class="modal-close" onclick="closeModal('alertModal')">×</button>
+      </div>
+      <p id="alertMessage" style="margin-bottom: 1.5rem;"></p>
+      <div class="modal-footer">
+        <button class="btn-outline" id="alertCancelBtn">Cancel</button>
+        <button class="btn" id="alertConfirmBtn">Confirm</button>
       </div>
     </div>
   </div>
 
-  <!-- Change Password Modal -->
-  <div class="modal-overlay" id="changePasswordModal">
-    <div class="alert-modal">
-      <div class="alert-icon">🔐</div>
-      <h3>Change Password</h3>
-      <p>We will send a password reset link to your email address. Click the link in the email to change your password.</p>
-      <p><strong id="changePasswordEmail"></strong></p>
-      <div class="alert-modal-buttons">
-        <button class="btn secondary" id="cancelChangePassword">Cancel</button>
+  <div class="modal" id="changePasswordModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Change Password</h3>
+        <button class="modal-close" onclick="closeModal('changePasswordModal')">×</button>
+      </div>
+      <p>We will send a password reset link to:</p>
+      <p style="font-weight: 600; color: var(--primary); margin: 1rem 0;" id="changePasswordEmail"></p>
+      <div class="modal-footer">
+        <button class="btn-outline" id="cancelChangePassword">Cancel</button>
         <button class="btn" id="sendResetLink">Send Reset Link</button>
       </div>
     </div>
   </div>
 
-  <!-- Login Activity Modal -->
-  <div class="modal-overlay" id="loginActivityModal">
-    <div class="alert-modal" style="max-width: 700px;">
-      <div class="alert-icon">📋</div>
-      <h3>Login Activity</h3>
-      <div class="activity-list" id="loginActivityList">
-        <!-- Login activity items will be dynamically inserted here -->
+  <div class="modal" id="loginActivityModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Login Activity</h3>
+        <button class="modal-close" onclick="closeModal('loginActivityModal')">×</button>
       </div>
-      <div class="alert-modal-buttons">
-        <button class="btn secondary" id="closeLoginActivity">Close</button>
-      </div>
+      <div class="activity-list" id="loginActivityList"></div>
     </div>
   </div>
 
-  <!-- Firebase Configuration -->
+  <!-- Firebase Config -->
   <script>
-    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
       authDomain: "buyzocart.firebaseapp.com",
@@ -1412,1021 +1382,538 @@
       appId: "1:640560737762:web:7fe368df6486d6da759dbb"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const realtimeDb = firebase.database();
-  </script>
+    const db = firebase.database();
 
-  <!-- JavaScript -->
-  <script>
-    // Global variables
+    // Global state
     let currentUser = null;
-    let userInfo = {};
+    let editingAddressId = null;
+    let alertCallback = null;
 
-    // DOM Elements
-    const themeToggle = document.getElementById('themeToggle');
-    const toast = document.getElementById('toast');
-    const userProfile = document.getElementById('userProfile');
-    const userAvatar = document.getElementById('userAvatar');
-    const userAvatarImg = document.getElementById('userAvatarImg');
-    const userAvatarInitial = document.getElementById('userAvatarInitial');
-    const userName = document.getElementById('userName');
-    const accountLogoutBtn = document.getElementById('accountLogoutBtn');
-    const alertModal = document.getElementById('alertModal');
-    const alertCancelBtn = document.getElementById('alertCancelBtn');
-    const alertConfirmBtn = document.getElementById('alertConfirmBtn');
-    const alertTitle = document.getElementById('alertTitle');
-    const alertMessage = document.getElementById('alertMessage');
-
-    // Initialize the app
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
       setupEventListeners();
       
-      // Check authentication state
       auth.onAuthStateChanged(user => {
         if (user) {
           currentUser = user;
           updateUIForUser(user);
           loadUserData(user);
-          recordLoginActivity(user);
-          
-          // Load all data with loading states
-          showLoading('wishlistItems');
-          showLoading('ordersList');
-          showLoading('savedAddresses');
-          
           loadAddresses();
           loadWishlist();
           loadOrders();
         } else {
-          // Redirect to index.html if not logged in
           window.location.href = 'index.html';
         }
       });
     });
 
-    function initApp() {
-      // Set initial theme
+    function initTheme() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       if (savedTheme === 'dark') {
         document.getElementById('darkModeToggle').checked = true;
       }
-      
-      // Show account page by default
-      showPage('accountPage');
     }
 
     function setupEventListeners() {
-      // Theme toggle
-      themeToggle.addEventListener('click', toggleTheme);
-      
-      // Dark mode toggle in settings
-      document.getElementById('darkModeToggle')?.addEventListener('change', function() {
-        const isDark = this.checked;
-        const theme = isDark ? 'dark' : 'light';
+      // Theme
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+      document.getElementById('darkModeToggle').addEventListener('change', function(e) {
+        const theme = e.target.checked ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
-        showToast(`${theme === 'dark' ? 'Dark' : 'Light'} mode enabled`, 'success');
       });
+
+      // Profile
+      document.getElementById('saveProfile').addEventListener('click', saveProfile);
+      document.getElementById('changePasswordBtn').addEventListener('click', () => openModal('changePasswordModal'));
+      document.getElementById('deleteAccountBtn').addEventListener('click', showDeleteConfirmation);
+      document.getElementById('accountLogoutBtn').addEventListener('click', showLogoutConfirmation);
+      document.getElementById('viewLoginActivity').addEventListener('click', showLoginActivity);
       
-      // Logout button
-      accountLogoutBtn.addEventListener('click', showLogoutConfirmation);
-      
-      // Alert modal buttons
-      alertCancelBtn.addEventListener('click', () => {
-        alertModal.classList.remove('active');
-      });
-      
-      alertConfirmBtn.addEventListener('click', () => {
-        alertModal.classList.remove('active');
-        if (alertTitle.textContent === 'Logout Confirmation') {
-          logout();
-        } else if (alertTitle.textContent === 'Delete Account') {
-          deleteAccount();
-        }
-      });
-      
-      // Account page buttons
-      document.getElementById('saveProfile')?.addEventListener('click', saveProfile);
-      document.getElementById('changePasswordBtn')?.addEventListener('click', showChangePasswordModal);
-      document.getElementById('deleteAccountBtn')?.addEventListener('click', showDeleteAccountConfirmation);
-      document.getElementById('saveSettings')?.addEventListener('click', saveSettings);
-      
-      // Address page buttons
-      document.getElementById('addNewAddress')?.addEventListener('click', showNewAddressForm);
-      document.getElementById('cancelAddAddress')?.addEventListener('click', hideNewAddressForm);
-      document.getElementById('saveAddress')?.addEventListener('click', saveAddress);
-      
-      // View login activity
-      document.getElementById('viewLoginActivity')?.addEventListener('click', showLoginActivityModal);
-      
-      // Change password modal buttons
-      document.getElementById('cancelChangePassword')?.addEventListener('click', () => {
-        document.getElementById('changePasswordModal').classList.remove('active');
-      });
-      
-      document.getElementById('sendResetLink')?.addEventListener('click', sendPasswordResetEmail);
-      
-      // Close login activity modal
-      document.getElementById('closeLoginActivity')?.addEventListener('click', () => {
-        document.getElementById('loginActivityModal').classList.remove('active');
-      });
-      
-      // Two-factor authentication toggle
-      document.getElementById('twoFactorToggle')?.addEventListener('change', function() {
-        if (this.checked) {
-          showToast('Two-factor authentication enabled', 'success');
-        } else {
-          showToast('Two-factor authentication disabled', 'info');
-        }
-      });
+      // Settings
+      document.getElementById('saveSettings').addEventListener('click', saveSettings);
+
+      // Address
+      document.getElementById('addNewAddress').addEventListener('click', showAddressForm);
+      document.getElementById('cancelAddAddress').addEventListener('click', hideAddressForm);
+      document.getElementById('saveAddress').addEventListener('click', saveAddress);
+
+      // Password modal
+      document.getElementById('cancelChangePassword').addEventListener('click', () => closeModal('changePasswordModal'));
+      document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
+
+      // Alert modal
+      document.getElementById('alertCancelBtn').addEventListener('click', () => closeModal('alertModal'));
+      document.getElementById('alertConfirmBtn').addEventListener('click', handleAlertConfirm);
     }
 
-    // Page navigation
+    // Utility Functions
+    function openModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type}`;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
     function showPage(pageId) {
-      document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-      });
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(pageId).classList.add('active');
-      
-      // Load specific data for certain pages
-      if (pageId === 'addressPage') {
-        loadAddresses();
-      } else if (pageId === 'wishlistPage') {
-        loadWishlist();
-      } else if (pageId === 'ordersPage') {
-        loadOrders();
-      }
-      
-      // Scroll to top
       window.scrollTo(0, 0);
     }
 
-    // Theme functions
+    // Theme
     function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      
-      // Update toggle in settings if it exists
-      const darkModeToggle = document.getElementById('darkModeToggle');
-      if (darkModeToggle) {
-        darkModeToggle.checked = newTheme === 'dark';
-      }
-      
-      showToast(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode enabled`, 'success');
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      document.getElementById('darkModeToggle').checked = next === 'dark';
     }
 
-    // Toast notification
-    function showToast(message, type = 'success') {
-      toast.textContent = message;
-      toast.className = 'toast ' + type;
-      toast.classList.add('show');
-      
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
-
-    // Loading state
-    function showLoading(containerId) {
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.innerHTML = '<div class="loading-spinner" style="margin:40px auto;"></div>';
-      }
-    }
-
-    // User interface updates
+    // User Functions
     function updateUIForUser(user) {
-      userProfile.style.display = 'flex';
+      document.getElementById('userProfile').style.display = 'flex';
       
-      // Update profile with Google data
-      updateUserProfile(user);
-      
-      // Load user data to display
-      realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          userName.textContent = userData.name || user.displayName || 'User';
-          
-          // Update account page
-          if (document.getElementById('accountPageName')) {
-            document.getElementById('accountPageName').textContent = userData.name || user.displayName || 'User';
-            document.getElementById('accountPageEmail').textContent = user.email;
-            document.getElementById('profileName').value = userData.name || user.displayName || '';
-            document.getElementById('profileEmail').value = user.email;
-            document.getElementById('profilePhone').value = userData.phone || '';
-            
-            // Update last login time
-            if (userData.lastLoginAt) {
-              const lastLoginTime = new Date(userData.lastLoginAt).toLocaleString();
-              document.getElementById('lastLoginTime').textContent = lastLoginTime;
-            }
-          }
-        }
-      });
-    }
-
-    // Function to update user profile with Google data
-    function updateUserProfile(user) {
-      // Update header avatar and name
       if (user.photoURL) {
-        userAvatarImg.src = user.photoURL;
-        userAvatarImg.style.display = 'block';
-        userAvatarInitial.style.display = 'none';
+        document.getElementById('userAvatarImg').src = user.photoURL;
+        document.getElementById('userAvatarImg').style.display = 'block';
+        document.getElementById('userAvatarInitial').style.display = 'none';
+        document.getElementById('accountPageAvatarImg').src = user.photoURL;
+        document.getElementById('accountPageAvatarImg').style.display = 'block';
+        document.getElementById('accountPageAvatarInitial').style.display = 'none';
       } else {
-        userAvatarImg.style.display = 'none';
-        userAvatarInitial.style.display = 'block';
-        userAvatarInitial.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
+        const initial = (user.displayName || 'U').charAt(0).toUpperCase();
+        document.getElementById('userAvatarInitial').textContent = initial;
+        document.getElementById('accountPageAvatarInitial').textContent = initial;
       }
-      
-      userName.textContent = user.displayName || 'User';
-      
-      // Update account page
-      if (document.getElementById('accountPageAvatarImg')) {
-        if (user.photoURL) {
-          document.getElementById('accountPageAvatarImg').src = user.photoURL;
-          document.getElementById('accountPageAvatarImg').style.display = 'block';
-          document.getElementById('accountPageAvatarInitial').style.display = 'none';
-        } else {
-          document.getElementById('accountPageAvatarImg').style.display = 'none';
-          document.getElementById('accountPageAvatarInitial').style.display = 'block';
-          document.getElementById('accountPageAvatarInitial').textContent = (user.displayName || 'U').charAt(0).toUpperCase();
-        }
-        
-        document.getElementById('accountPageName').textContent = user.displayName || 'User';
-        document.getElementById('accountPageEmail').textContent = user.email;
-      }
+
+      document.getElementById('userName').textContent = user.displayName || 'User';
+      document.getElementById('accountPageName').textContent = user.displayName || 'User';
+      document.getElementById('accountPageEmail').textContent = user.email;
+      document.getElementById('profileEmail').value = user.email;
     }
 
     function loadUserData(user) {
-      realtimeDb.ref('users/' + user.uid).once('value').then(snapshot => {
+      db.ref(`users/${user.uid}`).once('value').then(snapshot => {
         if (snapshot.exists()) {
-          const userData = snapshot.val();
-          userInfo = { ...userInfo, ...userData };
+          const data = snapshot.val();
+          document.getElementById('profileName').value = data.name || user.displayName || '';
+          document.getElementById('profilePhone').value = data.phone || '';
           
-          // Update last login time in account page
-          if (userData.lastLoginAt && document.getElementById('lastLoginTime')) {
-            const lastLoginTime = new Date(userData.lastLoginAt).toLocaleString();
-            document.getElementById('lastLoginTime').textContent = lastLoginTime;
+          if (data.lastLoginAt) {
+            document.getElementById('lastLoginTime').textContent = new Date(data.lastLoginAt).toLocaleString();
           }
-          
-          // Load settings if they exist
-          if (userData.settings) {
-            loadUserSettings(userData.settings);
+
+          if (data.settings) {
+            loadSettings(data.settings);
           }
         }
-      }).catch(error => {
-        console.error('Error loading user data:', error);
       });
     }
 
-    function loadUserSettings(settings) {
-      // Load notification settings
-      if (settings.emailNotifications !== undefined) {
-        document.getElementById('emailNotifications').checked = settings.emailNotifications;
-      }
-      if (settings.smsNotifications !== undefined) {
-        document.getElementById('smsNotifications').checked = settings.smsNotifications;
-      }
-      if (settings.pushNotifications !== undefined) {
-        document.getElementById('pushNotifications').checked = settings.pushNotifications;
-      }
-      if (settings.personalizedRecs !== undefined) {
-        document.getElementById('personalizedRecs').checked = settings.personalizedRecs;
-      }
-      if (settings.dataSharing !== undefined) {
-        document.getElementById('dataSharing').checked = settings.dataSharing;
-      }
-      if (settings.language) {
-        document.getElementById('languageSelect').value = settings.language;
-      }
-      if (settings.currency) {
-        document.getElementById('currencySelect').value = settings.currency;
-      }
+    function loadSettings(settings) {
+      document.getElementById('emailNotifications').checked = settings.emailNotifications ?? true;
+      document.getElementById('smsNotifications').checked = settings.smsNotifications ?? true;
+      document.getElementById('pushNotifications').checked = settings.pushNotifications ?? true;
+      document.getElementById('personalizedRecs').checked = settings.personalizedRecs ?? true;
+      document.getElementById('dataSharing').checked = settings.dataSharing ?? true;
+      document.getElementById('languageSelect').value = settings.language || 'en';
+      document.getElementById('currencySelect').value = settings.currency || 'INR';
     }
 
-    // Record login activity
-    function recordLoginActivity(user) {
-      const timestamp = Date.now();
-      const activityId = 'activity_' + timestamp;
-      const userAgent = navigator.userAgent;
-      const deviceType = /Mobile/.test(userAgent) ? 'Mobile' : 'Desktop';
-      
-      // Save login activity
-      realtimeDb.ref('loginActivity/' + user.uid + '/' + activityId).set({
-        timestamp: timestamp,
-        userAgent: userAgent,
-        deviceType: deviceType,
-        status: 'success'
-      }).then(() => {
-        // Update last login time in user data
-        realtimeDb.ref('users/' + user.uid).update({
-          lastLoginAt: timestamp
-        });
-      }).catch(error => {
-        console.error('Error recording login activity:', error);
-      });
-    }
-
-    // Account functions
-    async function saveProfile() {
+    function saveProfile() {
       const name = document.getElementById('profileName').value;
       const phone = document.getElementById('profilePhone').value;
-      
-      if (!currentUser) return;
-      
+
       if (!name) {
         showToast('Please enter your name', 'error');
         return;
       }
-      
-      try {
-        await realtimeDb.ref('users/' + currentUser.uid).update({
-          name: name,
-          phone: phone,
-          updatedAt: Date.now()
-        });
-        
-        // Update localStorage for consistency
-        localStorage.setItem('userName', name);
-        
-        showToast('Profile updated successfully', 'success');
-        updateUserProfile(currentUser);
-        
-        // Update UI
-        userName.textContent = name;
-        userAvatarInitial.textContent = name.charAt(0).toUpperCase();
-        document.getElementById('accountPageName').textContent = name;
-      } catch (error) {
-        console.error('Error updating profile:', error);
-        showToast('Failed to update profile', 'error');
-      }
-    }
 
-    function showChangePasswordModal() {
-      if (currentUser) {
-        document.getElementById('changePasswordEmail').textContent = currentUser.email;
-        document.getElementById('changePasswordModal').classList.add('active');
-      }
-    }
-
-    function sendPasswordResetEmail() {
-      if (currentUser) {
-        auth.sendPasswordResetEmail(currentUser.email).then(() => {
-          showToast('Password reset link sent to your email. Please check your inbox.', 'success');
-          document.getElementById('changePasswordModal').classList.remove('active');
-        }).catch(error => {
-          console.error('Error sending reset email:', error);
-          showToast('Failed to send reset email. ' + error.message, 'error');
-        });
-      }
-    }
-
-    function showDeleteAccountConfirmation() {
-      alertTitle.textContent = 'Delete Account';
-      alertMessage.textContent = 'Are you sure you want to delete your account? This action cannot be undone.';
-      alertModal.classList.add('active');
-    }
-
-    function deleteAccount() {
-      if (!currentUser) return;
-      
-      // In a real app, you would delete the user from Firebase Auth and Database
-      // For security, this requires re-authentication
-      showToast('Account deletion feature coming soon', 'info');
-    }
-
-    function saveSettings() {
-      const emailNotifications = document.getElementById('emailNotifications').checked;
-      const smsNotifications = document.getElementById('smsNotifications').checked;
-      const pushNotifications = document.getElementById('pushNotifications').checked;
-      const personalizedRecs = document.getElementById('personalizedRecs').checked;
-      const dataSharing = document.getElementById('dataSharing').checked;
-      const language = document.getElementById('languageSelect').value;
-      const currency = document.getElementById('currencySelect').value;
-      
-      if (!currentUser) return;
-      
-      realtimeDb.ref('users/' + currentUser.uid + '/settings').set({
-        emailNotifications,
-        smsNotifications,
-        pushNotifications,
-        personalizedRecs,
-        dataSharing,
-        language,
-        currency
+      db.ref(`users/${currentUser.uid}`).update({
+        name,
+        phone,
+        updatedAt: Date.now()
       }).then(() => {
-        showToast('Settings saved successfully', 'success');
+        showToast('Profile updated successfully', 'success');
+        document.getElementById('userName').textContent = name;
+        document.getElementById('accountPageName').textContent = name;
+        document.getElementById('userAvatarInitial').textContent = name.charAt(0).toUpperCase();
+        document.getElementById('accountPageAvatarInitial').textContent = name.charAt(0).toUpperCase();
       }).catch(error => {
-        console.error('Error saving settings:', error);
-        showToast('Failed to save settings', 'error');
+        showToast('Failed to update profile', 'error');
       });
     }
 
-    function showLoginActivityModal() {
-      if (!currentUser) return;
-      
-      realtimeDb.ref('loginActivity/' + currentUser.uid).once('value')
-        .then(snapshot => {
-          const container = document.getElementById('loginActivityList');
-          container.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px;">No login activity found.</p>';
-            return;
-          }
-          
-          const activities = snapshot.val();
-          const activityArray = Object.keys(activities).map(key => ({
-            id: key,
-            ...activities[key]
-          }));
-          
-          // Sort by timestamp descending (newest first)
-          activityArray.sort((a, b) => b.timestamp - a.timestamp);
-          
-          activityArray.forEach(activity => {
-            const activityItem = document.createElement('div');
-            activityItem.className = 'activity-item';
-            activityItem.innerHTML = `
-              <div class="activity-info">
-                <div>${new Date(activity.timestamp).toLocaleString()}</div>
-                <div class="activity-device">${activity.deviceType || 'Unknown Device'}</div>
-              </div>
-              <div class="activity-status">Successful</div>
-            `;
-            container.appendChild(activityItem);
-          });
-          
-          document.getElementById('loginActivityModal').classList.add('active');
-        })
-        .catch(error => {
-          console.error('Error loading login activity:', error);
-          showToast('Failed to load login activity', 'error');
-        });
+    function saveSettings() {
+      const settings = {
+        emailNotifications: document.getElementById('emailNotifications').checked,
+        smsNotifications: document.getElementById('smsNotifications').checked,
+        pushNotifications: document.getElementById('pushNotifications').checked,
+        personalizedRecs: document.getElementById('personalizedRecs').checked,
+        dataSharing: document.getElementById('dataSharing').checked,
+        language: document.getElementById('languageSelect').value,
+        currency: document.getElementById('currencySelect').value
+      };
+
+      db.ref(`users/${currentUser.uid}/settings`).set(settings)
+        .then(() => showToast('Settings saved', 'success'))
+        .catch(() => showToast('Failed to save settings', 'error'));
     }
 
-    // Wishlist functions - UPDATED to sync with index.html
-    function loadWishlist() {
-      if (!currentUser) return;
-      
-      const container = document.getElementById('wishlistItems');
-      const emptyState = document.getElementById('wishlistEmptyState');
-      
-      // Get wishlist from localStorage first (to sync with index.html)
-      let localWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      
-      realtimeDb.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid)
-        .once('value')
-        .then(snapshot => {
-          if (!snapshot.exists() && localWishlist.length === 0) {
-            if (emptyState) emptyState.style.display = 'block';
-            container.innerHTML = '';
-            container.appendChild(emptyState);
-            return;
-          }
-          
-          if (emptyState) emptyState.style.display = 'none';
-          container.innerHTML = '';
-          
-          const firebaseWishlist = snapshot.exists() ? Object.values(snapshot.val()) : [];
-          const allWishlistItems = [...firebaseWishlist, ...localWishlist];
-          
-          // Remove duplicates based on productId
-          const uniqueItems = allWishlistItems.filter((item, index, self) =>
-            index === self.findIndex(i => i.productId === item.productId)
-          );
-          
-          // Fetch product details for each wishlist item
-          uniqueItems.forEach(item => {
-            realtimeDb.ref('products/' + item.productId).once('value')
-              .then(productSnapshot => {
-                const product = productSnapshot.val();
-                if (product) {
-                  const productCard = createProductCard({ id: item.productId, ...product });
-                  container.appendChild(productCard);
-                } else {
-                  // If product not in database, use item data
-                  const productCard = createProductCard(item);
-                  container.appendChild(productCard);
-                }
-              })
-              .catch(() => {
-                // Fallback to item data if product fetch fails
-                const productCard = createProductCard(item);
-                container.appendChild(productCard);
-              });
-          });
-        })
-        .catch(error => {
-          console.error('Error loading wishlist:', error);
-          showToast('Failed to load wishlist', 'error');
-        });
-    }
-
-    function createProductCard(product) {
-      const card = document.createElement('div');
-      card.className = 'product-card';
-      
-      card.innerHTML = `
-        <img src="${product.image || 'https://via.placeholder.com/100x100?text=Product'}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/100x100?text=Product'">
-        <div class="product-info">
-          <div class="product-title">${product.name || 'Product Name'}</div>
-          <div class="product-price">₹${product.price || '0'}</div>
-          <div class="product-rating">
-            ${'★'.repeat(Math.floor(product.rating || 4))}${'☆'.repeat(5 - Math.floor(product.rating || 4))}
-            <span style="color:var(--muted);font-size:12px;">(${product.rating || 4})</span>
-          </div>
-          <div class="address-actions">
-            <button class="btn secondary" onclick="removeFromWishlist('${product.id}')">Remove</button>
-            <button class="btn" onclick="viewProduct('${product.id}')">View Product</button>
-          </div>
-        </div>
-      `;
-      
-      return card;
-    }
-
-    function removeFromWishlist(productId) {
-      if (!currentUser) return;
-      
-      if (confirm('Are you sure you want to remove this item from wishlist?')) {
-        // Remove from Firebase
-        realtimeDb.ref('wishlist').orderByChild('productId').equalTo(productId)
-          .once('value')
-          .then(snapshot => {
-            if (snapshot.exists()) {
-              const updates = [];
-              snapshot.forEach(child => {
-                if (child.val().userId === currentUser.uid) {
-                  updates.push(child.ref.remove());
-                }
-              });
-              return Promise.all(updates);
-            }
-          })
-          .then(() => {
-            // Also remove from localStorage to sync with index.html
-            let localWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-            localWishlist = localWishlist.filter(item => item.productId !== productId);
-            localStorage.setItem('wishlist', JSON.stringify(localWishlist));
-            
-            showToast('Removed from wishlist', 'success');
-            loadWishlist(); // Reload wishlist
-          })
-          .catch(error => {
-            console.error('Error removing from wishlist:', error);
-            showToast('Failed to remove from wishlist', 'error');
-          });
-      }
-    }
-
-    function viewProduct(productId) {
-      // Store product ID in sessionStorage for index.html to load
-      sessionStorage.setItem('viewProduct', productId);
-      window.location.href = 'index.html#productDetailPage';
-    }
-
-    // Orders functions - UPDATED
-    function loadOrders() {
-      if (!currentUser) return;
-      
-      const container = document.getElementById('ordersList');
-      const emptyState = document.getElementById('ordersEmptyState');
-      
-      realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid)
-        .once('value')
-        .then(snapshot => {
-          if (!snapshot.exists()) {
-            if (emptyState) emptyState.style.display = 'block';
-            container.innerHTML = '';
-            container.appendChild(emptyState);
-            return;
-          }
-          
-          if (emptyState) emptyState.style.display = 'none';
-          
-          const orders = snapshot.val();
-          container.innerHTML = '';
-          
-          // Sort by date (newest first)
-          const sortedOrders = Object.keys(orders)
-            .map(key => ({ id: key, ...orders[key] }))
-            .sort((a, b) => (b.orderDate || b.timestamp || 0) - (a.orderDate || a.timestamp || 0));
-          
-          sortedOrders.forEach(order => {
-            const orderCard = createOrderCard(order);
-            container.appendChild(orderCard);
-          });
-        })
-        .catch(error => {
-          console.error('Error loading orders:', error);
-          showToast('Failed to load orders', 'error');
-        });
-    }
-
-    function createOrderCard(order) {
-      const card = document.createElement('div');
-      card.className = 'order-card';
-      
-      const statusClass = order.status === 'delivered' ? 'delivered' : 
-                         order.status === 'shipped' ? 'shipped' : 'processing';
-      const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Processing';
-      const date = new Date(order.orderDate || order.timestamp || Date.now()).toLocaleDateString();
-      
-      card.innerHTML = `
-        <div class="order-header">
-          <div>
-            <div class="order-id">${order.orderId || '#' + order.id.slice(-8)}</div>
-            <div style="font-size:12px;color:var(--muted);">${date}</div>
-          </div>
-          <div class="order-status ${statusClass}">${statusText}</div>
-        </div>
-        <div class="order-details">
-          <div class="order-item">
-            <div style="flex:1">
-              <div style="font-weight:600;">${order.productName || order.items?.[0]?.name || 'Product'}</div>
-              <div style="font-size:12px;color:var(--muted);">Qty: ${order.quantity || order.items?.[0]?.quantity || 1} | Size: ${order.size || 'N/A'}</div>
-              <div style="font-weight:700;color:var(--accent);">₹${order.totalAmount || order.total || '0'}</div>
-            </div>
-          </div>
-        </div>
-        <div class="address-actions">
-          <button class="btn secondary" onclick="viewOrderDetails('${order.id}')">View Details</button>
-        </div>
-      `;
-      
-      return card;
-    }
-
-    function viewOrderDetails(orderId) {
-      sessionStorage.setItem('viewOrder', orderId);
-      window.location.href = 'index.html#orderDetailPage';
-    }
-
-    // Address functions
-    function showNewAddressForm() {
-      document.getElementById('savedAddresses').style.display = 'none';
+    // Address Functions
+    function showAddressForm(address = null) {
       document.getElementById('newAddressForm').style.display = 'block';
       document.getElementById('addNewAddress').style.display = 'none';
       
-      // Clear form
-      document.getElementById('addressName').value = '';
-      document.getElementById('addressMobile').value = '';
-      document.getElementById('addressPincode').value = '';
-      document.getElementById('addressCity').value = '';
-      document.getElementById('addressState').value = '';
-      document.getElementById('addressStreet').value = '';
+      if (address) {
+        editingAddressId = address.id;
+        document.getElementById('addressName').value = address.name || '';
+        document.getElementById('addressMobile').value = address.mobile || '';
+        document.getElementById('addressPincode').value = address.pincode || '';
+        document.getElementById('addressCity').value = address.city || '';
+        document.getElementById('addressState').value = address.state || '';
+        document.getElementById('addressStreet').value = address.street || '';
+        document.getElementById('addressType').value = address.type || 'home';
+        document.querySelector('.card-title').textContent = 'Edit Address';
+      } else {
+        editingAddressId = null;
+        document.getElementById('addressName').value = '';
+        document.getElementById('addressMobile').value = '';
+        document.getElementById('addressPincode').value = '';
+        document.getElementById('addressCity').value = '';
+        document.getElementById('addressState').value = '';
+        document.getElementById('addressStreet').value = '';
+        document.getElementById('addressType').value = 'home';
+        document.querySelector('.card-title').textContent = 'Add New Address';
+      }
     }
 
-    function hideNewAddressForm() {
-      document.getElementById('savedAddresses').style.display = 'block';
+    function hideAddressForm() {
       document.getElementById('newAddressForm').style.display = 'none';
       document.getElementById('addNewAddress').style.display = 'block';
-    }
-
-    function fillAddressForm(address) {
-      document.getElementById('addressName').value = address.name || '';
-      document.getElementById('addressMobile').value = address.mobile || '';
-      document.getElementById('addressPincode').value = address.pincode || '';
-      document.getElementById('addressCity').value = address.city || '';
-      document.getElementById('addressState').value = address.state || '';
-      document.getElementById('addressStreet').value = address.street || '';
-      document.getElementById('addressType').value = address.type || 'home';
+      editingAddressId = null;
     }
 
     function saveAddress() {
-      const name = document.getElementById('addressName').value;
-      const mobile = document.getElementById('addressMobile').value;
-      const pincode = document.getElementById('addressPincode').value;
-      const city = document.getElementById('addressCity').value;
-      const state = document.getElementById('addressState').value;
-      const type = document.getElementById('addressType').value;
-      const street = document.getElementById('addressStreet').value;
-      
-      if (!name || !mobile || !pincode || !city || !state || !street) {
-        showToast('Please fill in all required fields', 'error');
+      const address = {
+        name: document.getElementById('addressName').value,
+        mobile: document.getElementById('addressMobile').value,
+        pincode: document.getElementById('addressPincode').value,
+        city: document.getElementById('addressCity').value,
+        state: document.getElementById('addressState').value,
+        street: document.getElementById('addressStreet').value,
+        type: document.getElementById('addressType').value,
+        userId: currentUser.uid,
+        updatedAt: Date.now()
+      };
+
+      if (!address.name || !address.mobile || !address.pincode || !address.city || !address.state || !address.street) {
+        showToast('Please fill all required fields', 'error');
         return;
       }
-      
-      if (!currentUser) return;
-      
-      const addressId = 'address_' + Date.now();
-      
-      realtimeDb.ref('addresses/' + addressId).set({
-        userId: currentUser.uid,
-        name: name,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        type: type,
-        street: street,
-        isDefault: false,
-        createdAt: Date.now()
-      }).then(() => {
-        showToast('Address saved successfully', 'success');
-        hideNewAddressForm();
+
+      const promise = editingAddressId
+        ? db.ref(`addresses/${editingAddressId}`).update(address)
+        : db.ref('addresses').push(address);
+
+      promise.then(() => {
+        showToast(`Address ${editingAddressId ? 'updated' : 'added'} successfully`, 'success');
+        hideAddressForm();
         loadAddresses();
-      }).catch(error => {
-        console.error('Error saving address:', error);
-        showToast('Failed to save address', 'error');
+      }).catch(() => {
+        showToast(`Failed to ${editingAddressId ? 'update' : 'add'} address`, 'error');
       });
     }
 
     function loadAddresses() {
-      if (!currentUser) return;
-      
-      realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid)
-        .once('value')
+      const container = document.getElementById('savedAddresses');
+      container.innerHTML = '<div class="spinner"></div>';
+
+      db.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value')
         .then(snapshot => {
-          const container = document.getElementById('savedAddresses');
-          const emptyState = document.getElementById('addressesEmptyState');
-          
-          if (!snapshot.exists()) {
-            if (emptyState) emptyState.style.display = 'block';
-            container.innerHTML = '';
-            container.appendChild(emptyState);
-            return;
-          }
-          
-          if (emptyState) emptyState.style.display = 'none';
-          
-          const addressesObj = snapshot.val();
-          const addresses = Object.keys(addressesObj).map(key => ({
-            id: key,
-            ...addressesObj[key]
-          }));
-          
-          // Sort by creation date
-          addresses.sort((a, b) => b.createdAt - a.createdAt);
-          
           container.innerHTML = '';
           
-          addresses.forEach(address => {
-            const addressCard = document.createElement('div');
-            addressCard.className = 'address-card';
-            addressCard.innerHTML = `
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}</div>
-              <div>${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile}</div>
-              <div style="margin-top: 8px;">
-                <span style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; text-transform: capitalize;">${address.type || 'home'}</span>
-                ${address.isDefault ? '<span style="background: #22c55e; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">Default</span>' : ''}
-              </div>
-              <div class="address-actions">
-                <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
-                <button class="btn secondary delete-address" data-id="${address.id}">Delete</button>
-                ${!address.isDefault ? `<button class="btn set-default-address" data-id="${address.id}">Set as Default</button>` : ''}
+          if (!snapshot.exists()) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">🏠</div>
+                <div class="empty-state-title">No addresses saved</div>
+                <div class="empty-state-description">Add your first address to make checkout faster</div>
               </div>
             `;
-            
-            // Add event listeners for edit and delete
-            const editBtn = addressCard.querySelector('.edit-address');
-            const deleteBtn = addressCard.querySelector('.delete-address');
-            const setDefaultBtn = addressCard.querySelector('.set-default-address');
-            
-            editBtn.addEventListener('click', () => editAddress(address));
-            deleteBtn.addEventListener('click', () => deleteAddress(address.id));
-            if (setDefaultBtn) {
-              setDefaultBtn.addEventListener('click', () => setDefaultAddress(address.id));
-            }
-            
-            container.appendChild(addressCard);
+            return;
+          }
+
+          const addresses = [];
+          snapshot.forEach(child => addresses.push({ id: child.key, ...child.val() }));
+          addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+
+          addresses.forEach(address => {
+            const card = document.createElement('div');
+            card.className = `address-card ${address.isDefault ? 'default' : ''}`;
+            card.innerHTML = `
+              <div class="address-name">${address.name}</div>
+              <div class="address-details">
+                ${address.street}<br>
+                ${address.city}, ${address.state} - ${address.pincode}<br>
+                Mobile: ${address.mobile}
+              </div>
+              <div>
+                <span class="address-badge">${address.type}</span>
+                ${address.isDefault ? '<span class="address-badge default">Default</span>' : ''}
+              </div>
+              <div class="address-actions">
+                <button class="btn-outline btn-sm" onclick="editAddress('${address.id}')">Edit</button>
+                <button class="btn-outline btn-sm" onclick="deleteAddress('${address.id}')">Delete</button>
+                ${!address.isDefault ? `<button class="btn-sm" onclick="setDefaultAddress('${address.id}')">Set as Default</button>` : ''}
+              </div>
+            `;
+            container.appendChild(card);
           });
-        })
-        .catch(error => {
-          console.error('Error loading addresses:', error);
-          showToast('Failed to load addresses', 'error');
         });
     }
 
-    function editAddress(address) {
-      // Fill the form with address data
-      fillAddressForm(address);
-      
-      // Show edit form
-      showNewAddressForm();
-      
-      // Change save button to update
-      const saveBtn = document.getElementById('saveAddress');
-      saveBtn.textContent = 'Update Address';
-      saveBtn.onclick = function() {
-        updateAddress(address.id);
-      };
-    }
-
-    function updateAddress(addressId) {
-      const name = document.getElementById('addressName').value;
-      const mobile = document.getElementById('addressMobile').value;
-      const pincode = document.getElementById('addressPincode').value;
-      const city = document.getElementById('addressCity').value;
-      const state = document.getElementById('addressState').value;
-      const type = document.getElementById('addressType').value;
-      const street = document.getElementById('addressStreet').value;
-      
-      if (!name || !mobile || !pincode || !city || !state || !street) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-      
-      realtimeDb.ref('addresses/' + addressId).update({
-        name: name,
-        mobile: mobile,
-        pincode: pincode,
-        city: city,
-        state: state,
-        type: type,
-        street: street,
-        updatedAt: Date.now()
-      }).then(() => {
-        showToast('Address updated successfully', 'success');
-        hideNewAddressForm();
-        loadAddresses();
-        
-        // Reset save button
-        const saveBtn = document.getElementById('saveAddress');
-        saveBtn.textContent = 'Save Address';
-        saveBtn.onclick = saveAddress;
-      }).catch(error => {
-        console.error('Error updating address:', error);
-        showToast('Failed to update address', 'error');
+    window.editAddress = function(id) {
+      db.ref(`addresses/${id}`).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          showAddressForm({ id, ...snapshot.val() });
+        }
       });
-    }
+    };
 
-    function deleteAddress(addressId) {
+    window.deleteAddress = function(id) {
       if (confirm('Are you sure you want to delete this address?')) {
-        realtimeDb.ref('addresses/' + addressId).remove()
+        db.ref(`addresses/${id}`).remove()
           .then(() => {
-            showToast('Address deleted successfully', 'success');
+            showToast('Address deleted', 'success');
             loadAddresses();
           })
-          .catch(error => {
-            console.error('Error deleting address:', error);
-            showToast('Failed to delete address', 'error');
-          });
+          .catch(() => showToast('Failed to delete address', 'error'));
       }
-    }
+    };
 
-    function setDefaultAddress(addressId) {
-      if (!currentUser) return;
-      
-      // First, remove default from all addresses of this user
-      realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid)
-        .once('value')
+    window.setDefaultAddress = function(id) {
+      db.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value')
         .then(snapshot => {
           const updates = {};
-          if (snapshot.exists()) {
-            const addresses = snapshot.val();
-            Object.keys(addresses).forEach(id => {
-              if (addresses[id].isDefault) {
-                updates[`addresses/${id}/isDefault`] = false;
-              }
-            });
-          }
-          
-          // Set the new default
-          updates[`addresses/${addressId}/isDefault`] = true;
-          
-          return realtimeDb.ref().update(updates);
+          snapshot.forEach(child => {
+            updates[`addresses/${child.key}/isDefault`] = child.key === id;
+          });
+          return db.ref().update(updates);
         })
         .then(() => {
-          showToast('Default address updated successfully', 'success');
+          showToast('Default address updated', 'success');
           loadAddresses();
         })
-        .catch(error => {
-          console.error('Error setting default address:', error);
-          showToast('Failed to set default address', 'error');
+        .catch(() => showToast('Failed to update default address', 'error'));
+    };
+
+    // Wishlist Functions
+    function loadWishlist() {
+      const container = document.getElementById('wishlistItems');
+      container.innerHTML = '<div class="spinner"></div>';
+
+      db.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid).once('value')
+        .then(snapshot => {
+          container.innerHTML = '';
+          
+          if (!snapshot.exists()) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">❤️</div>
+                <div class="empty-state-title">Your wishlist is empty</div>
+                <div class="empty-state-description">Start adding products you love</div>
+                <button class="btn" onclick="window.location.href='index.html'">Browse Products</button>
+              </div>
+            `;
+            return;
+          }
+
+          snapshot.forEach(child => {
+            const item = child.val();
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            card.innerHTML = `
+              <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${item.name}" class="product-image" onerror="this.src='https://via.placeholder.com/100'">
+              <div class="product-details">
+                <div class="product-title">${item.name || 'Product'}</div>
+                <div class="product-price">₹${item.price || 0}</div>
+                <div class="product-rating">
+                  ${Array(5).fill().map((_, i) => `
+                    <span class="star ${i < Math.floor(item.rating || 4) ? '' : 'inactive'}">★</span>
+                  `).join('')}
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn-outline btn-sm" onclick="removeFromWishlist('${child.key}')">Remove</button>
+                  <button class="btn-sm" onclick="viewProduct('${item.productId}')">View</button>
+                </div>
+              </div>
+            `;
+            container.appendChild(card);
+          });
         });
     }
 
-    // Logout function
-    function showLogoutConfirmation() {
-      alertTitle.textContent = 'Logout Confirmation';
-      alertMessage.textContent = 'Are you sure you want to logout?';
-      alertModal.classList.add('active');
-    }
+    window.removeFromWishlist = function(id) {
+      db.ref(`wishlist/${id}`).remove()
+        .then(() => {
+          showToast('Removed from wishlist', 'success');
+          loadWishlist();
+        })
+        .catch(() => showToast('Failed to remove', 'error'));
+    };
 
-    function logout() {
-      auth.signOut().then(() => {
-        showToast('Logged out successfully', 'success');
-        // Redirect to index.html
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 1000);
-      }).catch(error => {
-        console.error('Logout error:', error);
-        showToast('Error logging out', 'error');
-      });
-    }
+    window.viewProduct = function(productId) {
+      sessionStorage.setItem('viewProduct', productId);
+      window.location.href = 'index.html#productDetailPage';
+    };
 
-    // Check for sessionStorage on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      // Check if coming from product view
-      const viewProductId = sessionStorage.getItem('viewProduct');
-      if (viewProductId) {
-        sessionStorage.removeItem('viewProduct');
-      }
-    });
+    // Orders Functions
+    function loadOrders() {
+      const container = document.getElementById('ordersList');
+      container.innerHTML = '<div class="spinner"></div>';
 
-    // Initialize sample data if database is empty (for testing)
-    function initializeSampleData() {
-      if (!currentUser) return;
-      
-      // Check if user has any data
-      Promise.all([
-        realtimeDb.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value'),
-        realtimeDb.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid).once('value'),
-        realtimeDb.ref('orders').orderByChild('userId').equalTo(currentUser.uid).once('value')
-      ]).then(([addressSnapshot, wishlistSnapshot, ordersSnapshot]) => {
-        // Add sample address if none exists
-        if (!addressSnapshot.exists()) {
-          const addressId = 'address_' + Date.now();
-          realtimeDb.ref('addresses/' + addressId).set({
-            userId: currentUser.uid,
-            name: currentUser.displayName || 'John Doe',
-            mobile: '9876543210',
-            pincode: '110001',
-            city: 'New Delhi',
-            state: 'Delhi',
-            type: 'home',
-            street: '123 Main Street, Connaught Place',
-            isDefault: true,
-            createdAt: Date.now()
-          });
-        }
-        
-        // Add sample wishlist items if none exists
-        if (!wishlistSnapshot.exists()) {
-          const sampleWishlist = [
-            {
-              userId: currentUser.uid,
-              productId: 'prod_001',
-              name: 'Wireless Bluetooth Headphones',
-              price: 2499,
-              rating: 4.5,
-              image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-            },
-            {
-              userId: currentUser.uid,
-              productId: 'prod_002',
-              name: 'Smart Watch Series 5',
-              price: 8999,
-              rating: 4.2,
-              image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-            }
-          ];
+      db.ref('orders').orderByChild('userId').equalTo(currentUser.uid).once('value')
+        .then(snapshot => {
+          container.innerHTML = '';
           
-          sampleWishlist.forEach((item, index) => {
-            realtimeDb.ref('wishlist/wish_' + Date.now() + '_' + index).set(item);
+          if (!snapshot.exists()) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">📦</div>
+                <div class="empty-state-title">No orders yet</div>
+                <div class="empty-state-description">Start shopping to see your orders here</div>
+                <button class="btn" onclick="window.location.href='index.html'">Shop Now</button>
+              </div>
+            `;
+            return;
+          }
+
+          const orders = [];
+          snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
+          orders.sort((a, b) => (b.orderDate || b.timestamp || 0) - (a.orderDate || a.timestamp || 0));
+
+          orders.forEach(order => {
+            const card = document.createElement('div');
+            card.className = 'order-card';
+            
+            const status = order.status || 'processing';
+            const date = new Date(order.orderDate || order.timestamp || Date.now()).toLocaleDateString();
+            
+            card.innerHTML = `
+              <div class="order-header">
+                <div>
+                  <div class="order-id">${order.orderId || '#' + order.id.slice(-8)}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">${date}</div>
+                </div>
+                <span class="order-status ${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+              </div>
+              <div class="order-items">
+                ${(order.items || []).map(item => `
+                  <div class="order-item">
+                    <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image">
+                    <div style="flex: 1;">
+                      <div style="font-weight: 500;">${item.name}</div>
+                      <div style="font-size: 0.875rem; color: var(--text-secondary);">Qty: ${item.quantity || 1}</div>
+                      <div style="font-weight: 600; color: var(--primary);">₹${item.price || 0}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              <div style="margin-top: 1rem; font-weight: 600;">
+                Total: ₹${order.totalAmount || order.total || 0}
+              </div>
+            `;
+            container.appendChild(card);
           });
-        }
-        
-        // Add sample orders if none exists
-        if (!ordersSnapshot.exists()) {
-          const orderId = 'order_' + Date.now();
-          realtimeDb.ref('orders/' + orderId).set({
-            userId: currentUser.uid,
-            orderId: 'ORD' + Math.floor(Math.random() * 10000),
-            timestamp: Date.now() - 86400000, // Yesterday
-            total: 11498,
-            totalAmount: 11498,
-            status: 'delivered',
-            paymentMethod: 'Credit Card',
-            productName: 'Wireless Bluetooth Headphones',
-            quantity: 1,
-            items: [
-              {
-                name: 'Wireless Bluetooth Headphones',
-                price: 2499,
-                quantity: 1,
-                image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-              },
-              {
-                name: 'Smart Watch Series 5',
-                price: 8999,
-                quantity: 1,
-                image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-              }
-            ]
+        });
+    }
+
+    // Login Activity
+    function showLoginActivity() {
+      db.ref(`loginActivity/${currentUser.uid}`).once('value')
+        .then(snapshot => {
+          const list = document.getElementById('loginActivityList');
+          list.innerHTML = '';
+          
+          if (!snapshot.exists()) {
+            list.innerHTML = '<p style="text-align: center; padding: 2rem;">No login activity found</p>';
+            return;
+          }
+
+          const activities = [];
+          snapshot.forEach(child => activities.push({ id: child.key, ...child.val() }));
+          activities.sort((a, b) => b.timestamp - a.timestamp);
+
+          activities.forEach(activity => {
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.innerHTML = `
+              <div class="activity-info">
+                <div class="activity-time">${new Date(activity.timestamp).toLocaleString()}</div>
+                <div class="activity-device">${activity.deviceType || 'Unknown'}</div>
+              </div>
+              <span class="activity-status">Success</span>
+            `;
+            list.appendChild(item);
           });
-        }
+
+          openModal('loginActivityModal');
+        });
+    }
+
+    // Password Reset
+    function sendPasswordReset() {
+      document.getElementById('changePasswordEmail').textContent = currentUser.email;
+      auth.sendPasswordResetEmail(currentUser.email)
+        .then(() => {
+          showToast('Password reset link sent to your email', 'success');
+          closeModal('changePasswordModal');
+        })
+        .catch(() => showToast('Failed to send reset email', 'error'));
+    }
+
+    // Alert Handlers
+    function showAlert(title, message, onConfirm) {
+      document.getElementById('alertTitle').textContent = title;
+      document.getElementById('alertMessage').textContent = message;
+      alertCallback = onConfirm;
+      openModal('alertModal');
+    }
+
+    function handleAlertConfirm() {
+      if (alertCallback) alertCallback();
+      closeModal('alertModal');
+    }
+
+    function showLogoutConfirmation() {
+      showAlert('Logout Confirmation', 'Are you sure you want to logout?', () => {
+        auth.signOut().then(() => {
+          showToast('Logged out successfully', 'success');
+          setTimeout(() => window.location.href = 'index.html', 1000);
+        });
       });
     }
-    
-    // Call initializeSampleData after user is loaded (for testing)
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        setTimeout(initializeSampleData, 1000);
-      }
-    });
+
+    function showDeleteConfirmation() {
+      showAlert('Delete Account', 'This action cannot be undone. Are you sure?', () => {
+        showToast('Account deletion feature coming soon', 'info');
+      });
+    }
   </script>
 </body>
 </html>
