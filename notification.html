@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications - Buyzo Cart</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    :root {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --accent-color: #3b82f6;
+      --accent-hover: #2563eb;
+      --danger-color: #ef4444;
+      --success-color: #22c55e;
+      --warning-color: #f59e0b;
+      --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header Styles */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 24px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+      background: var(--border-color);
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 700;
+      flex: 1;
+    }
+
+    .chip {
+      background: var(--accent-color);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-right: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 20px;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: var(--border-color);
+    }
+
+    /* Main Content */
+    .page-title {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .page-title h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .page-title p {
+      color: var(--text-secondary);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 8px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      color: var(--text-secondary);
+    }
+
+    .tab.active {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .tab:hover:not(.active) {
+      background: var(--border-color);
+      color: var(--text-primary);
+    }
+
+    /* Notifications Container */
+    .notifications-container {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+    }
+
+    .notification-item {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .notification-item:hover {
+      background: var(--bg-primary);
+    }
+
+    .notification-item.unread {
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .notification-item.unread::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent-color);
+    }
+
+    .notification-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .notification-icon.order {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-color);
+    }
+
+    .notification-icon.offer {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning-color);
+    }
+
+    .notification-icon.system {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success-color);
+    }
+
+    .notification-icon.warning {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .notification-title {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .notification-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .notification-message {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .notification-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .badge-order {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-color);
+    }
+
+    .badge-offer {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning-color);
+    }
+
+    .badge-system {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success-color);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+    }
+
+    .empty-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px;
+      opacity: 0.5;
+    }
+
+    .empty-icon svg {
+      width: 100%;
+      height: 100%;
+      fill: none;
+      stroke: var(--text-secondary);
+      stroke-width: 1;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .empty-state p {
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .empty-btn {
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 30px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .empty-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+
+    .settings-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .setting-item:last-child {
+      border-bottom: none;
+    }
+
+    .setting-info h4 {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .setting-info p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 28px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border-color);
+      transition: .3s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* Mark All Read Button */
+    .mark-all-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .mark-all-btn:hover {
+      background: var(--border-color);
+    }
+
+    /* Currency Selector */
+    .currency-selector {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .currency-option {
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .currency-option.active {
+      background: var(--accent-color);
+      color: white;
+      border-color: var(--accent-color);
+    }
+
+    .currency-option:hover:not(.active) {
+      background: var(--border-color);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 12px;
+      }
+
+      .notification-item {
+        padding: 16px;
+      }
+
+      .notification-icon {
+        width: 40px;
+        height: 40px;
+      }
+
+      .notification-icon svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .tabs {
+        gap: 8px;
+      }
+
+      .tab {
+        padding: 6px 16px;
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .notification-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .header-content {
+        padding: 12px;
+      }
+
+      .brand {
+        font-size: 18px;
+      }
+
+      .icon-btn span {
+        display: none;
+      }
+
+      .icon-btn {
+        padding: 8px;
+      }
+
+      .page-title {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    /* Animations */
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .notification-item {
+      animation: slideIn 0.3s ease;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: var(--card-shadow);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      border-left: 4px solid var(--success-color);
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast.error {
+      border-left-color: var(--danger-color);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <button class="back-btn" onclick="goBack()">←</button>
+      <div class="brand">
+        <span class="chip">BUYZO</span>
+        <span>Cart</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="markAllAsRead()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>Mark all read</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="page-title">
+      <div>
+        <h1>Notifications</h1>
+        <p>Stay updated with your orders and offers</p>
+      </div>
+      <div class="currency-selector">
+        <div class="currency-option active" onclick="setCurrency('₹')">₹ INR</div>
+        <div class="currency-option" onclick="setCurrency('$')">$ USD</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="filterNotifications('all')">All</div>
+      <div class="tab" onclick="filterNotifications('unread')">Unread</div>
+      <div class="tab" onclick="filterNotifications('orders')">Orders</div>
+      <div class="tab" onclick="filterNotifications('offers')">Offers</div>
+      <div class="tab" onclick="filterNotifications('system')">System</div>
+    </div>
+
+    <div id="notificationsList" class="notifications-container">
+      <!-- Notifications will be loaded here -->
+    </div>
+
+    <div id="emptyNotifications" class="empty-state" style="display: none;">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h3>No notifications</h3>
+      <p>You're all caught up! Check back later for updates on your orders and exclusive offers.</p>
+      <button class="empty-btn" onclick="goToHome()">Browse Products</button>
+    </div>
+
+    <div class="settings-panel">
+      <div class="settings-title">
+        <span>Notification Settings</span>
+        <button class="icon-btn" onclick="saveSettings()" style="padding: 4px 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Save</span>
+        </button>
+      </div>
+      
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>Order Updates</h4>
+          <p>Get notified about order status changes</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="orderNotifications" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>Promotional Offers</h4>
+          <p>Receive updates about sales and discounts</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="offerNotifications" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>System Updates</h4>
+          <p>Important updates about your account</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="systemNotifications" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>Email Notifications</h4>
+          <p>Receive notifications via email</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="emailNotifications" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>SMS Notifications</h4>
+          <p>Get text messages for order updates</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="smsNotifications">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Sample notifications data
+    let notifications = [
+      {
+        id: 1,
+        type: 'order',
+        title: 'Order Confirmed',
+        message: 'Your order #ORDER-20250221-123456 has been confirmed and will be shipped soon.',
+        time: '5 minutes ago',
+        read: false,
+        badge: 'Order Update'
+      },
+      {
+        id: 2,
+        type: 'offer',
+        title: 'Flash Sale! 40% Off',
+        message: 'Limited time offer on all fashion items. Use code FLASH40 at checkout.',
+        time: '2 hours ago',
+        read: false,
+        badge: 'Special Offer'
+      },
+      {
+        id: 3,
+        type: 'order',
+        title: 'Order Shipped',
+        message: 'Your order #ORDER-20250220-789012 has been shipped. Track your package now.',
+        time: '1 day ago',
+        read: true,
+        badge: 'Shipping Update'
+      },
+      {
+        id: 4,
+        type: 'system',
+        title: 'Welcome to Buyzo Cart!',
+        message: 'Thank you for joining us. Complete your profile to get personalized recommendations.',
+        time: '3 days ago',
+        read: true,
+        badge: 'Welcome'
+      },
+      {
+        id: 5,
+        type: 'offer',
+        title: 'New Year Sale',
+        message: 'Start the year with amazing deals. Up to 60% off on electronics.',
+        time: '1 week ago',
+        read: true,
+        badge: 'Seasonal Sale'
+      },
+      {
+        id: 6,
+        type: 'order',
+        title: 'Order Delivered',
+        message: 'Your order #ORDER-20250218-345678 has been delivered. Hope you love your purchase!',
+        time: '1 week ago',
+        read: true,
+        badge: 'Delivered'
+      },
+      {
+        id: 7,
+        type: 'warning',
+        title: 'Payment Failed',
+        message: 'Payment for order #ORDER-20250217-901234 failed. Please update your payment method.',
+        time: '2 weeks ago',
+        read: true,
+        badge: 'Action Required'
+      },
+      {
+        id: 8,
+        type: 'system',
+        title: 'Password Changed',
+        message: 'Your account password was successfully changed.',
+        time: '2 weeks ago',
+        read: true,
+        badge: 'Security'
+      }
+    ];
+
+    let currentFilter = 'all';
+    let currentCurrency = localStorage.getItem('userCurrency') || '₹';
+
+    function loadNotifications() {
+      const container = document.getElementById('notificationsList');
+      const emptyState = document.getElementById('emptyNotifications');
+      
+      let filteredNotifications = notifications;
+      
+      if (currentFilter === 'unread') {
+        filteredNotifications = notifications.filter(n => !n.read);
+      } else if (currentFilter === 'orders') {
+        filteredNotifications = notifications.filter(n => n.type === 'order' || n.type === 'warning');
+      } else if (currentFilter === 'offers') {
+        filteredNotifications = notifications.filter(n => n.type === 'offer');
+      } else if (currentFilter === 'system') {
+        filteredNotifications = notifications.filter(n => n.type === 'system');
+      }
+      
+      if (filteredNotifications.length === 0) {
+        container.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      container.style.display = 'block';
+      emptyState.style.display = 'none';
+      
+      container.innerHTML = '';
+      
+      filteredNotifications.forEach(notification => {
+        const element = createNotificationElement(notification);
+        container.appendChild(element);
+      });
+    }
+
+    function createNotificationElement(notification) {
+      const div = document.createElement('div');
+      div.className = `notification-item ${notification.read ? '' : 'unread'}`;
+      div.setAttribute('data-id', notification.id);
+      
+      let iconSvg = '';
+      if (notification.type === 'order') {
+        iconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>';
+      } else if (notification.type === 'offer') {
+        iconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.5 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>';
+      } else if (notification.type === 'warning') {
+        iconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+      } else {
+        iconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+      }
+      
+      div.innerHTML = `
+        <div class="notification-icon ${notification.type}">
+          ${iconSvg}
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <span class="notification-title">${notification.title}</span>
+            <span class="notification-time">${notification.time}</span>
+          </div>
+          <div class="notification-message">${notification.message}</div>
+          <div class="notification-badge badge-${notification.type}">${notification.badge}</div>
+        </div>
+      `;
+      
+      div.addEventListener('click', () => markAsRead(notification.id));
+      
+      return div;
+    }
+
+    function filterNotifications(filter) {
+      currentFilter = filter;
+      
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      event.target.classList.add('active');
+      
+      loadNotifications();
+    }
+
+    function markAsRead(id) {
+      const notification = notifications.find(n => n.id === id);
+      if (notification) {
+        notification.read = true;
+        loadNotifications();
+        showToast('Notification marked as read');
+      }
+    }
+
+    function markAllAsRead() {
+      notifications.forEach(n => n.read = true);
+      loadNotifications();
+      showToast('All notifications marked as read');
+    }
+
+    function setCurrency(currency) {
+      currentCurrency = currency;
+      localStorage.setItem('userCurrency', currency);
+      
+      document.querySelectorAll('.currency-option').forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.textContent.includes(currency)) {
+          opt.classList.add('active');
+        }
+      });
+      
+      showToast(`Currency changed to ${currency}`);
+    }
+
+    function saveSettings() {
+      const settings = {
+        orderNotifications: document.getElementById('orderNotifications').checked,
+        offerNotifications: document.getElementById('offerNotifications').checked,
+        systemNotifications: document.getElementById('systemNotifications').checked,
+        emailNotifications: document.getElementById('emailNotifications').checked,
+        smsNotifications: document.getElementById('smsNotifications').checked
+      };
+      
+      localStorage.setItem('notificationSettings', JSON.stringify(settings));
+      showToast('Settings saved successfully');
+    }
+
+    function loadSettings() {
+      const saved = localStorage.getItem('notificationSettings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        document.getElementById('orderNotifications').checked = settings.orderNotifications;
+        document.getElementById('offerNotifications').checked = settings.offerNotifications;
+        document.getElementById('systemNotifications').checked = settings.systemNotifications;
+        document.getElementById('emailNotifications').checked = settings.emailNotifications;
+        document.getElementById('smsNotifications').checked = settings.smsNotifications;
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast ' + type;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    function goBack() {
+      window.location.href = 'index.html';
+    }
+
+    function goToHome() {
+      window.location.href = 'index.html';
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load theme
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      
+      // Load currency
+      const savedCurrency = localStorage.getItem('userCurrency');
+      if (savedCurrency) {
+        currentCurrency = savedCurrency;
+        document.querySelectorAll('.currency-option').forEach(opt => {
+          opt.classList.remove('active');
+          if (opt.textContent.includes(savedCurrency)) {
+            opt.classList.add('active');
+          }
+        });
+      }
+      
+      loadSettings();
+      loadNotifications();
+    });
+  </script>
+</body>
+</html>
