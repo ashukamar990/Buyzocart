@@ -2,18 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes" />
-  <title>Buyzocart Shop - Best Deals & Products Online</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Buyzocart Shop - Best Deals & Products</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <meta name="description" content="Buyzo Cart - India's fastest online shopping store. Secure checkout, superfast delivery, cash on delivery, and exclusive deals on fashion, electronics & more."/>
-  <meta name="keywords" content="Buyzocart, online shopping, best deals, fashion, electronics, COD, fast delivery, India shopping">
+  <meta name="description" content="Buyzo Cart - Best online shopping deals, secure checkout, and superfast delivery."/>
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://buyzocartshop.com/">
-  <meta property="og:title" content="Buyzo Cart - Shop & Save">
-  <meta property="og:description" content="Best online shopping deals, secure checkout & superfast delivery.">
   <meta property="og:image" content="https://buyzocartshop.com/logo.png">
-  <meta property="og:url" content="https://buyzocartshop.com/">
-  <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -579,7 +574,7 @@
         <h3 style="margin-top:0">Your Contact & Delivery Address</h3>
         <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
 
-        <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px; display:none;">
+        <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
           <h4 style="margin-top:0">Select Saved Address</h4>
           <div id="savedAddressesList"></div>
           <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">Add New Address</button>
@@ -1981,7 +1976,6 @@
     let slidePaused = false;
     let bannerAutoSlideInterval;
     let trendingAutoSlideInterval;
-    let categoryAutoSlideInterval;
     let touchStartX = 0, touchEndX = 0;
     let isBannerDragging = false, bannerTouchStartX = 0, bannerTouchEndX = 0;
 
@@ -2409,7 +2403,6 @@
           renderProducts(products, 'homeProductGrid');
           setTimeout(setupTrendingAutoSlide, 1000);
           setTimeout(setupBannerAutoSlide, 1000);
-          setTimeout(setupCategoryAutoSlide, 1000);
           break;
         case 'searchResultsPage':
           if (window.currentSearchQuery) {
@@ -2421,21 +2414,6 @@
           renderRecentlyViewedPage();
           break;
       }
-    }
-
-    function setupCategoryAutoSlide() {
-      const slider = document.querySelector('.category-circles-container');
-      if (!slider) return;
-      
-      if (categoryAutoSlideInterval) clearInterval(categoryAutoSlideInterval);
-      categoryAutoSlideInterval = setInterval(() => {
-        if (!slidePaused) {
-          slider.scrollBy({ left: 200, behavior: 'smooth' });
-          if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth) {
-            slider.scrollTo({ left: 0, behavior: 'smooth' });
-          }
-        }
-      }, 3000);
     }
 
     function renderRecentlyViewedPage() {
@@ -3000,14 +2978,13 @@
       
       mainImage.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        e.preventDefault();
         touchEndX = e.touches[0].screenX;
         const diff = touchStartX - touchEndX;
         if (Math.abs(diff) > 10) {
           mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
           mainImage.style.transition = 'none';
         }
-      }, { passive: false });
+      }, { passive: true });
       
       mainImage.addEventListener('touchend', (e) => {
         if (!isDragging) return;
@@ -4542,9 +4519,8 @@
       
       bannerCarousel.addEventListener('touchmove', (e) => {
         if (!isBannerDragging) return;
-        e.preventDefault();
         bannerTouchEndX = e.touches[0].clientX;
-      }, { passive: false });
+      }, { passive: true });
       
       bannerCarousel.addEventListener('touchend', (e) => {
         if (!isBannerDragging) return;
@@ -5113,6 +5089,7 @@
         showToast('Address saved successfully', 'success');
         await loadSavedAddresses();
         document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -5168,6 +5145,7 @@
           await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
           showToast('Address updated successfully', 'success');
           document.getElementById('savedAddressesSection').style.display = 'block';
+          document.getElementById('newAddressForm').style.display = 'block';
           await loadSavedAddresses();
         } catch (error) {
           console.error('Error updating address:', error);
@@ -5187,9 +5165,8 @@
           showToast('Address deleted successfully', 'success');
           document.getElementById('alertModal').classList.remove('active');
           await loadSavedAddresses();
-          if (savedAddresses.length === 0) {
-            document.getElementById('savedAddressesSection').style.display = 'none';
-          }
+          document.getElementById('savedAddressesSection').style.display = savedAddresses.length ? 'block' : 'none';
+          document.getElementById('newAddressForm').style.display = 'block';
         } catch (error) {
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
