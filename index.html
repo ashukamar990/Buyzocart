@@ -70,7 +70,7 @@
         </svg>
         Categories
       </div>
-      <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();">
+      <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();" id="offersMenuItem">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.5 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/>
         </svg>
@@ -578,7 +578,7 @@
     <section class="page" id="userPage">
       <div class="card-panel">
         <h3 style="margin-top:0">Your Contact & Delivery Address</h3>
-        <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
+        <p style="color:var(--muted)">Please provide a fresh delivery address for this order.</p>
 
         <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
           <h4 style="margin-top:0">My Addresses</h4>
@@ -2414,13 +2414,13 @@
         }
       });
       suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
-      const topThree = suggestions.slice(0, 5);
+      const topFive = suggestions.slice(0, 5);
       suggestionsContainer.innerHTML = '';
-      if (topThree.length === 0) {
+      if (topFive.length === 0) {
         suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products found</div>';
         return;
       }
-      topThree.forEach(product => {
+      topFive.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
         suggestion.innerHTML = `
@@ -2438,15 +2438,15 @@
         suggestionsContainer.appendChild(suggestion);
       });
       if (suggestions.length > 5) {
-        const categorySuggestion = document.createElement('div');
-        categorySuggestion.className = 'search-suggestion';
-        categorySuggestion.innerHTML = `
+        const viewAll = document.createElement('div');
+        viewAll.className = 'search-suggestion';
+        viewAll.innerHTML = `
           <div class="search-suggestion-info" style="padding-left:0;">
-            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
+            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products for "${query}"</div>
           </div>
         `;
-        categorySuggestion.addEventListener('click', () => performSearch(query));
-        suggestionsContainer.appendChild(categorySuggestion);
+        viewAll.addEventListener('click', () => performSearch(query));
+        suggestionsContainer.appendChild(viewAll);
       }
     }
 
@@ -3351,7 +3351,7 @@
       } else {
         similarProducts = products
           .filter(p => p.id !== product.id && p.category === product.category)
-          .slice(0, 3);
+          .slice(0, 6);
         const ratingMap = {};
         similarProducts.forEach(p => {
           const productReviews = reviews.filter(r => r.productId === p.id);
@@ -3625,6 +3625,7 @@
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
         showToast('Order placed successfully!', 'success');
+        if (document.getElementById('myOrdersPage')?.classList.contains('active')) showMyOrders();
       } catch (error) {
         console.error('Error placing order:', error);
         showToast('Order placed successfully!', 'success');
@@ -5453,7 +5454,8 @@
   <script>
     window.notifications = [
       { id: 1, type: 'order', title: 'Order Confirmed', message: 'Your order #ORDER-20250221-123456 has been confirmed.', timestamp: Date.now() - 5 * 60 * 1000, read: false, badge: 'Order Update' },
-      { id: 2, type: 'offer', title: 'Flash Sale! 40% Off', message: 'Limited time offer on all fashion items.', timestamp: Date.now() - 2 * 60 * 60 * 1000, read: false, badge: 'Special Offer' }
+      { id: 2, type: 'offer', title: 'Flash Sale! 40% Off', message: 'Limited time offer on all fashion items.', timestamp: Date.now() - 2 * 60 * 60 * 1000, read: false, badge: 'Special Offer' },
+      { id: 3, type: 'system', title: 'Welcome to Buyzo Cart!', message: 'Thank you for joining us.', timestamp: Date.now() - 24 * 60 * 60 * 1000, read: true, badge: 'Welcome' }
     ];
     window.addEventListener('storage', (e) => {
       if (e.key === 'bz_notifications') {
