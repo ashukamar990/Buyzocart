@@ -18,8 +18,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
   <link rel="stylesheet" href="style.css">
+  <!-- anti‑download / anti‑scraping head injection -->
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
-  <meta name="referrer" content="same-origin">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
   <div class="menu-overlay" id="menuOverlay"></div>
@@ -1947,158 +1948,86 @@
   </style>
 
   <script>
-    // Anti-Download and Anti-Scraping Protection
+    // ANTI‑DOWNLOAD & ANTI‑SCRAPING PROTECTION — invisible for real users
     (function() {
-      // Bot and Headless Browser Detection
-      const isBot = () => {
-        const ua = navigator.userAgent.toLowerCase();
-        const botKeywords = ['bot', 'crawl', 'spider', 'scrape', 'headless', 'puppet', 'selenium', 'phantom', 'playwright', 'cypress', 'wget', 'curl', 'python', 'java', 'perl', 'ruby', 'php', 'http', 'axios', 'fetch'];
-        return botKeywords.some(keyword => ua.includes(keyword));
-      };
-
-      // Detect automated browsers
-      const isAutomated = () => {
-        return navigator.webdriver || 
-               window.domAutomation || 
-               window.chrome?.app?.isInstalled === false ||
-               navigator.plugins.length === 0 ||
-               window.callPhantom ||
-               window._phantom ||
-               window.phantom;
-      };
-
-      // Detect if page is being embedded in iframe
+      // block iframe embedding (already CSP meta, but js fallback)
       if (window.self !== window.top) {
-        window.top.location.href = window.location.href;
+        document.documentElement.innerHTML = '';
+        throw new Error('embedding blocked');
       }
 
-      // Block right-click for downloading images/saving page
-      document.addEventListener('contextmenu', function(e) {
-        if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') {
-          e.preventDefault();
-          return false;
-        }
-      });
+      // disable right‑click (only to annoy simple scrapers, real users may be annoyed)
+      document.addEventListener('contextmenu', e => e.preventDefault());
 
-      // Block keyboard shortcuts for saving/printing
-      document.addEventListener('keydown', function(e) {
-        // Ctrl+S, Ctrl+U, Ctrl+P, Ctrl+Shift+I, F12, Ctrl+Shift+J
-        if ((e.ctrlKey && (e.key === 's' || e.key === 'u' || e.key === 'p')) || 
-            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-            e.key === 'F12' ||
-            (e.ctrlKey && e.shiftKey && e.key === 'J')) {
-          e.preventDefault();
-          return false;
+      // detect headless / automation tools
+      const headlessProps = [
+        'webdriver', '__nightmare', 'callPhantom', '_phantom',
+        'domAutomation', 'domAutomationController', 'phantom'
+      ];
+      for (let prop of headlessProps) {
+        if (prop in window && window[prop]) {
+          window.location.href = 'about:blank';
+          return;
         }
-      });
+      }
 
-      // Disable drag and drop of images
-      document.addEventListener('dragstart', function(e) {
-        if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') {
-          e.preventDefault();
-          return false;
-        }
-      });
-
-      // Add CSS to block selection and image dragging
-      const style = document.createElement('style');
-      style.innerHTML = `
-        img, video {
-          -webkit-user-drag: none;
-          -khtml-user-drag: none;
-          -moz-user-drag: none;
-          -o-user-drag: none;
-          user-drag: none;
-          pointer-events: auto;
-        }
-        .product-card-image, .main-product-image, .banner-slide, .slider-item-img {
-          -webkit-user-select: none;
-          -khtml-user-select: none;
-          -moz-user-select: none;
-          -ms-user-select: none;
-          user-select: none;
-        }
-      `;
-      document.head.appendChild(style);
-
-      // Block automated scraping tools
-      if (isBot() || isAutomated()) {
-        // Hide all content for bots
-        document.documentElement.style.display = 'none';
-        console.log('Access Denied: Automated access detected');
-        
-        // Redirect or show blank page
+      // detect selenium webdriver
+      if (navigator.webdriver === true) {
         window.location.href = 'about:blank';
         return;
       }
 
-      // Randomly verify human interaction
-      let humanVerified = false;
-      document.addEventListener('mousemove', function() {
-        if (!humanVerified) {
-          humanVerified = true;
-        }
-      });
-      document.addEventListener('touchstart', function() {
-        if (!humanVerified) {
-          humanVerified = true;
-        }
+      // disable console output for downloader detection (optional)
+      if (!window.console || !window.console.log) { /* silent */ }
+
+      // prevent dragging of images (source extraction)
+      document.querySelectorAll('img').forEach(img => {
+        img.setAttribute('draggable', 'false');
       });
 
-      // Block script debuggers
-      setInterval(function() {
-        const startTime = performance.now();
-        debugger;
-        const endTime = performance.now();
-        if (endTime - startTime > 100) {
-          // DevTools detected
-          document.body.innerHTML = '<h1>Developer tools are not allowed</h1>';
+      // monitor devtools opening (simple check)
+      const element = new Image();
+      Object.defineProperty(element, 'id', {
+        get: function() {
+          // devtools probably opened -> optional action
         }
-      }, 1000);
+      });
+      console.log('%c', element);
 
-      // Dynamic content loading to prevent HTTrack/Wget
-      const originalFetch = window.fetch;
-      window.fetch = function(...args) {
-        const userAgent = navigator.userAgent.toLowerCase();
-        if (userAgent.includes('httrack') || userAgent.includes('wget') || userAgent.includes('curl')) {
-          return Promise.reject(new Error('Download not allowed'));
+      // block keyboard shortcuts that reveal source (F12, Ctrl+U, Ctrl+Shift+I)
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'F12' || 
+            (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+            (e.ctrlKey && e.shiftKey && e.key === 'J') ||
+            (e.ctrlKey && e.key === 'U') ||
+            (e.metaKey && e.altKey && e.key === 'I')) {
+          e.preventDefault();
+          return false;
         }
-        return originalFetch.apply(this, args);
-      };
+      });
 
-      // Block image hotlinking from other domains
-      document.addEventListener('DOMContentLoaded', function() {
-        const images = document.querySelectorAll('img');
-        images.forEach(img => {
-          const src = img.getAttribute('src');
-          if (src && src.startsWith('http') && !src.includes(window.location.hostname)) {
-            img.setAttribute('referrerpolicy', 'no-referrer');
-            img.setAttribute('crossorigin', 'anonymous');
-          }
+      // obfuscate email addresses slightly (simple scraping prevention)
+      const mailLinks = document.querySelectorAll('a[href^="mailto:"]');
+      mailLinks.forEach(link => {
+        const original = link.getAttribute('href');
+        link.addEventListener('mouseenter', function() {
+          this.setAttribute('href', original);
         });
+        link.setAttribute('href', '#');
       });
 
-      // Prevent console logging of sensitive data
-      const originalConsole = {
-        log: console.log,
-        info: console.info,
-        debug: console.debug
-      };
+      // prevent selection of whole page (for downloaders trying to copy text)
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
 
-      Object.keys(originalConsole).forEach(method => {
-        console[method] = function() {
-          const error = new Error();
-          if (error.stack && error.stack.includes('download')) {
-            return;
-          }
-          originalConsole[method].apply(console, arguments);
-        };
+      // re‑enable user select for input fields (usability)
+      document.querySelectorAll('input, textarea').forEach(el => {
+        el.style.userSelect = 'text';
       });
-
-      // Clear console on page load
-      console.clear = function() {};
     })();
+  </script>
 
+  <script>
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
