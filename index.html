@@ -18,7 +18,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
   <link rel="stylesheet" href="style.css">
-  <!-- anti‑download / anti‑scraping head injection -->
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
@@ -1102,34 +1101,6 @@
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
-      authDomain: "buyzocart.firebaseapp.com",
-      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
-      projectId: "buyzocart",
-      storageBucket: "buyzocart.firebasestorage.app",
-      messagingSenderId: "640560737762",
-      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
-    const auth = getAuth(app);
-    
-    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
-    
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
-    });
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-
   <style>
     * {
       box-sizing: border-box;
@@ -1384,6 +1355,8 @@
     
     .product-gallery {
       position: relative;
+      overflow: hidden;
+      touch-action: pan-y pinch-zoom;
     }
     
     .main-product-image {
@@ -1397,6 +1370,7 @@
       overflow: hidden;
       margin-bottom: 10px;
       cursor: pointer;
+      transition: transform 0.3s ease;
       touch-action: pan-y pinch-zoom;
     }
     
@@ -1430,20 +1404,21 @@
       padding: 5px 0;
       position: relative;
       z-index: 5;
+      flex-wrap: wrap;
     }
     
     .detail-carousel-dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.2);
+      background: #ccc;
       cursor: pointer;
       transition: all 0.3s ease;
-      border: 1px solid rgba(0, 0, 0, 0.3);
+      border: none;
     }
     
     .detail-carousel-dot.active {
-      background: var(--accent);
+      background: #3b82f6;
       transform: scale(1.2);
     }
     
@@ -1948,18 +1923,12 @@
   </style>
 
   <script>
-    // ANTI‑DOWNLOAD & ANTI‑SCRAPING PROTECTION — invisible for real users
     (function() {
-      // block iframe embedding (already CSP meta, but js fallback)
       if (window.self !== window.top) {
         document.documentElement.innerHTML = '';
         throw new Error('embedding blocked');
       }
-
-      // disable right‑click (only to annoy simple scrapers, real users may be annoyed)
       document.addEventListener('contextmenu', e => e.preventDefault());
-
-      // detect headless / automation tools
       const headlessProps = [
         'webdriver', '__nightmare', 'callPhantom', '_phantom',
         'domAutomation', 'domAutomationController', 'phantom'
@@ -1970,31 +1939,19 @@
           return;
         }
       }
-
-      // detect selenium webdriver
       if (navigator.webdriver === true) {
         window.location.href = 'about:blank';
         return;
       }
-
-      // disable console output for downloader detection (optional)
-      if (!window.console || !window.console.log) { /* silent */ }
-
-      // prevent dragging of images (source extraction)
       document.querySelectorAll('img').forEach(img => {
         img.setAttribute('draggable', 'false');
       });
-
-      // monitor devtools opening (simple check)
       const element = new Image();
       Object.defineProperty(element, 'id', {
         get: function() {
-          // devtools probably opened -> optional action
         }
       });
       console.log('%c', element);
-
-      // block keyboard shortcuts that reveal source (F12, Ctrl+U, Ctrl+Shift+I)
       document.addEventListener('keydown', function(e) {
         if (e.key === 'F12' || 
             (e.ctrlKey && e.shiftKey && e.key === 'I') || 
@@ -2005,8 +1962,6 @@
           return false;
         }
       });
-
-      // obfuscate email addresses slightly (simple scraping prevention)
       const mailLinks = document.querySelectorAll('a[href^="mailto:"]');
       mailLinks.forEach(link => {
         const original = link.getAttribute('href');
@@ -2015,12 +1970,8 @@
         });
         link.setAttribute('href', '#');
       });
-
-      // prevent selection of whole page (for downloaders trying to copy text)
       document.body.style.userSelect = 'none';
       document.body.style.webkitUserSelect = 'none';
-
-      // re‑enable user select for input fields (usability)
       document.querySelectorAll('input, textarea').forEach(el => {
         el.style.userSelect = 'text';
       });
