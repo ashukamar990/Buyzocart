@@ -1371,7 +1371,6 @@
       margin-bottom: 10px;
       cursor: pointer;
       transition: transform 0.3s ease;
-      touch-action: pan-y pinch-zoom;
     }
     
     .image-zoom-btn {
@@ -1404,17 +1403,15 @@
       padding: 5px 0;
       position: relative;
       z-index: 5;
-      flex-wrap: wrap;
     }
     
     .detail-carousel-dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #ccc;
+      background: #d1d5db;
       cursor: pointer;
       transition: all 0.3s ease;
-      border: none;
     }
     
     .detail-carousel-dot.active {
@@ -1921,6 +1918,34 @@
       100% { transform: scale(1) rotate(0); opacity: 1; }
     }
   </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
+      authDomain: "buyzocart.firebaseapp.com",
+      databaseURL: "https://buyzocart-default-rtdb.firebaseio.com",
+      projectId: "buyzocart",
+      storageBucket: "buyzocart.firebasestorage.app",
+      messagingSenderId: "640560737762",
+      appId: "1:640560737762:web:7fe368df6486d6da759dbb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+    
+    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      initApp();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <script>
     (function() {
@@ -2877,6 +2902,107 @@
       }
     }
 
+    let slideStartX = 0;
+    let slideEndX = 0;
+    let isDragging = false;
+
+    function initProductDetailSwipe() {
+      const mainImage = document.getElementById('mainProductImage');
+      if (!mainImage) return;
+      
+      mainImage.addEventListener('touchstart', handleTouchStart, { passive: true });
+      mainImage.addEventListener('touchmove', handleTouchMove, { passive: false });
+      mainImage.addEventListener('touchend', handleTouchEnd);
+      mainImage.addEventListener('mousedown', handleMouseDown);
+      mainImage.addEventListener('mousemove', handleMouseMove);
+      mainImage.addEventListener('mouseup', handleMouseUp);
+      mainImage.addEventListener('mouseleave', handleMouseLeave);
+    }
+
+    function handleTouchStart(e) {
+      slideStartX = e.touches[0].clientX;
+      isDragging = true;
+      pauseSlide();
+    }
+
+    function handleTouchMove(e) {
+      if (!isDragging) return;
+      slideEndX = e.touches[0].clientX;
+      const diff = slideStartX - slideEndX;
+      const mainImage = document.getElementById('mainProductImage');
+      if (Math.abs(diff) > 10) {
+        e.preventDefault();
+        mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
+        mainImage.style.transition = 'none';
+      }
+    }
+
+    function handleTouchEnd(e) {
+      if (!isDragging) return;
+      const mainImage = document.getElementById('mainProductImage');
+      mainImage.style.transform = '';
+      mainImage.style.transition = '';
+      slideEndX = e.changedTouches[0].clientX;
+      const diff = slideStartX - slideEndX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          nextDetailImage();
+        } else {
+          prevDetailImage();
+        }
+      }
+      isDragging = false;
+      resumeSlideAfterDelay();
+    }
+
+    function handleMouseDown(e) {
+      slideStartX = e.clientX;
+      isDragging = true;
+      pauseSlide();
+    }
+
+    function handleMouseMove(e) {
+      if (!isDragging) return;
+      e.preventDefault();
+      slideEndX = e.clientX;
+      const diff = slideStartX - slideEndX;
+      const mainImage = document.getElementById('mainProductImage');
+      if (Math.abs(diff) > 10) {
+        mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
+        mainImage.style.transition = 'none';
+      }
+    }
+
+    function handleMouseUp(e) {
+      if (!isDragging) return;
+      const mainImage = document.getElementById('mainProductImage');
+      mainImage.style.transform = '';
+      mainImage.style.transition = '';
+      slideEndX = e.clientX;
+      const diff = slideStartX - slideEndX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          nextDetailImage();
+        } else {
+          prevDetailImage();
+        }
+      }
+      isDragging = false;
+      resumeSlideAfterDelay();
+    }
+
+    function handleMouseLeave() {
+      if (isDragging) {
+        const mainImage = document.getElementById('mainProductImage');
+        mainImage.style.transform = '';
+        mainImage.style.transition = '';
+        resumeSlideAfterDelay();
+        isDragging = false;
+      }
+      slideStartX = 0;
+      slideEndX = 0;
+    }
+
     function showProductDetail(product) {
       if (!product) {
         showToast('Product not found', 'error');
@@ -2947,6 +3073,7 @@
         }
       }
       initProductDetailGallery(freshProduct);
+      initProductDetailSwipe();
       loadSimilarProducts(freshProduct);
       loadSimilarProductsSmall(freshProduct);
       loadProductReviews(freshProduct.id);
@@ -2984,76 +3111,6 @@
           openProductImageModal();
           resumeSlideAfterDelay();
         });
-      }
-      let touchStartX = 0;
-      let touchEndX = 0;
-      let isDragging = false;
-      mainImage.addEventListener('touchstart', (e) => {
-        pauseSlide();
-        touchStartX = e.touches[0].screenX;
-        isDragging = true;
-      }, { passive: true });
-      mainImage.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        touchEndX = e.touches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 10) {
-          mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
-          mainImage.style.transition = 'none';
-        }
-      }, { passive: true });
-      mainImage.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
-        mainImage.style.transform = '';
-        mainImage.style.transition = '';
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-        resumeSlideAfterDelay();
-        isDragging = false;
-      }, { passive: true });
-      mainImage.addEventListener('mousedown', (e) => {
-        pauseSlide();
-        touchStartX = e.clientX;
-        isDragging = true;
-      });
-      mainImage.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        touchEndX = e.clientX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 10) {
-          mainImage.style.transform = `translateX(${-diff * 0.3}px)`;
-          mainImage.style.transition = 'none';
-        }
-      });
-      mainImage.addEventListener('mouseup', (e) => {
-        if (!isDragging) return;
-        mainImage.style.transform = '';
-        mainImage.style.transition = '';
-        touchEndX = e.clientX;
-        handleSwipe();
-        resumeSlideAfterDelay();
-        isDragging = false;
-      });
-      mainImage.addEventListener('mouseleave', () => {
-        if (isDragging) {
-          mainImage.style.transform = '';
-          mainImage.style.transition = '';
-          resumeSlideAfterDelay();
-          isDragging = false;
-        }
-        touchStartX = 0;
-        touchEndX = 0;
-      });
-      function handleSwipe() {
-        const minSwipeDistance = 50;
-        const difference = touchStartX - touchEndX;
-        if (Math.abs(difference) > minSwipeDistance) {
-          if (difference > 0) nextDetailImage();
-          else prevDetailImage();
-        }
-        touchStartX = 0;
-        touchEndX = 0;
       }
       startAutoSlide();
       function updateMainImage() {
