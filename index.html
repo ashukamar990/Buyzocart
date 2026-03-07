@@ -174,7 +174,7 @@
       <input type="text" class="search-panel-input" id="searchPanelInput" placeholder="Search products, brands, categories..." autocomplete="off">
       <button class="search-panel-close" id="searchPanelClose">×</button>
     </div>
-    <div class="search-suggestions" id="searchSuggestions" style="display: none;"></div>
+    <div class="search-suggestions" id="searchSuggestions"></div>
     <div class="search-section">
       <div class="search-section-title">
         Recent Searches
@@ -581,9 +581,9 @@
         <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
 
         <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
-          <h4 style="margin-top:0">Select Saved Address</h4>
+          <h4 style="margin-top:0">My Addresses</h4>
           <div id="savedAddressesList"></div>
-          <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">Add New Address</button>
+          <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">+ Add New Address</button>
         </div>
 
         <div class="card-panel" id="newAddressForm">
@@ -608,9 +608,9 @@
             <div>
               <label>Address Type</label>
               <select id="addressType">
-                <option value="home">Home</option>
-                <option value="work">Work</option>
-                <option value="other">Other</option>
+                <option value="Home">Home</option>
+                <option value="Work">Work</option>
+                <option value="Other">Other</option>
               </select>
             </div>
             
@@ -1236,6 +1236,7 @@
       max-height: 300px;
       overflow-y: auto;
       border-top: 1px solid var(--border);
+      display: none;
     }
     
     .search-suggestion {
@@ -1258,6 +1259,7 @@
       background-size: cover;
       background-position: center;
       margin-right: 10px;
+      flex-shrink: 0;
     }
     
     .search-suggestion-info {
@@ -1265,8 +1267,15 @@
     }
     
     .search-suggestion-name {
-      font-weight: 500;
-      margin-bottom: 3px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--text);
+    }
+    
+    .search-suggestion-category {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
     }
     
     .search-suggestion-price {
@@ -1389,6 +1398,7 @@
       cursor: pointer;
       z-index: 10;
       backdrop-filter: blur(4px);
+      transition: background 0.2s;
     }
     
     .image-zoom-btn:hover {
@@ -1785,6 +1795,7 @@
       padding: 15px;
       margin-bottom: 10px;
       cursor: pointer;
+      background: var(--surface);
     }
     
     .address-actions {
@@ -1916,6 +1927,17 @@
       0% { transform: scale(0) rotate(-30deg); opacity: 0; }
       50% { transform: scale(1.2) rotate(10deg); }
       100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    .similar-products-small .similar-product-small {
+      background: var(--surface);
+    }
+    .similar-products .slider-item {
+      min-width: 200px;
+    }
+    .offer-badge {
+      background: linear-gradient(135deg, #f97316, #dc2626);
+      color: white;
     }
   </style>
 
@@ -2392,7 +2414,7 @@
         }
       });
       suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
-      const topThree = suggestions.slice(0, 3);
+      const topThree = suggestions.slice(0, 5);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
         suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products found</div>';
@@ -2405,6 +2427,7 @@
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
             <div class="search-suggestion-name">${product.name || 'Product'}</div>
+            <div class="search-suggestion-category">${product.category || 'Category'}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -2414,7 +2437,7 @@
         });
         suggestionsContainer.appendChild(suggestion);
       });
-      if (suggestions.length > 3) {
+      if (suggestions.length > 5) {
         const categorySuggestion = document.createElement('div');
         categorySuggestion.className = 'search-suggestion';
         categorySuggestion.innerHTML = `
@@ -3108,7 +3131,7 @@
         zoomBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           pauseSlide();
-          openProductImageModal();
+          openZoomModal(currentProductImages[currentImageIndex]);
           resumeSlideAfterDelay();
         });
       }
@@ -3122,6 +3145,16 @@
         document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentImageIndex);
         });
+      }
+    }
+
+    function openZoomModal(imageSrc) {
+      const zoomModal = document.getElementById('zoomModal');
+      const zoomImage = document.getElementById('zoomImage');
+      if (zoomImage && zoomModal) {
+        zoomImage.src = imageSrc;
+        zoomModal.classList.add('active');
+        resetZoom();
       }
     }
 
@@ -3315,11 +3348,10 @@
       let similarProducts = [];
       if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin) && product.similarFromAdmin.length > 0) {
         similarProducts = product.similarFromAdmin.map(id => products.find(p => p.id === id)).filter(p => p);
-      }
-      if (similarProducts.length === 0) {
+      } else {
         similarProducts = products
           .filter(p => p.id !== product.id && p.category === product.category)
-          .slice(0, 6);
+          .slice(0, 3);
         const ratingMap = {};
         similarProducts.forEach(p => {
           const productReviews = reviews.filter(r => r.productId === p.id);
@@ -3593,7 +3625,6 @@
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
         showToast('Order placed successfully!', 'success');
-        if (document.getElementById('myOrdersPage')?.classList.contains('active')) showMyOrders();
       } catch (error) {
         console.error('Error placing order:', error);
         showToast('Order placed successfully!', 'success');
@@ -4701,8 +4732,10 @@
             <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
               <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}, ${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile} • Type: ${address.type}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div style="font-size:14px;color:var(--muted);margin-top:4px;">Mobile: ${address.mobile} • Type: ${address.type}</div>
+              ${address.isDefault ? '<span style="background:var(--accent);color:white;padding:2px 8px;border-radius:12px;font-size:10px;">Default</span>' : ''}
             </div>
           </div>
           <div class="address-actions">
@@ -4744,7 +4777,7 @@
       document.getElementById('city').value = address.city;
       document.getElementById('state').value = address.state;
       document.getElementById('house').value = address.street;
-      document.getElementById('addressType').value = address.type || 'home';
+      document.getElementById('addressType').value = address.type || 'Home';
     }
 
     async function saveUserInfoAndAddress() {
@@ -4796,7 +4829,7 @@
       document.getElementById('city').value = '';
       document.getElementById('state').value = '';
       document.getElementById('house').value = '';
-      document.getElementById('addressType').value = 'home';
+      document.getElementById('addressType').value = 'Home';
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Save This Address';
       saveBtn.onclick = saveUserInfoAndAddress;
@@ -5413,6 +5446,19 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof initApp === 'function') initApp();
+    });
+  </script>
+
+  <!-- Integrate notification.html into index -->
+  <script>
+    window.notifications = [
+      { id: 1, type: 'order', title: 'Order Confirmed', message: 'Your order #ORDER-20250221-123456 has been confirmed.', timestamp: Date.now() - 5 * 60 * 1000, read: false, badge: 'Order Update' },
+      { id: 2, type: 'offer', title: 'Flash Sale! 40% Off', message: 'Limited time offer on all fashion items.', timestamp: Date.now() - 2 * 60 * 60 * 1000, read: false, badge: 'Special Offer' }
+    ];
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'bz_notifications') {
+        try { window.notifications = JSON.parse(e.newValue) || []; } catch (error) {}
+      }
     });
   </script>
 </body>
