@@ -70,11 +70,11 @@
         </svg>
         Categories
       </div>
-      <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+      <div class="menu-item" onclick="window.location.href='offers.html'; closeMenu();" style="background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 12px; margin: 5px 0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.5 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/>
         </svg>
-        Offers
+        <span style="color: #f59e0b; font-weight: 700;">Special Offers</span>
       </div>
       <div class="menu-item" onclick="checkAuthAndShowPage('myOrdersPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
@@ -83,7 +83,7 @@
         </svg>
         Track Order
       </div>
-      <div class="menu-item" onclick="window.location.href='notification.html'; closeMenu();">
+      <div class="menu-item" onclick="showPage('notificationsPage'); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
@@ -578,7 +578,6 @@
     <section class="page" id="userPage">
       <div class="card-panel">
         <h3 style="margin-top:0">Your Contact & Delivery Address</h3>
-        <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
 
         <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
           <h4 style="margin-top:0">My Addresses</h4>
@@ -785,6 +784,26 @@
         </div>
       </div>
     </section>
+
+    <section class="page" id="notificationsPage">
+      <div class="policy-page">
+        <div class="back-button" onclick="showPage('homePage')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2>Notifications</h2>
+          <button class="btn secondary btn-sm" onclick="markAllNotificationsRead()">Mark all read</button>
+        </div>
+        <div id="notificationsList" class="notifications-container"></div>
+        <div id="emptyNotifications" class="card-panel center" style="display:none;">
+          <h3>No notifications</h3>
+          <p>You're all caught up!</p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <div class="bottom-nav">
@@ -885,7 +904,7 @@
             <li><a onclick="checkAuthAndShowPage('wishlistPage')">Wishlist</a></li>
             <li><a onclick="showCategories()">Categories</a></li>
             <li><a onclick="window.location.href='offers.html'">Offers</a></li>
-            <li><a onclick="window.location.href='notification.html'">Notifications</a></li>
+            <li><a onclick="showPage('notificationsPage')">Notifications</a></li>
           </ul>
         </div>
         
@@ -1912,6 +1931,53 @@
       50% { transform: scale(1.2) rotate(10deg); }
       100% { transform: scale(1) rotate(0); opacity: 1; }
     }
+
+    /* Notifications Styles */
+    .notifications-container {
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      margin-top: 20px;
+    }
+    .notification-item {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+    .notification-item:hover {
+      background: var(--hover);
+    }
+    .notification-item.unread::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent);
+    }
+    .notification-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .notification-icon.order { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .notification-icon.offer { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    .notification-icon.system { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+    .notification-content { flex: 1; }
+    .notification-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .notification-title { font-weight: 600; font-size: 16px; }
+    .notification-time { font-size: 12px; color: var(--muted); }
+    .notification-message { color: var(--muted); font-size: 14px; }
   </style>
 
   <script type="module">
@@ -2008,7 +2074,8 @@
       ORDERS: 'bz_orders',
       CART: 'bz_cart',
       WISHLIST: 'bz_wishlist',
-      RECENT_SEARCHES: 'bz_recent_searches'
+      RECENT_SEARCHES: 'bz_recent_searches',
+      NOTIFICATIONS: 'bz_notifications'
     };
 
     const cacheManager = {
@@ -2060,7 +2127,7 @@
     let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
     let deliveredOrders = [];
     let globalCurrencySymbol = adminSettings.currencySymbol;
-    let userCurrencyPreference = localStorage.getItem('userCurrency') || null;
+    let userCurrencyPreference = '₹'; // Force Rupee as per user request
     
     let autoSlideInterval;
     let slidePaused = false;
@@ -2221,7 +2288,7 @@
     }
 
     function getCurrencySymbol() {
-      return userCurrencyPreference || globalCurrencySymbol || '₹';
+      return '₹'; // Force Rupee as per user request
     }
 
     function formatPrice(price) {
@@ -2387,21 +2454,24 @@
         }
       });
       suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
-      const topThree = suggestions.slice(0, 3);
+      const topFive = suggestions.slice(0, 5);
       suggestionsContainer.innerHTML = '';
-      if (topThree.length === 0) {
+      if (topFive.length === 0) {
         suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products found</div>';
         return;
       }
-      topThree.forEach(product => {
+      topFive.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
-        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
+        const categoryObj = categories.find(c => c.id === product.category || c.name === product.category);
+        const productCategory = categoryObj ? categoryObj.name : (product.category || '');
+        const rating = ratingMap[product.id] || 0;
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-rating" style="color:#ffc107; font-size:12px;">${generateStarRating(rating)} (${rating.toFixed(1)})</div>
+            <div class="search-suggestion-name" style="font-weight:700;">${product.name || 'Product'}</div>
+            <div class="search-suggestion-category" style="color:var(--accent); font-size:12px; font-weight:600;">Category: ${productCategory}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -2568,7 +2638,88 @@
         case 'recentlyViewedPage':
           renderRecentlyViewedPage();
           break;
+        case 'notificationsPage':
+          fetchNotifications();
+          break;
       }
+    }
+
+    async function fetchNotifications() {
+      if (!currentUser) return;
+      const list = document.getElementById('notificationsList');
+      const empty = document.getElementById('emptyNotifications');
+      if (!list || !empty) return;
+      list.innerHTML = '<div class="center" style="padding:20px;"><div class="loading-spinner"></div></div>';
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'notifications/' + currentUser.uid));
+        if (!snapshot.exists()) {
+          list.innerHTML = '';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        const notificationsObj = snapshot.val();
+        const notifications = Object.keys(notificationsObj).map(key => ({ id: key, ...notificationsObj[key] }));
+        notifications.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        cacheManager.set(CACHE_KEYS.NOTIFICATIONS, notifications);
+        renderNotifications(notifications);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        list.innerHTML = '<p class="center" style="color:red">Error loading notifications</p>';
+      }
+    }
+
+    function renderNotifications(notifications) {
+      const list = document.getElementById('notificationsList');
+      list.innerHTML = '';
+      notifications.forEach(notif => {
+        const item = document.createElement('div');
+        item.className = `notification-item ${notif.read ? '' : 'unread'}`;
+        const type = notif.type || 'system';
+        let icon = '🔔';
+        if (type === 'order') icon = '📦';
+        else if (type === 'offer') icon = '🔥';
+
+        const date = notif.timestamp ? new Date(notif.timestamp).toLocaleString() : '';
+
+        item.innerHTML = `
+          <div class="notification-icon ${type}">${icon}</div>
+          <div class="notification-content">
+            <div class="notification-header">
+              <span class="notification-title">${notif.title || 'Notification'}</span>
+              <span class="notification-time">${date}</span>
+            </div>
+            <div class="notification-message">${notif.message || ''}</div>
+          </div>
+        `;
+        item.onclick = () => markNotificationRead(notif.id);
+        list.appendChild(item);
+      });
+    }
+
+    async function markNotificationRead(id) {
+      if (!currentUser) return;
+      try {
+        await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${currentUser.uid}/${id}`), { read: true });
+        fetchNotifications();
+      } catch (e) { console.error(e); }
+    }
+
+    async function markAllNotificationsRead() {
+      if (!currentUser) return;
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'notifications/' + currentUser.uid));
+        if (snapshot.exists()) {
+          const updates = {};
+          const data = snapshot.val();
+          Object.keys(data).forEach(key => {
+            updates[`notifications/${currentUser.uid}/${key}/read`] = true;
+          });
+          await window.firebase.update(window.firebase.ref(window.firebase.database), updates);
+          fetchNotifications();
+          showToast('All notifications marked as read', 'success');
+        }
+      } catch (e) { console.error(e); }
     }
 
     function renderRecentlyViewedPage() {
@@ -4652,6 +4803,10 @@
 
     async function loadSavedAddresses() {
       if (!currentUser) return;
+      const addressesList = document.getElementById('savedAddressesList');
+      const savedAddressesSection = document.getElementById('savedAddressesSection');
+      if (addressesList) addressesList.innerHTML = '<div class="center" style="padding:10px;"><div class="loading-spinner"></div></div>';
+      if (savedAddressesSection) savedAddressesSection.style.display = 'block';
       try {
         const snapshot = await window.firebase.get(
           window.firebase.query(
@@ -4671,9 +4826,11 @@
         const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
         savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
         if (addresses.length > 0) {
-          savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-        } else savedAddressesSection.style.display = 'none';
+        } else {
+          if (addressesList) addressesList.innerHTML = '<p class="center" style="color:var(--muted); padding:10px;">No saved addresses found.</p>';
+        }
+        if (savedAddressesSection) savedAddressesSection.style.display = 'block';
         cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
       } catch (error) {
         console.error('Error loading addresses:', error);
@@ -5052,6 +5209,15 @@
       if (cachedSettings) {
         adminSettings = cachedSettings;
         updateAdminSettingsUI();
+      }
+      const cachedAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES);
+      if (cachedAddresses && cachedAddresses.length > 0) {
+        savedAddresses = cachedAddresses;
+        if (document.getElementById('userPage')?.classList.contains('active')) renderSavedAddresses();
+      }
+      const cachedNotifs = cacheManager.get(CACHE_KEYS.NOTIFICATIONS);
+      if (cachedNotifs && cachedNotifs.length > 0) {
+        renderNotifications(cachedNotifs);
       }
     }
 
