@@ -2013,7 +2013,7 @@
     };
 
     const cacheManager = {
-      set(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
+      set(key, data, ttl = 0) { // Default 0 means no expiry
         const item = { data, timestamp: Date.now(), ttl };
         try { localStorage.setItem(key, JSON.stringify(item)); } catch (e) {}
       },
@@ -2022,7 +2022,8 @@
         if (!item) return null;
         try {
           const parsed = JSON.parse(item);
-          if (Date.now() - parsed.timestamp > parsed.ttl) {
+          // If ttl is 0, it never expires
+          if (parsed.ttl !== 0 && Date.now() - parsed.timestamp > parsed.ttl) {
             localStorage.removeItem(key);
             return null;
           }
@@ -4238,6 +4239,11 @@
     function renderCategories() {
       const container = document.getElementById('categoriesContainer');
       if (!container) return;
+
+      const currentCategoryNames = Array.from(container.querySelectorAll('.category-pill')).map(p => p.textContent);
+      const nextCategoryNames = ['All', ...categories.map(c => c.name || 'Category')];
+      if (JSON.stringify(currentCategoryNames) === JSON.stringify(nextCategoryNames)) return;
+
       const fragment = document.createDocumentFragment();
       const allCategory = document.createElement('div');
       allCategory.className = 'category-pill active';
@@ -4264,6 +4270,11 @@
     function renderCategoryCircles() {
       const container = document.getElementById('categoryCirclesContainer');
       if (!container) return;
+
+      const currentNames = Array.from(container.querySelectorAll('.category-circle-name')).map(n => n.textContent);
+      const nextNames = categories.map(c => c.name || 'Category');
+      if (JSON.stringify(currentNames) === JSON.stringify(nextNames)) return;
+
       const fragment = document.createDocumentFragment();
       categories.forEach(category => {
         const circle = document.createElement('div');
@@ -4291,6 +4302,11 @@
         } else ratingMap[p.id] = 0;
       });
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      const currentIds = Array.from(container.querySelectorAll('.product-card')).map(card => card.getAttribute('data-product-id'));
+      const nextIds = sorted.map(p => p.id);
+      if (JSON.stringify(currentIds) === JSON.stringify(nextIds)) return;
+
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         return;
@@ -4304,6 +4320,11 @@
       const track = document.getElementById('bannerTrack');
       const controls = document.getElementById('bannerControls');
       if (!track || !controls) return;
+
+      const currentBannerUrls = Array.from(track.querySelectorAll('.banner-slide')).map(slide => slide.style.backgroundImage);
+      const nextBannerUrls = banners.map(b => `url("${getProductImage(b)}")`);
+      if (JSON.stringify(currentBannerUrls) === JSON.stringify(nextBannerUrls)) return;
+
       const trackFragment = document.createDocumentFragment();
       const controlsFragment = document.createDocumentFragment();
       banners.forEach((banner, index) => {
@@ -5026,114 +5047,12 @@
       updateHeroContent();
     }
 
-    function fetchLiveData() {
-      if (!window.firebase || !window.firebase.database) {
-        console.error('Firebase not initialized');
-        return;
-      }
-      const database = window.firebase.database;
-      const ref = window.firebase.ref;
-      const get = window.firebase.get;
-      get(ref(database, 'products')).then(snapshot => {
-        window.isProductsLoading = false;
-        const productsObj = snapshot.val();
-        if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => {
-            const product = productsObj[key];
-            return {
-              id: key,
-              ...product,
-              images: product.images ? 
-                (Array.isArray(product.images) ? product.images : [product.images]) : 
-                (product.image ? [product.image] : 
-                 (product.img ? [product.img] : 
-                  (product.imageUrl ? [product.imageUrl] : [])))
-            };
-          });
-          products = newProducts;
-          window.products = products;
-          cacheManager.set(CACHE_KEYS.PRODUCTS, products);
-          const currentPage = document.querySelector('.page.active')?.id;
-          if (currentPage === 'homePage') {
-            renderProducts(products, 'homeProductGrid');
-            const trendingProducts = products.filter(p => p.isTrending || p.trending);
-            if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
-            else renderProductSlider(products.slice(0, 10), 'productSlider');
-          } else if (currentPage === 'productsPage') {
-            renderProducts(products, 'productGrid');
-            updateProductsCount();
-          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
-            const filteredResults = products.filter(product => 
-              (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-            );
-            window.currentSearchResults = filteredResults;
-            renderSearchResults(filteredResults, window.currentSearchQuery);
-          }
-        } else {
-          window.isProductsLoading = false;
-          products = [];
-          renderProducts([], 'homeProductGrid');
-          renderProducts([], 'productGrid');
-        }
-      }).catch(error => {
-        window.isProductsLoading = false;
-        console.error('Error fetching products:', error);
-        products = [];
-        renderProducts([], 'homeProductGrid');
-        renderProducts([], 'productGrid');
-      });
-      get(ref(database, 'categories')).then(snapshot => {
-        const categoriesObj = snapshot.val();
-        if (categoriesObj) {
-          const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
-          categories = newCategories;
-          cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
-        } else categories = [];
-      }).catch(error => {
-        console.error('Error fetching categories:', error);
-        categories = [];
-      });
-      get(ref(database, 'banners')).then(snapshot => {
-        const bannersObj = snapshot.val();
-        if (bannersObj) {
-          const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
-          banners = newBanners;
-          cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
-      }).catch(error => {
-        console.error('Error fetching banners:', error);
-        banners = [];
-      });
-      get(ref(database, 'adminSettings')).then(snapshot => {
-        const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
-        }
-      }).catch(error => {
-        console.error('Error fetching admin settings:', error);
-      });
-      get(ref(database, 'outOfStock')).then(snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) window.outOfStockItems = outOfStockObj;
-      }).catch(error => {
-        console.error('Error fetching out of stock items:', error);
-      });
-    }
 
     function loadCachedData() {
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
+        window.isProductsLoading = false; // Products are available from cache
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
@@ -5167,6 +5086,7 @@
       const onValue = window.firebase.onValue;
       onValue(ref(database, 'products'), snapshot => {
         const productsObj = snapshot.val();
+        window.isProductsLoading = false; // Mark loading as complete on first data
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
             const product = productsObj[key];
@@ -5180,9 +5100,14 @@
                   (product.imageUrl ? [product.imageUrl] : [])))
             };
           });
+
+          // Deep compare simple check to avoid redundant re-renders
+          if (JSON.stringify(newProducts) === JSON.stringify(products)) return;
+
           products = newProducts;
           window.products = products;
           cacheManager.set(CACHE_KEYS.PRODUCTS, products);
+
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage' || currentPage === 'productsPage' || currentPage === 'productDetailPage' || currentPage === 'searchResultsPage') {
             if (currentPage === 'homePage') {
@@ -5205,28 +5130,40 @@
               renderSearchResults(filteredResults, window.currentSearchQuery);
             }
           }
-        } else products = [];
+        } else {
+          products = [];
+          updateProductsCount();
+        }
       });
       onValue(ref(database, 'categories'), snapshot => {
         const categoriesObj = snapshot.val();
         if (categoriesObj) {
           const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
+          if (JSON.stringify(newCategories) === JSON.stringify(categories)) return;
           categories = newCategories;
           cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
           if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
             renderCategories();
             renderCategoryCircles();
           }
-        } else categories = [];
+        } else {
+          categories = [];
+          renderCategories();
+          renderCategoryCircles();
+        }
       });
       onValue(ref(database, 'banners'), snapshot => {
         const bannersObj = snapshot.val();
         if (bannersObj) {
           const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
+          if (JSON.stringify(newBanners) === JSON.stringify(banners)) return;
           banners = newBanners;
           cacheManager.set(CACHE_KEYS.BANNERS, banners);
           if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
+        } else {
+          banners = [];
+          renderBannerCarousel();
+        }
       });
       onValue(ref(database, 'adminSettings'), snapshot => {
         const settingsObj = snapshot.val();
@@ -5469,10 +5406,25 @@
     }
 
     function initApp() {
+      // 1. Initial UI Setup - Load cache first for instant feel
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
+
+      loadCachedData();
+      showPage('homePage');
+      updateBottomNav();
+      updateAdminSettingsUI();
+
+      // 2. Component Initialization
       setupEventListeners();
+      setupHeroMessages();
+      setupHeaderSearchScroll();
+      setupBackButton();
+      setupSearchInput();
+      setupViewAllRatings();
+
+      // 3. Data Connectivity
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
           if (user) {
@@ -5488,17 +5440,9 @@
           }
         });
       }
-      loadCachedData();
-      fetchLiveData();
+
+      // Only use realtime listeners to avoid redundant initial fetches
       setupRealtimeListeners();
-      showPage('homePage');
-      setupHeroMessages();
-      updateBottomNav();
-      setupHeaderSearchScroll();
-      setupBackButton();
-      setupSearchInput();
-      setupViewAllRatings();
-      updateAdminSettingsUI();
       if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
         const productId = window.location.hash.split('=')[1];
         const checkProducts = setInterval(() => {

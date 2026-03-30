@@ -1406,7 +1406,7 @@
     };
 
     const cacheManager = {
-      set(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
+      set(key, data, ttl = 0) { // Default 0 means no expiry for addresses
         const item = { data, timestamp: Date.now(), ttl };
         try { localStorage.setItem(key, JSON.stringify(item)); } catch (e) {}
       },
@@ -1415,7 +1415,7 @@
         if (!item) return null;
         try {
           const parsed = JSON.parse(item);
-          if (Date.now() - parsed.timestamp > parsed.ttl) {
+          if (parsed.ttl !== 0 && Date.now() - parsed.timestamp > parsed.ttl) {
             localStorage.removeItem(key);
             return null;
           }
