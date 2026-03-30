@@ -18,7 +18,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
   <link rel="stylesheet" href="style.css">
-  <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
@@ -1999,6 +1998,16 @@
   </script>
 
   <script>
+    function escapeHTML(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -2398,10 +2407,10 @@
         suggestion.className = 'search-suggestion';
         const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="search-suggestion-img" style="background-image: url('${escapeHTML(getProductImage(product))}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-name">${escapeHTML(product.name || 'Product')}</div>
+            <div class="search-suggestion-category">${escapeHTML(productCategory)}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -2416,7 +2425,7 @@
         categorySuggestion.className = 'search-suggestion';
         categorySuggestion.innerHTML = `
           <div class="search-suggestion-info" style="padding-left:0;">
-            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
+            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${escapeHTML(query)}"</div>
           </div>
         `;
         categorySuggestion.addEventListener('click', () => performSearch(query));
@@ -2450,8 +2459,8 @@
         const item = document.createElement('div');
         item.className = 'recent-search-item';
         item.innerHTML = `
-          <span class="recent-search-text">${search}</span>
-          <button class="recent-search-remove" data-search="${search}">×</button>
+          <span class="recent-search-text">${escapeHTML(search)}</span>
+          <button class="recent-search-remove" data-search="${escapeHTML(search)}">×</button>
         `;
         item.querySelector('.recent-search-text').addEventListener('click', () => {
           document.getElementById('searchPanelInput').value = search;
@@ -2820,11 +2829,11 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image" style="background-image: url('${escapeHTML(productImage)}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${productName}</div>
+          <div class="product-card-title">${escapeHTML(productName)}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -2834,13 +2843,13 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${escapeHTML(productId)}" title="Wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
+            <button class="action-btn share-btn" data-product-id="${escapeHTML(productId)}" title="Share">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -3332,9 +3341,9 @@
         const item = document.createElement('div');
         item.className = 'similar-product-small';
         item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(simProduct)}')"></div>
+          <div class="similar-product-small-img" style="background-image: url('${escapeHTML(getProductImage(simProduct))}')"></div>
           <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${(simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product')}</div>
+            <div class="similar-product-small-title">${escapeHTML((simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product'))}</div>
             <div class="similar-product-small-price">${formatPrice(simProduct.price)}</div>
           </div>
         `;
@@ -3699,11 +3708,11 @@
         }
         reviewItem.innerHTML = `
           <div class="review-header">
-            <div class="reviewer-name">${review.userName} ${isVerified}</div>
+            <div class="reviewer-name">${escapeHTML(review.userName)} ${isVerified}</div>
             <div class="review-date">${date}</div>
           </div>
           <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
+          <div class="review-text">${escapeHTML(review.text)}</div>
           ${fileHtml}
           ${currentUser && (review.userId === currentUser.uid) ? 
             `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
@@ -3908,7 +3917,7 @@
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
-              <div class="order-id">${order.orderId}</div>
+              <div class="order-id">${escapeHTML(order.orderId)}</div>
               <div class="order-date">${orderDate.toLocaleDateString()}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
@@ -3916,9 +3925,9 @@
           <div class="order-details">
             <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${order.productName}</div>
+              <div class="order-product-title">${escapeHTML(order.productName)}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount)}</div>
-              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
+              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${escapeHTML(order.size)}</div>
             </div>
           </div>
           <div class="order-actions">
@@ -3984,7 +3993,7 @@
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
-          <div class="order-detail-value">${order.orderId}</div>
+          <div class="order-detail-value">${escapeHTML(order.orderId)}</div>
         </div>
         <div class="order-detail-section">
           <div class="order-detail-label">Order Date</div>
@@ -3999,10 +4008,10 @@
           <div class="order-detail-product">
             <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+              <div style="font-weight:600;margin-bottom:8px">${escapeHTML(order.productName)}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${order.size}
+                Qty: ${order.quantity} | Size: ${escapeHTML(order.size)}
               </div>
             </div>
           </div>
@@ -4036,10 +4045,10 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Delivery Address</div>
           <div class="order-detail-value">
-            <div>${order.userInfo?.fullName || ''}</div>
-            <div>${order.userInfo?.house || ''}</div>
-            <div>${order.userInfo?.city || ''}, ${order.userInfo?.state || ''} - ${order.userInfo?.pincode || ''}</div>
-            <div>Mobile: ${order.userInfo?.mobile || ''}</div>
+            <div>${escapeHTML(order.userInfo?.fullName || '')}</div>
+            <div>${escapeHTML(order.userInfo?.house || '')}</div>
+            <div>${escapeHTML(order.userInfo?.city || '')}, ${escapeHTML(order.userInfo?.state || '')} - ${escapeHTML(order.userInfo?.pincode || '')}</div>
+            <div>Mobile: ${escapeHTML(order.userInfo?.mobile || '')}</div>
           </div>
         </div>
       `;
@@ -4693,10 +4702,10 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}</div>
-              <div>${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile}</div>
+              <div style="font-weight:600">${escapeHTML(address.name)}</div>
+              <div>${escapeHTML(address.street)}</div>
+              <div>${escapeHTML(address.city)}, ${escapeHTML(address.state)} - ${escapeHTML(address.pincode)}</div>
+              <div>Mobile: ${escapeHTML(address.mobile)}</div>
               <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
             </div>
           </div>
