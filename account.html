@@ -1386,6 +1386,30 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
+    const CACHE_KEYS = {
+      ADDRESSES: 'bz_addresses'
+    };
+
+    const cacheManager = {
+      set(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
+        const item = { data, timestamp: Date.now(), ttl };
+        try { localStorage.setItem(key, JSON.stringify(item)); } catch (e) {}
+      },
+      get(key) {
+        const item = localStorage.getItem(key);
+        if (!item) return null;
+        try {
+          const parsed = JSON.parse(item);
+          if (Date.now() - parsed.timestamp > parsed.ttl) {
+            localStorage.removeItem(key);
+            return null;
+          }
+          return parsed.data;
+        } catch { return null; }
+      },
+      remove(key) { localStorage.removeItem(key); }
+    };
+
     // Global state
     let currentUser = null;
     let editingAddressId = null;
@@ -1609,117 +1633,151 @@
     }
 
     function saveAddress() {
-      const address = {
-        name: document.getElementById('addressName').value,
-        mobile: document.getElementById('addressMobile').value,
-        pincode: document.getElementById('addressPincode').value,
-        city: document.getElementById('addressCity').value,
-        state: document.getElementById('addressState').value,
-        street: document.getElementById('addressStreet').value,
-        type: document.getElementById('addressType').value,
-        userId: currentUser.uid,
-        updatedAt: Date.now()
-      };
+      const name = document.getElementById('addressName').value.trim();
+      const mobile = document.getElementById('addressMobile').value.trim();
+      const pincode = document.getElementById('addressPincode').value.trim();
+      const city = document.getElementById('addressCity').value.trim();
+      const state = document.getElementById('addressState').value.trim();
+      const street = document.getElementById('addressStreet').value.trim();
+      const type = document.getElementById('addressType').value;
 
-      if (!address.name || !address.mobile || !address.pincode || !address.city || !address.state || !address.street) {
+      if (!name || !mobile || !pincode || !city || !state || !street) {
         showToast('Please fill all required fields', 'error');
         return;
       }
 
-      const promise = editingAddressId
-        ? db.ref(`addresses/${editingAddressId}`).update(address)
-        : db.ref('addresses').push(address);
+      const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
 
-      promise.then(() => {
-        showToast(`Address ${editingAddressId ? 'updated' : 'added'} successfully`, 'success');
-        hideAddressForm();
-        loadAddresses();
-      }).catch(() => {
-        showToast(`Failed to ${editingAddressId ? 'update' : 'add'} address`, 'error');
-      });
+      if (editingAddressId) {
+        const index = allAddresses.findIndex(addr => addr.id === editingAddressId);
+        if (index !== -1) {
+          allAddresses[index] = {
+            ...allAddresses[index],
+            name, mobile, pincode, city, state, street, type,
+            updatedAt: Date.now()
+          };
+          showToast('Address updated successfully', 'success');
+        }
+      } else {
+        // Check for duplicates
+        const isDuplicate = allAddresses.some(addr =>
+          addr.userId === currentUser.uid &&
+          addr.name.toLowerCase() === name.toLowerCase() &&
+          addr.mobile === mobile &&
+          addr.pincode === pincode &&
+          addr.street.toLowerCase() === street.toLowerCase()
+        );
+
+        if (isDuplicate) {
+          showToast('This address is already saved', 'warning');
+          return;
+        }
+
+        const newAddress = {
+          id: 'address_' + Date.now(),
+          name, mobile, pincode, city, state, street, type,
+          userId: currentUser.uid,
+          isDefault: !allAddresses.some(a => a.userId === currentUser.uid),
+          createdAt: Date.now()
+        };
+        allAddresses.push(newAddress);
+        showToast('Address added successfully', 'success');
+      }
+
+      cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
+      hideAddressForm();
+      loadAddresses();
     }
 
     function loadAddresses() {
       const container = document.getElementById('savedAddresses');
       container.innerHTML = '<div class="spinner"></div>';
 
-      db.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
-          container.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            container.innerHTML = `
-              <div class="empty-state">
-                <div class="empty-state-icon">🏠</div>
-                <div class="empty-state-title">No addresses saved</div>
-                <div class="empty-state-description">Add your first address to make checkout faster</div>
-              </div>
-            `;
-            return;
-          }
+      try {
+        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+        const userAddresses = allAddresses.filter(addr => addr.userId === currentUser.uid);
 
-          const addresses = [];
-          snapshot.forEach(child => addresses.push({ id: child.key, ...child.val() }));
-          addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+        container.innerHTML = '';
 
-          addresses.forEach(address => {
-            const card = document.createElement('div');
-            card.className = `address-card ${address.isDefault ? 'default' : ''}`;
-            card.innerHTML = `
-              <div class="address-name">${address.name}</div>
-              <div class="address-details">
-                ${address.street}<br>
-                ${address.city}, ${address.state} - ${address.pincode}<br>
-                Mobile: ${address.mobile}
-              </div>
-              <div>
-                <span class="address-badge">${address.type}</span>
-                ${address.isDefault ? '<span class="address-badge default">Default</span>' : ''}
-              </div>
-              <div class="address-actions">
-                <button class="btn-outline btn-sm" onclick="editAddress('${address.id}')">Edit</button>
-                <button class="btn-outline btn-sm" onclick="deleteAddress('${address.id}')">Delete</button>
-                ${!address.isDefault ? `<button class="btn-sm" onclick="setDefaultAddress('${address.id}')">Set as Default</button>` : ''}
-              </div>
-            `;
-            container.appendChild(card);
-          });
+        if (userAddresses.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🏠</div>
+              <div class="empty-state-title">No addresses saved</div>
+              <div class="empty-state-description">Add your first address to make checkout faster</div>
+            </div>
+          `;
+          return;
+        }
+
+        const addresses = userAddresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+
+        addresses.forEach(address => {
+          const card = document.createElement('div');
+          card.className = `address-card ${address.isDefault ? 'default' : ''}`;
+          card.innerHTML = `
+            <div class="address-name">${address.name}</div>
+            <div class="address-details">
+              ${address.street}<br>
+              ${address.city}, ${address.state} - ${address.pincode}<br>
+              Mobile: ${address.mobile}
+            </div>
+            <div>
+              <span class="address-badge">${address.type}</span>
+              ${address.isDefault ? '<span class="address-badge default">Default</span>' : ''}
+            </div>
+            <div class="address-actions">
+              <button class="btn-outline btn-sm" onclick="editAddress('${address.id}')">Edit</button>
+              <button class="btn-outline btn-sm" onclick="deleteAddress('${address.id}')">Delete</button>
+              ${!address.isDefault ? `<button class="btn-sm" onclick="setDefaultAddress('${address.id}')">Set as Default</button>` : ''}
+            </div>
+          `;
+          container.appendChild(card);
         });
+      } catch (error) {
+        console.error('Error loading addresses:', error);
+        container.innerHTML = '<p>Error loading addresses.</p>';
+      }
     }
 
     window.editAddress = function(id) {
-      db.ref(`addresses/${id}`).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          showAddressForm({ id, ...snapshot.val() });
-        }
-      });
+      const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+      const address = allAddresses.find(addr => addr.id === id);
+      if (address) {
+        showAddressForm(address);
+      }
     };
 
     window.deleteAddress = function(id) {
       if (confirm('Are you sure you want to delete this address?')) {
-        db.ref(`addresses/${id}`).remove()
-          .then(() => {
-            showToast('Address deleted', 'success');
-            loadAddresses();
-          })
-          .catch(() => showToast('Failed to delete address', 'error'));
+        try {
+          const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+          const filteredAddresses = allAddresses.filter(addr => addr.id !== id);
+          cacheManager.set(CACHE_KEYS.ADDRESSES, filteredAddresses);
+          showToast('Address deleted', 'success');
+          loadAddresses();
+        } catch (error) {
+          console.error('Error deleting address:', error);
+          showToast('Failed to delete address', 'error');
+        }
       }
     };
 
     window.setDefaultAddress = function(id) {
-      db.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
-          const updates = {};
-          snapshot.forEach(child => {
-            updates[`addresses/${child.key}/isDefault`] = child.key === id;
-          });
-          return db.ref().update(updates);
-        })
-        .then(() => {
-          showToast('Default address updated', 'success');
-          loadAddresses();
-        })
-        .catch(() => showToast('Failed to update default address', 'error'));
+      try {
+        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+        allAddresses.forEach(addr => {
+          if (addr.userId === currentUser.uid) {
+            addr.isDefault = (addr.id === id);
+          }
+        });
+        cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
+        showToast('Default address updated', 'success');
+        loadAddresses();
+      } catch (error) {
+        console.error('Error setting default address:', error);
+        showToast('Failed to update default address', 'error');
+      }
     };
 
     // Wishlist Functions
