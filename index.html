@@ -17,6 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://images.unsplash.com"/>
+  <link rel="preload" href="style.css" as="style">
   <link rel="stylesheet" href="style.css">
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -259,7 +260,9 @@
       </section>
 
       <div class="banner-carousel skeleton" id="bannerCarousel">
-        <div class="banner-track" id="bannerTrack"></div>
+        <div class="banner-track" id="bannerTrack">
+          <div class="banner-slide skeleton"></div>
+        </div>
         <div class="banner-controls" id="bannerControls"></div>
       </div>
 
@@ -276,6 +279,11 @@
       <div class="category-circles">
         <h2 class="category-circles-title">Shop by Category</h2>
         <div class="category-circles-container" id="categoryCirclesContainer">
+          <div class="category-circle skeleton"><div class="category-circle-image"></div><div class="category-circle-name"></div></div>
+          <div class="category-circle skeleton"><div class="category-circle-image"></div><div class="category-circle-name"></div></div>
+          <div class="category-circle skeleton"><div class="category-circle-image"></div><div class="category-circle-name"></div></div>
+          <div class="category-circle skeleton"><div class="category-circle-image"></div><div class="category-circle-name"></div></div>
+          <div class="category-circle skeleton"><div class="category-circle-image"></div><div class="category-circle-name"></div></div>
         </div>
       </div>
 
@@ -291,6 +299,10 @@
       </div>
 
       <div class="product-grid" id="homeProductGrid">
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
       </div>
 
       <div class="recently-viewed" id="recentlyViewedSection" style="display:none;">
@@ -344,7 +356,12 @@
 
       <div class="categories" id="categoriesContainer"></div>
 
-      <div class="product-grid" id="productGrid"></div>
+      <div class="product-grid" id="productGrid">
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+        <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
+      </div>
 
       <div id="noProductsMessage" class="card-panel center" style="display:none;">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
@@ -2816,7 +2833,8 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image">
+          <img src="${productImage}" loading="lazy" alt="${productName}" style="width:100%; height:100%; object-fit:cover;">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
@@ -3349,8 +3367,11 @@
       productsToRender.forEach(product => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
+        const productImg = getProductImage(product);
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="slider-item-img">
+            <img src="${productImg}" loading="lazy" alt="${product.name || 'Product'}" style="width:100%; height:100%; object-fit:cover;">
+          </div>
           <div class="slider-item-body">
             <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
             <div class="slider-item-price">${formatPrice(product.price)}</div>
@@ -4213,6 +4234,9 @@
     function renderCategories() {
       const container = document.getElementById('categoriesContainer');
       if (!container) return;
+      const jsonStr = JSON.stringify(categories);
+      if (container.dataset.lastRender === jsonStr) return;
+      container.dataset.lastRender = jsonStr;
       const fragment = document.createDocumentFragment();
       const allCategory = document.createElement('div');
       allCategory.className = 'category-pill active';
@@ -4239,12 +4263,18 @@
     function renderCategoryCircles() {
       const container = document.getElementById('categoryCirclesContainer');
       if (!container) return;
+      const jsonStr = JSON.stringify(categories);
+      if (container.dataset.lastRender === jsonStr) return;
+      container.dataset.lastRender = jsonStr;
       const fragment = document.createDocumentFragment();
       categories.forEach(category => {
         const circle = document.createElement('div');
         circle.className = 'category-circle';
+        const categoryImg = getProductImage(category);
         circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
+          <div class="category-circle-image">
+            <img src="${categoryImg}" loading="lazy" alt="${category.name || 'Category'}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+          </div>
           <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
         circle.addEventListener('click', () => filterByCategory(category.id));
@@ -4257,6 +4287,9 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      const jsonStr = JSON.stringify(productsToRender);
+      if (container.dataset.lastRender === jsonStr) return;
+      container.dataset.lastRender = jsonStr;
       const ratingMap = {};
       productsToRender.forEach(p => {
         const productReviews = reviews.filter(r => r.productId === p.id);
@@ -4280,12 +4313,16 @@
       const track = document.getElementById('bannerTrack');
       const controls = document.getElementById('bannerControls');
       if (!track || !controls) return;
+      const jsonStr = JSON.stringify(banners);
+      if (track.dataset.lastRender === jsonStr) return;
+      track.dataset.lastRender = jsonStr;
       const trackFragment = document.createDocumentFragment();
       const controlsFragment = document.createDocumentFragment();
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        const bannerImg = getProductImage(banner);
+        slide.innerHTML = `<img src="${bannerImg}" ${index === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} alt="Banner ${index + 1}" style="width:100%; height:100%; object-fit:cover;">`;
         if (banner.link) {
           slide.style.cursor = 'pointer';
           slide.addEventListener('click', () => window.open(banner.link, '_blank'));
@@ -5055,7 +5092,11 @@
               renderSearchResults(filteredResults, window.currentSearchQuery);
             }
           }
-        } else products = [];
+        } else {
+          products = [];
+          renderProducts([], 'homeProductGrid');
+          renderProducts([], 'productGrid');
+        }
       });
       onValue(ref(database, 'categories'), snapshot => {
         const categoriesObj = snapshot.val();
@@ -5067,7 +5108,11 @@
             renderCategories();
             renderCategoryCircles();
           }
-        } else categories = [];
+        } else {
+          categories = [];
+          renderCategories();
+          renderCategoryCircles();
+        }
       });
       onValue(ref(database, 'banners'), snapshot => {
         const bannersObj = snapshot.val();
@@ -5076,7 +5121,10 @@
           banners = newBanners;
           cacheManager.set(CACHE_KEYS.BANNERS, banners);
           if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
+        } else {
+          banners = [];
+          renderBannerCarousel();
+        }
       });
       onValue(ref(database, 'adminSettings'), snapshot => {
         const settingsObj = snapshot.val();
