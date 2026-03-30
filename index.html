@@ -2370,11 +2370,12 @@
     function showSearchSuggestions(query) {
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
+      const lowerQuery = query.toLowerCase();
       let suggestions = products.filter(product => 
-        product.name?.toLowerCase().includes(query.toLowerCase()) ||
-        product.description?.toLowerCase().includes(query.toLowerCase()) ||
-        product.category?.toLowerCase().includes(query.toLowerCase()) ||
-        (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
+        product.name?.toLowerCase().includes(lowerQuery) ||
+        product.description?.toLowerCase().includes(lowerQuery) ||
+        product.category?.toLowerCase().includes(lowerQuery) ||
+        (product.tags && product.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
       );
       const ratingMap = {};
       suggestions.forEach(p => {
@@ -5158,6 +5159,7 @@
       document.getElementById('newsletterEmail').value = '';
     }
 
+
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
@@ -5188,7 +5190,8 @@
             performSearch(this.value);
           }
         });
-        searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
+        const debouncedHandleSearch = debounce((e) => handleSearchPanelInput(e), 300);
+        searchInput.addEventListener('input', debouncedHandleSearch);
       }
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
