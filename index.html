@@ -1934,10 +1934,6 @@
     const auth = getAuth(app);
     
     window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
-    
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
-    });
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
@@ -4983,106 +4979,6 @@
       updateHeroContent();
     }
 
-    function fetchLiveData() {
-      if (!window.firebase || !window.firebase.database) {
-        console.error('Firebase not initialized');
-        return;
-      }
-      const database = window.firebase.database;
-      const ref = window.firebase.ref;
-      const get = window.firebase.get;
-      get(ref(database, 'products')).then(snapshot => {
-        const productsObj = snapshot.val();
-        if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => {
-            const product = productsObj[key];
-            return {
-              id: key,
-              ...product,
-              images: product.images ? 
-                (Array.isArray(product.images) ? product.images : [product.images]) : 
-                (product.image ? [product.image] : 
-                 (product.img ? [product.img] : 
-                  (product.imageUrl ? [product.imageUrl] : [])))
-            };
-          });
-          products = newProducts;
-          window.products = products;
-          cacheManager.set(CACHE_KEYS.PRODUCTS, products);
-          const currentPage = document.querySelector('.page.active')?.id;
-          if (currentPage === 'homePage') {
-            renderProducts(products, 'homeProductGrid');
-            const trendingProducts = products.filter(p => p.isTrending || p.trending);
-            if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
-            else renderProductSlider(products.slice(0, 10), 'productSlider');
-          } else if (currentPage === 'productsPage') {
-            renderProducts(products, 'productGrid');
-            updateProductsCount();
-          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
-            const filteredResults = products.filter(product => 
-              (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-            );
-            window.currentSearchResults = filteredResults;
-            renderSearchResults(filteredResults, window.currentSearchQuery);
-          }
-        } else {
-          products = [];
-          renderProducts([], 'homeProductGrid');
-          renderProducts([], 'productGrid');
-        }
-      }).catch(error => {
-        console.error('Error fetching products:', error);
-        products = [];
-        renderProducts([], 'homeProductGrid');
-        renderProducts([], 'productGrid');
-      });
-      get(ref(database, 'categories')).then(snapshot => {
-        const categoriesObj = snapshot.val();
-        if (categoriesObj) {
-          const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
-          categories = newCategories;
-          cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
-        } else categories = [];
-      }).catch(error => {
-        console.error('Error fetching categories:', error);
-        categories = [];
-      });
-      get(ref(database, 'banners')).then(snapshot => {
-        const bannersObj = snapshot.val();
-        if (bannersObj) {
-          const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
-          banners = newBanners;
-          cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
-      }).catch(error => {
-        console.error('Error fetching banners:', error);
-        banners = [];
-      });
-      get(ref(database, 'adminSettings')).then(snapshot => {
-        const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
-        }
-      }).catch(error => {
-        console.error('Error fetching admin settings:', error);
-      });
-      get(ref(database, 'outOfStock')).then(snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) window.outOfStockItems = outOfStockObj;
-      }).catch(error => {
-        console.error('Error fetching out of stock items:', error);
-      });
-    }
 
     function loadCachedData() {
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
@@ -5422,52 +5318,52 @@
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
     }
 
-    function initApp() {
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
-      setupEventListeners();
-      if (window.firebase && window.firebase.auth) {
-        window.firebase.onAuthStateChanged(window.firebase.auth, user => {
-          if (user) {
-            currentUser = user;
-            updateUIForUser(user);
-            loadUserData(user);
-            loadRecentlyViewed(user);
-            loadSavedAddresses();
-            document.getElementById('authModal')?.classList.remove('active');
-          } else {
-            currentUser = null;
-            updateUIForGuest();
-          }
-        });
-      }
-      loadCachedData();
-      fetchLiveData();
+    // Immediate Initialization
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
+
+    // UI Setup (non-Firebase dependent)
+    setupEventListeners();
+    loadCachedData();
+    updateAdminSettingsUI();
+    showPage('homePage');
+    setupHeroMessages();
+    updateBottomNav();
+    setupHeaderSearchScroll();
+    setupBackButton();
+    setupSearchInput();
+    setupViewAllRatings();
+
+    // Firebase & Auth Initialization
+    if (window.firebase && window.firebase.auth) {
+      window.firebase.onAuthStateChanged(window.firebase.auth, user => {
+        if (user) {
+          currentUser = user;
+          updateUIForUser(user);
+          loadUserData(user);
+          loadRecentlyViewed(user);
+          loadSavedAddresses();
+          document.getElementById('authModal')?.classList.remove('active');
+        } else {
+          currentUser = null;
+          updateUIForGuest();
+        }
+      });
       setupRealtimeListeners();
-      showPage('homePage');
-      setupHeroMessages();
-      updateBottomNav();
-      setupHeaderSearchScroll();
-      setupBackButton();
-      setupSearchInput();
-      setupViewAllRatings();
-      updateAdminSettingsUI();
-      if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
-        const productId = window.location.hash.split('=')[1];
-        const checkProducts = setInterval(() => {
-          if (products.length > 0) {
-            const product = products.find(p => p.id === productId);
-            if (product) showProductDetail(product);
-            clearInterval(checkProducts);
-          }
-        }, 100);
-      }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-      if (typeof initApp === 'function') initApp();
-    });
+    // Handle Direct Links to Products
+    if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
+      const productId = window.location.hash.split('=')[1];
+      const checkProducts = setInterval(() => {
+        if (products.length > 0) {
+          const product = products.find(p => p.id === productId);
+          if (product) showProductDetail(product);
+          clearInterval(checkProducts);
+        }
+      }, 100);
+    }
   </script>
 </body>
 </html>
