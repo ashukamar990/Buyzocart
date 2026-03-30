@@ -363,15 +363,14 @@
         <div class="product-card skeleton"><div class="product-card-image"></div><div class="product-card-body"><div class="product-card-title"></div><div class="product-card-rating"></div><div class="product-card-price"></div></div></div>
       </div>
 
-      <div id="noProductsMessage" class="card-panel center" style="display:none;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="15" y1="9" x2="9" y2="15"></line>
-          <line x1="9" y1="9" x2="15" y2="15"></line>
+      <div id="noProductsMessage" class="empty-state-professional" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
-        <p style="color:var(--muted-light)">Try adjusting your filters or search terms</p>
-        <button class="btn" style="margin-top:16px" onclick="resetAllFilters()">Reset All Filters</button>
+        <h3>No products found</h3>
+        <p>We couldn't find any products matching your current filters. Try adjusting them to see more.</p>
+        <button class="btn" onclick="resetAllFilters()">Reset All Filters</button>
       </div>
     </section>
 
@@ -421,14 +420,14 @@
 
       <div class="product-grid" id="searchResultsGrid"></div>
 
-      <div id="noSearchResultsMessage" class="card-panel center" style="display:none;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+      <div id="noSearchResultsMessage" class="empty-state-professional" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <h3 style="margin:16px 0 8px;color:var(--muted)">No products found</h3>
-        <p style="color:var(--muted-light)">Try different keywords or adjust your price filter</p>
-        <button class="btn" style="margin-top:16px" onclick="resetSearchPriceFilter()">Reset Filters</button>
+        <h3>No results found</h3>
+        <p>Sorry, we couldn't find anything matching your search. Try different keywords or reset your filters.</p>
+        <button class="btn" onclick="resetSearchPriceFilter()">Reset Filters</button>
       </div>
     </section>
 
@@ -2038,12 +2037,23 @@
             localStorage.removeItem(key);
             return null;
           }
+          // Validate products data structure
+          if (key === CACHE_KEYS.PRODUCTS && !Array.isArray(parsed.data)) {
+            console.warn('Invalid cached products data structure');
+            localStorage.removeItem(key);
+            return null;
+          }
           return parsed.data;
-        } catch { return null; }
+        } catch (e) {
+          console.error('Error parsing cache for key:', key, e);
+          localStorage.removeItem(key);
+          return null;
+        }
       },
       remove(key) { localStorage.removeItem(key); }
     };
 
+    window.isProductsLoading = true;
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -2243,29 +2253,36 @@
     }
 
     function getProductImage(product, idx = 0) {
-      if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
-      if (Array.isArray(product.images) && product.images.length > 0) {
-        if (idx < product.images.length) return product.images[idx];
-        return product.images[0];
-      }
-      const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
-      for (const field of possibleImageFields) {
-        if (product[field]) {
-          if (typeof product[field] === 'string') {
-            return product[field];
-          }
-          if (Array.isArray(product[field]) && product[field].length > 0) {
-            return product[field][0];
+      const fallback = "https://cdn-icons-png.flaticon.com/512/3594/3594411.png"; // Professional placeholder
+      if (!product) return fallback;
+
+      try {
+        if (Array.isArray(product.images) && product.images.length > 0) {
+          const img = product.images[idx] || product.images[0];
+          if (img && typeof img === 'string') return img;
+        }
+
+        const possibleFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
+        for (const field of possibleFields) {
+          const val = product[field];
+          if (val) {
+            if (typeof val === 'string') return val;
+            if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string') return val[0];
           }
         }
+
+        if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
+          return product;
+        }
+
+        if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
+          return product.value;
+        }
+      } catch (e) {
+        console.error('Error in getProductImage:', e);
       }
-      if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
-        return product;
-      }
-      if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
-        return product.value;
-      }
-      return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+
+      return fallback;
     }
 
     function getProductImages(product) {
@@ -2680,8 +2697,10 @@
       if (!grid) return;
       if (results.length === 0) {
         grid.innerHTML = '';
-        noResults.style.display = 'block';
-        count.textContent = 'No products found';
+        if (!window.isProductsLoading) {
+          noResults.style.display = 'block';
+          count.textContent = 'No products found';
+        }
         return;
       }
       noResults.style.display = 'none';
@@ -4222,7 +4241,7 @@
       const productsCount = document.getElementById('productsCount');
       if (!container || !noProductsMessage || !productsCount) return;
       const visibleProducts = container.querySelectorAll('.product-card').length;
-      if (visibleProducts === 0) {
+      if (visibleProducts === 0 && !window.isProductsLoading) {
         noProductsMessage.style.display = 'block';
         productsCount.innerHTML = '';
       } else {
@@ -4291,21 +4310,50 @@
       if (container.dataset.lastRender === jsonStr) return;
       container.dataset.lastRender = jsonStr;
       const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+
+      try {
+        productsToRender.forEach(p => {
+          if (!p) return;
+          const productReviews = reviews.filter(r => r.productId === p.id);
+          if (productReviews.length) {
+            const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+            ratingMap[p.id] = sum / productReviews.length;
+          } else ratingMap[p.id] = 0;
+        });
+      } catch (e) {
+        console.error('Error calculating ratings in renderProducts:', e);
+      }
+
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        container.innerHTML = '<div class="card-panel center">No products found</div>';
+        // Only show inline fallback if there's no specific message element for this grid
+        const hasSpecificMessage = (containerId === 'productGrid' || containerId === 'searchResultsGrid' || containerId === 'wishlistItems' || containerId === 'recentlyViewedGrid');
+
+        if (!hasSpecificMessage && !window.isProductsLoading) {
+          container.innerHTML = `
+            <div class="empty-state-professional" style="grid-column: 1 / -1; width: 100%;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <h3>No products available</h3>
+              <p>We're currently updating our collection. Please check back soon for exciting new arrivals!</p>
+            </div>
+          `;
+        }
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          try {
+            fragment.appendChild(createProductCard(product));
+          } catch (e) {
+            console.error('Error creating product card:', product, e);
+          }
+        }
+      });
       container.appendChild(fragment);
     }
 
@@ -5048,11 +5096,26 @@
     }
 
     function setupRealtimeListeners() {
-      if (!window.firebase || !window.firebase.database) return;
+      if (!window.firebase || !window.firebase.database) {
+        window.isProductsLoading = false;
+        return;
+      }
+
+      // Safety timeout for loading state
+      const loadingTimeout = setTimeout(() => {
+        if (window.isProductsLoading) {
+          console.warn('Data loading timed out. Clearing loading state.');
+          window.isProductsLoading = false;
+          updateProductsCount();
+        }
+      }, 5000);
+
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const onValue = window.firebase.onValue;
       onValue(ref(database, 'products'), snapshot => {
+        window.isProductsLoading = false;
+        clearTimeout(loadingTimeout);
         const productsObj = snapshot.val();
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
