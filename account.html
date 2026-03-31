@@ -1873,62 +1873,55 @@
     // Orders Functions
     function loadOrders() {
       const container = document.getElementById('ordersList');
-      container.innerHTML = '<div class="spinner"></div>';
+      if (!container) return;
+      container.innerHTML = '';
 
-      db.ref('orders').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
-          container.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            container.innerHTML = `
-              <div class="empty-state">
-                <div class="empty-state-icon">📦</div>
-                <div class="empty-state-title">No orders yet</div>
-                <div class="empty-state-description">Start shopping to see your orders here</div>
-                <button class="btn" onclick="window.location.href='index.html'">Shop Now</button>
+      try {
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+
+        if (localOrders.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📦</div>
+              <div class="empty-state-title">No orders yet</div>
+              <div class="empty-state-description">Start shopping to see your orders here</div>
+              <button class="btn" onclick="window.location.href='index.html'">Shop Now</button>
+            </div>
+          `;
+          return;
+        }
+
+        localOrders.forEach(order => {
+          const card = document.createElement('div');
+          card.className = 'order-card';
+
+          card.innerHTML = `
+            <div class="order-header">
+              <div>
+                <div class="order-id">${order.orderId || 'Order ID'}</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">${order.date || ''}</div>
               </div>
-            `;
-            return;
-          }
-
-          const orders = [];
-          snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
-          orders.sort((a, b) => (b.orderDate || b.timestamp || 0) - (a.orderDate || a.timestamp || 0));
-
-          orders.forEach(order => {
-            const card = document.createElement('div');
-            card.className = 'order-card';
-            
-            const status = order.status || 'processing';
-            const date = new Date(order.orderDate || order.timestamp || Date.now()).toLocaleDateString();
-            
-            card.innerHTML = `
-              <div class="order-header">
-                <div>
-                  <div class="order-id">${order.orderId || '#' + order.id.slice(-8)}</div>
-                  <div style="font-size: 0.75rem; color: var(--text-secondary);">${date}</div>
-                </div>
-                <span class="order-status ${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
-              </div>
-              <div class="order-items">
-                ${(order.items || []).map(item => `
-                  <div class="order-item">
-                    <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image">
-                    <div style="flex: 1;">
-                      <div style="font-weight: 500;">${item.name}</div>
-                      <div style="font-size: 0.875rem; color: var(--text-secondary);">Qty: ${item.quantity || 1}</div>
-                      <div style="font-weight: 600; color: var(--primary);">₹${item.price || 0}</div>
-                    </div>
+              <span class="order-status ${(order.status || 'Confirmed').toLowerCase()}">${order.status || 'Confirmed'}</span>
+            </div>
+            <div class="order-items">
+              <div class="order-item" style="display: flex; gap: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+                <img src="${order.image || ''}" alt="${order.name}" class="order-item-image" style="width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover;">
+                <div style="flex: 1;">
+                  <div style="font-weight: 500;">${order.name || 'Product'}</div>
+                  <div style="font-weight: 600; color: var(--primary); margin-top: 5px;">₹${(order.price || 0).toLocaleString()}</div>
+                  <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                    <strong>Address:</strong> ${order.address || 'N/A'}
                   </div>
-                `).join('')}
+                </div>
               </div>
-              <div style="margin-top: 1rem; font-weight: 600;">
-                Total: ₹${order.totalAmount || order.total || 0}
-              </div>
-            `;
-            container.appendChild(card);
-          });
+            </div>
+          `;
+          container.appendChild(card);
         });
+      } catch (error) {
+        console.error('Error loading orders from localStorage:', error);
+        container.innerHTML = '<p style="text-align:center; padding:2rem;">Error loading orders.</p>';
+      }
     }
 
     // Login Activity

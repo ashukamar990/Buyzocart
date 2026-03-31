@@ -3592,10 +3592,31 @@
             delivered: null
           }
         };
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
-        let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
-        cachedOrders.push(orderData);
-        cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
+        // Required localStorage update for My Orders system
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        if (!localOrders.find(o => o.orderId === orderId)) {
+          localOrders.unshift({
+            orderId: orderId,
+            name: currentProduct.name || currentProduct.title,
+            image: getProductImage(currentProduct),
+            price: total,
+            date: new Date().toLocaleDateString(),
+            address: `${userInfo.house}, ${userInfo.city}, ${userInfo.state} - ${userInfo.pincode}`,
+            productId: currentProduct.id,
+            quantity: quantity,
+            size: size,
+            status: 'Confirmed'
+          });
+          localStorage.setItem('orders', JSON.stringify(localOrders));
+        }
+
+        // Keep Firebase and Cache as secondary
+        try {
+          await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
+          let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
+          cachedOrders.push(orderData);
+          cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
+        } catch (e) { console.warn("Firebase sync failed", e); }
 
         // Save/Update address as default/last used
         const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
@@ -3626,6 +3647,9 @@
           });
         }
         cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
+
+        // Update UI if orders page is active
+        if (document.getElementById('myOrdersPage')?.classList.contains('active')) showMyOrders();
 
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
         document.getElementById('orderIdDisplay').textContent = orderId;
@@ -3910,26 +3934,18 @@
     async function showMyOrders() {
       if (!currentUser) return;
       try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'orders'),
-            window.firebase.orderByChild('userId'),
-            window.firebase.equalTo(currentUser.uid)
-          )
-        );
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
         const ordersList = document.getElementById('ordersList');
         const empty = document.getElementById('orders-empty');
-        if (!snapshot.exists()) {
+
+        if (localOrders.length === 0) {
           ordersList.innerHTML = '';
           empty.style.display = 'block';
           return;
         }
-        const ordersObj = snapshot.val();
-        const orders = Object.keys(ordersObj).map(key => ({ id: key, ...ordersObj[key] }));
-        orders.sort((a, b) => b.orderDate - a.orderDate);
-        renderOrders(orders);
+
         empty.style.display = 'none';
-        cacheManager.set(CACHE_KEYS.ORDERS, orders);
+        renderOrders(localOrders);
       } catch (error) {
         console.error('Error loading orders:', error);
       }
@@ -3942,83 +3958,66 @@
       orders.forEach(order => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
-        const statusClass = `status-${order.status}`;
-        const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-        const orderDate = new Date(order.orderDate);
-        const deliveredDate = order.deliveredDate ? new Date(order.deliveredDate) : null;
-        let showReturnReplace = false;
-        if (order.status === 'delivered' && deliveredDate) {
-          const daysSinceDelivery = Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysSinceDelivery <= 3) showReturnReplace = true;
-        }
-        const product = products.find(p => p.id === order.productId);
+
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
-              <div class="order-id">${order.orderId}</div>
-              <div class="order-date">${orderDate.toLocaleDateString()}</div>
+              <div class="order-id">${order.orderId || 'Order ID'}</div>
+              <div class="order-date">${order.date || ''}</div>
             </div>
-            <div class="order-status ${statusClass}">${statusText}</div>
+            <div class="order-status status-${(order.status || 'confirmed').toLowerCase()}">${order.status || 'Confirmed'}</div>
           </div>
-          <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="order-details" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))" style="cursor: pointer;">
+            <div class="order-product-image" style="background-image: url('${order.image || ''}')"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${order.productName}</div>
-              <div class="order-product-price">${formatPrice(order.totalAmount)}</div>
-              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
+              <div class="order-product-title">${order.name || 'Product'}</div>
+              <div class="order-product-price">${formatPrice(order.price || 0)}</div>
+              <div class="order-product-meta" style="margin-top: 5px; font-size: 13px; color: var(--muted);">
+                <strong>Delivery Address:</strong><br>
+                ${order.address || 'No address provided'}
+              </div>
             </div>
           </div>
           <div class="order-actions">
-            ${order.status === 'confirmed' || order.status === 'shipped' ? 
-              `<button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>` : ''}
-            ${showReturnReplace ? 
-              `<button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>` : ''}
+            ${order.status !== 'Cancelled' ? `
+              <button class="order-action-btn cancel" onclick="cancelOrder('${order.orderId}')">Cancel Order</button>
+              <button class="order-action-btn return" onclick="showReturnReplaceModal('${order.orderId}')">Return / Replace</button>
+            ` : '<div style="color: var(--danger); font-size: 14px; font-weight: 500;">Order Cancelled</div>'}
           </div>
         `;
-        orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON') {
-            const product = products.find(p => p.id === order.productId);
-            if (product) showProductDetail(product);
-          }
-        });
         container.appendChild(orderCard);
       });
     }
 
     function cancelOrder(orderId) {
       document.getElementById('cancellationModal').classList.add('active');
-      document.getElementById('confirmCancel').onclick = async function() {
+      document.getElementById('confirmCancel').onclick = function() {
         const reason = document.querySelector('input[name="cancelReason"]:checked').value;
-        try {
-          await window.firebase.update(window.firebase.ref(window.firebase.database, 'orders/' + orderId), {
-            status: 'cancelled',
-            cancelledDate: Date.now(),
-            cancellationReason: reason
-          });
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const idx = localOrders.findIndex(o => o.orderId === orderId);
+        if (idx !== -1) {
+          localOrders[idx].status = 'Cancelled';
+          localOrders[idx].cancellationReason = reason;
+          localStorage.setItem('orders', JSON.stringify(localOrders));
           showToast('Order cancelled successfully', 'success');
           document.getElementById('cancellationModal').classList.remove('active');
           showMyOrders();
-        } catch (error) {
-          console.error('Error cancelling order:', error);
-          showToast('Failed to cancel order', 'error');
         }
       };
     }
 
     function showReturnReplaceModal(orderId) {
       document.getElementById('returnReplaceModal').classList.add('active');
-      document.getElementById('confirmReturnReplace').onclick = async function() {
+      document.getElementById('confirmReturnReplace').onclick = function() {
         const option = document.querySelector('input[name="returnReplaceReason"]:checked').value;
-        try {
-          await window.firebase.update(window.firebase.ref(window.firebase.database, 'orders/' + orderId), {
-            status: option === 'return' ? 'return-requested' : 'replace-requested'
-          });
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const idx = localOrders.findIndex(o => o.orderId === orderId);
+        if (idx !== -1) {
+          localOrders[idx].status = option === 'return' ? 'Return-Requested' : 'Replace-Requested';
+          localStorage.setItem('orders', JSON.stringify(localOrders));
           showToast(`${option === 'return' ? 'Return' : 'Replace'} request submitted`, 'success');
           document.getElementById('returnReplaceModal').classList.remove('active');
           showMyOrders();
-        } catch (error) {
-          console.error('Error submitting request:', error);
-          showToast('Failed to submit request', 'error');
         }
       };
     }
