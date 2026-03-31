@@ -578,9 +578,9 @@
     <section class="page" id="userPage">
       <div class="card-panel">
         <h3 style="margin-top:0">Your Contact & Delivery Address</h3>
-        <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
+        <p style="color:var(--muted)">Select a saved address or enter a new one for this order.</p>
 
-        <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
+        <div class="card-panel" id="savedAddressesSection" style="display: none; margin-bottom: 20px;">
           <h4 style="margin-top:0">My Addresses</h4>
           <div id="savedAddressesList"></div>
           <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">+ Add New Address</button>
@@ -1999,6 +1999,22 @@
   </script>
 
   <script>
+    /**
+     * Requirement 8: Utility to prevent XSS by escaping HTML special characters
+     */
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.toString().replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[m];
+      });
+    }
+
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -3580,6 +3596,37 @@
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
+
+        // Save/Update address as default/last used
+        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+        const existingAddrIndex = allAddresses.findIndex(addr =>
+          addr.userId === currentUser.uid &&
+          addr.name.toLowerCase() === userInfo.fullName.toLowerCase() &&
+          addr.mobile === userInfo.mobile &&
+          addr.pincode === userInfo.pincode &&
+          addr.street.toLowerCase() === userInfo.house.toLowerCase()
+        );
+
+        if (existingAddrIndex !== -1) {
+          allAddresses[existingAddrIndex].lastUsed = Date.now();
+        } else {
+          allAddresses.push({
+            id: 'address_' + Date.now(),
+            name: userInfo.fullName,
+            mobile: userInfo.mobile,
+            pincode: userInfo.pincode,
+            city: userInfo.city,
+            state: userInfo.state,
+            street: userInfo.house,
+            type: document.getElementById('addressType').value || 'home',
+            userId: currentUser.uid,
+            isDefault: !allAddresses.some(addr => addr.userId === currentUser.uid),
+            createdAt: Date.now(),
+            lastUsed: Date.now()
+          });
+        }
+        cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
+
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
@@ -4650,84 +4697,112 @@
       });
     }
 
-    async function loadSavedAddresses() {
+    /**
+     * Address Management System
+     * Requirement 6: Use localStorage to store addresses in structured JSON format
+     */
+    function loadSavedAddresses() {
       if (!currentUser) return;
       try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'addresses'),
-            window.firebase.orderByChild('userId'),
-            window.firebase.equalTo(currentUser.uid)
-          )
-        );
-        const addressesList = document.getElementById('savedAddressesList');
+        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+        // Filter addresses belonging to current logged-in user
+        savedAddresses = allAddresses.filter(addr => addr.userId === currentUser.uid);
+
         const savedAddressesSection = document.getElementById('savedAddressesSection');
-        if (!snapshot.exists()) {
-          savedAddressesSection.style.display = 'none';
-          savedAddresses = [];
-          return;
-        }
-        const addressesObj = snapshot.val();
-        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
-        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
-        if (addresses.length > 0) {
+        if (savedAddresses.length > 0) {
+          // Requirement 5: Sort by lastUsed to show most relevant address first
+          savedAddresses = savedAddresses.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
           savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-        } else savedAddressesSection.style.display = 'none';
-        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+
+          // Auto-select the last used address (Requirement 5)
+          const defaultAddr = savedAddresses[0];
+          fillAddressForm(defaultAddr);
+          userInfo = {
+            fullName: defaultAddr.name,
+            mobile: defaultAddr.mobile,
+            pincode: defaultAddr.pincode,
+            city: defaultAddr.city,
+            state: defaultAddr.state,
+            house: defaultAddr.street
+          };
+        } else {
+          savedAddressesSection.style.display = 'none';
+        }
       } catch (error) {
         console.error('Error loading addresses:', error);
       }
     }
 
+    /**
+     * Requirement 2 & 3: Render saved addresses in a clean list format (Flipkart/Amazon style)
+     */
     function renderSavedAddresses() {
       const addressesList = document.getElementById('savedAddressesList');
       if (!addressesList) return;
       addressesList.innerHTML = '';
-      savedAddresses.forEach(address => {
+      savedAddresses.forEach((address, index) => {
         const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card';
+        addressCard.className = 'saved-address-card' + (index === 0 ? ' selected' : '');
         const addressType = address.type || 'Other';
-        const isDefault = address.isDefault ? '• Default' : '';
+
         addressCard.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:5px;">
+            <input type="radio" name="savedAddress" value="${address.id}" ${index === 0 ? 'checked' : ''} style="margin-top:4px;">
             <div style="flex:1">
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}</div>
-              <div>${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
+              <div style="font-weight:700; font-size:15px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+                ${escapeHTML(address.name)}
+                <span style="background:var(--accent); color:white; font-size:10px; padding:2px 6px; border-radius:4px; text-transform:uppercase;">${escapeHTML(addressType)}</span>
+              </div>
+              <div style="font-size:14px; color:var(--text-secondary); line-height:1.4;">
+                ${escapeHTML(address.street)}<br>
+                ${escapeHTML(address.city)}, ${escapeHTML(address.state)} - ${escapeHTML(address.pincode)}<br>
+                <strong>Mobile:</strong> ${escapeHTML(address.mobile)}
+              </div>
             </div>
           </div>
           <div class="address-actions">
-            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
+            <button class="btn secondary edit-address" data-id="${address.id}" style="padding:6px 12px; font-size:12px; flex:1;">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}" style="padding:6px 12px; font-size:12px; flex:1; background:#fee2e2; color:#ef4444; border:1px solid #fecaca;">Delete</button>
           </div>
         `;
+
         const radio = addressCard.querySelector('input[type="radio"]');
-        radio.addEventListener('click', function(e) {
-          e.stopPropagation();
+        const updateSelection = () => {
+          radio.checked = true;
+          document.querySelectorAll('.saved-address-card').forEach(c => c.classList.remove('selected'));
+          addressCard.classList.add('selected');
           fillAddressForm(address);
-          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
-        });
-        addressCard.addEventListener('click', function(e) {
-          if (e.target.type !== 'radio') {
-            radio.checked = true;
-            fillAddressForm(address);
-            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+          // Mark as last used locally
+          address.lastUsed = Date.now();
+          userInfo = {
+            fullName: address.name,
+            mobile: address.mobile,
+            pincode: address.pincode,
+            city: address.city,
+            state: address.state,
+            house: address.street
+          };
+        };
+
+        addressCard.addEventListener('click', (e) => {
+          if (!e.target.closest('.address-actions')) {
+            updateSelection();
           }
         });
+
         const editBtn = addressCard.querySelector('.edit-address');
-        editBtn.addEventListener('click', function(e) {
+        editBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           editAddress(address);
         });
+
         const deleteBtn = addressCard.querySelector('.delete-address');
-        deleteBtn.addEventListener('click', function(e) {
+        deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           deleteAddressConfirmation(address);
         });
+
         addressesList.appendChild(addressCard);
       });
     }
@@ -4742,20 +4817,39 @@
       document.getElementById('addressType').value = address.type || 'home';
     }
 
-    async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
+    function saveUserInfoAndAddress() {
+      const fullname = document.getElementById('fullname').value.trim();
+      const mobile = document.getElementById('mobile').value.trim();
+      const pincode = document.getElementById('pincode').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const state = document.getElementById('state').value.trim();
+      const house = document.getElementById('house').value.trim();
       const addressType = document.getElementById('addressType').value;
+
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+
+      // Check for duplicate
+      const isDuplicate = allAddresses.some(addr =>
+        addr.userId === currentUser.uid &&
+        addr.name.toLowerCase() === fullname.toLowerCase() &&
+        addr.mobile === mobile &&
+        addr.pincode === pincode &&
+        addr.street.toLowerCase() === house.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        showToast('This address is already saved', 'warning');
+        return;
+      }
+
+      const addressId = 'address_' + Date.now();
       const addressData = {
+        id: addressId,
         name: fullname,
         mobile: mobile,
         pincode: pincode,
@@ -4764,22 +4858,19 @@
         street: house,
         type: addressType,
         userId: currentUser.uid,
-        isDefault: savedAddresses.length === 0,
-        createdAt: Date.now()
+        isDefault: !allAddresses.some(addr => addr.userId === currentUser.uid),
+        createdAt: Date.now(),
+        lastUsed: Date.now()
       };
-      try {
-        const addressId = 'address_' + Date.now();
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
-        savedAddresses.push({ id: addressId, ...addressData });
-        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
-        showToast('Address saved successfully', 'success');
-        await loadSavedAddresses();
-        document.getElementById('savedAddressesSection').style.display = 'block';
-        document.getElementById('newAddressForm').style.display = 'block';
-      } catch (error) {
-        console.error('Error saving address:', error);
-        showToast('Failed to save address', 'error');
-      }
+
+      allAddresses.push(addressData);
+      cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
+
+      showToast('Address saved successfully', 'success');
+      loadSavedAddresses();
+
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+      showPage('paymentPage');
     }
 
     function showNewAddressForm() {
@@ -4797,40 +4888,58 @@
       saveBtn.onclick = saveUserInfoAndAddress;
     }
 
+    /**
+     * Requirement 4: Edit existing address
+     */
     function editAddress(address) {
       fillAddressForm(address);
-      document.getElementById('savedAddressesSection').style.display = 'none';
-      document.getElementById('newAddressForm').style.display = 'block';
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Update Address';
-      saveBtn.onclick = async function() {
-        const fullname = document.getElementById('fullname').value;
-        const mobile = document.getElementById('mobile').value;
-        const pincode = document.getElementById('pincode').value;
-        const city = document.getElementById('city').value;
-        const state = document.getElementById('state').value;
-        const house = document.getElementById('house').value;
+
+      // Focus on the first field of the form
+      document.getElementById('fullname').focus();
+      document.getElementById('newAddressForm').scrollIntoView({ behavior: 'smooth' });
+
+      saveBtn.onclick = function() {
+        const fullname = document.getElementById('fullname').value.trim();
+        const mobile = document.getElementById('mobile').value.trim();
+        const pincode = document.getElementById('pincode').value.trim();
+        const city = document.getElementById('city').value.trim();
+        const state = document.getElementById('state').value.trim();
+        const house = document.getElementById('house').value.trim();
         const addressType = document.getElementById('addressType').value;
-        const addressData = {
-          name: fullname,
-          mobile: mobile,
-          pincode: pincode,
-          city: city,
-          state: state,
-          street: house,
-          type: addressType,
-          userId: currentUser.uid,
-          isDefault: address.isDefault
-        };
-        try {
-          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
+
+        // Requirement 8: Prevent empty address saving
+        if (!fullname || !mobile || !pincode || !city || !state || !house) {
+          showToast('Please fill in all required fields', 'error');
+          return;
+        }
+
+        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+        const index = allAddresses.findIndex(addr => addr.id === address.id);
+
+        if (index !== -1) {
+          allAddresses[index] = {
+            ...allAddresses[index],
+            name: fullname,
+            mobile: mobile,
+            pincode: pincode,
+            city: city,
+            state: state,
+            street: house,
+            type: addressType,
+            updatedAt: Date.now(),
+            lastUsed: Date.now()
+          };
+
+          cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
           showToast('Address updated successfully', 'success');
-          document.getElementById('savedAddressesSection').style.display = 'block';
-          document.getElementById('newAddressForm').style.display = 'block';
-          await loadSavedAddresses();
-        } catch (error) {
-          console.error('Error updating address:', error);
-          showToast('Failed to update address', 'error');
+
+          // Reset button to original state
+          saveBtn.textContent = 'Save This Address';
+          saveBtn.onclick = saveUserInfoAndAddress;
+
+          loadSavedAddresses();
         }
       };
     }
@@ -4839,18 +4948,15 @@
       document.getElementById('alertTitle').textContent = 'Delete Address';
       document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
       document.getElementById('alertModal').classList.add('active');
-      document.getElementById('alertConfirmBtn').onclick = async function() {
-        try {
-          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
-          showToast('Address deleted successfully', 'success');
-          document.getElementById('alertModal').classList.remove('active');
-          await loadSavedAddresses();
-          document.getElementById('savedAddressesSection').style.display = savedAddresses.length ? 'block' : 'none';
-          document.getElementById('newAddressForm').style.display = 'block';
-        } catch (error) {
-          console.error('Error deleting address:', error);
-          showToast('Failed to delete address', 'error');
-        }
+      document.getElementById('alertConfirmBtn').onclick = function() {
+        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
+        const filteredAddresses = allAddresses.filter(addr => addr.id !== address.id);
+
+        cacheManager.set(CACHE_KEYS.ADDRESSES, filteredAddresses);
+        showToast('Address deleted successfully', 'success');
+        document.getElementById('alertModal').classList.remove('active');
+
+        loadSavedAddresses();
       };
       document.getElementById('alertCancelBtn').onclick = function() {
         document.getElementById('alertModal').classList.remove('active');
@@ -5325,6 +5431,7 @@
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
+      document.getElementById('toPayment')?.addEventListener('click', toPayment);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
       window.addEventListener('hashchange', function() {
