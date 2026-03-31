@@ -533,6 +533,16 @@
       color: #065f46;
     }
 
+    .order-status.confirmed {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+
+    .order-status.cancelled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
     .order-status.processing {
       background: #fed7aa;
       color: #92400e;
@@ -541,6 +551,11 @@
     .order-status.shipped {
       background: #bfdbfe;
       color: #1e40af;
+    }
+
+    .order-status.return-requested, .order-status.replace-requested {
+      background: #f1f5f9;
+      color: #475569;
     }
 
     .order-items {
@@ -1370,6 +1385,56 @@
     </div>
   </div>
 
+  <div class="modal" id="cancellationModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Cancel Order</h3>
+        <button class="modal-close" onclick="closeModal('cancellationModal')">×</button>
+      </div>
+      <p style="margin-bottom: 1rem;">Please select a reason for cancellation:</p>
+      <div class="form-group">
+        <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+          <input type="radio" name="cancelReason" value="changed-mind" checked> Changed my mind
+        </label>
+        <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+          <input type="radio" name="cancelReason" value="shipping-delay"> Shipping is taking too long
+        </label>
+        <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+          <input type="radio" name="cancelReason" value="found-better-price"> Found a better price elsewhere
+        </label>
+        <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+          <input type="radio" name="cancelReason" value="ordered-by-mistake"> Ordered by mistake
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" onclick="closeModal('cancellationModal')">Close</button>
+        <button class="btn-danger btn" id="confirmCancel">Confirm Cancellation</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="returnReplaceModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Return or Replace</h3>
+        <button class="modal-close" onclick="closeModal('returnReplaceModal')">×</button>
+      </div>
+      <p style="margin-bottom: 1rem;">Please select an option:</p>
+      <div class="form-group">
+        <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+          <input type="radio" name="returnReplaceReason" value="return" checked> Return (Refund)
+        </label>
+        <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+          <input type="radio" name="returnReplaceReason" value="replace"> Replace (Same Product)
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" onclick="closeModal('returnReplaceModal')">Close</button>
+        <button class="btn" id="confirmReturnReplace">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Config -->
   <script>
     const firebaseConfig = {
@@ -1871,6 +1936,39 @@
     };
 
     // Orders Functions
+    window.cancelOrderLocal = function(orderId) {
+      openModal('cancellationModal');
+      document.getElementById('confirmCancel').onclick = function() {
+        const reason = document.querySelector('input[name="cancelReason"]:checked').value;
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const idx = localOrders.findIndex(o => o.orderId === orderId);
+        if (idx !== -1) {
+          localOrders[idx].status = 'Cancelled';
+          localOrders[idx].cancellationReason = reason;
+          localStorage.setItem('orders', JSON.stringify(localOrders));
+          showToast('Order cancelled successfully', 'success');
+          closeModal('cancellationModal');
+          loadOrders();
+        }
+      };
+    };
+
+    window.showReturnReplaceLocal = function(orderId) {
+      openModal('returnReplaceModal');
+      document.getElementById('confirmReturnReplace').onclick = function() {
+        const option = document.querySelector('input[name="returnReplaceReason"]:checked').value;
+        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const idx = localOrders.findIndex(o => o.orderId === orderId);
+        if (idx !== -1) {
+          localOrders[idx].status = option === 'return' ? 'Return-Requested' : 'Replace-Requested';
+          localStorage.setItem('orders', JSON.stringify(localOrders));
+          showToast(`${option === 'return' ? 'Return' : 'Replace'} request submitted`, 'success');
+          closeModal('returnReplaceModal');
+          loadOrders();
+        }
+      };
+    };
+
     function loadOrders() {
       const container = document.getElementById('ordersList');
       if (!container) return;
@@ -1895,15 +1993,19 @@
           const card = document.createElement('div');
           card.className = 'order-card';
 
+          const status = (order.status || 'Confirmed');
+          const showCancel = status === 'Confirmed';
+          const showReturn = status === 'Delivered';
+
           card.innerHTML = `
             <div class="order-header">
               <div>
                 <div class="order-id">${order.orderId || 'Order ID'}</div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary);">${order.date || ''}</div>
               </div>
-              <span class="order-status ${(order.status || 'Confirmed').toLowerCase()}">${order.status || 'Confirmed'}</span>
+              <span class="order-status ${status.toLowerCase()}">${status}</span>
             </div>
-            <div class="order-items">
+            <div class="order-items" onclick="window.location.href='index.html#productDetailPage?product=${order.productId}'" style="cursor: pointer;">
               <div class="order-item" style="display: flex; gap: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
                 <img src="${order.image || ''}" alt="${order.name}" class="order-item-image" style="width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover;">
                 <div style="flex: 1;">
@@ -1914,6 +2016,11 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <div class="order-actions" style="display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+              ${showCancel ? `<button class="btn-outline btn-sm" style="flex: 1; color: var(--danger); border-color: var(--danger);" onclick="event.stopPropagation(); cancelOrderLocal('${order.orderId}')">Cancel Order</button>` : ''}
+              ${showReturn ? `<button class="btn-outline btn-sm" style="flex: 1; color: var(--primary); border-color: var(--primary);" onclick="event.stopPropagation(); showReturnReplaceLocal('${order.orderId}')">Return / Replace</button>` : ''}
+              ${status === 'Cancelled' ? '<div style="color: var(--danger); font-size: 14px; font-weight: 500;">Order Cancelled</div>' : ''}
             </div>
           `;
           container.appendChild(card);

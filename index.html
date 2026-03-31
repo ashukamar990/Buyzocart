@@ -3959,13 +3959,17 @@
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
 
+        const status = (order.status || 'Confirmed');
+        const showCancel = status === 'Confirmed';
+        const showReturn = status === 'Delivered';
+
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
               <div class="order-id">${order.orderId || 'Order ID'}</div>
               <div class="order-date">${order.date || ''}</div>
             </div>
-            <div class="order-status status-${(order.status || 'confirmed').toLowerCase()}">${order.status || 'Confirmed'}</div>
+            <div class="order-status status-${status.toLowerCase()}">${status}</div>
           </div>
           <div class="order-details" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))" style="cursor: pointer;">
             <div class="order-product-image" style="background-image: url('${order.image || ''}')"></div>
@@ -3979,10 +3983,9 @@
             </div>
           </div>
           <div class="order-actions">
-            ${order.status !== 'Cancelled' ? `
-              <button class="order-action-btn cancel" onclick="cancelOrder('${order.orderId}')">Cancel Order</button>
-              <button class="order-action-btn return" onclick="showReturnReplaceModal('${order.orderId}')">Return / Replace</button>
-            ` : '<div style="color: var(--danger); font-size: 14px; font-weight: 500;">Order Cancelled</div>'}
+            ${showCancel ? `<button class="order-action-btn cancel" onclick="event.stopPropagation(); cancelOrder('${order.orderId}')">Cancel Order</button>` : ''}
+            ${showReturn ? `<button class="order-action-btn return" onclick="event.stopPropagation(); showReturnReplaceModal('${order.orderId}')">Return / Replace</button>` : ''}
+            ${status === 'Cancelled' ? '<div style="color: var(--danger); font-size: 14px; font-weight: 500;">Order Cancelled</div>' : ''}
           </div>
         `;
         container.appendChild(orderCard);
