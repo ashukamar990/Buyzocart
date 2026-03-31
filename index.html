@@ -1940,7 +1940,7 @@
     });
   </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" defer></script>
 
   <script>
     (function() {
@@ -2047,6 +2047,8 @@
       remove(key) { localStorage.removeItem(key); }
     };
 
+    let reviews = [];
+    window.isProductsLoading = true;
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -2148,7 +2150,9 @@
         const slider = this.sliders.get(key);
         if (!slider || !slider.track) return;
         const slideWidth = slider.track.children[0]?.offsetWidth || 0;
-        slider.track.style.transform = `translateX(-${slider.currentIndex * slideWidth}px)`;
+        requestAnimationFrame(() => {
+          slider.track.style.transform = `translateX(-${slider.currentIndex * slideWidth}px)`;
+        });
       }
       setupDelegation() {
         document.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
@@ -2246,27 +2250,40 @@
     }
 
     function getProductImage(product, idx = 0) {
+      const optimizeUrl = (url) => {
+        if (typeof url === 'string' && url.includes('images.unsplash.com')) {
+          if (url.includes('?')) {
+            if (!url.includes('w=')) url += '&w=600';
+            if (!url.includes('q=')) url += '&q=80';
+            if (!url.includes('auto=')) url += '&auto=format';
+            return url;
+          }
+          return `${url}?auto=format&fit=crop&w=600&q=80`;
+        }
+        return url;
+      };
+
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
       if (Array.isArray(product.images) && product.images.length > 0) {
-        if (idx < product.images.length) return product.images[idx];
-        return product.images[0];
+        const url = idx < product.images.length ? product.images[idx] : product.images[0];
+        return optimizeUrl(url);
       }
       const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
       for (const field of possibleImageFields) {
         if (product[field]) {
           if (typeof product[field] === 'string') {
-            return product[field];
+            return optimizeUrl(product[field]);
           }
           if (Array.isArray(product[field]) && product[field].length > 0) {
-            return product[field][0];
+            return optimizeUrl(product[field][0]);
           }
         }
       }
       if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
-        return product;
+        return optimizeUrl(product);
       }
       if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
-        return product.value;
+        return optimizeUrl(product.value);
       }
       return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
     }
@@ -2414,7 +2431,9 @@
         suggestion.className = 'search-suggestion';
         const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="search-suggestion-img">
+            <img src="${getProductImage(product)}" alt="${product.name || 'Product'}" loading="lazy" decoding="async">
+          </div>
           <div class="search-suggestion-info">
             <div class="search-suggestion-name">${product.name || 'Product'}</div>
             <div class="search-suggestion-category">${productCategory}</div>
@@ -2801,7 +2820,21 @@
       renderSearchResults(window.currentSearchResults, window.currentSearchQuery);
     }
 
-    let reviews = [];
+    function getRatingMap(reviewsArray) {
+      const map = {};
+      reviewsArray.forEach(r => {
+        if (!map[r.productId]) {
+          map[r.productId] = { sum: 0, count: 0 };
+        }
+        map[r.productId].sum += r.rating;
+        map[r.productId].count += 1;
+      });
+      const result = {};
+      for (const id in map) {
+        result[id] = map[id].sum / map[id].count;
+      }
+      return result;
+    }
 
     function calculateProductRating(productId) {
       const productReviews = reviews.filter(r => r.productId === productId);
@@ -2810,7 +2843,7 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, precalculatedRating = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -2820,7 +2853,7 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = precalculatedRating !== null ? precalculatedRating : calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -2836,7 +2869,8 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image">
+          <img src="${productImage}" alt="${productName}" loading="lazy" decoding="async">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
@@ -3300,7 +3334,9 @@
         sliderItem.style.minWidth = '200px';
         sliderItem.style.maxWidth = '200px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-img" style="height: 150px;">
+            <img src="${getProductImage(p)}" alt="${p.name || 'Product'}" loading="lazy" decoding="async">
+          </div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
             <div class="slider-item-price">${formatPrice(p.price)}</div>
@@ -3315,7 +3351,9 @@
         sliderItem.style.minWidth = '200px';
         sliderItem.style.maxWidth = '200px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-img" style="height: 150px;">
+            <img src="${getProductImage(p)}" alt="${p.name || 'Product'}" loading="lazy" decoding="async">
+          </div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
             <div class="slider-item-price">${formatPrice(p.price)}</div>
@@ -3348,7 +3386,9 @@
         const item = document.createElement('div');
         item.className = 'similar-product-small';
         item.innerHTML = `
-          <div class="similar-product-small-img" style="background-image: url('${getProductImage(simProduct)}')"></div>
+          <div class="similar-product-small-img">
+            <img src="${getProductImage(simProduct)}" alt="${simProduct.name || 'Product'}" loading="lazy" decoding="async">
+          </div>
           <div class="similar-product-small-info">
             <div class="similar-product-small-title">${(simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product')}</div>
             <div class="similar-product-small-price">${formatPrice(simProduct.price)}</div>
@@ -3369,10 +3409,13 @@
       productsToRender.forEach(product => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
+        const productName = product.name || product.title || 'Product Name';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="slider-item-img">
+            <img src="${getProductImage(product)}" alt="${productName}" loading="lazy" decoding="async">
+          </div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
+            <div class="slider-item-title">${productName}</div>
             <div class="slider-item-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -3961,7 +4004,9 @@
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
+            <div class="order-product-image">
+              <img src="${getProductImage(product)}" alt="${order.productName}" loading="lazy" decoding="async">
+            </div>
             <div class="order-product-info">
               <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount)}</div>
@@ -4044,7 +4089,9 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-detail-image">
+              <img src="${getProductImage(products.find(p => p.id === order.productId))}" alt="${order.productName}" loading="lazy" decoding="async">
+            </div>
             <div class="order-detail-product-info">
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
@@ -4258,7 +4305,9 @@
         const circle = document.createElement('div');
         circle.className = 'category-circle';
         circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
+          <div class="category-circle-image">
+            <img src="${getProductImage(category)}" alt="${category.name || 'Category'}" loading="lazy" decoding="async">
+          </div>
           <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
         circle.addEventListener('click', () => filterByCategory(category.id));
@@ -4271,22 +4320,21 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+
+      const ratingMap = getRatingMap(reviews);
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div class="card-panel center">No products found</div>';
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          fragment.appendChild(createProductCard(product, ratingMap[product.id] || 0));
+        }
+      });
       container.appendChild(fragment);
     }
 
@@ -4299,7 +4347,13 @@
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        const bannerImg = document.createElement('img');
+        bannerImg.src = getProductImage(banner);
+        bannerImg.alt = 'Banner ' + (index + 1);
+        bannerImg.loading = index === 0 ? 'eager' : 'lazy';
+        bannerImg.decoding = 'async';
+        slide.appendChild(bannerImg);
+
         if (banner.link) {
           slide.style.cursor = 'pointer';
           slide.addEventListener('click', () => window.open(banner.link, '_blank'));
@@ -4323,8 +4377,10 @@
       const track = document.getElementById('bannerTrack');
       const dots = document.querySelectorAll('.banner-dot');
       if (!track || !dots.length) return;
-      track.style.transform = `translateX(-${index * 100}%)`;
-      dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+      requestAnimationFrame(() => {
+        track.style.transform = `translateX(-${index * 100}%)`;
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+      });
     }
 
     function setupBannerAutoSlide() {
@@ -4485,12 +4541,15 @@
       const slides = slider.querySelectorAll('.slider-item');
       const totalSlides = slides.length;
       if (totalSlides <= 1) return;
+      const slideWidth = slides[0].offsetWidth;
       let currentSlide = 0;
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       trendingAutoSlideInterval = setInterval(() => {
         if (!slidePaused) {
           currentSlide = (currentSlide + 1) % totalSlides;
-          slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' });
+          requestAnimationFrame(() => {
+            slider.scrollTo({ left: currentSlide * slideWidth, behavior: 'smooth' });
+          });
         }
       }, 4000);
     }
@@ -5166,7 +5225,15 @@
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const onValue = window.firebase.onValue;
+
+      // Safety timeout to clear loading state
+      const safetyTimeout = setTimeout(() => {
+        window.isProductsLoading = false;
+      }, 5000);
+
       onValue(ref(database, 'products'), snapshot => {
+        clearTimeout(safetyTimeout);
+        window.isProductsLoading = false;
         const productsObj = snapshot.val();
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
@@ -5267,10 +5334,17 @@
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
+      let ticking = false;
       window.addEventListener('scroll', function() {
-        headerSearchContainer.style.opacity = '1';
-        headerSearchContainer.style.visibility = 'visible';
-      }, false);
+        if (!ticking) {
+          window.requestAnimationFrame(function() {
+            headerSearchContainer.style.opacity = '1';
+            headerSearchContainer.style.visibility = 'visible';
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
     }
 
     function setupBackButton() {
@@ -5294,7 +5368,7 @@
             performSearch(this.value);
           }
         });
-        searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
+        searchInput.addEventListener('input', debounce(function(e) { handleSearchPanelInput(e); }, 300));
       }
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
@@ -5363,7 +5437,6 @@
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
-      document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
       document.getElementById('clearHistoryBtn')?.addEventListener('click', clearSearchHistory);
       document.getElementById('headerSearchInput')?.addEventListener('click', openSearchPanel);
       document.getElementById('authClose')?.addEventListener('click', () => document.getElementById('authModal').classList.remove('active'));
@@ -5431,7 +5504,6 @@
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
-      document.getElementById('toPayment')?.addEventListener('click', toPayment);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
       window.addEventListener('hashchange', function() {
