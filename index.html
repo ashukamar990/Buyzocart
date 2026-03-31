@@ -2072,6 +2072,14 @@
     let categories = [];
     let banners = [];
     let recentlyViewed = [];
+    const wishlistCache = new Set(JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]'));
+    window.addEventListener('storage', e => {
+      if (e.key === CACHE_KEYS.WISHLIST) {
+        wishlistCache.clear();
+        (JSON.parse(e.newValue || '[]')).forEach(id => wishlistCache.add(id));
+        updateWishlistButtons();
+      }
+    });
     let currentImageIndex = 0;
     let currentZoomLevel = 1;
     let currentCategoryFilter = null;
@@ -2235,6 +2243,19 @@
       }
     }
     const sliderController = new GlobalSliderController();
+
+    function getRatingMap(reviewsArray) {
+      const map = reviewsArray.reduce((acc, r) => {
+        if (!acc[r.productId]) acc[r.productId] = { sum: 0, count: 0 };
+        acc[r.productId].sum += r.rating;
+        acc[r.productId].count++;
+        return acc;
+      }, {});
+      Object.keys(map).forEach(id => {
+        map[id] = map[id].sum / map[id].count;
+      });
+      return map;
+    }
 
     function debounce(func, wait) {
       let timeout;
@@ -2420,16 +2441,7 @@
         product.category?.toLowerCase().includes(query.toLowerCase()) ||
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
-      const ratingMap = {};
-      suggestions.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const topThree = suggestions.slice(0, 3);
       suggestionsContainer.innerHTML = '';
@@ -3421,21 +3433,18 @@
     }
 
     function isInWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      return wishlist.includes(productId);
+      return wishlistCache.has(productId);
     }
 
     function toggleWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      const isWishlisted = wishlist.includes(productId);
-      if (isWishlisted) {
-        wishlist = wishlist.filter(id => id !== productId);
+      if (wishlistCache.has(productId)) {
+        wishlistCache.delete(productId);
         showToast('Removed from wishlist', 'success');
       } else {
-        wishlist.push(productId);
+        wishlistCache.add(productId);
         showToast('Added to wishlist', 'success');
       }
-      localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
+      localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(Array.from(wishlistCache)));
       updateWishlistButtons();
       if (document.getElementById('wishlistPage')?.classList.contains('active')) renderWishlist();
     }
@@ -4330,17 +4339,7 @@
         if (container.dataset.lastRender === jsonStr) return;
         container.dataset.lastRender = jsonStr;
 
-        const ratingMap = {};
-        productsToRender.forEach(p => {
-          try {
-            if (!p) return;
-            const productReviews = reviews.filter(r => r.productId === p.id);
-            if (productReviews.length) {
-              const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-              ratingMap[p.id] = sum / productReviews.length;
-            } else ratingMap[p.id] = 0;
-          } catch (err) {}
-        });
+        const ratingMap = getRatingMap(reviews);
 
         const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
         container.innerHTML = '';
@@ -5275,7 +5274,8 @@
             performSearch(this.value);
           }
         });
-        searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
+        const debouncedSearch = debounce(function(e) { handleSearchPanelInput(e); }, 300);
+        searchInput.addEventListener('input', debouncedSearch);
       }
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
