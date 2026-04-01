@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2026-04-01 - Optimized data flow and $O(1)$ wishlist lookups
+**Learning:** Redundant network requests during startup (e.g., calling both get() and onValue() for the same Firebase data) add unnecessary overhead and roundtrip latency. Additionally, repetitive Disk I/O (localStorage + JSON.parse) during complex grid rendering can cause frame drops and increased CPU usage.
+**Action:** Consolidate initial data fetching into real-time listeners and use a global memory-based cache (Set) for frequent lookups like wishlist status. Ensure cross-tab synchronization via storage event listeners.
