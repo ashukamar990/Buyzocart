@@ -1748,17 +1748,26 @@
               <strong>Mobile:</strong> ${escapeHTML(address.mobile)}
             </div>
             <div class="address-actions" style="display: flex; gap: 10px; border-top: 1px solid var(--border); padding-top: 15px;">
-              <button class="btn-outline btn-sm" onclick="editAddress('${address.id}')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;">
+              <button class="btn-outline btn-sm edit-btn" data-id="${escapeHTML(address.id)}" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 Edit
               </button>
-              <button class="btn-outline btn-sm" onclick="deleteAddress('${address.id}')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--danger); border-color: var(--danger);">
+              <button class="btn-outline btn-sm delete-btn" data-id="${escapeHTML(address.id)}" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--danger); border-color: var(--danger);">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 Delete
               </button>
-              ${!address.isDefault ? `<button class="btn-sm" onclick="setDefaultAddress('${address.id}')" style="flex: 1;">Set as Default</button>` : ''}
+              ${!address.isDefault ? `<button class="btn-sm default-btn" data-id="${escapeHTML(address.id)}" style="flex: 1;">Set as Default</button>` : ''}
             </div>
           `;
+          card.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (btn) {
+              const id = btn.getAttribute('data-id');
+              if (btn.classList.contains('edit-btn')) editAddress(id);
+              else if (btn.classList.contains('delete-btn')) deleteAddress(id);
+              else if (btn.classList.contains('default-btn')) setDefaultAddress(id);
+            }
+          });
           container.appendChild(card);
         });
       } catch (error) {
@@ -1836,9 +1845,9 @@
             const card = document.createElement('div');
             card.className = 'product-card';
             card.innerHTML = `
-              <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${item.name}" class="product-image" onerror="this.src='https://via.placeholder.com/100'">
+              <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${escapeHTML(item.name)}" class="product-image" onerror="this.src='https://via.placeholder.com/100'">
               <div class="product-details">
-                <div class="product-title">${item.name || 'Product'}</div>
+                <div class="product-title">${escapeHTML(item.name || 'Product')}</div>
                 <div class="product-price">₹${item.price || 0}</div>
                 <div class="product-rating">
                   ${Array(5).fill().map((_, i) => `
@@ -1846,11 +1855,21 @@
                   `).join('')}
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                  <button class="btn-outline btn-sm" onclick="removeFromWishlist('${child.key}')">Remove</button>
-                  <button class="btn-sm" onclick="viewProduct('${item.productId}')">View</button>
+                  <button class="btn-outline btn-sm remove-wishlist-btn" data-id="${escapeHTML(child.key)}">Remove</button>
+                  <button class="btn-sm view-product-btn" data-id="${escapeHTML(item.productId)}">View</button>
                 </div>
               </div>
             `;
+            card.addEventListener('click', (e) => {
+              const btn = e.target.closest('button');
+              if (btn) {
+                if (btn.classList.contains('remove-wishlist-btn')) {
+                  removeFromWishlist(btn.getAttribute('data-id'));
+                } else if (btn.classList.contains('view-product-btn')) {
+                  viewProduct(btn.getAttribute('data-id'));
+                }
+              }
+            });
             container.appendChild(card);
           });
         });
@@ -1905,7 +1924,7 @@
             card.innerHTML = `
               <div class="order-header">
                 <div>
-                  <div class="order-id">${order.orderId || '#' + order.id.slice(-8)}</div>
+                  <div class="order-id">${escapeHTML(order.orderId || '#' + order.id.slice(-8))}</div>
                   <div style="font-size: 0.75rem; color: var(--text-secondary);">${date}</div>
                 </div>
                 <span class="order-status ${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
@@ -1913,9 +1932,9 @@
               <div class="order-items">
                 ${(order.items || []).map(item => `
                   <div class="order-item">
-                    <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image">
+                    <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${escapeHTML(item.name)}" class="order-item-image">
                     <div style="flex: 1;">
-                      <div style="font-weight: 500;">${item.name}</div>
+                      <div style="font-weight: 500;">${escapeHTML(item.name)}</div>
                       <div style="font-size: 0.875rem; color: var(--text-secondary);">Qty: ${item.quantity || 1}</div>
                       <div style="font-weight: 600; color: var(--primary);">₹${item.price || 0}</div>
                     </div>
@@ -1953,7 +1972,7 @@
             item.innerHTML = `
               <div class="activity-info">
                 <div class="activity-time">${new Date(activity.timestamp).toLocaleString()}</div>
-                <div class="activity-device">${activity.deviceType || 'Unknown'}</div>
+                <div class="activity-device">${escapeHTML(activity.deviceType || 'Unknown')}</div>
               </div>
               <span class="activity-status">Success</span>
             `;
