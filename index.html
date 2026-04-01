@@ -30,7 +30,7 @@
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
-      <div class="menu-close" id="menuClose">×</div>
+      <div class="menu-close" id="menuClose" role="button" tabindex="0" aria-label="Close menu">×</div>
     </div>
     <div class="menu-items">
       <div class="menu-item" onclick="showPage('homePage'); closeMenu();">
@@ -172,7 +172,7 @@
   <div class="search-panel" id="searchPanel">
     <div class="search-panel-header">
       <input type="text" class="search-panel-input" id="searchPanelInput" placeholder="Search products, brands, categories..." autocomplete="off">
-      <button class="search-panel-close" id="searchPanelClose">×</button>
+      <button class="search-panel-close" id="searchPanelClose" aria-label="Close search">×</button>
     </div>
     <div class="search-suggestions" id="searchSuggestions" style="display: none;"></div>
     <div class="search-section">
@@ -366,7 +366,7 @@
 
       <div class="header-search-container" style="position: sticky; top: 0; z-index: 10; background: var(--surface); padding: 10px 0;">
         <div class="header-search-wrap">
-          <input id="searchResultsInput" placeholder="Search products..." autocomplete="off" value="" />
+          <input id="searchResultsInput" aria-label="Search search results" placeholder="Search products..." autocomplete="off" value="" />
           <button class="header-search-btn" id="searchResultsBtn">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
@@ -402,6 +402,7 @@
         </div>
       </div>
 
+      <div id="searchStatus" class="visually-hidden" aria-live="polite"></div>
       <div class="product-grid" id="searchResultsGrid"></div>
 
       <div id="noSearchResultsMessage" class="card-panel center" style="display:none;">
@@ -436,9 +437,9 @@
           <div class="product-detail-gallery">
             <div class="product-gallery">
               <div class="main-product-image" id="mainProductImage">
-                <button class="detail-carousel-control prev">❮</button>
-                <button class="detail-carousel-control next">❯</button>
-                <button class="image-zoom-btn" id="imageZoomBtn">
+                <button class="detail-carousel-control prev" aria-label="Previous image">❮</button>
+                <button class="detail-carousel-control next" aria-label="Next image">❯</button>
+                <button class="image-zoom-btn" id="imageZoomBtn" aria-label="Zoom image">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -533,8 +534,8 @@
         <div id="selectedProductCard" class="card" style="margin-bottom:16px">
           <div style="display:flex;gap:16px;flex-direction:column">
             <div id="galleryMain" class="gallery-main">
-              <button class="carousel-control prev">❮</button>
-              <button class="carousel-control next">❯</button>
+              <button class="carousel-control prev" aria-label="Previous image">❮</button>
+              <button class="carousel-control next" aria-label="Next image">❯</button>
               <div class="carousel-dots" id="orderCarouselDots"></div>
             </div>
           </div>
@@ -551,9 +552,9 @@
               <div style="margin-top: 20px;">
                 <div class="selection-title">Select Quantity</div>
                 <div class="quantity-control" style="max-width: 200px;">
-                  <button class="qty-minus">-</button>
+                  <button class="qty-minus" aria-label="Decrease quantity">-</button>
                   <input type="number" id="qtySelect" min="1" value="1" max="3" readonly>
-                  <button class="qty-plus">+</button>
+                  <button class="qty-plus" aria-label="Increase quantity">+</button>
                 </div>
                 <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Max 3 units per order</div>
               </div>
@@ -912,7 +913,7 @@
 
   <div class="product-image-modal" id="productImageModal">
     <div class="product-image-modal-content">
-      <button class="product-image-modal-close" id="productImageModalClose">×</button>
+      <button class="product-image-modal-close" id="productImageModalClose" aria-label="Close image modal">×</button>
       <img class="product-image-modal-image" id="productImageModalImage" src="" alt="Product image">
       <div class="product-image-modal-controls">
         <button class="product-image-modal-prev" id="productImageModalPrev">❮</button>
@@ -924,7 +925,7 @@
 
   <div class="modal-overlay zoom-modal" id="zoomModal">
     <div class="zoom-content">
-      <button class="zoom-close" id="zoomClose">×</button>
+      <button class="zoom-close" id="zoomClose" aria-label="Close zoom modal">×</button>
       <img class="zoom-image" id="zoomImage" src="" alt="Zoomed product image">
       <div class="zoom-controls">
         <button class="zoom-btn" id="zoomIn">+</button>
@@ -936,7 +937,7 @@
 
   <div class="modal-overlay" id="authModal">
     <div class="auth-modal">
-      <button class="auth-close" id="authClose">×</button>
+      <button class="auth-close" id="authClose" aria-label="Close login modal">×</button>
       <h3>Welcome to Buyzo Cart</h3>
       
       <div class="auth-tabs">
@@ -2699,15 +2700,18 @@
       const grid = document.getElementById('searchResultsGrid');
       const count = document.getElementById('searchResultsCount');
       const noResults = document.getElementById('noSearchResultsMessage');
+      const searchStatus = document.getElementById('searchStatus');
       if (!grid) return;
       if (results.length === 0) {
         grid.innerHTML = '';
         noResults.style.display = 'block';
         count.textContent = 'No products found';
+        if (searchStatus) searchStatus.textContent = `No products found for "${query}"`;
         return;
       }
       noResults.style.display = 'none';
       count.textContent = `${results.length} products found for "${query}"`;
+      if (searchStatus) searchStatus.textContent = `Found ${results.length} products for "${query}"`;
       renderProducts(results, 'searchResultsGrid');
     }
 
