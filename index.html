@@ -2543,7 +2543,7 @@
       window.scrollTo(0, 0);
       switch(pageId) {
         case 'myOrdersPage':
-          if (currentUser) showMyOrders();
+          showMyOrders();
           break;
         case 'wishlistPage':
           renderWishlist();
@@ -2608,7 +2608,7 @@
     }
 
     function checkAuthAndShowPage(pageId) {
-      if (!currentUser && (pageId === 'myOrdersPage' || pageId === 'wishlistPage' || pageId === 'accountPage')) {
+      if (!currentUser && (pageId === 'wishlistPage' || pageId === 'accountPage')) {
         showLoginModal();
         return;
       }
@@ -3593,21 +3593,31 @@
           }
         };
         // Required localStorage update for My Orders system
-        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        let localOrders = [];
+        try {
+          const stored = localStorage.getItem('orders');
+          localOrders = stored ? JSON.parse(stored) : [];
+          if (!Array.isArray(localOrders)) localOrders = [];
+        } catch (e) {
+          localOrders = [];
+        }
+
         if (!localOrders.find(o => o.orderId === orderId)) {
-          localOrders.unshift({
+          const orderEntry = {
             orderId: orderId,
-            name: currentProduct.name || currentProduct.title,
+            name: currentProduct.name || currentProduct.title || currentProduct.productName || 'Product',
             image: getProductImage(currentProduct),
             price: total,
-            date: new Date().toLocaleDateString(),
-            address: `${userInfo.house}, ${userInfo.city}, ${userInfo.state} - ${userInfo.pincode}`,
-            productId: currentProduct.id,
+            date: new Date().toLocaleDateString('en-IN'),
+            address: `${userInfo.house || ''}, ${userInfo.city || ''}, ${userInfo.state || ''} - ${userInfo.pincode || ''}`,
+            productId: currentProduct.id || 'N/A',
             quantity: quantity,
             size: size,
             status: 'Confirmed'
-          });
+          };
+          localOrders.unshift(orderEntry);
           localStorage.setItem('orders', JSON.stringify(localOrders));
+          console.log("Order saved to localStorage:", orderId);
         }
 
         // Keep Firebase and Cache as secondary
@@ -3932,64 +3942,87 @@
     }
 
     async function showMyOrders() {
-      if (!currentUser) return;
       try {
-        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
         const ordersList = document.getElementById('ordersList');
         const empty = document.getElementById('orders-empty');
+        if (!ordersList) return;
 
-        if (localOrders.length === 0) {
+        let localOrders = [];
+        try {
+          const ordersData = localStorage.getItem('orders');
+          localOrders = ordersData ? JSON.parse(ordersData) : [];
+        } catch (e) {
+          console.error("Local orders corrupted", e);
+          localOrders = [];
+        }
+
+        if (!Array.isArray(localOrders) || localOrders.length === 0) {
           ordersList.innerHTML = '';
-          empty.style.display = 'block';
+          if (empty) empty.style.display = 'block';
           return;
         }
 
-        empty.style.display = 'none';
-        renderOrders(localOrders);
+        if (empty) empty.style.display = 'none';
+
+        // Render orders directly to the list
+        ordersList.innerHTML = '';
+        localOrders.forEach(order => {
+          if (!order) return;
+          const orderCard = document.createElement('div');
+          orderCard.className = 'order-card';
+
+          const status = String(order.status || 'Confirmed');
+          const showCancel = status === 'Confirmed';
+          const showReturn = status === 'Delivered';
+          const productId = order.productId || '';
+          const safeOrderId = escapeHTML(order.orderId || 'Order ID');
+          const safeDate = escapeHTML(order.date || '');
+          const safeName = escapeHTML(order.name || 'Product');
+          const safeAddress = escapeHTML(order.address || 'No address provided');
+          const safeImage = order.image || 'https://via.placeholder.com/100?text=Product';
+
+          orderCard.innerHTML = `
+            <div class="order-header">
+              <div>
+                <div class="order-id">${safeOrderId}</div>
+                <div class="order-date">${safeDate}</div>
+              </div>
+              <div class="order-status status-${status.toLowerCase().replace(/\s+/g, '-')}">${escapeHTML(status)}</div>
+            </div>
+            <div class="order-details" style="cursor: pointer;">
+              <div class="order-product-image" style="background-image: url('${safeImage}')"></div>
+              <div class="order-product-info">
+                <div class="order-product-title" style="font-weight:600; margin-bottom:4px;">${safeName}</div>
+                <div class="order-product-price" style="color:var(--accent); font-weight:700;">${formatPrice(order.price || 0)}</div>
+                <div class="order-product-meta" style="margin-top: 8px; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 8px;">
+                  <strong>Address:</strong><br>
+                  ${safeAddress}
+                </div>
+              </div>
+            </div>
+            <div class="order-actions" style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; border-top:1px solid var(--border); padding-top:12px;">
+              ${showCancel ? `<button class="order-action-btn cancel" style="padding:6px 12px; border-radius:6px; border:1px solid #ef4444; color:#ef4444; background:none; cursor:pointer;" onclick="event.stopPropagation(); window.cancelOrder('${safeOrderId}')">Cancel Order</button>` : ''}
+              ${showReturn ? `<button class="order-action-btn return" style="padding:6px 12px; border-radius:6px; border:1px solid var(--accent); color:var(--accent); background:none; cursor:pointer;" onclick="event.stopPropagation(); window.showReturnReplaceModal('${safeOrderId}')">Return / Replace</button>` : ''}
+              ${status === 'Cancelled' ? '<div style="color: #ef4444; font-size: 13px; font-weight: 600;">Order Cancelled</div>' : ''}
+            </div>
+          `;
+
+          const detailsEl = orderCard.querySelector('.order-details');
+          detailsEl.onclick = (e) => {
+            e.preventDefault();
+            const product = products && products.length > 0 ? products.find(p => p.id === productId) : null;
+            if (product) {
+              showProductDetail(product);
+            } else {
+              window.location.hash = `#productDetailPage?product=${productId}`;
+            }
+          };
+
+          ordersList.appendChild(orderCard);
+        });
       } catch (error) {
         console.error('Error loading orders:', error);
       }
-    }
-
-    function renderOrders(orders) {
-      const container = document.getElementById('ordersList');
-      if (!container) return;
-      container.innerHTML = '';
-      orders.forEach(order => {
-        const orderCard = document.createElement('div');
-        orderCard.className = 'order-card';
-
-        const status = (order.status || 'Confirmed');
-        const showCancel = status === 'Confirmed';
-        const showReturn = status === 'Delivered';
-
-        orderCard.innerHTML = `
-          <div class="order-header">
-            <div>
-              <div class="order-id">${order.orderId || 'Order ID'}</div>
-              <div class="order-date">${order.date || ''}</div>
-            </div>
-            <div class="order-status status-${status.toLowerCase()}">${status}</div>
-          </div>
-          <div class="order-details" onclick="showProductDetail(products.find(p => p.id === '${order.productId}'))" style="cursor: pointer;">
-            <div class="order-product-image" style="background-image: url('${order.image || ''}')"></div>
-            <div class="order-product-info">
-              <div class="order-product-title">${order.name || 'Product'}</div>
-              <div class="order-product-price">${formatPrice(order.price || 0)}</div>
-              <div class="order-product-meta" style="margin-top: 5px; font-size: 13px; color: var(--muted);">
-                <strong>Delivery Address:</strong><br>
-                ${order.address || 'No address provided'}
-              </div>
-            </div>
-          </div>
-          <div class="order-actions">
-            ${showCancel ? `<button class="order-action-btn cancel" onclick="event.stopPropagation(); cancelOrder('${order.orderId}')">Cancel Order</button>` : ''}
-            ${showReturn ? `<button class="order-action-btn return" onclick="event.stopPropagation(); showReturnReplaceModal('${order.orderId}')">Return / Replace</button>` : ''}
-            ${status === 'Cancelled' ? '<div style="color: var(--danger); font-size: 14px; font-weight: 500;">Order Cancelled</div>' : ''}
-          </div>
-        `;
-        container.appendChild(orderCard);
-      });
     }
 
     function cancelOrder(orderId) {
@@ -5476,6 +5509,26 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
+
+      // Expose necessary functions to window early for HTML onclick handlers
+      window.showPage = showPage;
+      window.showMyOrders = showMyOrders;
+      window.checkAuthAndShowPage = checkAuthAndShowPage;
+      window.checkAuthAndShowAccount = checkAuthAndShowAccount;
+      window.checkAuthAndShowRecentlyViewed = checkAuthAndShowRecentlyViewed;
+      window.showCategories = showCategories;
+      window.showLoginModal = showLoginModal;
+      window.showLogoutConfirmation = showLogoutConfirmation;
+      window.cancelOrder = cancelOrder;
+      window.showReturnReplaceModal = showReturnReplaceModal;
+      window.showProductDetail = showProductDetail;
+
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'orders' && document.getElementById('myOrdersPage')?.classList.contains('active')) {
+          showMyOrders();
+        }
+      });
+
       setupEventListeners();
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
@@ -5485,6 +5538,7 @@
             loadUserData(user);
             loadRecentlyViewed(user);
             loadSavedAddresses();
+            if (document.getElementById('myOrdersPage')?.classList.contains('active')) showMyOrders();
             document.getElementById('authModal')?.classList.remove('active');
           } else {
             currentUser = null;

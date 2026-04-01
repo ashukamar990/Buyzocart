@@ -1501,6 +1501,15 @@
       initTheme();
       setupEventListeners();
       
+      window.showPage = showPage;
+      window.loadOrders = loadOrders;
+
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'orders' && document.getElementById('ordersPage')?.classList.contains('active')) {
+          loadOrders();
+        }
+      });
+
       auth.onAuthStateChanged(user => {
         if (user) {
           currentUser = user;
@@ -1577,6 +1586,7 @@
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(pageId).classList.add('active');
       window.scrollTo(0, 0);
+      if (pageId === 'ordersPage') loadOrders();
     }
 
     // Theme
@@ -1931,8 +1941,7 @@
     };
 
     window.viewProduct = function(productId) {
-      sessionStorage.setItem('viewProduct', productId);
-      window.location.href = 'index.html#productDetailPage';
+      window.location.href = `index.html#productDetailPage?product=${productId}`;
     };
 
     // Orders Functions
@@ -1975,9 +1984,16 @@
       container.innerHTML = '';
 
       try {
-        const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        let localOrders = [];
+        try {
+          const ordersData = localStorage.getItem('orders');
+          localOrders = ordersData ? JSON.parse(ordersData) : [];
+        } catch (e) {
+          console.error("Local orders corrupted", e);
+          localOrders = [];
+        }
 
-        if (localOrders.length === 0) {
+        if (!Array.isArray(localOrders) || localOrders.length === 0) {
           container.innerHTML = `
             <div class="empty-state">
               <div class="empty-state-icon">📦</div>
@@ -1990,39 +2006,46 @@
         }
 
         localOrders.forEach(order => {
+          if (!order) return;
           const card = document.createElement('div');
           card.className = 'order-card';
 
-          const status = (order.status || 'Confirmed');
+          const status = String(order.status || 'Confirmed');
           const showCancel = status === 'Confirmed';
           const showReturn = status === 'Delivered';
+          const safeOrderId = escapeHTML(order.orderId || 'Order ID');
 
           card.innerHTML = `
             <div class="order-header">
               <div>
-                <div class="order-id">${order.orderId || 'Order ID'}</div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary);">${order.date || ''}</div>
+                <div class="order-id">${safeOrderId}</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">${escapeHTML(order.date || '')}</div>
               </div>
-              <span class="order-status ${status.toLowerCase()}">${status}</span>
+              <span class="order-status ${status.toLowerCase().replace(/\s+/g, '-')}">${escapeHTML(status)}</span>
             </div>
-            <div class="order-items" onclick="window.location.href='index.html#productDetailPage?product=${order.productId}'" style="cursor: pointer;">
+            <div class="order-items" style="cursor: pointer;">
               <div class="order-item" style="display: flex; gap: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
-                <img src="${order.image || ''}" alt="${order.name}" class="order-item-image" style="width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover;">
+                <img src="${order.image || 'https://via.placeholder.com/100?text=Product'}" alt="${escapeHTML(order.name)}" class="order-item-image" style="width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover;">
                 <div style="flex: 1;">
-                  <div style="font-weight: 500;">${order.name || 'Product'}</div>
+                  <div style="font-weight: 500;">${escapeHTML(order.name || 'Product')}</div>
                   <div style="font-weight: 600; color: var(--primary); margin-top: 5px;">₹${(order.price || 0).toLocaleString()}</div>
                   <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-                    <strong>Address:</strong> ${order.address || 'N/A'}
+                    <strong>Address:</strong> ${escapeHTML(order.address || 'N/A')}
                   </div>
                 </div>
               </div>
             </div>
             <div class="order-actions" style="display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
-              ${showCancel ? `<button class="btn-outline btn-sm" style="flex: 1; color: var(--danger); border-color: var(--danger);" onclick="event.stopPropagation(); cancelOrderLocal('${order.orderId}')">Cancel Order</button>` : ''}
-              ${showReturn ? `<button class="btn-outline btn-sm" style="flex: 1; color: var(--primary); border-color: var(--primary);" onclick="event.stopPropagation(); showReturnReplaceLocal('${order.orderId}')">Return / Replace</button>` : ''}
+              ${showCancel ? `<button class="btn-outline btn-sm" style="flex: 1; color: var(--danger); border-color: var(--danger);" onclick="event.stopPropagation(); cancelOrderLocal('${safeOrderId}')">Cancel Order</button>` : ''}
+              ${showReturn ? `<button class="btn-outline btn-sm" style="flex: 1; color: var(--primary); border-color: var(--primary);" onclick="event.stopPropagation(); showReturnReplaceLocal('${safeOrderId}')">Return / Replace</button>` : ''}
               ${status === 'Cancelled' ? '<div style="color: var(--danger); font-size: 14px; font-weight: 500;">Order Cancelled</div>' : ''}
             </div>
           `;
+
+          card.querySelector('.order-items').onclick = () => {
+            window.location.href = `index.html#productDetailPage?product=${order.productId || ''}`;
+          };
+
           container.appendChild(card);
         });
       } catch (error) {
