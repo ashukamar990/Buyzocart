@@ -2078,6 +2078,14 @@
     let searchTags = ['Summer Collection', 'Winter Sale', 'New Arrivals', 'Best Sellers', 'Limited Edition'];
     let deliveredOrders = [];
     let globalCurrencySymbol = adminSettings.currencySymbol;
+    window.wishlistCache = new Set();
+    try {
+      const savedWishlist = localStorage.getItem(CACHE_KEYS.WISHLIST);
+      if (savedWishlist) {
+        const parsed = JSON.parse(savedWishlist);
+        if (Array.isArray(parsed)) window.wishlistCache = new Set(parsed);
+      }
+    } catch (e) { console.error('Error initializing wishlist cache:', e); }
     let userCurrencyPreference = localStorage.getItem('userCurrency') || null;
     
     let autoSlideInterval;
@@ -3426,21 +3434,18 @@
     }
 
     function isInWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      return wishlist.includes(productId);
+      return window.wishlistCache.has(productId);
     }
 
     function toggleWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      const isWishlisted = wishlist.includes(productId);
-      if (isWishlisted) {
-        wishlist = wishlist.filter(id => id !== productId);
+      if (window.wishlistCache.has(productId)) {
+        window.wishlistCache.delete(productId);
         showToast('Removed from wishlist', 'success');
       } else {
-        wishlist.push(productId);
+        window.wishlistCache.add(productId);
         showToast('Added to wishlist', 'success');
       }
-      localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
+      localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(Array.from(window.wishlistCache)));
       updateWishlistButtons();
       if (document.getElementById('wishlistPage')?.classList.contains('active')) renderWishlist();
     }
@@ -3474,8 +3479,7 @@
       const container = document.getElementById('wishlistItems');
       const empty = document.getElementById('emptyWishlist');
       if (!container || !empty) return;
-      let wishlistProductIds = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      const wishlistProducts = products.filter(product => wishlistProductIds.includes(product.id));
+      const wishlistProducts = products.filter(product => window.wishlistCache.has(product.id));
       if (wishlistProducts.length === 0) {
         container.style.display = 'none';
         empty.style.display = 'block';
@@ -5089,107 +5093,6 @@
       updateHeroContent();
     }
 
-    function fetchLiveData() {
-      if (!window.firebase || !window.firebase.database) {
-        console.error('Firebase not initialized');
-        return;
-      }
-      const database = window.firebase.database;
-      const ref = window.firebase.ref;
-      const get = window.firebase.get;
-      get(ref(database, 'products')).then(snapshot => {
-        const productsObj = snapshot.val();
-        if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => {
-            const product = productsObj[key];
-            return {
-              id: key,
-              ...product,
-              images: product.images ? 
-                (Array.isArray(product.images) ? product.images : [product.images]) : 
-                (product.image ? [product.image] : 
-                 (product.img ? [product.img] : 
-                  (product.imageUrl ? [product.imageUrl] : [])))
-            };
-          });
-          products = newProducts;
-          window.products = products;
-          cacheManager.set(CACHE_KEYS.PRODUCTS, products);
-          const currentPage = document.querySelector('.page.active')?.id;
-          if (currentPage === 'homePage') {
-            renderProducts(products, 'homeProductGrid');
-            const trendingProducts = products.filter(p => p.isTrending || p.trending);
-            if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
-            else renderProductSlider(products.slice(0, 10), 'productSlider');
-          } else if (currentPage === 'productsPage') {
-            renderProducts(products, 'productGrid');
-            updateProductsCount();
-          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
-            const filteredResults = products.filter(product => 
-              (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-            );
-            window.currentSearchResults = filteredResults;
-            renderSearchResults(filteredResults, window.currentSearchQuery);
-          }
-        } else {
-          products = [];
-          renderProducts([], 'homeProductGrid');
-          renderProducts([], 'productGrid');
-        }
-      }).catch(error => {
-        console.error('Error fetching products:', error);
-        products = [];
-        renderProducts([], 'homeProductGrid');
-        renderProducts([], 'productGrid');
-      });
-      get(ref(database, 'categories')).then(snapshot => {
-        const categoriesObj = snapshot.val();
-        if (categoriesObj) {
-          const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
-          categories = newCategories;
-          cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
-        } else categories = [];
-      }).catch(error => {
-        console.error('Error fetching categories:', error);
-        categories = [];
-      });
-      get(ref(database, 'banners')).then(snapshot => {
-        const bannersObj = snapshot.val();
-        if (bannersObj) {
-          const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
-          banners = newBanners;
-          cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
-      }).catch(error => {
-        console.error('Error fetching banners:', error);
-        banners = [];
-      });
-      get(ref(database, 'adminSettings')).then(snapshot => {
-        const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
-        }
-      }).catch(error => {
-        console.error('Error fetching admin settings:', error);
-      });
-      get(ref(database, 'outOfStock')).then(snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) window.outOfStockItems = outOfStockObj;
-      }).catch(error => {
-        console.error('Error fetching out of stock items:', error);
-      });
-    }
-
     function loadCachedData() {
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
@@ -5540,6 +5443,14 @@
       }
       document.getElementById('cancelCancel')?.addEventListener('click', () => document.getElementById('cancellationModal').classList.remove('active'));
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
+
+      window.addEventListener('storage', (e) => {
+        if (e.key === CACHE_KEYS.WISHLIST) {
+          window.wishlistCache = new Set(JSON.parse(e.newValue || '[]'));
+          updateWishlistButtons();
+          if (document.getElementById('wishlistPage')?.classList.contains('active')) renderWishlist();
+        }
+      });
     }
 
     function initApp() {
@@ -5563,7 +5474,6 @@
         });
       }
       loadCachedData();
-      fetchLiveData();
       setupRealtimeListeners();
       showPage('homePage');
       setupHeroMessages();
