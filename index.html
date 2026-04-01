@@ -578,9 +578,9 @@
     <section class="page" id="userPage">
       <div class="card-panel">
         <h3 style="margin-top:0">Your Contact & Delivery Address</h3>
-        <p style="color:var(--muted)">Select a saved address or enter a new one for this order.</p>
+        <p style="color:var(--muted)">We do not use saved addresses. Please provide a fresh delivery address for this order.</p>
 
-        <div class="card-panel" id="savedAddressesSection" style="display: none; margin-bottom: 20px;">
+        <div class="card-panel" id="savedAddressesSection" style="margin-bottom: 20px;">
           <h4 style="margin-top:0">My Addresses</h4>
           <div id="savedAddressesList"></div>
           <button class="btn secondary" onclick="showNewAddressForm()" style="margin-top: 12px;">+ Add New Address</button>
@@ -1940,7 +1940,7 @@
     });
   </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <script>
     (function() {
@@ -1999,22 +1999,6 @@
   </script>
 
   <script>
-    /**
-     * Requirement 8: Utility to prevent XSS by escaping HTML special characters
-     */
-    function escapeHTML(str) {
-      if (!str) return '';
-      return str.toString().replace(/[&<>"']/g, function(m) {
-        return {
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;'
-        }[m];
-      });
-    }
-
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -2047,8 +2031,6 @@
       remove(key) { localStorage.removeItem(key); }
     };
 
-    let reviews = [];
-    window.isProductsLoading = true;
     let currentUser = null;
     let currentProduct = null;
     let userInfo = {};
@@ -2150,9 +2132,7 @@
         const slider = this.sliders.get(key);
         if (!slider || !slider.track) return;
         const slideWidth = slider.track.children[0]?.offsetWidth || 0;
-        requestAnimationFrame(() => {
-          slider.track.style.transform = `translateX(-${slider.currentIndex * slideWidth}px)`;
-        });
+        slider.track.style.transform = `translateX(-${slider.currentIndex * slideWidth}px)`;
       }
       setupDelegation() {
         document.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
@@ -2250,40 +2230,27 @@
     }
 
     function getProductImage(product, idx = 0) {
-      const optimizeUrl = (url) => {
-        if (typeof url === 'string' && url.includes('images.unsplash.com')) {
-          if (url.includes('?')) {
-            if (!url.includes('w=')) url += '&w=600';
-            if (!url.includes('q=')) url += '&q=80';
-            if (!url.includes('auto=')) url += '&auto=format';
-            return url;
-          }
-          return `${url}?auto=format&fit=crop&w=600&q=80`;
-        }
-        return url;
-      };
-
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
       if (Array.isArray(product.images) && product.images.length > 0) {
-        const url = idx < product.images.length ? product.images[idx] : product.images[0];
-        return optimizeUrl(url);
+        if (idx < product.images.length) return product.images[idx];
+        return product.images[0];
       }
       const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
       for (const field of possibleImageFields) {
         if (product[field]) {
           if (typeof product[field] === 'string') {
-            return optimizeUrl(product[field]);
+            return product[field];
           }
           if (Array.isArray(product[field]) && product[field].length > 0) {
-            return optimizeUrl(product[field][0]);
+            return product[field][0];
           }
         }
       }
       if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
-        return optimizeUrl(product);
+        return product;
       }
       if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
-        return optimizeUrl(product.value);
+        return product.value;
       }
       return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
     }
@@ -2431,12 +2398,10 @@
         suggestion.className = 'search-suggestion';
         const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
-          <div class="search-suggestion-img">
-            <img src="${getProductImage(product)}" alt="${escapeHTML(product.name || 'Product')}" loading="lazy" decoding="async">
-          </div>
+          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${escapeHTML(product.name || 'Product')}</div>
-            <div class="search-suggestion-category">${escapeHTML(productCategory)}</div>
+            <div class="search-suggestion-name">${product.name || 'Product'}</div>
+            <div class="search-suggestion-category">${productCategory}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -2451,7 +2416,7 @@
         categorySuggestion.className = 'search-suggestion';
         categorySuggestion.innerHTML = `
           <div class="search-suggestion-info" style="padding-left:0;">
-            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${escapeHTML(query)}"</div>
+            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
           </div>
         `;
         categorySuggestion.addEventListener('click', () => performSearch(query));
@@ -2485,8 +2450,8 @@
         const item = document.createElement('div');
         item.className = 'recent-search-item';
         item.innerHTML = `
-          <span class="recent-search-text">${escapeHTML(search)}</span>
-          <button class="recent-search-remove" data-search="${escapeHTML(search)}">×</button>
+          <span class="recent-search-text">${search}</span>
+          <button class="recent-search-remove" data-search="${search}">×</button>
         `;
         item.querySelector('.recent-search-text').addEventListener('click', () => {
           document.getElementById('searchPanelInput').value = search;
@@ -2820,21 +2785,7 @@
       renderSearchResults(window.currentSearchResults, window.currentSearchQuery);
     }
 
-    function getRatingMap(reviewsArray) {
-      const map = {};
-      reviewsArray.forEach(r => {
-        if (!map[r.productId]) {
-          map[r.productId] = { sum: 0, count: 0 };
-        }
-        map[r.productId].sum += r.rating;
-        map[r.productId].count += 1;
-      });
-      const result = {};
-      for (const id in map) {
-        result[id] = map[id].sum / map[id].count;
-      }
-      return result;
-    }
+    let reviews = [];
 
     function calculateProductRating(productId) {
       const productReviews = reviews.filter(r => r.productId === productId);
@@ -2843,7 +2794,7 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product, precalculatedRating = null) {
+    function createProductCard(product) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -2853,7 +2804,7 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = precalculatedRating !== null ? precalculatedRating : calculateProductRating(productId);
+      const rating = calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -2869,12 +2820,11 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image">
-          <img src="${productImage}" alt="${escapeHTML(productName)}" loading="lazy" decoding="async">
+        <div class="product-card-image" style="background-image: url('${productImage}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${escapeHTML(productName)}</div>
+          <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -2884,13 +2834,13 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${escapeHTML(productId)}" title="Wishlist">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${escapeHTML(productId)}" title="Share">
+            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -3334,11 +3284,9 @@
         sliderItem.style.minWidth = '200px';
         sliderItem.style.maxWidth = '200px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="height: 150px;">
-            <img src="${getProductImage(p)}" alt="${escapeHTML(p.name || 'Product')}" loading="lazy" decoding="async">
-          </div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${escapeHTML(p.name || p.title || 'Product')}</div>
+            <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
             <div class="slider-item-price">${formatPrice(p.price)}</div>
           </div>
         `;
@@ -3351,11 +3299,9 @@
         sliderItem.style.minWidth = '200px';
         sliderItem.style.maxWidth = '200px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="height: 150px;">
-            <img src="${getProductImage(p)}" alt="${escapeHTML(p.name || 'Product')}" loading="lazy" decoding="async">
-          </div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${escapeHTML(p.name || p.title || 'Product')}</div>
+            <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
             <div class="slider-item-price">${formatPrice(p.price)}</div>
           </div>
         `;
@@ -3386,11 +3332,9 @@
         const item = document.createElement('div');
         item.className = 'similar-product-small';
         item.innerHTML = `
-          <div class="similar-product-small-img">
-            <img src="${getProductImage(simProduct)}" alt="${escapeHTML(simProduct.name || 'Product')}" loading="lazy" decoding="async">
-          </div>
+          <div class="similar-product-small-img" style="background-image: url('${getProductImage(simProduct)}')"></div>
           <div class="similar-product-small-info">
-            <div class="similar-product-small-title">${escapeHTML((simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product'))}</div>
+            <div class="similar-product-small-title">${(simProduct.name || simProduct.title || '').length > 20 ? (simProduct.name || simProduct.title || '').substring(0, 20) + '...' : (simProduct.name || simProduct.title || 'Product')}</div>
             <div class="similar-product-small-price">${formatPrice(simProduct.price)}</div>
           </div>
         `;
@@ -3409,13 +3353,10 @@
       productsToRender.forEach(product => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
-        const productName = product.name || product.title || 'Product Name';
         sliderItem.innerHTML = `
-          <div class="slider-item-img">
-            <img src="${getProductImage(product)}" alt="${escapeHTML(productName)}" loading="lazy" decoding="async">
-          </div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${escapeHTML(productName)}</div>
+            <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
             <div class="slider-item-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -3639,37 +3580,6 @@
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
-
-        // Save/Update address as default/last used
-        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
-        const existingAddrIndex = allAddresses.findIndex(addr =>
-          addr.userId === currentUser.uid &&
-          addr.name.toLowerCase() === userInfo.fullName.toLowerCase() &&
-          addr.mobile === userInfo.mobile &&
-          addr.pincode === userInfo.pincode &&
-          addr.street.toLowerCase() === userInfo.house.toLowerCase()
-        );
-
-        if (existingAddrIndex !== -1) {
-          allAddresses[existingAddrIndex].lastUsed = Date.now();
-        } else {
-          allAddresses.push({
-            id: 'address_' + Date.now(),
-            name: userInfo.fullName,
-            mobile: userInfo.mobile,
-            pincode: userInfo.pincode,
-            city: userInfo.city,
-            state: userInfo.state,
-            street: userInfo.house,
-            type: document.getElementById('addressType').value || 'home',
-            userId: currentUser.uid,
-            isDefault: !allAddresses.some(addr => addr.userId === currentUser.uid),
-            createdAt: Date.now(),
-            lastUsed: Date.now()
-          });
-        }
-        cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
-
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
@@ -3789,19 +3699,19 @@
         }
         reviewItem.innerHTML = `
           <div class="review-header">
-            <div class="reviewer-name">${escapeHTML(review.userName)} ${isVerified}</div>
+            <div class="reviewer-name">${review.userName} ${isVerified}</div>
             <div class="review-date">${date}</div>
           </div>
           <div class="review-rating">${stars}</div>
-          <div class="review-text">${escapeHTML(review.text)}</div>
+          <div class="review-text">${review.text}</div>
           ${fileHtml}
           ${currentUser && (review.userId === currentUser.uid) ? 
-            `<button class="review-delete-btn" data-review-id="${escapeHTML(review.id)}">Delete</button>` : ''}
+            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
           ${currentUser && (currentUser.uid === 'admin') ? 
-            `<button class="review-delete-btn" data-review-id="${escapeHTML(review.id)}">Delete (Admin)</button>` : ''}
+            `<button class="review-delete-btn" data-review-id="${review.id}">Delete (Admin)</button>` : ''}
         `;
-        const deleteBtns = reviewItem.querySelectorAll('.review-delete-btn');
-        deleteBtns.forEach(btn => btn.addEventListener('click', () => deleteReview(review.id)));
+        const deleteBtn = reviewItem.querySelector('.review-delete-btn');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => deleteReview(review.id));
         reviewsList.appendChild(reviewItem);
       });
     }
@@ -3998,35 +3908,28 @@
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
-              <div class="order-id">${escapeHTML(order.orderId)}</div>
+              <div class="order-id">${order.orderId}</div>
               <div class="order-date">${orderDate.toLocaleDateString()}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image">
-              <img src="${getProductImage(product)}" alt="${escapeHTML(order.productName)}" loading="lazy" decoding="async">
-            </div>
+            <div class="order-product-image" style="background-image: url('${getProductImage(product)}')"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${escapeHTML(order.productName)}</div>
+              <div class="order-product-title">${order.productName}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount)}</div>
-              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${escapeHTML(order.size)}</div>
+              <div class="order-product-meta">Qty: ${order.quantity} | Size: ${order.size}</div>
             </div>
           </div>
           <div class="order-actions">
             ${order.status === 'confirmed' || order.status === 'shipped' ? 
-              `<button class="order-action-btn cancel" data-id="${escapeHTML(order.id)}">Cancel Order</button>` : ''}
+              `<button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>` : ''}
             ${showReturnReplace ? 
-              `<button class="order-action-btn return" data-id="${escapeHTML(order.id)}">Return / Replace</button>` : ''}
+              `<button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>` : ''}
           </div>
         `;
         orderCard.addEventListener('click', (e) => {
-          const btn = e.target.closest('button');
-          if (btn) {
-            const id = btn.getAttribute('data-id');
-            if (btn.classList.contains('cancel')) cancelOrder(id);
-            else if (btn.classList.contains('return')) showReturnReplaceModal(id);
-          } else {
+          if (e.target.tagName !== 'BUTTON') {
             const product = products.find(p => p.id === order.productId);
             if (product) showProductDetail(product);
           }
@@ -4081,7 +3984,7 @@
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
-          <div class="order-detail-value">${escapeHTML(order.orderId)}</div>
+          <div class="order-detail-value">${order.orderId}</div>
         </div>
         <div class="order-detail-section">
           <div class="order-detail-label">Order Date</div>
@@ -4094,14 +3997,12 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image">
-              <img src="${getProductImage(products.find(p => p.id === order.productId))}" alt="${escapeHTML(order.productName)}" loading="lazy" decoding="async">
-            </div>
+            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${escapeHTML(order.productName)}</div>
+              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${escapeHTML(order.size)}
+                Qty: ${order.quantity} | Size: ${order.size}
               </div>
             </div>
           </div>
@@ -4135,10 +4036,10 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Delivery Address</div>
           <div class="order-detail-value">
-            <div>${escapeHTML(order.userInfo?.fullName || '')}</div>
-            <div>${escapeHTML(order.userInfo?.house || '')}</div>
-            <div>${escapeHTML(order.userInfo?.city || '')}, ${escapeHTML(order.userInfo?.state || '')} - ${escapeHTML(order.userInfo?.pincode || '')}</div>
-            <div>Mobile: ${escapeHTML(order.userInfo?.mobile || '')}</div>
+            <div>${order.userInfo?.fullName || ''}</div>
+            <div>${order.userInfo?.house || ''}</div>
+            <div>${order.userInfo?.city || ''}, ${order.userInfo?.state || ''} - ${order.userInfo?.pincode || ''}</div>
+            <div>Mobile: ${order.userInfo?.mobile || ''}</div>
           </div>
         </div>
       `;
@@ -4310,10 +4211,8 @@
         const circle = document.createElement('div');
         circle.className = 'category-circle';
         circle.innerHTML = `
-          <div class="category-circle-image">
-            <img src="${getProductImage(category)}" alt="${escapeHTML(category.name || 'Category')}" loading="lazy" decoding="async">
-          </div>
-          <div class="category-circle-name">${escapeHTML(category.name || 'Category')}</div>
+          <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
+          <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
         circle.addEventListener('click', () => filterByCategory(category.id));
         fragment.appendChild(circle);
@@ -4325,21 +4224,22 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-
-      const ratingMap = getRatingMap(reviews);
+      const ratingMap = {};
+      productsToRender.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else ratingMap[p.id] = 0;
+      });
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
-
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div class="card-panel center">No products found</div>';
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => {
-        if (product) {
-          fragment.appendChild(createProductCard(product, ratingMap[product.id] || 0));
-        }
-      });
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
       container.appendChild(fragment);
     }
 
@@ -4352,13 +4252,7 @@
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        const bannerImg = document.createElement('img');
-        bannerImg.src = getProductImage(banner);
-        bannerImg.alt = 'Banner ' + (index + 1);
-        bannerImg.loading = index === 0 ? 'eager' : 'lazy';
-        bannerImg.decoding = 'async';
-        slide.appendChild(bannerImg);
-
+        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
         if (banner.link) {
           slide.style.cursor = 'pointer';
           slide.addEventListener('click', () => window.open(banner.link, '_blank'));
@@ -4382,10 +4276,8 @@
       const track = document.getElementById('bannerTrack');
       const dots = document.querySelectorAll('.banner-dot');
       if (!track || !dots.length) return;
-      requestAnimationFrame(() => {
-        track.style.transform = `translateX(-${index * 100}%)`;
-        dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
-      });
+      track.style.transform = `translateX(-${index * 100}%)`;
+      dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
     }
 
     function setupBannerAutoSlide() {
@@ -4546,15 +4438,12 @@
       const slides = slider.querySelectorAll('.slider-item');
       const totalSlides = slides.length;
       if (totalSlides <= 1) return;
-      const slideWidth = slides[0].offsetWidth;
       let currentSlide = 0;
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
       trendingAutoSlideInterval = setInterval(() => {
         if (!slidePaused) {
           currentSlide = (currentSlide + 1) % totalSlides;
-          requestAnimationFrame(() => {
-            slider.scrollTo({ left: currentSlide * slideWidth, behavior: 'smooth' });
-          });
+          slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' });
         }
       }, 4000);
     }
@@ -4761,112 +4650,84 @@
       });
     }
 
-    /**
-     * Address Management System
-     * Requirement 6: Use localStorage to store addresses in structured JSON format
-     */
-    function loadSavedAddresses() {
+    async function loadSavedAddresses() {
       if (!currentUser) return;
       try {
-        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
-        // Filter addresses belonging to current logged-in user
-        savedAddresses = allAddresses.filter(addr => addr.userId === currentUser.uid);
-
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'addresses'),
+            window.firebase.orderByChild('userId'),
+            window.firebase.equalTo(currentUser.uid)
+          )
+        );
+        const addressesList = document.getElementById('savedAddressesList');
         const savedAddressesSection = document.getElementById('savedAddressesSection');
-        if (savedAddresses.length > 0) {
-          // Requirement 5: Sort by lastUsed to show most relevant address first
-          savedAddresses = savedAddresses.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+        if (!snapshot.exists()) {
+          savedAddressesSection.style.display = 'none';
+          savedAddresses = [];
+          return;
+        }
+        const addressesObj = snapshot.val();
+        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
+        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+        if (addresses.length > 0) {
           savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-
-          // Auto-select the last used address (Requirement 5)
-          const defaultAddr = savedAddresses[0];
-          fillAddressForm(defaultAddr);
-          userInfo = {
-            fullName: defaultAddr.name,
-            mobile: defaultAddr.mobile,
-            pincode: defaultAddr.pincode,
-            city: defaultAddr.city,
-            state: defaultAddr.state,
-            house: defaultAddr.street
-          };
-        } else {
-          savedAddressesSection.style.display = 'none';
-        }
+        } else savedAddressesSection.style.display = 'none';
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
       } catch (error) {
         console.error('Error loading addresses:', error);
       }
     }
 
-    /**
-     * Requirement 2 & 3: Render saved addresses in a clean list format (Flipkart/Amazon style)
-     */
     function renderSavedAddresses() {
       const addressesList = document.getElementById('savedAddressesList');
       if (!addressesList) return;
       addressesList.innerHTML = '';
-      savedAddresses.forEach((address, index) => {
+      savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card' + (index === 0 ? ' selected' : '');
+        addressCard.className = 'saved-address-card';
         const addressType = address.type || 'Other';
-
+        const isDefault = address.isDefault ? '• Default' : '';
         addressCard.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:5px;">
-            <input type="radio" name="savedAddress" value="${address.id}" ${index === 0 ? 'checked' : ''} style="margin-top:4px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
-              <div style="font-weight:700; font-size:15px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
-                ${escapeHTML(address.name)}
-                <span style="background:var(--accent); color:white; font-size:10px; padding:2px 6px; border-radius:4px; text-transform:uppercase;">${escapeHTML(addressType)}</span>
-              </div>
-              <div style="font-size:14px; color:var(--text-secondary); line-height:1.4;">
-                ${escapeHTML(address.street)}<br>
-                ${escapeHTML(address.city)}, ${escapeHTML(address.state)} - ${escapeHTML(address.pincode)}<br>
-                <strong>Mobile:</strong> ${escapeHTML(address.mobile)}
-              </div>
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
             </div>
           </div>
           <div class="address-actions">
-            <button class="btn secondary edit-address" data-id="${address.id}" style="padding:6px 12px; font-size:12px; flex:1;">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}" style="padding:6px 12px; font-size:12px; flex:1; background:#fee2e2; color:#ef4444; border:1px solid #fecaca;">Delete</button>
+            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
           </div>
         `;
-
         const radio = addressCard.querySelector('input[type="radio"]');
-        const updateSelection = () => {
-          radio.checked = true;
-          document.querySelectorAll('.saved-address-card').forEach(c => c.classList.remove('selected'));
-          addressCard.classList.add('selected');
+        radio.addEventListener('click', function(e) {
+          e.stopPropagation();
           fillAddressForm(address);
-          // Mark as last used locally
-          address.lastUsed = Date.now();
-          userInfo = {
-            fullName: address.name,
-            mobile: address.mobile,
-            pincode: address.pincode,
-            city: address.city,
-            state: address.state,
-            house: address.street
-          };
-        };
-
-        addressCard.addEventListener('click', (e) => {
-          if (!e.target.closest('.address-actions')) {
-            updateSelection();
+          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+        });
+        addressCard.addEventListener('click', function(e) {
+          if (e.target.type !== 'radio') {
+            radio.checked = true;
+            fillAddressForm(address);
+            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
           }
         });
-
         const editBtn = addressCard.querySelector('.edit-address');
-        editBtn.addEventListener('click', (e) => {
+        editBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           editAddress(address);
         });
-
         const deleteBtn = addressCard.querySelector('.delete-address');
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           deleteAddressConfirmation(address);
         });
-
         addressesList.appendChild(addressCard);
       });
     }
@@ -4881,39 +4742,20 @@
       document.getElementById('addressType').value = address.type || 'home';
     }
 
-    function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+    async function saveUserInfoAndAddress() {
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType').value;
-
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
-
-      const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
-
-      // Check for duplicate
-      const isDuplicate = allAddresses.some(addr =>
-        addr.userId === currentUser.uid &&
-        addr.name.toLowerCase() === fullname.toLowerCase() &&
-        addr.mobile === mobile &&
-        addr.pincode === pincode &&
-        addr.street.toLowerCase() === house.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        showToast('This address is already saved', 'warning');
-        return;
-      }
-
-      const addressId = 'address_' + Date.now();
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       const addressData = {
-        id: addressId,
         name: fullname,
         mobile: mobile,
         pincode: pincode,
@@ -4922,19 +4764,22 @@
         street: house,
         type: addressType,
         userId: currentUser.uid,
-        isDefault: !allAddresses.some(addr => addr.userId === currentUser.uid),
-        createdAt: Date.now(),
-        lastUsed: Date.now()
+        isDefault: savedAddresses.length === 0,
+        createdAt: Date.now()
       };
-
-      allAddresses.push(addressData);
-      cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
-
-      showToast('Address saved successfully', 'success');
-      loadSavedAddresses();
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-      showPage('paymentPage');
+      try {
+        const addressId = 'address_' + Date.now();
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        savedAddresses.push({ id: addressId, ...addressData });
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+        showToast('Address saved successfully', 'success');
+        await loadSavedAddresses();
+        document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
+      } catch (error) {
+        console.error('Error saving address:', error);
+        showToast('Failed to save address', 'error');
+      }
     }
 
     function showNewAddressForm() {
@@ -4952,58 +4797,40 @@
       saveBtn.onclick = saveUserInfoAndAddress;
     }
 
-    /**
-     * Requirement 4: Edit existing address
-     */
     function editAddress(address) {
       fillAddressForm(address);
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Update Address';
-
-      // Focus on the first field of the form
-      document.getElementById('fullname').focus();
-      document.getElementById('newAddressForm').scrollIntoView({ behavior: 'smooth' });
-
-      saveBtn.onclick = function() {
-        const fullname = document.getElementById('fullname').value.trim();
-        const mobile = document.getElementById('mobile').value.trim();
-        const pincode = document.getElementById('pincode').value.trim();
-        const city = document.getElementById('city').value.trim();
-        const state = document.getElementById('state').value.trim();
-        const house = document.getElementById('house').value.trim();
+      saveBtn.onclick = async function() {
+        const fullname = document.getElementById('fullname').value;
+        const mobile = document.getElementById('mobile').value;
+        const pincode = document.getElementById('pincode').value;
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const house = document.getElementById('house').value;
         const addressType = document.getElementById('addressType').value;
-
-        // Requirement 8: Prevent empty address saving
-        if (!fullname || !mobile || !pincode || !city || !state || !house) {
-          showToast('Please fill in all required fields', 'error');
-          return;
-        }
-
-        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
-        const index = allAddresses.findIndex(addr => addr.id === address.id);
-
-        if (index !== -1) {
-          allAddresses[index] = {
-            ...allAddresses[index],
-            name: fullname,
-            mobile: mobile,
-            pincode: pincode,
-            city: city,
-            state: state,
-            street: house,
-            type: addressType,
-            updatedAt: Date.now(),
-            lastUsed: Date.now()
-          };
-
-          cacheManager.set(CACHE_KEYS.ADDRESSES, allAddresses);
+        const addressData = {
+          name: fullname,
+          mobile: mobile,
+          pincode: pincode,
+          city: city,
+          state: state,
+          street: house,
+          type: addressType,
+          userId: currentUser.uid,
+          isDefault: address.isDefault
+        };
+        try {
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
           showToast('Address updated successfully', 'success');
-
-          // Reset button to original state
-          saveBtn.textContent = 'Save This Address';
-          saveBtn.onclick = saveUserInfoAndAddress;
-
-          loadSavedAddresses();
+          document.getElementById('savedAddressesSection').style.display = 'block';
+          document.getElementById('newAddressForm').style.display = 'block';
+          await loadSavedAddresses();
+        } catch (error) {
+          console.error('Error updating address:', error);
+          showToast('Failed to update address', 'error');
         }
       };
     }
@@ -5012,15 +4839,18 @@
       document.getElementById('alertTitle').textContent = 'Delete Address';
       document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
       document.getElementById('alertModal').classList.add('active');
-      document.getElementById('alertConfirmBtn').onclick = function() {
-        const allAddresses = cacheManager.get(CACHE_KEYS.ADDRESSES) || [];
-        const filteredAddresses = allAddresses.filter(addr => addr.id !== address.id);
-
-        cacheManager.set(CACHE_KEYS.ADDRESSES, filteredAddresses);
-        showToast('Address deleted successfully', 'success');
-        document.getElementById('alertModal').classList.remove('active');
-
-        loadSavedAddresses();
+      document.getElementById('alertConfirmBtn').onclick = async function() {
+        try {
+          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
+          showToast('Address deleted successfully', 'success');
+          document.getElementById('alertModal').classList.remove('active');
+          await loadSavedAddresses();
+          document.getElementById('savedAddressesSection').style.display = savedAddresses.length ? 'block' : 'none';
+          document.getElementById('newAddressForm').style.display = 'block';
+        } catch (error) {
+          console.error('Error deleting address:', error);
+          showToast('Failed to delete address', 'error');
+        }
       };
       document.getElementById('alertCancelBtn').onclick = function() {
         document.getElementById('alertModal').classList.remove('active');
@@ -5230,15 +5060,7 @@
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const onValue = window.firebase.onValue;
-
-      // Safety timeout to clear loading state
-      const safetyTimeout = setTimeout(() => {
-        window.isProductsLoading = false;
-      }, 5000);
-
       onValue(ref(database, 'products'), snapshot => {
-        clearTimeout(safetyTimeout);
-        window.isProductsLoading = false;
         const productsObj = snapshot.val();
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
@@ -5339,17 +5161,10 @@
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
-      let ticking = false;
       window.addEventListener('scroll', function() {
-        if (!ticking) {
-          window.requestAnimationFrame(function() {
-            headerSearchContainer.style.opacity = '1';
-            headerSearchContainer.style.visibility = 'visible';
-            ticking = false;
-          });
-          ticking = true;
-        }
-      }, { passive: true });
+        headerSearchContainer.style.opacity = '1';
+        headerSearchContainer.style.visibility = 'visible';
+      }, false);
     }
 
     function setupBackButton() {
@@ -5373,7 +5188,7 @@
             performSearch(this.value);
           }
         });
-        searchInput.addEventListener('input', debounce(function(e) { handleSearchPanelInput(e); }, 300));
+        searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
       }
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
@@ -5442,6 +5257,7 @@
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
+      document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
       document.getElementById('clearHistoryBtn')?.addEventListener('click', clearSearchHistory);
       document.getElementById('headerSearchInput')?.addEventListener('click', openSearchPanel);
       document.getElementById('authClose')?.addEventListener('click', () => document.getElementById('authModal').classList.remove('active'));
