@@ -1999,6 +1999,19 @@
   </script>
 
   <script>
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.toString().replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[m];
+      });
+    }
+
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -2805,10 +2818,10 @@
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
-      const productName = product.name || product.title || 'Product Name';
+      const productName = escapeHTML(product.name || product.title || 'Product Name');
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
-      const productBadge = product.badge || product.tag || '';
+      const productBadge = escapeHTML(product.badge || product.tag || '');
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
       let badgeHtml = '';
@@ -3699,11 +3712,11 @@
         }
         reviewItem.innerHTML = `
           <div class="review-header">
-            <div class="reviewer-name">${review.userName} ${isVerified}</div>
+            <div class="reviewer-name">${escapeHTML(review.userName)} ${isVerified}</div>
             <div class="review-date">${date}</div>
           </div>
           <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
+          <div class="review-text">${escapeHTML(review.text)}</div>
           ${fileHtml}
           ${currentUser && (review.userId === currentUser.uid) ? 
             `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
