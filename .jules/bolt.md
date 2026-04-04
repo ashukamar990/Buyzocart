@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2024-05-15 - Wishlist and Rating Cache Implementation
+**Learning:** Using `precalculatedRating !== null` is insufficient when retrieving from a `Map` that might return `undefined` for keys without data. This leads to `undefined` being displayed in the UI. Also, `localStorage` access in rendering loops is a significant bottleneck.
+**Action:** Use `(val !== null && val !== undefined)` or the nullish coalescing operator `??` for safety. Always move `localStorage.getItem` outside of loops into a synchronized memory cache (Set/Map) for $O(1)$ performance.
