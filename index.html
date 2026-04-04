@@ -2628,6 +2628,22 @@
     let deliveredOrders = [];
     let globalCurrencySymbol = adminSettings.currencySymbol;
     let userCurrencyPreference = localStorage.getItem('userCurrency') || null;
+
+    // PERFORMANCE: Memory-based caches to avoid redundant O(N) or storage operations
+    let wishlistCache = new Set();
+    let ratingCache = new Map();
+
+    // PERFORMANCE: Listen for storage changes in other tabs to keep wishlistCache in sync
+    window.addEventListener('storage', (e) => {
+      if (e.key === CACHE_KEYS.WISHLIST) {
+        try {
+          const newList = JSON.parse(e.newValue || '[]');
+          wishlistCache = new Set(newList);
+        } catch (err) {
+          console.error('Error syncing wishlistCache:', err);
+        }
+      }
+    });
     
     let autoSlideInterval;
     let slidePaused = false;
@@ -2943,17 +2959,13 @@
         product.category?.toLowerCase().includes(query.toLowerCase()) ||
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
-      const ratingMap = {};
-      suggestions.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
+
+      const currentRatingMap = getRatingMap(reviews);
+      suggestions.sort((a, b) => {
+        const ratingA = currentRatingMap.get(a.id)?.rating || 0;
+        const ratingB = currentRatingMap.get(b.id)?.rating || 0;
+        return ratingB - ratingA;
       });
-      suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const topThree = suggestions.slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
@@ -3240,6 +3252,9 @@
       }
       noResults.style.display = 'none';
       count.textContent = `${results.length} products found for "${query}"`;
+
+      // PERFORMANCE: Search results are already sorted if coming from performSearch,
+      // but renderProducts will sort them again by rating (O(P+R)), which is fine.
       renderProducts(results, 'searchResultsGrid');
     }
 
@@ -3354,14 +3369,38 @@
 
     let reviews = [];
 
-    function calculateProductRating(productId) {
-      const productReviews = reviews.filter(r => r.productId === productId);
-      if (productReviews.length === 0) return 0;
-      const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-      return sum / productReviews.length;
+    // PERFORMANCE: Pre-calculate ratings and review counts in a single O(R) pass to avoid O(P*R) rendering
+    function getRatingMap(reviewsArray) {
+      if (ratingCache.size > 0 && reviewsArray === reviews) {
+        return ratingCache;
+      }
+      ratingCache.clear();
+      if (!reviewsArray || reviewsArray.length === 0) return ratingCache;
+
+      const stats = {};
+      for (let i = 0; i < reviewsArray.length; i++) {
+        const r = reviewsArray[i];
+        if (!stats[r.productId]) stats[r.productId] = { sum: 0, count: 0 };
+        stats[r.productId].sum += r.rating;
+        stats[r.productId].count += 1;
+      }
+
+      for (const productId in stats) {
+        ratingCache.set(productId, {
+          rating: stats[productId].sum / stats[productId].count,
+          count: stats[productId].count
+        });
+      }
+      return ratingCache;
     }
 
-    function createProductCard(product) {
+    function calculateProductRating(productId) {
+      // PERFORMANCE: O(1) lookup in pre-calculated cache
+      if (ratingCache.size === 0) getRatingMap(reviews);
+      return ratingCache.get(productId)?.rating || 0;
+    }
+
+    function createProductCard(product, precalculatedRating = null, precalculatedCount = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -3371,7 +3410,11 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+
+      // PERFORMANCE: Use pre-calculated rating if available to avoid redundant Map/Set lookups or calculations
+      const rating = (precalculatedRating !== null && precalculatedRating !== undefined) ? precalculatedRating : calculateProductRating(productId);
+      const reviewCount = (precalculatedCount !== null && precalculatedCount !== undefined) ? precalculatedCount : (product.reviewCount || 0);
+
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -3394,7 +3437,7 @@
           <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
-            <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
+            <div class="product-card-review-count">(${reviewCount})</div>
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${productPrice}</div>
@@ -3811,17 +3854,13 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
+
+      const currentRatingMap = getRatingMap(reviews);
+      similarProducts.sort((a, b) => {
+        const ratingA = currentRatingMap.get(a.id)?.rating || 0;
+        const ratingB = currentRatingMap.get(b.id)?.rating || 0;
+        return ratingB - ratingA;
       });
-      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -3938,21 +3977,23 @@
     }
 
     function isInWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      return wishlist.includes(productId);
+      // PERFORMANCE: O(1) lookup in memory cache instead of hitting storage and parsing JSON
+      return wishlistCache.has(productId);
     }
 
     function toggleWishlist(productId) {
-      let wishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
-      const isWishlisted = wishlist.includes(productId);
-      if (isWishlisted) {
-        wishlist = wishlist.filter(id => id !== productId);
+      // PERFORMANCE: Use memory cache for faster state checks and updates
+      if (wishlistCache.has(productId)) {
+        wishlistCache.delete(productId);
         showToast('Removed from wishlist', 'success');
       } else {
-        wishlist.push(productId);
+        wishlistCache.add(productId);
         showToast('Added to wishlist', 'success');
       }
-      localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
+
+      // Sync back to localStorage for persistence
+      localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(Array.from(wishlistCache)));
+
       updateWishlistButtons();
       if (document.getElementById('wishlistPage')?.classList.contains('active')) renderWishlist();
     }
@@ -4240,6 +4281,7 @@
         }
         const reviewsObj = snapshot.val();
         reviews = Object.keys(reviewsObj).map(key => ({ id: key, ...reviewsObj[key] }));
+        ratingCache.clear(); // PERFORMANCE: Invalidate cache when reviews change
         reviews.sort((a, b) => b.date - a.date);
         const topReviews = reviews.filter(r => r.rating === 5).slice(0, 8);
         renderReviews(topReviews, 'reviewsList');
@@ -4293,6 +4335,7 @@
       if (!confirm('Are you sure you want to delete this review?')) return;
       try {
         await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
+        ratingCache.clear(); // PERFORMANCE: Invalidate cache when reviews change
         showToast('Review deleted successfully', 'success');
         if (currentProduct) loadProductReviews(currentProduct.id);
       } catch (error) {
@@ -4382,6 +4425,7 @@
           fileType: fileType
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
+        ratingCache.clear(); // PERFORMANCE: Invalidate cache when reviews change
         showToast('Review submitted successfully', 'success');
         setRating(0);
         document.getElementById('reviewText').value = '';
@@ -4669,15 +4713,6 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('active');
@@ -4696,15 +4731,6 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
     }
@@ -4844,23 +4870,31 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
+
+      // PERFORMANCE: Use pre-calculated rating map for O(P+R) sorting instead of O(P*R)
+      const currentRatingMap = getRatingMap(reviews);
+
+      const sorted = [...productsToRender].sort((a, b) => {
+        const ratingA = currentRatingMap.get(a.id)?.rating || 0;
+        const ratingB = currentRatingMap.get(b.id)?.rating || 0;
+        return ratingB - ratingA;
       });
-      const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
       container.className = 'product-grid';
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         container.innerHTML = '';
         return;
       }
+
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          const stats = currentRatingMap.get(product.id);
+          // PERFORMANCE: Pass pre-calculated data to avoid redundant lookups inside createProductCard
+          fragment.appendChild(createProductCard(product, stats?.rating, stats?.count));
+        }
+      });
       container.appendChild(fragment);
     }
 
@@ -6030,6 +6064,15 @@
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
+
+      // PERFORMANCE: Initialize wishlistCache once during app startup
+      try {
+        const storedWishlist = JSON.parse(localStorage.getItem(CACHE_KEYS.WISHLIST) || '[]');
+        wishlistCache = new Set(storedWishlist);
+      } catch (err) {
+        wishlistCache = new Set();
+      }
+
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
       setupEventListeners();
       if (window.firebase && window.firebase.auth) {
