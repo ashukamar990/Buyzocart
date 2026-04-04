@@ -811,7 +811,7 @@
             </div>
           </div>
         </div>
-        <div class="offers-grid" id="offersGrid">
+        <div class="offers-grid" id="offersGrid" style="min-height:200px;">
           <div class="offer-card featured-offer">
             <div class="offer-badge-top">BEST DEAL</div>
             <div class="offer-emoji">👗</div>
@@ -2236,6 +2236,60 @@
     }
     .notif-switch input:checked + .notif-slider { background: var(--accent); }
     .notif-switch input:checked + .notif-slider:before { transform: translateX(22px); }
+
+
+    .skeleton-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      animation: shimmer-fade 0.5s ease forwards;
+    }
+    .skeleton-line {
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--border) 25%, rgba(255,255,255,0.15) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+    .skeleton-img {
+      width: 100%;
+      height: 180px;
+      background: linear-gradient(90deg, var(--border) 25%, rgba(255,255,255,0.15) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+    .skeleton-circle {
+      border-radius: 50%;
+      background: linear-gradient(90deg, var(--border) 25%, rgba(255,255,255,0.15) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @keyframes shimmer-fade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      padding: 8px 0;
+    }
+    .skeleton-category-row {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      padding: 8px 0;
+    }
+    .skeleton-slider-row {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      padding: 8px 0;
+    }
 
     @keyframes successPop {
       0% { transform: scale(0.8); opacity: 0; }
@@ -4098,6 +4152,7 @@
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
+        addSystemNotification('order', '🛍️ Order Placed Successfully!', 'Your order ' + orderId + ' for ' + (currentProduct.name || 'product') + ' worth ₹' + Math.round(total) + ' has been confirmed!', 'Order Confirmed');
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
         showToast('Order placed successfully!', 'success');
@@ -4738,6 +4793,54 @@
       container.appendChild(fragment);
     }
 
+    function showSkeletonProducts(containerId, count = 8) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const skeletonHtml = Array(count).fill('').map(() => `
+        <div class="skeleton-card">
+          <div class="skeleton-img"></div>
+          <div style="padding:12px;">
+            <div class="skeleton-line" style="height:14px;width:75%;margin-bottom:8px;"></div>
+            <div class="skeleton-line" style="height:12px;width:50%;margin-bottom:8px;"></div>
+            <div class="skeleton-line" style="height:18px;width:40%;"></div>
+          </div>
+        </div>
+      `).join('');
+      container.className = 'skeleton-grid';
+      container.innerHTML = skeletonHtml;
+    }
+
+    function showSkeletonSlider(containerId, count = 6) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const html = Array(count).fill('').map(() => `
+        <div class="skeleton-card" style="min-width:160px;flex-shrink:0;">
+          <div class="skeleton-img" style="height:130px;"></div>
+          <div style="padding:10px;">
+            <div class="skeleton-line" style="height:12px;width:80%;margin-bottom:6px;"></div>
+            <div class="skeleton-line" style="height:14px;width:50%;"></div>
+          </div>
+        </div>
+      `).join('');
+      container.className = 'slider-track';
+      container.style.display = 'flex';
+      container.style.gap = '12px';
+      container.innerHTML = html;
+    }
+
+    function showSkeletonCategories(containerId, count = 8) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const html = Array(count).fill('').map(() => `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <div class="skeleton-circle" style="width:70px;height:70px;"></div>
+          <div class="skeleton-line" style="height:10px;width:60px;border-radius:4px;"></div>
+        </div>
+      `).join('');
+      container.className = 'skeleton-category-row';
+      container.innerHTML = html;
+    }
+
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -4750,9 +4853,10 @@
         } else ratingMap[p.id] = 0;
       });
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+      container.className = 'product-grid';
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        container.innerHTML = '<div class="card-panel center">No products found</div>';
+        container.innerHTML = '';
         return;
       }
       const fragment = document.createDocumentFragment();
@@ -5098,6 +5202,7 @@
         resetPasswordBtn.disabled = true;
         resetPasswordBtn.innerHTML = '<div class="loading-spinner"></div> Sending...';
         await window.firebase.sendPasswordResetEmail(window.firebase.auth, email);
+        addSystemNotification('system', '🔒 Password Reset Requested', 'A password reset link has been sent to ' + email + '. Please check your inbox.', 'Security');
         showToast('Password reset email sent! Check your inbox.', 'success');
         document.getElementById('forgotPasswordEmail').value = '';
         setTimeout(() => document.getElementById('authModal').classList.remove('active'), 2000);
@@ -5157,6 +5262,7 @@
     }
 
     function confirmLogout() {
+      addSystemNotification('system', '👋 Logged Out', 'You have been successfully logged out. See you soon!', 'Session');
       window.firebase.signOut(window.firebase.auth).then(() => {
         showToast('Logged out successfully', 'success');
         document.getElementById('alertModal').classList.remove('active');
@@ -5546,6 +5652,7 @@
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
+        window.products = products;
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
@@ -5553,12 +5660,18 @@
         const featuredProducts = products.filter(p => p.isFeatured);
         if (featuredProducts.length > 0) renderProducts(featuredProducts, 'homeProductGrid');
         updateProductsCount();
+      } else {
+        showSkeletonProducts('homeProductGrid', 8);
+        showSkeletonProducts('productGrid', 8);
+        showSkeletonSlider('productSlider', 6);
       }
       const cachedCategories = cacheManager.get(CACHE_KEYS.CATEGORIES);
       if (cachedCategories && cachedCategories.length > 0) {
         categories = cachedCategories;
         renderCategories();
         renderCategoryCircles();
+      } else {
+        showSkeletonCategories('categoryCirclesContainer', 8);
       }
       const cachedBanners = cacheManager.get(CACHE_KEYS.BANNERS);
       if (cachedBanners && cachedBanners.length > 0) {
@@ -5890,6 +6003,30 @@
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
     }
 
+    const NOTIF_KEY = 'bz_app_notifications';
+
+    function getStoredNotifications() {
+      try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch(e) { return []; }
+    }
+
+    function saveStoredNotifications(arr) {
+      try { localStorage.setItem(NOTIF_KEY, JSON.stringify(arr.slice(0, 50))); } catch(e) {}
+    }
+
+    function addSystemNotification(type, title, message, badge) {
+      const notifs = getStoredNotifications();
+      notifs.unshift({ id: Date.now(), type, title, message, badge: badge || 'System', timestamp: Date.now(), read: false });
+      saveStoredNotifications(notifs);
+      appNotifications = notifs;
+      updateNotifBadge();
+      if (document.getElementById('notificationsPage')?.classList.contains('active')) renderNotifications();
+    }
+
+    function loadNotificationsFromStorage() {
+      appNotifications = getStoredNotifications();
+      updateNotifBadge();
+    }
+
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -5898,12 +6035,26 @@
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
           if (user) {
+            const wasLoggedOut = !currentUser;
+            const prevUid = currentUser ? currentUser.uid : null;
             currentUser = user;
             updateUIForUser(user);
             loadUserData(user);
             loadRecentlyViewed(user);
             loadSavedAddresses();
             document.getElementById('authModal')?.classList.remove('active');
+            loadNotificationsFromStorage();
+            if (wasLoggedOut) {
+              const prevUser = localStorage.getItem('bz_last_user_uid');
+              if (prevUser && prevUser === user.uid) {
+                addSystemNotification('system', '👋 Welcome Back!', 'Welcome back, ' + (user.displayName || 'User') + '! Great to see you again.', 'Welcome Back');
+              } else {
+                addSystemNotification('system', '✅ Login Successful', 'You have successfully logged in as ' + (user.email || 'User') + '.', 'Login');
+              }
+              localStorage.setItem('bz_last_user_uid', user.uid);
+              const loginData = { timestamp: Date.now(), deviceType: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop', uid: user.uid };
+              try { window.firebase.set(window.firebase.ref(window.firebase.database, 'loginActivity/' + user.uid + '/' + Date.now()), loginData); } catch(e) {}
+            }
           } else {
             currentUser = null;
             updateUIForGuest();
@@ -5911,6 +6062,7 @@
         });
       }
       loadCachedData();
+      loadNotificationsFromStorage();
       fetchLiveData();
       setupRealtimeListeners();
       showPage('homePage');
@@ -5963,13 +6115,7 @@
       setInterval(tick, 1000);
     }
 
-    let appNotifications = [
-      { id: 1, type: 'order', title: 'Order Confirmed', message: 'Your recent order has been confirmed and will be shipped soon.', timestamp: Date.now() - 5 * 60 * 1000, read: false, badge: 'Order Update' },
-      { id: 2, type: 'offer', title: 'Flash Sale! 40% Off', message: 'Limited time offer on all fashion items. Use code FLASH40 at checkout.', timestamp: Date.now() - 2 * 60 * 60 * 1000, read: false, badge: 'Special Offer' },
-      { id: 3, type: 'order', title: 'Order Shipped', message: 'Your order has been shipped. Track your package now.', timestamp: Date.now() - 24 * 60 * 60 * 1000, read: true, badge: 'Shipping Update' },
-      { id: 4, type: 'system', title: 'Welcome to Buyzo Cart!', message: 'Thank you for joining us. Complete your profile to get personalized recommendations.', timestamp: Date.now() - 3 * 24 * 60 * 60 * 1000, read: true, badge: 'Welcome' },
-      { id: 5, type: 'offer', title: 'New Arrival Sale', message: 'Start shopping with amazing deals. Up to 60% off on selected items.', timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000, read: true, badge: 'Seasonal Sale' }
-    ];
+    let appNotifications = [];
     let currentNotifFilter = 'all';
 
     function timeAgoNotif(timestamp) {
@@ -5991,6 +6137,7 @@
       const container = document.getElementById('notifListContainer');
       const emptyEl = document.getElementById('notifEmpty');
       if (!container) return;
+      if (appNotifications.length === 0) appNotifications = getStoredNotifications();
       let list = [...appNotifications];
       if (currentNotifFilter === 'unread') list = list.filter(n => !n.read);
       else if (currentNotifFilter === 'orders') list = list.filter(n => n.type === 'order' || n.type === 'warning');
@@ -6035,13 +6182,13 @@
 
     function markNotifRead(id) {
       const n = appNotifications.find(x => x.id === id);
-      if (n && !n.read) { n.read = true; renderNotifications(); updateNotifBadge(); }
+      if (n && !n.read) { n.read = true; saveStoredNotifications(appNotifications); renderNotifications(); updateNotifBadge(); }
     }
 
     function markAllNotifsRead() {
       let changed = false;
       appNotifications.forEach(n => { if (!n.read) { n.read = true; changed = true; } });
-      if (changed) { renderNotifications(); showToast('All notifications marked as read', 'success'); updateNotifBadge(); }
+      if (changed) { saveStoredNotifications(appNotifications); renderNotifications(); showToast('All notifications marked as read', 'success'); updateNotifBadge(); }
       else showToast('No unread notifications', 'success');
     }
 
@@ -6103,14 +6250,53 @@
     const _origShowPage = showPage;
     showPage = function(pageId) {
       _origShowPage(pageId);
-      if (pageId === 'offersPage') startOffersTimer();
+      if (pageId === 'offersPage') {
+        startOffersTimer();
+        loadAdminOffers();
+      }
       if (pageId === 'notificationsPage') {
+        appNotifications = getStoredNotifications();
         renderNotifications();
         loadNotifSettings();
         if (currentUser) loadOrderNotifications();
-        document.getElementById('markAllReadBtn')?.addEventListener('click', markAllNotifsRead);
+        const markBtn = document.getElementById('markAllReadBtn');
+        if (markBtn) { markBtn.onclick = markAllNotifsRead; }
       }
     };
+
+    async function loadAdminOffers() {
+      if (!window.firebase || !window.firebase.database) return;
+      try {
+        const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'offers'));
+        if (!snapshot.exists()) return;
+        const offersObj = snapshot.val();
+        const adminOffers = Object.keys(offersObj).map(k => ({ id: k, ...offersObj[k] })).filter(o => o.active !== false);
+        if (adminOffers.length === 0) return;
+        const grid = document.getElementById('offersGrid');
+        if (!grid) return;
+        adminOffers.forEach(offer => {
+          const colors = ['#3b82f6','#ef4444','#22c55e','#8b5cf6','#f59e0b','#06b6d4'];
+          const color = offer.color || colors[Math.floor(Math.random() * colors.length)];
+          const card = document.createElement('div');
+          card.className = 'offer-card';
+          card.innerHTML = \`
+            <div class="offer-badge-top" style="background:\${color};">\${offer.tag || 'OFFER'}</div>
+            <div class="offer-emoji">\${offer.emoji || '🎁'}</div>
+            <h3 class="offer-title">\${offer.title || 'Special Offer'}</h3>
+            <p class="offer-desc">\${offer.description || ''}</p>
+            \${offer.code ? \`<div class="offer-code-box">
+              <span class="offer-code-label">Use Code:</span>
+              <span class="offer-code" onclick="copyOfferCode('\${offer.code}')">\${offer.code}</span>
+              <button class="offer-copy-btn" onclick="copyOfferCode('\${offer.code}')">📋 Copy</button>
+            </div>\` : ''}
+            \${offer.savings ? \`<div class="offer-savings">\${offer.savings}</div>\` : ''}
+            <button class="offer-shop-btn" onclick="showPage('productsPage');">Shop Now →</button>
+          \`;
+          grid.appendChild(card);
+          addSystemNotification('offer', '🎉 ' + (offer.title || 'New Offer Available!'), (offer.description || 'Check out this amazing offer!') + (offer.code ? ' Use code: ' + offer.code : ''), 'Special Offer');
+        });
+      } catch(e) { console.error('Error loading admin offers:', e); }
+    }
 
   </script>
 </body>
