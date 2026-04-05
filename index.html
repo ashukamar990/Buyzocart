@@ -30,7 +30,7 @@
         <span class="chip">BUYZO</span>
         <span>Cart</span>
       </div>
-      <div class="menu-close" id="menuClose">×</div>
+      <button class="menu-close" id="menuClose" aria-label="Close menu">×</button>
     </div>
     <div class="menu-items">
       <div class="menu-item" onclick="showPage('homePage'); closeMenu();">
@@ -194,12 +194,12 @@
 
   <header>
     <div class="header-inner">
-      <div class="menu-icon" id="menuIcon" style="position:relative;">
+      <button class="menu-icon" id="menuIcon" style="position:relative; background:none; border:none; padding:0;" aria-label="Open menu">
         <span></span>
         <span></span>
         <span></span>
         <span id="menuNotifBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:50%;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;pointer-events:none;"></span>
-      </div>
+      </button>
       <div class="brand" aria-label="Buyzo Cart brand" onclick="showPage('homePage')">
         <span class="chip">BUYZO</span>
         <span>Cart</span>
@@ -3312,8 +3312,11 @@
       }
       const card = document.createElement('div');
       card.className = 'product-card';
+      card.setAttribute('role', 'article');
+      card.setAttribute('tabindex', '0');
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
+      card.setAttribute('aria-label', `View details for ${product.name || product.title || 'product'}`);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
@@ -3345,14 +3348,14 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="${isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}" aria-label="${isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}" aria-pressed="${isWishlisted}">
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="action-btn share-btn" data-product-id="${productId}" title="Share product" aria-label="Share product">
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
                 <circle cx="18" cy="19" r="3"></circle>
@@ -3369,6 +3372,13 @@
         e.preventDefault();
         e.stopPropagation();
         showProductDetail(product);
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) return;
+          e.preventDefault();
+          showProductDetail(product);
+        }
       });
       const wishlistBtn = card.querySelector('.wishlist-btn');
       wishlistBtn.addEventListener('click', (e) => {
@@ -3905,12 +3915,17 @@
       if (!currentProduct) return;
       toggleWishlist(currentProduct.id);
       const wishlistBtn = document.getElementById('detailWishlistBtn');
-      if (isInWishlist(currentProduct.id)) {
+      const isWishlisted = isInWishlist(currentProduct.id);
+      if (isWishlisted) {
         wishlistBtn.textContent = 'Remove from Wishlist';
         wishlistBtn.classList.add('active');
+        wishlistBtn.setAttribute('aria-pressed', 'true');
+        wishlistBtn.setAttribute('aria-label', 'Remove from Wishlist');
       } else {
         wishlistBtn.textContent = 'Add to Wishlist';
         wishlistBtn.classList.remove('active');
+        wishlistBtn.setAttribute('aria-pressed', 'false');
+        wishlistBtn.setAttribute('aria-label', 'Add to Wishlist');
       }
     }
 
@@ -3919,7 +3934,11 @@
         const productId = btn.getAttribute('data-product-id');
         if (productId) {
           const isActive = isInWishlist(productId);
+          const label = isActive ? 'Remove from Wishlist' : 'Add to Wishlist';
           btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-pressed', isActive);
+          btn.setAttribute('aria-label', label);
+          btn.setAttribute('title', label);
           const svg = btn.querySelector('svg');
           if (svg) svg.setAttribute('fill', isActive ? 'red' : 'none');
         }
