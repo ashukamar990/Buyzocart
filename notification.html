@@ -757,6 +757,19 @@
       emailjs.init("user_your_user_id_here");
     })();
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.toString().replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[m];
+      });
+    }
+
     // Sample notifications data with real timestamps
     let notifications = [
       {
@@ -921,11 +934,11 @@
         </div>
         <div class="notification-content">
           <div class="notification-header">
-            <span class="notification-title">${notification.title}</span>
+            <span class="notification-title">${escapeHTML(notification.title)}</span>
             <span class="notification-time">${timeAgoText}</span>
           </div>
-          <div class="notification-message">${notification.message}</div>
-          <div class="notification-badge badge-${notification.type}">${notification.badge}</div>
+          <div class="notification-message">${escapeHTML(notification.message)}</div>
+          <div class="notification-badge badge-${notification.type}">${escapeHTML(notification.badge)}</div>
         </div>
       `;
       
