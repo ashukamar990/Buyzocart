@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2026-04-06 - [Algorithmic Rendering Optimization]
+**Learning:** Performing a full array filter/reduction ((R)$) inside a rendering loop or sort operation ((P)$) creates a significant performance bottleneck ((P \times R)$) as data scales.
+**Action:** Implement a single-pass pre-calculation utility (e.g., `getRatingMap`) to reduce complexity to (P + R)$ and pass pre-calculated values to component creators to eliminate redundant work.
