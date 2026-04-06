@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2025-05-15 - [XSS Mitigation via HTML Escaping]
+**Vulnerability:** Cross-Site Scripting (XSS) when inserting dynamic data (product names, search queries, notifications) into the DOM using `innerHTML`.
+**Learning:** Vanilla JavaScript applications lacks automatic sanitization. Data from external sources (Firebase, local storage) must be explicitly escaped.
+**Prevention:** Use the global `escapeHTML` utility for all dynamic string insertions in template literals passed to `innerHTML`.
