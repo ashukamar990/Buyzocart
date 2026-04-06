@@ -2740,6 +2740,19 @@
       return symbol + parsePrice(price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
     }
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.toString().replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[m];
+      });
+    }
+
     function getProductImage(product, idx = 0) {
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
       if (Array.isArray(product.images) && product.images.length > 0) {
@@ -2911,8 +2924,8 @@
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-name">${escapeHTML(product.name || product.title || 'Product')}</div>
+            <div class="search-suggestion-category">${escapeHTML(productCategory)}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -2927,7 +2940,7 @@
         categorySuggestion.className = 'search-suggestion';
         categorySuggestion.innerHTML = `
           <div class="search-suggestion-info" style="padding-left:0;">
-            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
+            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${escapeHTML(query)}"</div>
           </div>
         `;
         categorySuggestion.addEventListener('click', () => performSearch(query));
@@ -3328,14 +3341,14 @@
       } else if (isTrending) {
         badgeHtml = `<div class="professional-badge">TRENDING</div>`;
       } else if (productBadge) {
-        badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
+        badgeHtml = `<div class="product-card-badge">${escapeHTML(productBadge)}</div>`;
       }
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${productName}</div>
+          <div class="product-card-title">${escapeHTML(productName)}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -6083,11 +6096,11 @@
           <div class="notif-icon ${n.type}">${icons[n.type] || icons.system}</div>
           <div class="notif-content">
             <div class="notif-header">
-              <span class="notif-title">${n.title}</span>
+              <span class="notif-title">${escapeHTML(n.title)}</span>
               <span class="notif-time">${timeAgoNotif(n.timestamp)}</span>
             </div>
-            <div class="notif-message">${n.message}</div>
-            <span class="notif-badge ${n.type}">${n.badge}</span>
+            <div class="notif-message">${escapeHTML(n.message)}</div>
+            <span class="notif-badge ${n.type}">${escapeHTML(n.badge)}</span>
           </div>
         </div>
       `).join('');
