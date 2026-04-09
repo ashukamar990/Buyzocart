@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2026-04-09 - Optimized Rendering and Search Responsiveness
+**Learning:** Inefficient O(P * R) rating calculations during product list rendering and search suggestions were causing significant UI lag as the number of products and reviews grew. Pre-calculating a rating map in O(R) time and passing it to the render loop reduces complexity to O(P + R).
+**Action:** Always pre-calculate derived data (like average ratings or category counts) into a Map or Object before entering a DOM rendering loop to ensure O(n) performance. Use debouncing on text inputs to limit the frequency of expensive logic execution and DOM updates.
