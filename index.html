@@ -2741,27 +2741,32 @@
     }
 
     function getProductImage(product, idx = 0) {
+      const optimizeUrl = (url) => {
+        if (typeof url === 'string' && url.includes('images.unsplash.com') && !url.includes('w=')) {
+          return url + (url.includes('?') ? '&' : '?') + 'w=600&q=80';
+        }
+        return url;
+      };
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
       if (Array.isArray(product.images) && product.images.length > 0) {
-        if (idx < product.images.length) return product.images[idx];
-        return product.images[0];
+        return optimizeUrl(idx < product.images.length ? product.images[idx] : product.images[0]);
       }
       const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
       for (const field of possibleImageFields) {
         if (product[field]) {
           if (typeof product[field] === 'string') {
-            return product[field];
+            return optimizeUrl(product[field]);
           }
           if (Array.isArray(product[field]) && product[field].length > 0) {
-            return product[field][0];
+            return optimizeUrl(product[field][0]);
           }
         }
       }
       if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
-        return product;
+        return optimizeUrl(product);
       }
       if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
-        return product.value;
+        return optimizeUrl(product.value);
       }
       return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
     }
@@ -2887,16 +2892,7 @@
         product.category?.toLowerCase().includes(query.toLowerCase()) ||
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
-      const ratingMap = {};
-      suggestions.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const topThree = suggestions.slice(0, 3);
       suggestionsContainer.innerHTML = '';
@@ -3305,7 +3301,22 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function getRatingMap(reviewsArray) {
+      const stats = {};
+      for (let i = 0; i < reviewsArray.length; i++) {
+        const r = reviewsArray[i];
+        if (!stats[r.productId]) stats[r.productId] = { sum: 0, count: 0 };
+        stats[r.productId].sum += r.rating;
+        stats[r.productId].count++;
+      }
+      const map = {};
+      for (const pid in stats) {
+        map[pid] = stats[pid].sum / stats[pid].count;
+      }
+      return map;
+    }
+
+    function createProductCard(product, precalculatedRating = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -3315,7 +3326,7 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = precalculatedRating !== null ? precalculatedRating : calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -3755,16 +3766,7 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
@@ -4612,14 +4614,7 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
@@ -4639,14 +4634,7 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
@@ -4739,14 +4727,7 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
@@ -4754,7 +4735,7 @@
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap[product.id] || 0)); });
       container.appendChild(fragment);
     }
 
@@ -5769,7 +5750,7 @@
             performSearch(this.value);
           }
         });
-        searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
+        searchInput.addEventListener('input', debounce(function(e) { handleSearchPanelInput(e); }, 300));
       }
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
@@ -5838,7 +5819,7 @@
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
-      document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
+      document.getElementById('searchPanelInput')?.addEventListener('input', debounce(handleSearchPanelInput, 300));
       document.getElementById('clearHistoryBtn')?.addEventListener('click', clearSearchHistory);
       document.getElementById('headerSearchInput')?.addEventListener('click', openSearchPanel);
       document.getElementById('authClose')?.addEventListener('click', () => document.getElementById('authModal').classList.remove('active'));
