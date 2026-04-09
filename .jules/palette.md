@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2025-03-24 - Accessible Rating System
+**Learning:** Using semantic buttons instead of spans for rating stars ensures keyboard focusability and screen reader accessibility via ARIA labels.
+**Action:** Always use <button> for interactive icons and provide descriptive aria-labels.
