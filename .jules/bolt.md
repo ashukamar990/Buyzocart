@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2025-01-24 - [Consistent ID Lookups in Pre-calculated Maps]
+**Learning:** In a codebase where products may use multiple ID property names (`id`, `productId`, `_id`, etc.), performance maps (like rating maps) must use a centralized ID resolver (`getProductId`) to ensure lookups match the pre-calculation keys. Using `product.id` directly in the rendering loop caused a regression where ratings defaulted to 0 for products using alternative ID fields.
+**Action:** Always use the centralized `getProductId` utility when accessing maps indexed by product identity.
