@@ -2722,6 +2722,19 @@
       };
     }
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.toString().replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[m];
+      });
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -2907,11 +2920,13 @@
       topThree.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
-        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
+        const productCategory = escapeHTML(categories.find(c => c.id === product.category)?.name || product.category || '');
+        const productName = escapeHTML(product.name || product.title || 'Product');
+        const productImage = escapeHTML(getProductImage(product));
         suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="search-suggestion-img" style="background-image: url('${productImage}')"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
+            <div class="search-suggestion-name">${productName}</div>
             <div class="search-suggestion-category">${productCategory}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
@@ -2927,7 +2942,7 @@
         categorySuggestion.className = 'search-suggestion';
         categorySuggestion.innerHTML = `
           <div class="search-suggestion-info" style="padding-left:0;">
-            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
+            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${escapeHTML(query)}"</div>
           </div>
         `;
         categorySuggestion.addEventListener('click', () => performSearch(query));
@@ -3316,10 +3331,10 @@
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
-      const productName = product.name || product.title || 'Product Name';
+      const productName = escapeHTML(product.name || product.title || 'Product Name');
       const productPrice = formatPrice(product.price);
-      const productImage = getProductImage(product);
-      const productBadge = product.badge || product.tag || '';
+      const productImage = escapeHTML(getProductImage(product));
+      const productBadge = escapeHTML(product.badge || product.tag || '');
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
       let badgeHtml = '';
@@ -4214,11 +4229,11 @@
         }
         reviewItem.innerHTML = `
           <div class="review-header">
-            <div class="reviewer-name">${review.userName} ${isVerified}</div>
+            <div class="reviewer-name">${escapeHTML(review.userName)} ${isVerified}</div>
             <div class="review-date">${date}</div>
           </div>
           <div class="review-rating">${stars}</div>
-          <div class="review-text">${review.text}</div>
+          <div class="review-text">${escapeHTML(review.text)}</div>
           ${fileHtml}
           ${currentUser && (review.userId === currentUser.uid) ? 
             `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
