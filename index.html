@@ -2887,17 +2887,11 @@
         product.category?.toLowerCase().includes(query.toLowerCase()) ||
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
-      const ratingMap = {};
-      suggestions.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
-      suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // Bolt: Pre-calculate ratings in O(R) instead of O(P*R)
+      const fullRatingMap = getRatingMap(reviews);
+
+      suggestions.sort((a, b) => (fullRatingMap[b.id]?.average || 0) - (fullRatingMap[a.id]?.average || 0));
       const topThree = suggestions.slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
@@ -3305,7 +3299,26 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    /**
+     * Optimized utility to pre-calculate ratings for all products in O(R) time.
+     * Returns a map of productId to { average, count }
+     */
+    function getRatingMap(reviewsArray) {
+      const map = {};
+      reviewsArray.forEach(r => {
+        if (!map[r.productId]) {
+          map[r.productId] = { sum: 0, count: 0 };
+        }
+        map[r.productId].sum += r.rating;
+        map[r.productId].count += 1;
+      });
+      Object.keys(map).forEach(id => {
+        map[id].average = map[id].sum / map[id].count;
+      });
+      return map;
+    }
+
+    function createProductCard(product, precalculatedRating = null, precalculatedReviewCount = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -3315,7 +3328,11 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+
+      // Bolt: Use pre-calculated rating if available, else fallback to O(R) calculation
+      const rating = precalculatedRating !== null ? precalculatedRating : calculateProductRating(productId);
+      const reviewCount = precalculatedReviewCount !== null ? precalculatedReviewCount : (product.reviewCount || 0);
+
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -3338,7 +3355,7 @@
           <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
-            <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
+            <div class="product-card-review-count">(${reviewCount})</div>
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${productPrice}</div>
@@ -3755,17 +3772,11 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
-      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // Bolt: Pre-calculate ratings in O(R) instead of O(P*R)
+      const fullRatingMap = getRatingMap(reviews);
+
+      similarProducts.sort((a, b) => (fullRatingMap[b.id]?.average || 0) - (fullRatingMap[a.id]?.average || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -3863,15 +3874,28 @@
     function renderProductSlider(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
+
+      // Bolt: Pre-calculate ratings in O(R)
+      const fullRatingMap = getRatingMap(reviews);
+
       container.innerHTML = '';
       const fragment = document.createDocumentFragment();
       productsToRender.forEach(product => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
+
+        const ratingData = fullRatingMap[product.id] || { average: 0, count: 0 };
+        const rating = ratingData.average;
+        const reviewCount = ratingData.count;
+
         sliderItem.innerHTML = `
           <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
+            <div class="product-card-rating" style="margin-bottom: 5px;">
+              <div class="product-card-stars" style="font-size: 12px;">${generateStarRating(rating)}</div>
+              <div class="product-card-review-count" style="font-size: 10px;">(${reviewCount})</div>
+            </div>
             <div class="slider-item-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -4612,15 +4636,9 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // Bolt: Removed redundant sorting logic since renderProducts now handles it optimized
+
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('active');
@@ -4639,15 +4657,9 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // Bolt: Removed redundant sorting logic since renderProducts now handles it optimized
+
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
     }
@@ -4739,22 +4751,28 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
+
+      // Bolt: Pre-calculate ratings in O(R) instead of O(P*R)
+      const fullRatingMap = getRatingMap(reviews);
+
+      const sorted = [...productsToRender].sort((a, b) => {
+        const ratingA = fullRatingMap[a.id]?.average || 0;
+        const ratingB = fullRatingMap[b.id]?.average || 0;
+        return ratingB - ratingA;
       });
-      const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">Abhi koi products available nahi hain</p></div></div>';
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          const ratingData = fullRatingMap[product.id] || { average: 0, count: 0 };
+          fragment.appendChild(createProductCard(product, ratingData.average, ratingData.count));
+        }
+      });
       container.appendChild(fragment);
     }
 
