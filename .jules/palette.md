@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2025-01-24 - Accessible Rating System Pattern
+**Learning:** Using `<span>` elements for interactive rating stars prevents keyboard navigation and doesn't provide state information to screen readers. Converting them to `<button type="button">` with `aria-label` and `:focus-visible` styles makes the feature inclusive.
+**Action:** Always use semantic `<button>` tags for interactive elements that aren't links, and ensure they have descriptive labels and clear focus indicators.
