@@ -2830,12 +2830,18 @@
       closeSearchPanel();
     }
 
+    let debouncedSearchSuggestions = null;
     function handleSearchPanelInput(e) {
+      if (!debouncedSearchSuggestions) {
+        debouncedSearchSuggestions = debounce(function(query) {
+          showSearchSuggestions(query);
+        }, 300);
+      }
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        showSearchSuggestions(query);
+        debouncedSearchSuggestions(query);
         suggestionsContainer.style.display = 'block';
       } else {
         clearSearchSuggestions();
@@ -2852,16 +2858,7 @@
         product.category?.toLowerCase().includes(query.toLowerCase()) ||
         (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
       );
-      const ratingMap = {};
-      suggestions.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const topThree = suggestions.slice(0, 3);
       suggestionsContainer.innerHTML = '';
@@ -3282,7 +3279,24 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function getRatingMap(reviewsArray) {
+      const map = {};
+      const counts = {};
+      reviewsArray.forEach(r => {
+        if (!map[r.productId]) {
+          map[r.productId] = 0;
+          counts[r.productId] = 0;
+        }
+        map[r.productId] += r.rating;
+        counts[r.productId]++;
+      });
+      Object.keys(map).forEach(id => {
+        map[id] = map[id] / counts[id];
+      });
+      return map;
+    }
+
+    function createProductCard(product, precalculatedRating = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -3292,7 +3306,7 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = precalculatedRating !== null ? precalculatedRating : calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -3732,16 +3746,7 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
@@ -4770,14 +4775,7 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
@@ -4785,7 +4783,7 @@
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap[product.id] || 0)); });
       container.appendChild(fragment);
     }
 
