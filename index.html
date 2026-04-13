@@ -3366,14 +3366,14 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist" aria-label="${isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}" aria-pressed="${isWishlisted}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="action-btn share-btn" data-product-id="${productId}" title="Share" aria-label="Share product">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
                 <circle cx="18" cy="19" r="3"></circle>
@@ -3593,12 +3593,17 @@
       }
       const wishlistBtn = document.getElementById('detailWishlistBtn');
       if (wishlistBtn) {
-        if (isInWishlist(freshProduct.id)) {
+        const isWishlisted = isInWishlist(freshProduct.id);
+        if (isWishlisted) {
           wishlistBtn.textContent = 'Remove from Wishlist';
           wishlistBtn.classList.add('active');
+          wishlistBtn.setAttribute('aria-label', 'Remove from Wishlist');
+          wishlistBtn.setAttribute('aria-pressed', 'true');
         } else {
           wishlistBtn.textContent = 'Add to Wishlist';
           wishlistBtn.classList.remove('active');
+          wishlistBtn.setAttribute('aria-label', 'Add to Wishlist');
+          wishlistBtn.setAttribute('aria-pressed', 'false');
         }
       }
       initProductDetailGallery(freshProduct);
@@ -3926,12 +3931,17 @@
       if (!currentProduct) return;
       toggleWishlist(currentProduct.id);
       const wishlistBtn = document.getElementById('detailWishlistBtn');
-      if (isInWishlist(currentProduct.id)) {
+      const isWishlisted = isInWishlist(currentProduct.id);
+      if (isWishlisted) {
         wishlistBtn.textContent = 'Remove from Wishlist';
         wishlistBtn.classList.add('active');
+        wishlistBtn.setAttribute('aria-label', 'Remove from Wishlist');
+        wishlistBtn.setAttribute('aria-pressed', 'true');
       } else {
         wishlistBtn.textContent = 'Add to Wishlist';
         wishlistBtn.classList.remove('active');
+        wishlistBtn.setAttribute('aria-label', 'Add to Wishlist');
+        wishlistBtn.setAttribute('aria-pressed', 'false');
       }
     }
 
@@ -3941,6 +3951,8 @@
         if (productId) {
           const isActive = isInWishlist(productId);
           btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-label', isActive ? 'Remove from Wishlist' : 'Add to Wishlist');
+          btn.setAttribute('aria-pressed', isActive);
           const svg = btn.querySelector('svg');
           if (svg) svg.setAttribute('fill', isActive ? 'red' : 'none');
         }
@@ -4419,9 +4431,22 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const copyBtn = document.getElementById('copyShareLink');
+      if (copyBtn.textContent === 'Copied!') return;
+      const originalText = copyBtn.textContent;
+      navigator.clipboard.writeText(shareLink.value).then(() => {
+        showToast('Link copied to clipboard', 'success');
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+        }, 2000);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+        // Fallback
+        shareLink.select();
+        document.execCommand('copy');
+        showToast('Link copied to clipboard', 'success');
+      });
     }
 
     async function showMyOrders() {
