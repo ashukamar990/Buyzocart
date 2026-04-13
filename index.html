@@ -284,12 +284,31 @@
   <main class="container">
     <section class="page active" id="homePage">
       <section class="hero">
-        <h1 id="heroHeading">Welcome to <span style="color:var(--accent)">Buyzo Cart</span></h1>
-        <p id="heroSubheading">Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
-        <div class="hero-messages" id="heroMessages">
-          <span class="active">🔥 Big Sale Today</span>
-          <span>🚚 Free Shipping over ₹999</span>
-          <span>✨ New Arrivals Just Dropped</span>
+        <div class="hero-inner">
+          <div class="hero-text-block">
+            <div class="hero-badge">🛍️ Online Shopping</div>
+            <h1 id="heroHeading">Welcome to <span style="color:var(--accent)">Buyzo Cart</span></h1>
+            <p id="heroSubheading">Clean, fast checkout. Hand‑picked products. Fully responsive UI.</p>
+            <div class="hero-messages" id="heroMessages">
+              <span class="active">🔥 Big Sale Today</span>
+              <span>🚚 Free Shipping over ₹999</span>
+              <span>✨ New Arrivals Just Dropped</span>
+            </div>
+            <div class="hero-cta-row">
+              <button class="hero-shop-btn" onclick="showPage('productsPage')">
+                Shop Now
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+              <button class="hero-offers-btn" onclick="showPage('offersPage')">View Offers 🎁</button>
+            </div>
+          </div>
+          <div class="hero-stats-row">
+            <div class="hero-stat"><span class="hero-stat-num">500+</span><span class="hero-stat-label">Products</span></div>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat"><span class="hero-stat-num">1K+</span><span class="hero-stat-label">Happy Customers</span></div>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat"><span class="hero-stat-num">4.8★</span><span class="hero-stat-label">Avg Rating</span></div>
+          </div>
         </div>
         <div class="highlight-strip" id="highlightStrip" onclick="showPage('productsPage')" style="display:none;">
           Limited Time Offer: Flat 40% OFF on all Fashion Items — <u>Shop Now →</u>
@@ -963,7 +982,7 @@
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
-              <a href="/cdn-cgi/l/email-protection#305245494a5f5351424443585f4070575d51595c1e535f5d"><span class="__cf_email__" data-cfemail="7d1f080407121e1c0f090e15120d3d1a101c1411531e1210">[email&#160;protected]</span></a>
+              <a href="mailto:buyzocartshop@gmail.com">buyzocartshop@gmail.com</a>
             </p>
             <p>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -978,7 +997,7 @@
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
-              <a href="/cdn-cgi/l/email-protection#016374787b6e626073752f69646d7141666c60686d2f626e6c"><span class="__cf_email__" data-cfemail="513324282b3e323023257f39343d2111363c30383d7f323e3c">[email&#160;protected]</span></a>
+              <a href="mailto:buyzocart.help@gmail.com">buyzocart.help@gmail.com</a>
             </p>
           </div>
           <div class="social-links">
@@ -4539,6 +4558,7 @@
           </div>
           ${trackingHtml}
           <div class="order-actions">
+            <button class="order-action-btn view-product" onclick="event.stopPropagation();viewProductFromOrder('${order.productId}')">View Product</button>
             ${rawStatus === 'confirmed' || rawStatus === 'shipped' ? 
               `<button class="order-action-btn cancel" onclick="event.stopPropagation();cancelOrder('${order.id}')">Cancel Order</button>` : ''}
             ${showReturnReplace ? 
@@ -4550,6 +4570,25 @@
         });
         container.appendChild(orderCard);
       });
+    }
+
+    function viewProductFromOrder(productId) {
+      if (!productId) { showToast('Product not found', 'error'); return; }
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        showProductDetail(product);
+      } else {
+        // Fetch from Firebase if not in local cache
+        window.firebase.get(window.firebase.ref(window.firebase.database, 'products/' + productId))
+          .then(snap => {
+            if (snap.exists()) {
+              const p = { id: productId, ...snap.val() };
+              showProductDetail(p);
+            } else {
+              showToast('Product no longer available', 'error');
+            }
+          }).catch(() => showToast('Could not load product', 'error'));
+      }
     }
 
     function cancelOrder(orderId) {
@@ -8296,4 +8335,17 @@
       showPage('homePage');
     }
 
-    fun
+    function openAccountPage() {
+      const sec = document.getElementById('accountPageSection');
+      if (sec) {
+        sec.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        initAccountPage();
+      }
+    }
+
+  </script>
+</body>
+</html>
