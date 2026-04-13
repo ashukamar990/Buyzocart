@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2025-05-14 - Accessibility & Feedback synchronization
+**Learning:** For toggle buttons like Wishlist, it's critical to synchronize 'aria-pressed' and 'aria-label' across all instances of the component (e.g., both on the product grid and the detail page) to ensure a consistent experience for screen reader users. Visual feedback for secondary actions like "Copy Link" is most effective when it happens directly on the interaction point (the button itself) rather than just a global toast.
+**Action:** Always implement a central 'updateStatus' function for shared interactive components and use temporary text states for immediate action feedback.
