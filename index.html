@@ -963,7 +963,7 @@
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
-              <a href="/cdn-cgi/l/email-protection#ceacbbb7b4a1adafbcbabda6a1be8ea9a3afa7a2e0ada1a3"><span class="__cf_email__" data-cfemail="5436212d2e3b37352620273c3b24143339353d387a373b39">[email&#160;protected]</span></a>
+              <a href="/cdn-cgi/l/email-protection#305245494a5f5351424443585f4070575d51595c1e535f5d"><span class="__cf_email__" data-cfemail="7d1f080407121e1c0f090e15120d3d1a101c1411531e1210">[email&#160;protected]</span></a>
             </p>
             <p>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -978,7 +978,7 @@
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
-              <a href="/cdn-cgi/l/email-protection#b0d2c5c9cadfd3d1c2c49ed8d5dcc0f0d7ddd1d9dc9ed3dfdd"><span class="__cf_email__" data-cfemail="6301161a190c000211174d0b060f1323040e020a0f4d000c0e">[email&#160;protected]</span></a>
+              <a href="/cdn-cgi/l/email-protection#016374787b6e626073752f69646d7141666c60686d2f626e6c"><span class="__cf_email__" data-cfemail="513324282b3e323023257f39343d2111363c30383d7f323e3c">[email&#160;protected]</span></a>
             </p>
           </div>
           <div class="social-links">
@@ -2388,7 +2388,7 @@
     }
   </style>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
     import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
@@ -2813,20 +2813,69 @@
       document.getElementById('searchSuggestions').style.display = 'none';
     }
 
+    // ===== SMART FUZZY SEARCH ENGINE =====
+    function fuzzyScore(text, query) {
+      if (!text || !query) return 0;
+      const t = text.toLowerCase();
+      const q = query.toLowerCase();
+      if (t === q) return 100;
+      if (t.startsWith(q)) return 90;
+      if (t.includes(q)) return 80;
+      // Levenshtein distance for typo tolerance
+      const lenT = t.length, lenQ = q.length;
+      if (Math.abs(lenT - lenQ) > 5) return 0;
+      const dp = Array.from({length: lenQ + 1}, (_, i) => i);
+      for (let j = 1; j <= lenT; j++) {
+        let prev = j;
+        for (let i = 1; i <= lenQ; i++) {
+          const cur = t[j-1] === q[i-1] ? dp[i-1] : Math.min(dp[i-1], dp[i], prev) + 1;
+          dp[i-1] = prev;
+          prev = cur;
+        }
+        dp[lenQ] = prev;
+      }
+      const dist = dp[lenQ];
+      const maxLen = Math.max(lenT, lenQ);
+      const similarity = (1 - dist / maxLen) * 70;
+      return similarity > 30 ? similarity : 0;
+    }
+
+    function searchProducts(query) {
+      if (!query.trim()) return [];
+      const q = query.trim();
+      const scored = [];
+      products.forEach(p => {
+        const name = p.name || p.title || '';
+        const desc = p.description || '';
+        const cat = p.category || '';
+        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+        const combined = [name, desc, cat, tags].join(' ');
+        // Exact match gets highest score
+        let score = 0;
+        score = Math.max(score, fuzzyScore(name, q));
+        score = Math.max(score, fuzzyScore(cat, q) * 0.7);
+        score = Math.max(score, fuzzyScore(combined, q) * 0.5);
+        if (score > 25) scored.push({ product: p, score });
+      });
+      // Sort by score DESC, then by rating
+      scored.sort((a, b) => {
+        if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
+        const rA = calculateProductRating(a.product.id);
+        const rB = calculateProductRating(b.product.id);
+        return rB - rA;
+      });
+      return scored.map(s => s.product);
+    }
+
     function performSearch(query) {
       if (!query.trim()) return;
       document.getElementById('searchPanelInput').blur();
       addToRecentSearches(query);
-      const filteredProducts = products.filter(product => 
-        product.name?.toLowerCase().includes(query.toLowerCase()) ||
-        product.description?.toLowerCase().includes(query.toLowerCase()) ||
-        product.category?.toLowerCase().includes(query.toLowerCase()) ||
-        (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-      );
+      const results = searchProducts(query);
       window.currentSearchQuery = query;
-      window.currentSearchResults = filteredProducts;
+      window.currentSearchResults = results;
       showPage('searchResultsPage');
-      renderSearchResults(filteredProducts, query);
+      renderSearchResults(results, query);
       closeSearchPanel();
     }
 
@@ -2846,57 +2895,52 @@
     function showSearchSuggestions(query) {
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
-      let suggestions = products.filter(product => 
-        product.name?.toLowerCase().includes(query.toLowerCase()) ||
-        product.description?.toLowerCase().includes(query.toLowerCase()) ||
-        product.category?.toLowerCase().includes(query.toLowerCase()) ||
-        (product.tags && product.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-      );
-      const ratingMap = {};
-      suggestions.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
-      suggestions.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
-      const topThree = suggestions.slice(0, 3);
+      const results = searchProducts(query);
+      const topThree = results.slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
-        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted)">No products found</div>';
+        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted);padding:12px;">No matching products found</div>';
         return;
       }
+      // Top 3 as image cards (sorted by rating)
+      const imageRow = document.createElement('div');
+      imageRow.style.cssText = 'display:flex; gap:8px; padding:10px 10px 4px; overflow-x:auto;';
+      topThree.forEach(product => {
+        const card = document.createElement('div');
+        card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
+        const ratingVal = calculateProductRating(product.id);
+        card.innerHTML = `
+          <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
+          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
+          ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
+        `;
+        card.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
+        imageRow.appendChild(card);
+      });
+      suggestionsContainer.appendChild(imageRow);
+      // Text list below
       topThree.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
         const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
           <div class="search-suggestion-info">
             <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
             <div class="search-suggestion-category">${productCategory}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
-        suggestion.addEventListener('click', () => {
-          showProductDetail(product);
-          closeSearchPanel();
-        });
+        suggestion.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
         suggestionsContainer.appendChild(suggestion);
       });
-      if (suggestions.length > 3) {
-        const categorySuggestion = document.createElement('div');
-        categorySuggestion.className = 'search-suggestion';
-        categorySuggestion.innerHTML = `
-          <div class="search-suggestion-info" style="padding-left:0;">
-            <div class="search-suggestion-name" style="color:var(--accent);">View all ${suggestions.length} products in "${query}"</div>
-          </div>
-        `;
-        categorySuggestion.addEventListener('click', () => performSearch(query));
-        suggestionsContainer.appendChild(categorySuggestion);
+      if (results.length > 3) {
+        const viewAll = document.createElement('div');
+        viewAll.className = 'search-suggestion';
+        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
+        viewAll.addEventListener('click', () => performSearch(query));
+        suggestionsContainer.appendChild(viewAll);
       }
     }
 
@@ -3773,10 +3817,10 @@
       firstRow.forEach(p => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
-        sliderItem.style.minWidth = '200px';
-        sliderItem.style.maxWidth = '200px';
+        sliderItem.style.minWidth = '160px';
+        sliderItem.style.maxWidth = '160px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 120px; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
             <div class="slider-item-price">${formatPrice(p.price)}</div>
@@ -3788,10 +3832,10 @@
       secondRow.forEach(p => {
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
-        sliderItem.style.minWidth = '200px';
-        sliderItem.style.maxWidth = '200px';
+        sliderItem.style.minWidth = '160px';
+        sliderItem.style.maxWidth = '160px';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 150px; background-size: cover; background-position: center;"></div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 120px; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
             <div class="slider-item-price">${formatPrice(p.price)}</div>
@@ -3846,7 +3890,7 @@
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}')"></div>
+          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
           <div class="slider-item-body">
             <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
             <div class="slider-item-price">${formatPrice(product.price)}</div>
@@ -4449,14 +4493,39 @@
           const daysSinceDelivery = Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
           if (daysSinceDelivery <= 3) showReturnReplace = true;
         }
-        // Use stored productImage from order, or fallback to current products list
         const liveProduct = products.find(p => p.id === order.productId);
         const imgUrl = (liveProduct ? getProductImage(liveProduct) : null) || order.productImage || 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=No+Image';
+
+        // Order Tracking Steps
+        const steps = [
+          { key: 'confirmed', label: 'Confirmed', icon: '✅' },
+          { key: 'shipped',   label: 'Shipped',   icon: '🚚' },
+          { key: 'delivered', label: 'Delivered',  icon: '📦' }
+        ];
+        const statusOrder = ['confirmed','shipped','delivered'];
+        const currentIdx = statusOrder.indexOf(rawStatus);
+        const isCancelled = rawStatus === 'cancelled' || rawStatus === 'return-requested' || rawStatus === 'replace-requested';
+
+        const trackingHtml = isCancelled ? `
+          <div style="margin:10px 0 4px;padding:8px 12px;background:#fef2f2;border-radius:8px;color:#ef4444;font-size:13px;font-weight:600;">
+            ❌ ${statusText}
+          </div>` : `
+          <div class="order-tracking-steps">
+            ${steps.map((step, i) => {
+              const done = i < currentIdx;
+              const active = i === currentIdx;
+              return `<div class="track-step ${done ? 'done' : active ? 'active' : 'pending'}">
+                <div class="track-dot">${done ? '✓' : active ? step.icon : ''}</div>
+                <div class="track-label">${step.label}</div>
+              </div>`;
+            }).join('<div class="track-line"></div>')}
+          </div>`;
+
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
               <div class="order-id">${order.orderId || order.id || ''}</div>
-              <div class="order-date">${orderDate.toLocaleDateString()}</div>
+              <div class="order-date">${orderDate.toLocaleDateString('en-IN')}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
@@ -4468,17 +4537,16 @@
               <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
             </div>
           </div>
+          ${trackingHtml}
           <div class="order-actions">
             ${rawStatus === 'confirmed' || rawStatus === 'shipped' ? 
-              `<button class="order-action-btn cancel" onclick="cancelOrder('${order.id}')">Cancel Order</button>` : ''}
+              `<button class="order-action-btn cancel" onclick="event.stopPropagation();cancelOrder('${order.id}')">Cancel Order</button>` : ''}
             ${showReturnReplace ? 
-              `<button class="order-action-btn return" onclick="showReturnReplaceModal('${order.id}')">Return / Replace</button>` : ''}
+              `<button class="order-action-btn return" onclick="event.stopPropagation();showReturnReplaceModal('${order.id}')">Return / Refund</button>` : ''}
           </div>
         `;
         orderCard.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON') {
-            showOrderDetail(order);
-          }
+          if (e.target.tagName !== 'BUTTON') showOrderDetail(order);
         });
         container.appendChild(orderCard);
       });
@@ -4793,12 +4861,24 @@
       const track = document.getElementById('bannerTrack');
       const controls = document.getElementById('bannerControls');
       if (!track || !controls) return;
+
+      // Preload all banner images eagerly before rendering
+      const preloadImages = banners.map(banner => {
+        return new Promise(resolve => {
+          const img = new Image();
+          img.onload = img.onerror = resolve;
+          img.src = getProductImage(banner);
+        });
+      });
+
       const trackFragment = document.createDocumentFragment();
       const controlsFragment = document.createDocumentFragment();
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
         slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        slide.style.backgroundSize = 'cover';
+        slide.style.backgroundPosition = 'center';
         if (banner.link) {
           slide.style.cursor = 'pointer';
           slide.addEventListener('click', () => window.open(banner.link, '_blank'));
@@ -4816,6 +4896,9 @@
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
       setupBannerAutoSlide();
       setupBannerTouchEvents();
+
+      // Start preloading — reveal immediately without waiting
+      Promise.all(preloadImages).catch(() => {});
     }
 
     function setBannerSlide(index) {
@@ -5143,6 +5226,11 @@
     }
 
     function updateUIForUser(user) {
+      // Set per-user notification keys FIRST before loading notifs
+      setNotifKeysForUser(user.uid);
+      appNotifications = [];
+      loadNotifs();
+      updateNotifBadge();
       document.getElementById('userProfile').style.display = 'flex';
       document.getElementById('openLoginTop').style.display = 'none';
       document.getElementById('mobileLoginBtn').style.display = 'none';
@@ -5153,6 +5241,10 @@
     }
 
     function updateUIForGuest() {
+      // Reset to guest key so logged-out users get fresh empty notifications
+      setNotifKeysForUser(null);
+      appNotifications = [];
+      updateNotifBadge();
       document.getElementById('userProfile').style.display = 'none';
       document.getElementById('openLoginTop').style.display = 'block';
       document.getElementById('mobileLoginBtn').style.display = 'flex';
@@ -5417,8 +5509,14 @@
     }
 
     // ===== NOTIFICATION SYSTEM =====
-    const NOTIF_KEY = 'bz_notifications';
-    const NOTIF_META_KEY = 'bz_notif_meta';
+    // Keys are per-user — set after auth, default to guest key
+    let NOTIF_KEY = 'bz_notifications_guest';
+    let NOTIF_META_KEY = 'bz_notif_meta_guest';
+
+    function setNotifKeysForUser(uid) {
+      NOTIF_KEY = uid ? 'bz_notifications_' + uid : 'bz_notifications_guest';
+      NOTIF_META_KEY = uid ? 'bz_notif_meta_' + uid : 'bz_notif_meta_guest';
+    }
 
     function saveNotifs() {
       try { localStorage.setItem(NOTIF_KEY, JSON.stringify(appNotifications)); } catch(e) {}
@@ -5624,12 +5722,7 @@
             renderProducts(products, 'productGrid');
             updateProductsCount();
           } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
-            const filteredResults = products.filter(product => 
-              (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-            );
+            const filteredResults = searchProducts(window.currentSearchQuery);
             window.currentSearchResults = filteredResults;
             renderSearchResults(filteredResults, window.currentSearchQuery);
           }
@@ -5754,12 +5847,7 @@
               updateProductsCount();
             }
             if (document.getElementById('searchResultsPage')?.classList.contains('active') && window.currentSearchQuery) {
-              const filteredResults = products.filter(product => 
-                (product.name || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                (product.description || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                (product.category || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase()) ||
-                (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(window.currentSearchQuery.toLowerCase())))
-              );
+              const filteredResults = searchProducts(window.currentSearchQuery);
               window.currentSearchResults = filteredResults;
               renderSearchResults(filteredResults, window.currentSearchQuery);
             }
@@ -5798,6 +5886,20 @@
       onValue(ref(database, 'outOfStock'), snapshot => {
         const outOfStockObj = snapshot.val();
         if (outOfStockObj) window.outOfStockItems = outOfStockObj;
+      });
+
+      // Listen for admin-pushed notifications (broadcast to all users)
+      let _lastAdminNotifTs = Date.now();
+      onValue(ref(database, 'adminNotifications'), snapshot => {
+        if (!snapshot.exists()) return;
+        snapshot.forEach(child => {
+          const n = child.val();
+          // Only show notifications that arrived after page load
+          if (n.timestamp && n.timestamp > _lastAdminNotifTs) {
+            _lastAdminNotifTs = n.timestamp;
+            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info' });
+          }
+        });
       });
     }
 
@@ -6041,7 +6143,6 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
-      loadNotifs();
       updateNotifBadge();
       setupEventListeners();
       if (window.firebase && window.firebase.auth) {
@@ -6053,14 +6154,35 @@
             loadRecentlyViewed(user);
             loadSavedAddresses();
             document.getElementById('authModal')?.classList.remove('active');
-            // Only load admin offer notifs if user just logged in this session
-            // (not on every refresh — tracked by sessionStorage per uid)
+
+            // ===== PRESENCE TRACKING =====
+            // Register user as online; auto-remove on disconnect
+            try {
+              const presenceRef = window.firebase.ref(window.firebase.database, 'presence/' + user.uid);
+              window.firebase.set(presenceRef, { uid: user.uid, online: true, lastSeen: Date.now() });
+              // Firebase built-in disconnect hook
+              const connRef = window.firebase.ref(window.firebase.database, '.info/connected');
+              window.firebase.onValue(connRef, snap => {
+                if (snap.val() === true) {
+                  window.firebase.set(presenceRef, { uid: user.uid, online: true, lastSeen: Date.now() });
+                }
+              });
+              window.addEventListener('beforeunload', () => {
+                window.firebase.remove(presenceRef).catch(()=>{});
+              });
+            } catch(e) {}
+
+            // Only load offer notifs on fresh session
             const freshSessionKey = 'bz_fresh_session_' + user.uid;
             if (!sessionStorage.getItem(freshSessionKey)) {
               sessionStorage.setItem(freshSessionKey, '1');
               setTimeout(loadAdminOfferNotifs, 1500);
             }
           } else {
+            // Remove presence on logout
+            if (currentUser) {
+              try { window.firebase.remove(window.firebase.ref(window.firebase.database, 'presence/' + currentUser.uid)).catch(()=>{}); } catch(e) {}
+            }
             currentUser = null;
             updateUIForGuest();
           }
@@ -6313,6 +6435,149 @@
         if (_mb) _mb.onclick=markAllNotifsRead;
       }
     };
+
+    // ====================================================
+    // 🤖 BZ AI SELF-HEALING AGENT
+    // Monitors errors, fixes broken images, retries Firebase,
+    // and keeps the site healthy automatically.
+    // ====================================================
+    const BzAgent = (() => {
+      const MAX_RETRIES = 3;
+      const retryMap = new Map();
+      const PLACEHOLDER = 'https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image';
+
+      // 1. Global error capture
+      window.addEventListener('error', (e) => {
+        if (e.target && e.target.tagName === 'IMG') {
+          // Broken image — auto-replace with placeholder
+          if (e.target.src !== PLACEHOLDER) e.target.src = PLACEHOLDER;
+          return;
+        }
+        logError('JSError', e.message || 'Unknown', e.filename + ':' + e.lineno);
+      }, true);
+
+      window.addEventListener('unhandledrejection', (e) => {
+        const msg = e.reason?.message || String(e.reason) || 'Promise rejected';
+        logError('UnhandledPromise', msg, '');
+        // Auto-retry Firebase operations that fail with network errors
+        if (msg.includes('network') || msg.includes('Failed to fetch') || msg.includes('offline')) {
+          scheduleFirebaseRetry();
+        }
+      });
+
+      // 2. Fix background-image broken urls
+      function fixBrokenBgImages() {
+        document.querySelectorAll('[style*="background-image"]').forEach(el => {
+          const style = el.style.backgroundImage;
+          const match = style.match(/url\(['"]?(.+?)['"]?\)/);
+          if (!match) return;
+          const url = match[1];
+          if (!url || url === 'none' || url.includes('placeholder')) return;
+          const testImg = new Image();
+          testImg.onerror = () => {
+            el.style.backgroundImage = `url('${PLACEHOLDER}')`;
+          };
+          testImg.src = url;
+        });
+      }
+
+      // 3. Firebase reconnect scheduler
+      let fbRetryTimer = null;
+      function scheduleFirebaseRetry() {
+        if (fbRetryTimer) return;
+        fbRetryTimer = setTimeout(() => {
+          fbRetryTimer = null;
+          try {
+            if (window.firebase && window.firebase.database) {
+              fetchLiveData();
+            }
+          } catch(e) {}
+        }, 3000);
+      }
+
+      // 4. Error logger (to Firebase for monitoring)
+      function logError(type, msg, loc) {
+        try {
+          if (!window.firebase?.database || !currentUser) return;
+          const key = type + '_' + Date.now();
+          window.firebase.set(
+            window.firebase.ref(window.firebase.database, 'errorLogs/' + key),
+            { type, msg, loc, uid: currentUser?.uid || 'guest', ts: Date.now() }
+          ).catch(()=>{});
+        } catch(e) {}
+      }
+
+      // 5. Performance observer — log long tasks
+      if ('PerformanceObserver' in window) {
+        try {
+          new PerformanceObserver((list) => {
+            list.getEntries().forEach(entry => {
+              if (entry.duration > 100) {
+                console.warn('[BzAgent] Long task:', entry.duration.toFixed(0) + 'ms', entry.name);
+              }
+            });
+          }).observe({ entryTypes: ['longtask'] });
+        } catch(e) {}
+      }
+
+      // 6. Periodic health check every 60s
+      setInterval(() => {
+        // Fix any broken bg images that appeared
+        fixBrokenBgImages();
+        // If products array is empty and firebase is available, refetch
+        if (!products.length && window.firebase?.database) {
+          fetchLiveData();
+        }
+      }, 60000);
+
+      // Initial fix after page load
+      setTimeout(fixBrokenBgImages, 2000);
+
+      return { logError, scheduleFirebaseRetry, fixBrokenBgImages };
+    })();
+
+    // ====================================================
+    // ⚡ PERFORMANCE: 120fps optimizations
+    // ====================================================
+    (function applyPerfOptimizations() {
+      // Use passive listeners everywhere possible
+      const origAddEventListener = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function(type, fn, opts) {
+        if (['scroll', 'touchstart', 'touchmove', 'wheel'].includes(type)) {
+          if (opts === undefined || opts === false) opts = { passive: true };
+          else if (opts === true) opts = { capture: true, passive: true };
+          else if (typeof opts === 'object' && opts.passive === undefined) opts.passive = true;
+        }
+        origAddEventListener.call(this, type, fn, opts);
+      };
+
+      // Apply will-change to animated elements for GPU layer promotion
+      const style = document.createElement('style');
+      style.textContent = `
+        .banner-slide, .slider-item, .product-card, .bottom-nav-item {
+          will-change: transform;
+        }
+        .banner-track {
+          will-change: transform;
+          transform: translateZ(0);
+        }
+        .mobile-menu, .search-panel, .modal-overlay {
+          will-change: opacity, transform;
+        }
+        * { -webkit-font-smoothing: antialiased; text-rendering: optimizeSpeed; }
+        img { image-rendering: -webkit-optimize-contrast; }
+      `;
+      document.head.appendChild(style);
+
+      // Debounce scroll handler
+      let scrollRAF = null;
+      window.addEventListener('scroll', () => {
+        if (scrollRAF) return;
+        scrollRAF = requestAnimationFrame(() => {
+          scrollRAF = null;
+        });
+      }, { passive: true });
+    })();
 
   </script>
   <!-- ACCOUNT PAGE SECTION -->
@@ -8031,17 +8296,4 @@
       showPage('homePage');
     }
 
-    function openAccountPage() {
-      const sec = document.getElementById('accountPageSection');
-      if (sec) {
-        sec.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        const theme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', theme);
-        initAccountPage();
-      }
-    }
-
-  </script>
-</body>
-</html>
+    fun
