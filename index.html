@@ -302,12 +302,12 @@
               <button class="hero-offers-btn" onclick="showPage('offersPage')">View Offers 🎁</button>
             </div>
           </div>
-          <div class="hero-stats-row">
-            <div class="hero-stat"><span class="hero-stat-num">500+</span><span class="hero-stat-label">Products</span></div>
+          <div class="hero-stats-row" id="heroStatsRow">
+            <div class="hero-stat"><span class="hero-stat-num" id="heroStatProducts">—</span><span class="hero-stat-label">Products</span></div>
             <div class="hero-stat-divider"></div>
-            <div class="hero-stat"><span class="hero-stat-num">1K+</span><span class="hero-stat-label">Happy Customers</span></div>
+            <div class="hero-stat"><span class="hero-stat-num" id="heroStatCustomers">—</span><span class="hero-stat-label">Customers</span></div>
             <div class="hero-stat-divider"></div>
-            <div class="hero-stat"><span class="hero-stat-num">4.8★</span><span class="hero-stat-label">Avg Rating</span></div>
+            <div class="hero-stat"><span class="hero-stat-num" id="heroStatRating">—</span><span class="hero-stat-label">Avg Rating</span></div>
           </div>
         </div>
         <div class="highlight-strip" id="highlightStrip" onclick="showPage('productsPage')" style="display:none;">
@@ -2407,7 +2407,7 @@
     }
   </style>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
     import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
@@ -5663,7 +5663,6 @@
       if (heroHeading) heroHeading.innerHTML = adminSettings.heroHeading || 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
       if (heroSubheading) heroSubheading.textContent = adminSettings.heroSubheading || 'Clean, fast checkout. Hand‑picked products. Fully responsive UI.';
 
-      // Hero messages from admin
       if (heroMessagesContainer && adminSettings.heroMessages && adminSettings.heroMessages.length) {
         heroMessagesContainer.innerHTML = '';
         adminSettings.heroMessages.forEach((msg, index) => {
@@ -5674,26 +5673,75 @@
         });
       }
 
-      // Highlight strip - show only if admin has set it
       if (highlightStrip) {
         if (adminSettings.highlightText) {
           highlightStrip.innerHTML = adminSettings.highlightText + ' <u>Shop Now →</u>';
           highlightStrip.style.display = '';
         } else {
-          // Hide if no admin setting (don't show hardcoded promo)
           highlightStrip.style.display = 'none';
         }
       }
 
-      // Popular searches from admin
       if (adminSettings.popularSearches && Array.isArray(adminSettings.popularSearches) && adminSettings.popularSearches.length) {
         popularSearches = adminSettings.popularSearches;
         loadPopularSearches();
       }
-      // Search tags from admin
       if (adminSettings.searchTags && Array.isArray(adminSettings.searchTags) && adminSettings.searchTags.length) {
         searchTags = adminSettings.searchTags;
         loadSearchTags();
+      }
+
+      // ===== DYNAMIC HERO STATS =====
+      // Use admin-set values if available, otherwise auto-calculate from Firebase
+      updateHeroStats();
+    }
+
+    function updateHeroStats() {
+      // Admin can override stats in adminSettings.heroStats
+      if (adminSettings.heroStats) {
+        const s = adminSettings.heroStats;
+        setHeroStat('heroStatProducts', s.products || null);
+        setHeroStat('heroStatCustomers', s.customers || null);
+        setHeroStat('heroStatRating', s.rating ? s.rating + '★' : null);
+        return;
+      }
+      // Auto-calculate from real data
+      const db = window.firebase?.database;
+      const ref = window.firebase?.ref;
+      const get = window.firebase?.get;
+      if (!db || !ref || !get) return;
+
+      // Products count
+      get(ref(db, 'products')).then(snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
+      }).catch(()=>{});
+
+      // Users count
+      get(ref(db, 'users')).then(snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
+      }).catch(()=>{});
+
+      // Avg rating from reviews
+      get(ref(db, 'reviews')).then(snap => {
+        if (!snap.exists()) { setHeroStat('heroStatRating', null); return; }
+        const vals = Object.values(snap.val());
+        const avg = vals.reduce((s, r) => s + (r.rating || 0), 0) / vals.length;
+        setHeroStat('heroStatRating', avg > 0 ? avg.toFixed(1) + '★' : null);
+      }).catch(()=>{});
+    }
+
+    function setHeroStat(id, value) {
+      const el = document.getElementById(id);
+      const row = document.getElementById('heroStatsRow');
+      if (!el) return;
+      if (value) {
+        el.textContent = value;
+        if (row) row.style.display = '';
+      } else {
+        // Hide the whole stats bar if no data
+        el.textContent = '—';
       }
     }
 
@@ -7412,7 +7460,7 @@
         </div>
         <div class="account-info">
           <h1 id="accountPageName">User Name</h1>
-          <p id="accountPageEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="156066706755706d74786579703b767a78">[email&#160;protected]</a></p>
+          <p id="accountPageEmail">user@email.com</p>
         </div>
       </div>
 
