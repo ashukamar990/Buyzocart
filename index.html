@@ -51,9 +51,47 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Non-blocking font load -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="preconnect" href="https://images.unsplash.com"/>
-  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://www.gstatic.com"/>
+  <link rel="dns-prefetch" href="https://buyzocart-default-rtdb.firebaseio.com"/>
+  <!-- Critical CSS inline - prevents FOUC, renders navbar + hero instantly -->
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#fff;color:#0f172a;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:70px;overflow-x:hidden}
+    [data-theme="dark"] body{background:#0f172a;color:#f1f5f9}
+    header{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:12px 16px;position:sticky;top:0;z-index:50;border-bottom:1px solid #e2e8f0}
+    [data-theme="dark"] header{background:#1e293b;border-color:#334155}
+    .header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
+    .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:6px;cursor:pointer}
+    .chip{background:#2563eb;color:#fff;font-weight:700;padding:4px 8px;border-radius:6px}
+    .btn{background:#2563eb;color:#fff;border:none;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer}
+    .container{max-width:1100px;margin:0 auto;padding:16px}
+    .page{display:none}.page.active{display:block}
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;display:flex;z-index:40;height:60px}
+    [data-theme="dark"] .bottom-nav{background:#1e293b;border-color:#334155}
+    .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:#64748b;font-size:11px;font-weight:500;transition:color .2s}
+    .bottom-nav-item.active{color:#2563eb}
+    /* Skeleton base */
+    .skeleton-box{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+    [data-theme="dark"] .skeleton-box{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    /* Instant skeleton product grid */
+    .product-grid-skeleton{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:16px 0}
+    .product-card-skeleton{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+    [data-theme="dark"] .product-card-skeleton{background:#1e293b;border-color:#334155}
+    .product-card-skeleton .sk-img{height:160px}
+    .product-card-skeleton .sk-body{padding:14px;display:flex;flex-direction:column;gap:8px}
+    .product-card-skeleton .sk-title{height:14px;width:80%}
+    .product-card-skeleton .sk-price{height:18px;width:40%}
+    /* Hide body overflow during load */
+    body.loading{overflow:hidden}
+  </style>
+  <link rel="stylesheet" href="style.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="style.css"></noscript>
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
@@ -316,7 +354,10 @@
       </section>
 
       <div class="banner-carousel skeleton" id="bannerCarousel">
-        <div class="banner-track" id="bannerTrack"></div>
+        <div class="banner-track" id="bannerTrack">
+          <!-- Instant skeleton banner shown before Firebase loads -->
+          <div class="banner-slide skeleton-box" style="height:180px;border-radius:12px;flex-shrink:0;width:100%;"></div>
+        </div>
         <div class="banner-controls" id="bannerControls"></div>
       </div>
 
@@ -348,6 +389,11 @@
       </div>
 
       <div class="product-grid" id="homeProductGrid">
+        <!-- Instant skeleton shown while Firebase loads -->
+        <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
+        <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
+        <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
+        <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
       </div>
 
       <div class="recently-viewed" id="recentlyViewedSection" style="display:none;">
@@ -540,13 +586,15 @@
                       <line x1="2" y1="9" x2="22" y2="9"></line>
                       <line x1="2" y1="15" x2="22" y2="15"></line>
                     </svg>
-                    Add Photo/Video
+                    Add Photo
                   </label>
-                  <input type="file" id="reviewFile" accept="image/*,video/*" style="display:none;">
+                  <input type="file" id="reviewFile" accept="image/*" style="display:none;">
                   <div class="file-preview" id="filePreview"></div>
                 </div>
+                <input type="url" id="reviewYoutubeUrl" placeholder="YouTube review video URL (optional)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface,#fff);color:var(--text);font-size:14px;margin-top:8px;box-sizing:border-box;">
                 <button class="btn review-submit-btn" id="submitReview">Submit Review</button>
                 <div id="reviewError" class="review-error" style="display:none;"></div>
+                <p style="font-size:11px;color:var(--muted);margin-top:6px;">✓ Only verified buyers can review • Reviews are approved before publishing</p>
               </div>
               
               <div class="reviews-list" id="reviewsList"></div>
@@ -977,14 +1025,14 @@
           <h3>Buyzo Cart</h3>
           <p style="color:var(--muted);margin-bottom:16px">Your trusted online shopping destination for quality products at affordable prices.</p>
           <div class="contact-info">
-            <p>
+            <p id="footerEmailPrimary">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
               <a href="mailto:buyzocartshop@gmail.com">buyzocartshop@gmail.com</a>
             </p>
-            <p>
+            <p id="footerPhoneLink">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
               </svg>
@@ -992,7 +1040,7 @@
                 9557987574 (WhatsApp)
               </a>
             </p>
-            <p>
+            <p id="footerEmailSecondary">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
@@ -2505,11 +2553,20 @@
     };
 
     const cacheManager = {
-      set(key, data, ttl = 7 * 24 * 60 * 60 * 1000) {
+      // localStorage cache with TTL (1 hour for products/categories, longer for settings)
+      set(key, data, ttl = 60 * 60 * 1000) { // 1 hour default
         const item = { data, timestamp: Date.now(), ttl };
         try { localStorage.setItem(key, JSON.stringify(item)); } catch (e) {}
+        // Also store in sessionStorage for instant same-session access
+        try { sessionStorage.setItem(key + '_session', JSON.stringify(data)); } catch (e) {}
       },
       get(key) {
+        // Try sessionStorage first (instant, no TTL needed)
+        try {
+          const sess = sessionStorage.getItem(key + '_session');
+          if (sess) return JSON.parse(sess);
+        } catch (e) {}
+        // Fall back to localStorage with TTL check
         const item = localStorage.getItem(key);
         if (!item) return null;
         try {
@@ -2521,7 +2578,10 @@
           return parsed.data;
         } catch { return null; }
       },
-      remove(key) { localStorage.removeItem(key); }
+      remove(key) {
+        localStorage.removeItem(key);
+        try { sessionStorage.removeItem(key + '_session'); } catch (e) {}
+      }
     };
 
     let currentUser = null;
@@ -4245,58 +4305,84 @@
         const reviewsList = document.getElementById('reviewsList');
         if (!reviewsList) return;
         if (!snapshot.exists()) {
-          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet. Be the first to review!</p>';
+          reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:16px;">No reviews yet. Be the first to review!</p>';
           reviews = [];
           return;
         }
         const reviewsObj = snapshot.val();
-        reviews = Object.keys(reviewsObj).map(key => ({ id: key, ...reviewsObj[key] }));
+        const allReviews = Object.keys(reviewsObj).map(key => ({ id: key, ...reviewsObj[key] }));
+        // Only show approved reviews publicly (or user's own pending)
+        reviews = allReviews.filter(r =>
+          r.status === 'approved' ||
+          !r.status || // Legacy reviews without status field show by default
+          (currentUser && r.userId === currentUser.uid) // User sees their own pending
+        );
         reviews.sort((a, b) => b.date - a.date);
-        const topReviews = reviews.filter(r => r.rating === 5).slice(0, 8);
-        renderReviews(topReviews, 'reviewsList');
+        // Show top rated first, then recent
+        const sorted = [...reviews].sort((a,b) => {
+          if (b.rating !== a.rating) return b.rating - a.rating;
+          return b.date - a.date;
+        });
+        renderReviews(sorted.slice(0, 5), 'reviewsList');
       } catch (error) {
         console.error('Error loading reviews:', error);
-        const reviewsList = document.getElementById('reviewsList');
-        if (reviewsList) reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">Error loading reviews</p>';
       }
     }
 
-    function renderReviews(reviews, containerId) {
+    function renderReviews(reviewList, containerId) {
       const reviewsList = document.getElementById(containerId);
       if (!reviewsList) return;
       reviewsList.innerHTML = '';
-      if (reviews.length === 0) {
-        reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center">No reviews yet.</p>';
+      if (!reviewList.length) {
+        reviewsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:16px;">No approved reviews yet.</p>';
         return;
       }
-      reviews.forEach(review => {
+      reviewList.forEach(review => {
         const reviewItem = document.createElement('div');
         reviewItem.className = 'review-item';
         const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
-        const date = new Date(review.date).toLocaleDateString();
-        const isVerified = review.isVerifiedPurchase ? '<span class="review-verified-badge">Verified Purchase</span>' : '';
-        let fileHtml = '';
-        if (review.fileUrl) {
-          if (review.fileType === 'image') fileHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review attachment"></div>`;
-          else if (review.fileType === 'video') fileHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}"></video></div>`;
+        const date = new Date(review.date).toLocaleDateString('en-IN');
+        const isVerified = review.isVerifiedPurchase ? '<span class="review-verified-badge">✓ Verified Purchase</span>' : '';
+        const isPending = review.status === 'pending' ? '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">⏳ Pending Approval</span>' : '';
+
+        let mediaHtml = '';
+        if (review.fileUrl && review.fileType === 'image') {
+          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
+        } else if (review.fileUrl && review.fileType === 'video') {
+          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
+        if (review.youtubeUrl) {
+          const ytId = extractYouTubeId(review.youtubeUrl);
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+        }
+
         reviewItem.innerHTML = `
           <div class="review-header">
-            <div class="reviewer-name">${review.userName} ${isVerified}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+              <div>
+                <span class="reviewer-name">${review.userName || 'Customer'}</span>
+                ${isVerified} ${isPending}
+              </div>
+            </div>
             <div class="review-date">${date}</div>
           </div>
-          <div class="review-rating">${stars}</div>
+          <div class="review-rating" style="color:#f59e0b;font-size:16px;">${stars}</div>
           <div class="review-text">${review.text}</div>
-          ${fileHtml}
-          ${currentUser && (review.userId === currentUser.uid) ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete</button>` : ''}
-          ${currentUser && (currentUser.uid === 'admin') ? 
-            `<button class="review-delete-btn" data-review-id="${review.id}">Delete (Admin)</button>` : ''}
+          ${mediaHtml}
+          ${currentUser && review.userId === currentUser.uid ?
+            `<button class="review-delete-btn" data-review-id="${review.id}" style="margin-top:8px;background:none;border:none;color:#ef4444;font-size:12px;cursor:pointer;">Delete my review</button>` : ''}
         `;
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
         if (deleteBtn) deleteBtn.addEventListener('click', () => deleteReview(review.id));
         reviewsList.appendChild(reviewItem);
       });
+    }
+
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      return match ? match[1] : null;
     }
 
     async function deleteReview(reviewId) {
@@ -4333,76 +4419,113 @@
     }
 
     async function submitProductReview() {
-      if (!currentUser) {
-        showLoginModal();
-        return;
-      }
-      if (!currentProduct) {
-        showToast('No product selected', 'error');
-        return;
-      }
+      if (!currentUser) { showLoginModal(); return; }
+      if (!currentProduct) { showToast('No product selected', 'error'); return; }
+
+      // 1. Verified purchase check
       const canReview = await checkUserCanReview(currentProduct.id);
       if (!canReview) {
-        document.getElementById('reviewError').textContent = 'Only customers who received this product can review.';
+        document.getElementById('reviewError').textContent = 'Only customers who received this product can review it.';
         document.getElementById('reviewError').style.display = 'block';
         return;
       }
+
+      // 2. One review per product per user
+      try {
+        const existingSnap = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'reviews'),
+            window.firebase.orderByChild('userId_productId'),
+            window.firebase.equalTo(currentUser.uid + '_' + currentProduct.id)
+          )
+        );
+        if (existingSnap.exists()) {
+          document.getElementById('reviewError').textContent = 'You have already reviewed this product.';
+          document.getElementById('reviewError').style.display = 'block';
+          return;
+        }
+      } catch (e) { /* allow if index not set */ }
+
       const activeStars = document.querySelectorAll('.rating-star.active');
       const rating = activeStars.length;
       const reviewTextValue = document.getElementById('reviewText').value.trim();
-      if (rating === 0) {
-        showToast('Please select a rating', 'error');
-        return;
-      }
-      if (!reviewTextValue) {
-        showToast('Please write a review', 'error');
-        return;
-      }
-      const fileInput = document.getElementById('reviewFile');
+      if (rating === 0) { showToast('Please select a rating', 'error'); return; }
+      if (!reviewTextValue) { showToast('Please write a review', 'error'); return; }
+
+      // 3. Image upload via ImgBB if available
       let fileUrl = null;
       let fileType = null;
-      if (fileInput.files && fileInput.files[0]) {
+      const fileInput = document.getElementById('reviewFile');
+      if (fileInput?.files?.[0]) {
         const file = fileInput.files[0];
-        if (file.size > 5 * 1024 * 1024) {
-          showToast('File size should be less than 5MB', 'error');
-          return;
-        }
+        if (file.size > 5 * 1024 * 1024) { showToast('File max 5MB', 'error'); return; }
         if (file.type.startsWith('image/')) {
           fileType = 'image';
-          fileUrl = URL.createObjectURL(file);
+          // Try ImgBB upload
+          try {
+            const formData = new FormData();
+            const base64 = await new Promise(res => {
+              const reader = new FileReader();
+              reader.onload = e => res(e.target.result.split(',')[1]);
+              reader.readAsDataURL(file);
+            });
+            const REVIEW_IMGBB_KEY = window._reviewImgbbKey || '';
+            if (REVIEW_IMGBB_KEY) {
+              formData.append('key', REVIEW_IMGBB_KEY);
+              formData.append('image', base64);
+              const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
+              const data = await res.json();
+              if (data.success) fileUrl = data.data.url;
+              else fileUrl = 'data:image/jpeg;base64,' + base64;
+            } else {
+              fileUrl = 'data:image/jpeg;base64,' + base64;
+            }
+          } catch (e) { fileUrl = URL.createObjectURL(file); }
         } else if (file.type.startsWith('video/')) {
           fileType = 'video';
           fileUrl = URL.createObjectURL(file);
-        } else {
-          showToast('Only image and video files are allowed', 'error');
-          return;
         }
       }
+
+      // 4. YouTube URL (from input if present)
+      const youtubeInput = document.getElementById('reviewYoutubeUrl');
+      const youtubeUrl = youtubeInput?.value?.trim() || null;
+
+      const submitBtn = document.getElementById('submitReview');
+      if (submitBtn) { submitBtn.textContent = 'Submitting...'; submitBtn.disabled = true; }
+
       try {
-        const reviewId = 'review_' + Date.now();
+        const reviewId = 'review_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
         const reviewData = {
           id: reviewId,
           productId: currentProduct.id,
           userId: currentUser.uid,
-          userName: currentUser.displayName || 'Anonymous',
+          userId_productId: currentUser.uid + '_' + currentProduct.id,
+          userName: currentUser.displayName || 'Customer',
+          userPhoto: currentUser.photoURL || null,
           rating: rating,
           text: reviewTextValue,
           date: Date.now(),
           isVerifiedPurchase: true,
+          status: 'pending', // Admin must approve before showing
           fileUrl: fileUrl,
-          fileType: fileType
+          fileType: fileType,
+          youtubeUrl: youtubeUrl
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId), reviewData);
-        showToast('Review submitted successfully', 'success');
+        showToast('Review submitted! It will be visible after approval. ✅', 'success');
         setRating(0);
         document.getElementById('reviewText').value = '';
         document.getElementById('reviewFile').value = '';
         document.getElementById('filePreview').innerHTML = '';
         document.getElementById('reviewError').style.display = 'none';
+        if (youtubeInput) youtubeInput.value = '';
         loadProductReviews(currentProduct.id);
       } catch (error) {
         console.error('Error submitting review:', error);
-        showToast('Failed to submit review', 'error');
+        showToast('Failed to submit review. Please try again.', 'error');
+      } finally {
+        if (submitBtn) { submitBtn.textContent = 'Submit Review'; submitBtn.disabled = false; }
       }
     }
 
@@ -5547,7 +5670,35 @@
       };
     }
 
-    // ===== NOTIFICATION SYSTEM =====
+    // ===== LAZY BACKGROUND IMAGE LOADER =====
+    (function setupLazyImages() {
+      if (!('IntersectionObserver' in window)) return;
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          const src = el.dataset.lazySrc;
+          if (src) {
+            el.style.backgroundImage = `url('${src}')`;
+            el.classList.add('loaded');
+            el.removeAttribute('data-lazy-src');
+          }
+          observer.unobserve(el);
+        });
+      }, { rootMargin: '200px' });
+      // Watch for new elements
+      window._lazyObserver = observer;
+    })();
+
+    function lazySetBg(el, url) {
+      if (!el || !url) return;
+      if (window._lazyObserver) {
+        el.dataset.lazySrc = url;
+        window._lazyObserver.observe(el);
+      } else {
+        el.style.backgroundImage = `url('${url}')`;
+      }
+    }
     // Keys are per-user — set after auth, default to guest key
     let NOTIF_KEY = 'bz_notifications_guest';
     let NOTIF_META_KEY = 'bz_notif_meta_guest';
@@ -5767,10 +5918,23 @@
     }
 
     function updateAdminSettingsUI() {
-      document.getElementById('deliveryCharge').textContent = adminSettings.deliveryCharge;
-      document.getElementById('gatewayChargePercent').textContent = `${adminSettings.gatewayChargePercent}%`;
+      const delEl = document.getElementById('deliveryCharge');
+      const gwEl = document.getElementById('gatewayChargePercent');
+      if (delEl) delEl.textContent = adminSettings.deliveryCharge;
+      if (gwEl) gwEl.textContent = `${adminSettings.gatewayChargePercent}%`;
       updateCurrencySymbols();
       updateHeroContent();
+
+      // Sync footer contact info from adminSettings
+      if (adminSettings.storeEmail) {
+        const el = document.getElementById('footerEmailPrimary');
+        if (el) el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> <a href="mailto:${adminSettings.storeEmail}">${adminSettings.storeEmail}</a>`;
+      }
+      if (adminSettings.storePhone) {
+        const phone = adminSettings.storePhone.replace(/\D/g,'');
+        const el = document.getElementById('footerPhoneLink');
+        if (el) el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> <a href="https://wa.me/${phone}?text=Hello%20Buyzo%20Cart" target="_blank">${adminSettings.storePhone} (WhatsApp)</a>`;
+      }
     }
 
     function fetchLiveData() {
@@ -5870,15 +6034,16 @@
     }
 
     function loadCachedData() {
+      // Load from cache IMMEDIATELY — replaces skeleton with real data
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
+        window.products = products;
+        // Render instantly to replace skeleton
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
-        const trendingProducts = products.filter(p => p.isTrending).slice(0, 10);
-        renderProductSlider(trendingProducts.length > 0 ? trendingProducts : products.slice(0, 10), 'productSlider');
-        const featuredProducts = products.filter(p => p.isFeatured);
-        if (featuredProducts.length > 0) renderProducts(featuredProducts, 'homeProductGrid');
+        const trending = products.filter(p => p.isTrending || p.trending).slice(0, 10);
+        renderProductSlider(trending.length > 0 ? trending : products.slice(0, 10), 'productSlider');
         updateProductsCount();
       }
       const cachedCategories = cacheManager.get(CACHE_KEYS.CATEGORIES);
@@ -5894,7 +6059,7 @@
       }
       const cachedSettings = cacheManager.get(CACHE_KEYS.SETTINGS);
       if (cachedSettings) {
-        adminSettings = cachedSettings;
+        adminSettings = { ...adminSettings, ...cachedSettings };
         updateAdminSettingsUI();
       }
     }
