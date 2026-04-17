@@ -89,6 +89,60 @@
     .product-card-skeleton .sk-price{height:18px;width:40%}
     /* Hide body overflow during load */
     body.loading{overflow:hidden}
+
+    /* ====== AI ASSISTANT BOX ====== */
+    .ai-assistant-box{
+      background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 100%);
+      border:1.5px solid #bfdbfe;
+      border-radius:16px;
+      padding:20px 16px 16px;
+      margin:18px 0 0;
+    }
+    [data-theme="dark"] .ai-assistant-box{
+      background:linear-gradient(135deg,#1e3a5f 0%,#14532d 100%);
+      border-color:#1d4ed8;
+    }
+    .ai-assistant-title{
+      font-size:15px;font-weight:700;color:#1d4ed8;margin-bottom:12px;display:flex;align-items:center;gap:6px;
+    }
+    [data-theme="dark"] .ai-assistant-title{color:#93c5fd}
+    .ai-search-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    .ai-search-input{
+      flex:1;min-width:140px;padding:10px 14px;border:1.5px solid #bfdbfe;border-radius:10px;
+      font-size:14px;background:#fff;color:#0f172a;outline:none;
+    }
+    .ai-search-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+    [data-theme="dark"] .ai-search-input{background:#1e293b;border-color:#334155;color:#f1f5f9;}
+    .ai-search-btn{
+      display:flex;align-items:center;gap:6px;
+      background:#2563eb;color:#fff;border:none;padding:10px 16px;
+      border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;
+      transition:background .2s;
+    }
+    .ai-search-btn:hover{background:#1d4ed8;}
+    .ai-call-btn{
+      background:#16a34a;color:#fff;border:none;padding:10px 15px;
+      border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;
+      transition:background .2s;
+    }
+    .ai-call-btn:hover{background:#15803d;}
+    #productContainer{margin-top:14px;}
+    #productContainer .ai-product-card{
+      display:inline-flex;flex-direction:column;gap:4px;
+      background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+      padding:12px 16px;margin:6px 6px 0 0;min-width:140px;
+      box-shadow:0 2px 8px rgba(0,0,0,.06);vertical-align:top;
+    }
+    [data-theme="dark"] #productContainer .ai-product-card{background:#1e293b;border-color:#334155;}
+    #productContainer .ai-product-card h3{font-size:14px;font-weight:600;text-transform:capitalize;margin:0;}
+    #productContainer .ai-product-card p{font-size:13px;color:#2563eb;font-weight:700;margin:0;}
+    .ai-no-result{color:#ef4444;font-size:14px;font-weight:500;margin-top:8px;}
+    .ai-contact-box{
+      margin-top:12px;background:#fff;border:1px solid #bfdbfe;border-radius:10px;
+      padding:12px 16px;font-size:14px;font-weight:500;color:#1e40af;
+    }
+    [data-theme="dark"] .ai-contact-box{background:#1e293b;border-color:#1d4ed8;color:#93c5fd;}
+    /* ====== END AI ASSISTANT BOX ====== */
   </style>
   <link rel="stylesheet" href="style.css" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="style.css"></noscript>
@@ -352,6 +406,27 @@
           Limited Time Offer: Flat 40% OFF on all Fashion Items — <u>Shop Now →</u>
         </div>
       </section>
+
+      <!-- ====== AI ASSISTANT BOX ====== -->
+      <div class="ai-assistant-box" id="aiAssistantBox">
+        <div class="ai-assistant-title">
+          <span>🤖</span> AI Assistant — जो चाहो ढूंढो!
+        </div>
+        <div class="ai-search-row">
+          <input type="text" id="userInput" class="ai-search-input" placeholder="Kya dekhna hai... (e.g. t-shirt, contact, account)" autocomplete="off" onkeydown="if(event.key==='Enter') sendInput()">
+          <button class="ai-search-btn" onclick="sendInput()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search
+          </button>
+          <button id="callBtn" class="ai-call-btn" onclick="startCall()">📞 Call Assistant</button>
+        </div>
+        <div id="productContainer"></div>
+        <div id="contactBox" class="ai-contact-box" style="display:none;">
+          📞 Call us: <a href="tel:+919557987574" style="color:inherit;font-weight:700;">+91-9557987574</a> &nbsp;|&nbsp;
+          📧 <a href="mailto:support@buyzocartshop.com" style="color:inherit;font-weight:700;">support@buyzocartshop.com</a>
+        </div>
+      </div>
+      <!-- ====== END AI ASSISTANT BOX ====== -->
 
       <div class="banner-carousel skeleton" id="bannerCarousel">
         <div class="banner-track" id="bannerTrack">
@@ -8567,5 +8642,142 @@
     }
 
   </script>
+  <!-- ====== AI ASSISTANT SCRIPT ====== -->
+  <script>
+    /* ---- 1. Input Handler ---- */
+    function sendInput() {
+      const text = (document.getElementById("userInput").value || "").trim();
+      if (!text) return;
+      handleUserInput(text);
+    }
+
+    /* ---- 2. Command Router ---- */
+    function handleUserInput(text) {
+      const t = text.toLowerCase();
+
+      if (t.includes("account") || t.includes("profile") || t.includes("my account")) {
+        executeAction({ action: "OPEN_ACCOUNT" });
+      }
+      else if (t.includes("contact") || t.includes("help") || t.includes("support") || t.includes("phone")) {
+        executeAction({ action: "SHOW_CONTACT" });
+      }
+      else if (t.includes("wishlist") || t.includes("favourite") || t.includes("saved")) {
+        executeAction({ action: "OPEN_WISHLIST" });
+      }
+      else if (t.includes("order") || t.includes("track")) {
+        executeAction({ action: "OPEN_ORDERS" });
+      }
+      else if (t.includes("offer") || t.includes("deal") || t.includes("discount") || t.includes("sale")) {
+        executeAction({ action: "OPEN_OFFERS" });
+      }
+      else if (t.includes("product") || t.includes("shop") || t.includes("buy")) {
+        executeAction({ action: "OPEN_PRODUCTS" });
+      }
+      else {
+        // treat as product search with no price limit
+        executeAction({ action: "SHOW_PRODUCT", query: t, price: Infinity });
+      }
+    }
+
+    /* ---- 3. Action Engine ---- */
+    function executeAction(data) {
+      // Hide contact box unless asked
+      if (data.action !== "SHOW_CONTACT") {
+        document.getElementById("contactBox").style.display = "none";
+      }
+
+      switch (data.action) {
+        case "OPEN_ACCOUNT":
+          if (typeof openAccountPage === "function") openAccountPage();
+          else if (typeof checkAuthAndShowPage === "function") checkAuthAndShowPage("accountPage");
+          break;
+
+        case "SHOW_CONTACT":
+          document.getElementById("contactBox").style.display = "block";
+          document.getElementById("productContainer").innerHTML = "";
+          break;
+
+        case "OPEN_WISHLIST":
+          if (typeof checkAuthAndShowPage === "function") checkAuthAndShowPage("wishlistPage");
+          break;
+
+        case "OPEN_ORDERS":
+          if (typeof checkAuthAndShowPage === "function") checkAuthAndShowPage("myOrdersPage");
+          break;
+
+        case "OPEN_OFFERS":
+          if (typeof showPage === "function") showPage("offersPage");
+          break;
+
+        case "OPEN_PRODUCTS":
+          if (typeof showPage === "function") showPage("productsPage");
+          break;
+
+        case "SHOW_PRODUCT":
+          showAiProducts(data.query, data.price);
+          break;
+      }
+    }
+
+    /* ---- 4. Product System ---- */
+    // Static fallback products — site's real products come from Firebase
+    const aiProducts = [
+      { name: "t-shirt", price: 299 },
+      { name: "t-shirt", price: 599 },
+      { name: "t-shirt", price: 999 },
+      { name: "jeans", price: 799 },
+      { name: "jeans", price: 1299 },
+      { name: "sneakers", price: 1499 },
+      { name: "kurta", price: 499 },
+      { name: "jacket", price: 1999 },
+      { name: "watch", price: 899 },
+      { name: "bag", price: 699 },
+    ];
+
+    function showAiProducts(query, maxPrice) {
+      const container = document.getElementById("productContainer");
+      container.innerHTML = "";
+
+      // First try to search via the site's own search
+      if (typeof openSearchPanel === "function" && typeof document.getElementById("searchPanelInput") !== "undefined") {
+        const sp = document.getElementById("searchPanelInput");
+        if (sp) {
+          openSearchPanel();
+          sp.value = query;
+          sp.dispatchEvent(new Event("input", { bubbles: true }));
+          return; // let the real search handle it
+        }
+      }
+
+      // Fallback: show from static list
+      const filtered = aiProducts.filter(p =>
+        p.name.includes(query.toLowerCase()) && p.price <= maxPrice
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="ai-no-result">❌ "${query}" ke liye koi product nahi mila.</div>`;
+        return;
+      }
+
+      filtered.forEach(p => {
+        container.innerHTML += `
+          <div class="ai-product-card">
+            <h3>${p.name}</h3>
+            <p>₹${p.price}</p>
+          </div>`;
+      });
+    }
+
+    /* ---- 5. Call Assistant ---- */
+    function startCall() {
+      document.getElementById("contactBox").style.display = "block";
+      document.getElementById("productContainer").innerHTML =
+        `<div style="margin-top:8px;font-size:14px;color:#16a34a;font-weight:600;">
+          📞 AI Call feature jald aayega! Abhi neeche ka number use karein.
+        </div>`;
+      // future: Vapi.ai connect hoga yahan
+    }
+  </script>
+  <!-- ====== END AI ASSISTANT SCRIPT ====== -->
 </body>
 </html>
