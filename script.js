@@ -1,3 +1,4 @@
+
     (function() {
       if (window.self !== window.top) {
         document.documentElement.innerHTML = '';
@@ -51,6 +52,7 @@
         el.style.userSelect = 'text';
       });
     })();
+  
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -4349,6 +4351,7 @@
       }, { passive: true });
     })();
 
+  
   // ACCOUNT PAGE
     const accAuth = firebase.auth();
     const accDb = firebase.database();
@@ -4917,6 +4920,7 @@
       }
     }
 
+  
     // ============================================================
     //  CONFIGURATION — Add your keys here
     // ============================================================
@@ -5142,3 +5146,4 @@
         if (hLabel) hLabel.textContent   = "AI Call";
       }
     }
+  
