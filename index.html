@@ -1826,7 +1826,7 @@
       bottom: 68px;
       left: 0;
       right: 0;
-      background: var(--card, #ffffff);
+      background: var(--surface);
       padding: 12px 16px;
       border-top: 1px solid var(--border);
       box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
@@ -1834,15 +1834,13 @@
       display: flex;
       gap: 10px;
     }
-    [data-theme="dark"] .sticky-order-buttons-fixed,
-    [data-theme="dark"] .sticky-action-buttons-fixed { background: var(--card, #1e293b); }
     
     .sticky-action-buttons-fixed {
       position: fixed;
       bottom: 68px;
       left: 0;
       right: 0;
-      background: var(--card, #ffffff);
+      background: var(--surface);
       padding: 12px 16px;
       border-top: 1px solid var(--border);
       box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
@@ -2381,7 +2379,7 @@
     }
     .zoom-btn:hover { background: rgba(255,255,255,0.3); }
 
-    /* Zoom slider styles */
+    /* Zoom modal fullscreen + slider */
     .zoom-modal { background: #000 !important; }
     .zoom-content {
       position: relative; background: #000; width: 100vw; height: 100vh;
@@ -2391,15 +2389,14 @@
     .zoom-image {
       max-width: 95vw; max-height: 78vh; object-fit: contain;
       transition: transform 0.2s ease, opacity 0.18s ease;
-      transform-origin: center center;
-      user-select: none; -webkit-user-drag: none;
+      transform-origin: center center; user-select: none;
     }
     .zoom-slider-prev, .zoom-slider-next {
       position: absolute; top: 50%; transform: translateY(-50%);
       background: rgba(255,255,255,0.15); border: none; color: white;
       width: 44px; height: 44px; border-radius: 50%; font-size: 18px;
       cursor: pointer; z-index: 10; display: flex; align-items: center;
-      justify-content: center; backdrop-filter: blur(4px); transition: background 0.2s;
+      justify-content: center; transition: background 0.2s;
     }
     .zoom-slider-prev { left: 12px; }
     .zoom-slider-next { right: 12px; }
@@ -3979,91 +3976,55 @@
       }
     }
 
-    // ── Zoom slider state ──
-    let zoomSliderIndex = 0;
-    let zoomSliderImages = [];
+    let _zoomIdx = 0;
+    let _zoomImgs = [];
 
     function openZoomModal(imageSrc) {
-      const modal = document.getElementById('zoomModal');
-      if (!modal) return;
-      zoomSliderImages = (currentProductImages && currentProductImages.length > 0)
-        ? currentProductImages : [imageSrc];
-      zoomSliderIndex = Math.max(0, zoomSliderImages.indexOf(imageSrc));
+      const zoomModal = document.getElementById('zoomModal');
+      if (!zoomModal) return;
+      _zoomImgs = (currentProductImages && currentProductImages.length > 0) ? currentProductImages : [imageSrc];
+      _zoomIdx = Math.max(0, _zoomImgs.indexOf(imageSrc));
       currentZoomLevel = 1;
-      _renderZoomSlide();
-      _buildZoomDots();
-      modal.style.display = 'flex';
-      modal.classList.add('active');
+      _zoomRender();
+      _zoomBuildDots();
+      zoomModal.style.display = 'flex';
+      zoomModal.classList.add('active');
       document.body.style.overflow = 'hidden';
-      const single = zoomSliderImages.length <= 1;
-      const prev = document.getElementById('zoomSliderPrev');
-      const next = document.getElementById('zoomSliderNext');
-      if (prev) prev.style.display = single ? 'none' : 'flex';
-      if (next) next.style.display = single ? 'none' : 'flex';
+      const single = _zoomImgs.length <= 1;
+      const prevBtn = document.getElementById('zoomSliderPrev');
+      const nextBtn = document.getElementById('zoomSliderNext');
+      if (prevBtn) prevBtn.style.display = single ? 'none' : 'flex';
+      if (nextBtn) nextBtn.style.display = single ? 'none' : 'flex';
     }
 
-    function _renderZoomSlide() {
+    function _zoomRender() {
       const img = document.getElementById('zoomImage');
       const counter = document.getElementById('zoomCounter');
       if (!img) return;
-      img.style.opacity = '0';
-      setTimeout(function() {
-        img.src = zoomSliderImages[zoomSliderIndex];
-        currentZoomLevel = 1;
-        img.style.transform = 'scale(1)';
-        img.style.opacity = '1';
-      }, 100);
+      img.src = _zoomImgs[_zoomIdx];
+      currentZoomLevel = 1;
+      img.style.transform = 'scale(1)';
       if (counter) {
-        counter.style.display = zoomSliderImages.length > 1 ? 'block' : 'none';
-        counter.textContent = (zoomSliderIndex + 1) + ' / ' + zoomSliderImages.length;
+        counter.style.display = _zoomImgs.length > 1 ? 'block' : 'none';
+        counter.textContent = (_zoomIdx + 1) + ' / ' + _zoomImgs.length;
       }
       document.querySelectorAll('.zoom-dot').forEach(function(d, i) {
-        d.classList.toggle('active', i === zoomSliderIndex);
+        d.classList.toggle('active', i === _zoomIdx);
       });
     }
 
-    function _buildZoomDots() {
-      const container = document.getElementById('zoomDots');
-      if (!container) return;
-      container.innerHTML = '';
-      if (zoomSliderImages.length <= 1) return;
-      zoomSliderImages.forEach(function(_, i) {
+    function _zoomBuildDots() {
+      const c = document.getElementById('zoomDots');
+      if (!c) return;
+      c.innerHTML = '';
+      if (_zoomImgs.length <= 1) return;
+      _zoomImgs.forEach(function(_, i) {
         const dot = document.createElement('div');
-        dot.className = 'zoom-dot' + (i === zoomSliderIndex ? ' active' : '');
-        dot.addEventListener('click', function() { zoomSliderIndex = i; _renderZoomSlide(); });
-        container.appendChild(dot);
+        dot.className = 'zoom-dot' + (i === _zoomIdx ? ' active' : '');
+        dot.onclick = function() { _zoomIdx = i; _zoomRender(); };
+        c.appendChild(dot);
       });
     }
-
-    // Touch swipe inside zoom modal
-    (function() {
-      var _tx = 0;
-      document.addEventListener('DOMContentLoaded', function() {
-        var zImg = document.getElementById('zoomImage');
-        if (zImg) {
-          zImg.addEventListener('touchstart', function(e) { _tx = e.touches[0].clientX; }, {passive:true});
-          zImg.addEventListener('touchend', function(e) {
-            var diff = _tx - e.changedTouches[0].clientX;
-            if (Math.abs(diff) > 45 && currentZoomLevel <= 1) {
-              if (diff > 0) {
-                zoomSliderIndex = (zoomSliderIndex + 1) % zoomSliderImages.length;
-              } else {
-                zoomSliderIndex = (zoomSliderIndex - 1 + zoomSliderImages.length) % zoomSliderImages.length;
-              }
-              _renderZoomSlide();
-            }
-          });
-        }
-        document.getElementById('zoomSliderPrev') && document.getElementById('zoomSliderPrev').addEventListener('click', function() {
-          zoomSliderIndex = (zoomSliderIndex - 1 + zoomSliderImages.length) % zoomSliderImages.length;
-          _renderZoomSlide();
-        });
-        document.getElementById('zoomSliderNext') && document.getElementById('zoomSliderNext').addEventListener('click', function() {
-          zoomSliderIndex = (zoomSliderIndex + 1) % zoomSliderImages.length;
-          _renderZoomSlide();
-        });
-      });
-    })();
 
     function startAutoSlide() {
       if (autoSlideInterval) clearInterval(autoSlideInterval);
@@ -4173,14 +4134,12 @@
       const adminSimilarIds = (product.similarFromAdmin && Array.isArray(product.similarFromAdmin))
         ? product.similarFromAdmin : [];
 
-      // Auto - same category, admin-added ones exclude
       let autoProducts = products.filter(function(p) {
         return p.id !== product.id &&
                p.category === product.category &&
                !adminSimilarIds.includes(p.id);
       });
 
-      // Rating ke hisab se sort
       const ratingMap = {};
       autoProducts.forEach(function(p) {
         const rv = reviews.filter(function(r) { return r.productId === p.id; });
@@ -4188,7 +4147,6 @@
       });
       autoProducts.sort(function(a, b) { return (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0); });
 
-      // Row 1: first 20, Row 2: next 20
       const row1 = autoProducts.slice(0, 20);
       const row2 = autoProducts.slice(20, 40);
 
@@ -4236,7 +4194,6 @@
       const section = container ? container.closest('.similar-products-small') : null;
       if (!container) return;
 
-      // Sirf admin-manually-added products
       let adminProducts = [];
       if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin) && product.similarFromAdmin.length > 0) {
         adminProducts = product.similarFromAdmin
@@ -4244,7 +4201,6 @@
           .filter(Boolean);
       }
 
-      // Koi admin product nahi toh section hide karo
       if (adminProducts.length === 0) {
         if (section) section.style.display = 'none';
         return;
@@ -6630,6 +6586,31 @@
       document.getElementById('zoomIn')?.addEventListener('click', () => adjustZoom(0.2));
       document.getElementById('zoomOut')?.addEventListener('click', () => adjustZoom(-0.2));
       document.getElementById('zoomReset')?.addEventListener('click', resetZoom);
+      document.getElementById('zoomSliderPrev')?.addEventListener('click', () => {
+        _zoomIdx = (_zoomIdx - 1 + _zoomImgs.length) % _zoomImgs.length;
+        _zoomRender();
+      });
+      document.getElementById('zoomSliderNext')?.addEventListener('click', () => {
+        _zoomIdx = (_zoomIdx + 1) % _zoomImgs.length;
+        _zoomRender();
+      });
+      // Touch swipe on zoom image
+      (function() {
+        let _ztx = 0;
+        const zImg = document.getElementById('zoomImage');
+        if (zImg) {
+          zImg.addEventListener('touchstart', e => { _ztx = e.touches[0].clientX; }, {passive:true});
+          zImg.addEventListener('touchend', e => {
+            const diff = _ztx - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 45 && currentZoomLevel <= 1) {
+              _zoomIdx = diff > 0
+                ? (_zoomIdx + 1) % _zoomImgs.length
+                : (_zoomIdx - 1 + _zoomImgs.length) % _zoomImgs.length;
+              _zoomRender();
+            }
+          });
+        }
+      })();
       document.getElementById('productImageModalClose')?.addEventListener('click', () => document.getElementById('productImageModal').classList.remove('active'));
       document.getElementById('productImageModalPrev')?.addEventListener('click', prevProductModalImage);
       document.getElementById('productImageModalNext')?.addEventListener('click', nextProductModalImage);
@@ -7148,7 +7129,7 @@
     })();
 
   </script>
-  <!-- Account page is in account.html (separate file) -->
+  <!-- Account page is in account.html (separate hosted file) -->
   <script>
     function openAccountPage() {
       if (!currentUser) { showLoginModal(); return; }
