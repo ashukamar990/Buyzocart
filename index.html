@@ -71,10 +71,11 @@
     .btn{background:#2563eb;color:#fff;border:none;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer}
     .container{max-width:1100px;margin:0 auto;padding:16px}
     .page{display:none}.page.active{display:block}
-    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;display:flex;z-index:40;height:68px}
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;display:flex;z-index:40;height:68px;box-shadow:0 -2px 12px rgba(0,0,0,.1)}
     [data-theme="dark"] .bottom-nav{background:#1e293b;border-color:#334155}
-    .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:#64748b;font-size:12px;font-weight:600;transition:color .2s}
+    .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:#64748b;font-size:11px;font-weight:600;transition:color .2s;padding:6px 4px}
     .bottom-nav-item.active{color:#2563eb}
+    .bottom-nav-item svg{width:26px;height:26px}
     /* Skeleton base */
     .skeleton-box{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
     [data-theme="dark"] .skeleton-box{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%}
@@ -248,6 +249,7 @@
     /* ====== END VAPI ====== */
   </style>
   <link rel="stylesheet" href="style.css">
+  <!-- Critical CSS is inline above; style.css loads synchronously to prevent FOUC -->
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
@@ -866,7 +868,7 @@
               <div class="size-validation-error" id="sizeValidationError">Please select a size to continue</div>
             </div>
 
-            <div class="product-details" style="margin-top:20px;">
+            <div class="product-details" style="margin-top:20px; padding-bottom:110px;">
               <h4>Product Details</h4>
               <p id="spFullDesc"></p>
             </div>
@@ -918,6 +920,9 @@
                 <option value="other">Other</option>
               </select>
             </div>
+            
+            <!-- Spacer so form content clears the fixed buttons -->
+            <div style="height:120px"></div>
             
             <div class="sticky-action-buttons-fixed">
               <button id="toPayment" class="btn" style="flex:1">Continue to Payment</button>
@@ -1816,32 +1821,35 @@
     
     .sticky-order-buttons-fixed {
       position: fixed;
-      bottom: 70px;
+      bottom: 68px; /* bottom nav height */
       left: 0;
       right: 0;
-      background: var(--surface);
-      padding: 15px 20px;
+      background: var(--card, #ffffff);
+      padding: 12px 16px;
       border-top: 1px solid var(--border);
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-      z-index: 100;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+      z-index: 200;
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
     }
     
     .sticky-action-buttons-fixed {
       position: fixed;
-      bottom: 70px;
+      bottom: 68px; /* bottom nav height */
       left: 0;
       right: 0;
-      background: var(--surface);
-      padding: 15px 20px;
+      background: var(--card, #ffffff);
+      padding: 12px 16px;
       border-top: 1px solid var(--border);
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-      z-index: 100;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+      z-index: 200;
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
+    }
+    
+    [data-theme="dark"] .sticky-order-buttons-fixed,
+    [data-theme="dark"] .sticky-action-buttons-fixed {
+      background: var(--card, #1e293b);
     }
     
     #orderPage .card {
@@ -8736,6 +8744,17 @@
         accInitTheme();
         accSetupEventListeners();
       }
+      // Safety: agar accAuth available nahi toh crash avoid karo
+      if (typeof accAuth === 'undefined' || !accAuth) {
+        console.warn('accAuth not initialized — showing account with main user data');
+        if (currentUser) {
+          accCurrentUser = currentUser;
+          if (typeof accUpdateUIForUser === 'function') accUpdateUIForUser(currentUser);
+          if (typeof accLoadUserData === 'function') accLoadUserData(currentUser);
+        }
+        accShowSubPage('accountPage');
+        return;
+      }
       accAuth.onAuthStateChanged(function(user) {
         if (user) {
           accCurrentUser = user;
@@ -8760,13 +8779,19 @@
 
     function openAccountPage() {
       const sec = document.getElementById('accountPageSection');
-      if (sec) {
-        sec.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        const theme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', theme);
-        initAccountPage();
+      if (!sec) return;
+
+      // Guard: sirf tabhi open karo jab main currentUser available ho
+      if (!currentUser) {
+        showLoginModal();
+        return;
       }
+
+      sec.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      const theme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      initAccountPage();
     }
 
   </script>
