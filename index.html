@@ -669,7 +669,7 @@
         <div style="font-size:14px;color:var(--muted)" id="searchResultsCount"></div>
       </div>
 
-      <div class="header-search-container" style="position: sticky; top: 0; z-index: 10; background: var(--card, #ffffff); padding: 10px 0;">
+      <div class="header-search-container" style="position: sticky; top: 0; z-index: 10; background: var(--surface); padding: 10px 0;">
         <div class="header-search-wrap">
           <input id="searchResultsInput" placeholder="Search products..." autocomplete="off" value="" />
           <button class="header-search-btn" id="searchResultsBtn">
@@ -1327,7 +1327,7 @@
 
   <div class="modal-overlay zoom-modal" id="zoomModal">
     <div class="zoom-content">
-      <button class="zoom-close" id="zoomClose">×</button>
+      <button class="zoom-close" id="zoomClose">&#215;</button>
       <button class="zoom-slider-prev" id="zoomSliderPrev">&#10094;</button>
       <button class="zoom-slider-next" id="zoomSliderNext">&#10095;</button>
       <div class="zoom-counter" id="zoomCounter"></div>
@@ -1529,7 +1529,7 @@
     
     .header-search-container {
       padding: 10px 20px;
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border-bottom: 1px solid var(--border);
       transition: all 0.3s ease;
       position: sticky;
@@ -1548,7 +1548,7 @@
       padding: 12px 50px 12px 20px;
       border: 1px solid var(--border);
       border-radius: 30px;
-      background: var(--card, #ffffff);
+      background: var(--surface);
       color: var(--text);
       font-size: 16px;
       cursor: pointer;
@@ -1699,7 +1699,7 @@
       cursor: pointer;
       border-radius: var(--radius);
       overflow: hidden;
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border: 1px solid var(--border);
       transition: transform 0.2s, box-shadow 0.2s;
       transform: translateZ(0);
@@ -2047,7 +2047,7 @@
       width: 32px;
       height: 32px;
       border: 1px solid var(--border);
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border-radius: 4px;
       cursor: pointer;
       font-size: 18px;
@@ -2170,7 +2170,7 @@
       align-items: center;
       gap: 8px;
       padding: 8px 16px;
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       cursor: pointer;
@@ -2285,7 +2285,7 @@
     .order-action-btn {
       padding: 8px 16px;
       border: 1px solid var(--border);
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border-radius: var(--radius);
       cursor: pointer;
     }
@@ -2380,16 +2380,18 @@
       justify-content: center;
     }
     .zoom-btn:hover { background: rgba(255,255,255,0.3); }
-    /* Zoom modal - fullscreen */
+
+    /* Zoom slider styles */
     .zoom-modal { background: #000 !important; }
     .zoom-content {
       position: relative; background: #000; width: 100vw; height: 100vh;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      border-radius: 0; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; border-radius: 0; overflow: hidden;
     }
     .zoom-image {
       max-width: 95vw; max-height: 78vh; object-fit: contain;
-      transition: transform 0.2s ease; transform-origin: center center;
+      transition: transform 0.2s ease, opacity 0.18s ease;
+      transform-origin: center center;
       user-select: none; -webkit-user-drag: none;
     }
     .zoom-slider-prev, .zoom-slider-next {
@@ -2429,7 +2431,7 @@
       font-weight: 500;
       font-size: 14px;
       color: var(--muted);
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border: 1px solid var(--border);
       transition: all 0.2s;
     }
@@ -2440,7 +2442,7 @@
     }
     .notif-tab:hover:not(.active) { background: var(--hover, #f1f5f9); color: var(--text); }
     .notif-list-container {
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border-radius: 16px;
       overflow: hidden;
       border: 1px solid var(--border);
@@ -2576,7 +2578,7 @@
       margin-bottom: 24px;
     }
     .offer-card {
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 24px;
@@ -2688,7 +2690,7 @@
       gap: 8px;
       font-size: 12px;
       color: var(--muted);
-      background: var(--card, #ffffff);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 12px 16px;
@@ -3977,7 +3979,7 @@
       }
     }
 
-    // ---- ZOOM SLIDER STATE ----
+    // ── Zoom slider state ──
     let zoomSliderIndex = 0;
     let zoomSliderImages = [];
 
@@ -3993,11 +3995,11 @@
       modal.style.display = 'flex';
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
-      const prevBtn = document.getElementById('zoomSliderPrev');
-      const nextBtn = document.getElementById('zoomSliderNext');
       const single = zoomSliderImages.length <= 1;
-      if (prevBtn) prevBtn.style.display = single ? 'none' : 'flex';
-      if (nextBtn) nextBtn.style.display = single ? 'none' : 'flex';
+      const prev = document.getElementById('zoomSliderPrev');
+      const next = document.getElementById('zoomSliderNext');
+      if (prev) prev.style.display = single ? 'none' : 'flex';
+      if (next) next.style.display = single ? 'none' : 'flex';
     }
 
     function _renderZoomSlide() {
@@ -4005,18 +4007,19 @@
       const counter = document.getElementById('zoomCounter');
       if (!img) return;
       img.style.opacity = '0';
-      setTimeout(() => {
+      setTimeout(function() {
         img.src = zoomSliderImages[zoomSliderIndex];
         currentZoomLevel = 1;
         img.style.transform = 'scale(1)';
         img.style.opacity = '1';
-        img.style.transition = 'opacity 0.18s ease, transform 0.2s ease';
       }, 100);
       if (counter) {
         counter.style.display = zoomSliderImages.length > 1 ? 'block' : 'none';
         counter.textContent = (zoomSliderIndex + 1) + ' / ' + zoomSliderImages.length;
       }
-      document.querySelectorAll('.zoom-dot').forEach((d, i) => d.classList.toggle('active', i === zoomSliderIndex));
+      document.querySelectorAll('.zoom-dot').forEach(function(d, i) {
+        d.classList.toggle('active', i === zoomSliderIndex);
+      });
     }
 
     function _buildZoomDots() {
@@ -4024,23 +4027,23 @@
       if (!container) return;
       container.innerHTML = '';
       if (zoomSliderImages.length <= 1) return;
-      zoomSliderImages.forEach((_, i) => {
+      zoomSliderImages.forEach(function(_, i) {
         const dot = document.createElement('div');
         dot.className = 'zoom-dot' + (i === zoomSliderIndex ? ' active' : '');
-        dot.addEventListener('click', () => { zoomSliderIndex = i; _renderZoomSlide(); });
+        dot.addEventListener('click', function() { zoomSliderIndex = i; _renderZoomSlide(); });
         container.appendChild(dot);
       });
     }
 
     // Touch swipe inside zoom modal
     (function() {
-      let _tx = 0;
+      var _tx = 0;
       document.addEventListener('DOMContentLoaded', function() {
-        const zImg = document.getElementById('zoomImage');
+        var zImg = document.getElementById('zoomImage');
         if (zImg) {
-          zImg.addEventListener('touchstart', e => { _tx = e.touches[0].clientX; }, {passive:true});
-          zImg.addEventListener('touchend', e => {
-            const diff = _tx - e.changedTouches[0].clientX;
+          zImg.addEventListener('touchstart', function(e) { _tx = e.touches[0].clientX; }, {passive:true});
+          zImg.addEventListener('touchend', function(e) {
+            var diff = _tx - e.changedTouches[0].clientX;
             if (Math.abs(diff) > 45 && currentZoomLevel <= 1) {
               if (diff > 0) {
                 zoomSliderIndex = (zoomSliderIndex + 1) % zoomSliderImages.length;
@@ -4051,11 +4054,11 @@
             }
           });
         }
-        document.getElementById('zoomSliderPrev')?.addEventListener('click', () => {
+        document.getElementById('zoomSliderPrev') && document.getElementById('zoomSliderPrev').addEventListener('click', function() {
           zoomSliderIndex = (zoomSliderIndex - 1 + zoomSliderImages.length) % zoomSliderImages.length;
           _renderZoomSlide();
         });
-        document.getElementById('zoomSliderNext')?.addEventListener('click', () => {
+        document.getElementById('zoomSliderNext') && document.getElementById('zoomSliderNext').addEventListener('click', function() {
           zoomSliderIndex = (zoomSliderIndex + 1) % zoomSliderImages.length;
           _renderZoomSlide();
         });
@@ -4170,21 +4173,22 @@
       const adminSimilarIds = (product.similarFromAdmin && Array.isArray(product.similarFromAdmin))
         ? product.similarFromAdmin : [];
 
-      // Auto - same category, excluding admin-added ones
-      let autoProducts = products.filter(p =>
-        p.id !== product.id &&
-        p.category === product.category &&
-        !adminSimilarIds.includes(p.id)
-      );
-
-      // Sort by rating
-      const ratingMap = {};
-      autoProducts.forEach(p => {
-        const rv = reviews.filter(r => r.productId === p.id);
-        ratingMap[p.id] = rv.length ? rv.reduce((a, r) => a + r.rating, 0) / rv.length : 0;
+      // Auto - same category, admin-added ones exclude
+      let autoProducts = products.filter(function(p) {
+        return p.id !== product.id &&
+               p.category === product.category &&
+               !adminSimilarIds.includes(p.id);
       });
-      autoProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
 
+      // Rating ke hisab se sort
+      const ratingMap = {};
+      autoProducts.forEach(function(p) {
+        const rv = reviews.filter(function(r) { return r.productId === p.id; });
+        ratingMap[p.id] = rv.length ? rv.reduce(function(a, r) { return a + r.rating; }, 0) / rv.length : 0;
+      });
+      autoProducts.sort(function(a, b) { return (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0); });
+
+      // Row 1: first 20, Row 2: next 20
       const row1 = autoProducts.slice(0, 20);
       const row2 = autoProducts.slice(20, 40);
 
@@ -4203,19 +4207,20 @@
       function makeRow(list) {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;overflow-x:auto;gap:12px;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;';
-        list.forEach(p => {
+        list.forEach(function(p) {
           const card = document.createElement('div');
           card.className = 'slider-item';
           card.style.cssText = 'min-width:148px;max-width:148px;flex-shrink:0;cursor:pointer;';
           const stars = ratingMap[p.id] ? '&#9733; ' + ratingMap[p.id].toFixed(1) : '';
+          const name = (p.name || p.title || 'Product');
           card.innerHTML =
             '<div class="slider-item-img" style="background-image:url('' + getProductImage(p) + '');height:115px;background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f8fafc;"></div>' +
             '<div class="slider-item-body">' +
-              '<div class="slider-item-title">' + (p.name||p.title||'Product').substring(0,32) + '</div>' +
+              '<div class="slider-item-title">' + name.substring(0, 32) + (name.length > 32 ? '...' : '') + '</div>' +
               (stars ? '<div style="font-size:11px;color:#f59e0b;margin-top:2px;">' + stars + '</div>' : '') +
               '<div class="slider-item-price">' + formatPrice(p.price) + '</div>' +
             '</div>';
-          card.addEventListener('click', () => showProductDetail(p));
+          card.addEventListener('click', function() { showProductDetail(p); });
           row.appendChild(card);
         });
         return row;
@@ -4231,14 +4236,15 @@
       const section = container ? container.closest('.similar-products-small') : null;
       if (!container) return;
 
-      // Only admin-manually-added products
+      // Sirf admin-manually-added products
       let adminProducts = [];
       if (product.similarFromAdmin && Array.isArray(product.similarFromAdmin) && product.similarFromAdmin.length > 0) {
         adminProducts = product.similarFromAdmin
-          .map(id => products.find(p => p.id === id))
+          .map(function(id) { return products.find(function(p) { return p.id === id; }); })
           .filter(Boolean);
       }
 
+      // Koi admin product nahi toh section hide karo
       if (adminProducts.length === 0) {
         if (section) section.style.display = 'none';
         return;
@@ -4247,17 +4253,17 @@
 
       container.innerHTML = '';
       const frag = document.createDocumentFragment();
-      adminProducts.slice(0, 8).forEach(sim => {
+      adminProducts.slice(0, 8).forEach(function(sim) {
         const item = document.createElement('div');
         item.className = 'similar-product-small';
         const name = sim.name || sim.title || 'Product';
         item.innerHTML =
           '<div class="similar-product-small-img" style="background-image:url('' + getProductImage(sim) + '')"></div>' +
           '<div class="similar-product-small-info">' +
-            '<div class="similar-product-small-title">' + (name.length > 22 ? name.substring(0,22) + '…' : name) + '</div>' +
+            '<div class="similar-product-small-title">' + (name.length > 22 ? name.substring(0, 22) + '…' : name) + '</div>' +
             '<div class="similar-product-small-price">' + formatPrice(sim.price) + '</div>' +
           '</div>';
-        item.addEventListener('click', () => showProductDetail(sim));
+        item.addEventListener('click', function() { showProductDetail(sim); });
         frag.appendChild(item);
       });
       container.appendChild(frag);
@@ -7142,11 +7148,10 @@
     })();
 
   </script>
-  <!-- Account page hosted as account.html -->
+  <!-- Account page is in account.html (separate file) -->
   <script>
     function openAccountPage() {
       if (!currentUser) { showLoginModal(); return; }
-      const theme = localStorage.getItem('theme') || 'light';
       window.location.href = 'account.html';
     }
     function closeAccountPage() { showPage('homePage'); }
