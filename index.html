@@ -59,10 +59,9 @@
   <link rel="dns-prefetch" href="https://buyzocart-default-rtdb.firebaseio.com"/>
   <!-- Critical CSS inline - prevents FOUC, renders navbar + hero instantly -->
   <style>
-    :root{--surface:#fff}[data-theme='dark']{--surface:#1e293b}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     html{scroll-behavior:smooth}
-    body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#fff;color:#0f172a;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:78px;overflow-x:hidden}
+    body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#fff;color:#0f172a;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:80px;overflow-x:hidden}
     [data-theme="dark"] body{background:#0f172a;color:#f1f5f9}
     header{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:12px 16px;position:sticky;top:0;z-index:50;border-bottom:1px solid #e2e8f0}
     [data-theme="dark"] header{background:#1e293b;border-color:#334155}
@@ -872,7 +871,6 @@
               <p id="spFullDesc"></p>
             </div>
             
-            <div style="height:100px"></div>
             <div class="sticky-order-buttons-fixed">
               <button id="toUserInfo" class="btn" style="flex:1">Continue → Provide Your Info</button>
               <button id="backToProducts" class="btn secondary" style="flex:1">Back to Products</button>
@@ -921,7 +919,6 @@
               </select>
             </div>
             
-            <div style="height:110px"></div>
             <div class="sticky-action-buttons-fixed">
               <button id="toPayment" class="btn" style="flex:1">Continue to Payment</button>
               <button id="editOrder" class="btn secondary" style="flex:1">Edit Order Details</button>
@@ -1819,30 +1816,41 @@
     
     .sticky-order-buttons-fixed {
       position: fixed;
-      bottom: 68px;
+      bottom: 70px;
       left: 0;
       right: 0;
       background: var(--surface);
-      padding: 12px 16px;
+      padding: 15px 20px;
       border-top: 1px solid var(--border);
-      box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
-      z-index: 200;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 100;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
     
     .sticky-action-buttons-fixed {
       position: fixed;
-      bottom: 68px;
+      bottom: 70px;
       left: 0;
       right: 0;
       background: var(--surface);
-      padding: 12px 16px;
+      padding: 15px 20px;
       border-top: 1px solid var(--border);
-      box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
-      z-index: 200;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 100;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    /* userPage form overlap fix — sticky buttons ke peeche content chhupne se bachao */
+    #userPage .card-panel {
+      padding-bottom: 160px;
+    }
+    /* orderPage bottom spacing */
+    #orderPage .card-panel {
+      padding-bottom: 120px;
     }
     
     #orderPage .card {
@@ -2659,9 +2667,9 @@
     }
   </style>
 
-  <script type="module">
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -2678,7 +2686,7 @@
     const database = getDatabase(app);
     const auth = getAuth(app);
     
-    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
+    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
     
     document.addEventListener('DOMContentLoaded', function() {
       initApp();
@@ -3420,10 +3428,11 @@
 
     function checkAuthAndShowAccount() {
       if (!currentUser) {
+        window._pendingAccountNav = true;
         showLoginModal();
         return;
       }
-      openAccountPage();
+      window.location.href = 'account.html';
     }
 
     function checkAuthAndShowRecentlyViewed() {
@@ -6618,6 +6627,12 @@
             loadSavedAddresses();
             document.getElementById('authModal')?.classList.remove('active');
 
+            // Pending account navigation — login ke baad account.html open karo
+            if (window._pendingAccountNav) {
+              window._pendingAccountNav = false;
+              setTimeout(() => { window.location.href = 'account.html'; }, 300);
+            }
+
             // ===== PRESENCE TRACKING =====
             // Register user as online; auto-remove on disconnect
             try {
@@ -8202,11 +8217,80 @@
   </div>
 
   <script>
-  // ACCOUNT PAGE
-    const accAuth = firebase.auth();
-    const accDb = firebase.database();
+  // ACCOUNT PAGE — Firebase Modular API Shim
+  // accAuth aur accDb banate hain jo window.firebase ke modular API ko compat style mein wrap karte hain
 
+  // Auth shim — compat-style methods modular API pe map kiye
+  const accAuth = {
+    onAuthStateChanged: function(cb) {
+      function poll() {
+        if (window.firebase && window.firebase.onAuthStateChanged) {
+          window.firebase.onAuthStateChanged(window.firebase.auth, cb);
+        } else {
+          setTimeout(poll, 50);
+        }
+      }
+      poll();
+    },
+    sendPasswordResetEmail: function(email) {
+      return window.firebase.sendPasswordResetEmail(window.firebase.auth, email);
+    },
+    signOut: function() {
+      return window.firebase.signOut(window.firebase.auth);
+    }
+  };
 
+  // Database shim — compat-style .ref().once()/.set()/.update()/.remove()/.push()/.orderByChild().equalTo()
+  function _accMakeRef(dbRef, path) {
+    return {
+      once: function() {
+        return window.firebase.get(dbRef);
+      },
+      set: function(data) {
+        return window.firebase.set(dbRef, data);
+      },
+      update: function(data) {
+        return window.firebase.update(dbRef, data);
+      },
+      remove: function() {
+        return window.firebase.remove(dbRef);
+      },
+      push: function(data) {
+        if (window.firebase.push) {
+          return window.firebase.push(dbRef, data);
+        }
+        // Fallback — unique key generate karo
+        var k = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        var newRef = window.firebase.ref(window.firebase.database, (path || '') + '/' + k);
+        return window.firebase.set(newRef, Object.assign({}, data, { _key: k }));
+      },
+      orderByChild: function(child) {
+        return {
+          equalTo: function(val) {
+            return {
+              once: function() {
+                return window.firebase.get(
+                  window.firebase.query(
+                    dbRef,
+                    window.firebase.orderByChild(child),
+                    window.firebase.equalTo(val)
+                  )
+                );
+              }
+            };
+          }
+        };
+      }
+    };
+  }
+
+  const accDb = {
+    ref: function(path) {
+      var db = window.firebase.database;
+      var dbRef = path ? window.firebase.ref(db, path) : window.firebase.ref(db);
+      return _accMakeRef(dbRef, path);
+    }
+  };
 
     // Global state
     let accCurrentUser = null;
@@ -8214,7 +8298,6 @@
     let accAlertCallback = null;
 
     
-    });
 
     function accInitTheme() {
       const savedTheme = localStorage.getItem('theme') || 'light';
