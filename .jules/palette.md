@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2025-05-14 - Accessible Rating Stars
+**Learning:** Rating systems using `<span>` elements for stars are common but completely inaccessible to keyboard users as they cannot be focused or interacted with using a keyboard.
+**Action:** Always use `<button type="button">` for interactive star ratings. Include descriptive `aria-label` attributes (e.g., "Rate 1 star") and implement explicit `:focus-visible` styles to ensure keyboard users have clear visual feedback.
