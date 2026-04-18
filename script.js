@@ -5147,3 +5147,20 @@
       }
     }
   
+
+// ── App Boot ──
+// Wait for window.firebase to be set by the module script, then init
+(function boot() {
+  function tryInit() {
+    if (window.firebase && window.firebase.database) {
+      initApp();
+    } else {
+      setTimeout(tryInit, 50);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInit);
+  } else {
+    tryInit();
+  }
+})();
