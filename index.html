@@ -56,13 +56,11 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Non-blocking font load -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="preconnect" href="https://images.unsplash.com"/>
   <link rel="preconnect" href="https://www.gstatic.com"/>
   <link rel="dns-prefetch" href="https://buyzocart-default-rtdb.firebaseio.com"/>
-  <!-- Critical CSS inline - prevents FOUC, renders navbar + hero instantly -->
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     html{scroll-behavior:smooth}
@@ -80,11 +78,11 @@
     [data-theme="dark"] .bottom-nav{background:#1e293b;border-color:#334155}
     .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:#64748b;font-size:12px;font-weight:600;transition:color .2s}
     .bottom-nav-item.active{color:#2563eb}
-    /* Skeleton base */
+    .bottom-nav-icon{width:24px;height:24px}
+    .bottom-nav-label{font-size:11px;font-weight:500}
     .skeleton-box{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
     [data-theme="dark"] .skeleton-box{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    /* Instant skeleton product grid */
     .product-grid-skeleton{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:16px 0}
     .product-card-skeleton{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,.05)}
     [data-theme="dark"] .product-card-skeleton{background:#1e293b;border-color:#334155}
@@ -92,29 +90,57 @@
     .product-card-skeleton .sk-body{padding:14px;display:flex;flex-direction:column;gap:8px}
     .product-card-skeleton .sk-title{height:14px;width:80%}
     .product-card-skeleton .sk-price{height:18px;width:40%}
-    /* Hide body overflow during load */
     body.loading{overflow:hidden}
-    /* ── Dark mode toggle ── */
     .theme-toggle-btn{background:none;border:1px solid var(--border,#e2e8f0);padding:7px;border-radius:10px;cursor:pointer;color:var(--text,#0f172a);display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s}
     .theme-toggle-btn:hover{background:var(--hover,#f1f5f9)}
     [data-theme="dark"] .theme-toggle-btn .sun-icon{display:none!important}
     [data-theme="dark"] .theme-toggle-btn .moon-icon{display:block!important}
-    /* ── Back to top button ── */
     #backToTop{position:fixed;bottom:86px;right:16px;width:40px;height:40px;border-radius:50%;background:#2563eb;color:#fff;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:200;box-shadow:0 4px 14px rgba(37,99,235,.4);transition:opacity .3s,transform .3s;font-size:18px}
     #backToTop.show{display:flex}
     #backToTop:hover{transform:translateY(-2px)}
-    /* ── WhatsApp FAB ── */
-    #whatsappFab{position:fixed;bottom:86px;left:16px;width:46px;height:46px;border-radius:50%;background:#25d366;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:200;box-shadow:0 4px 14px rgba(37,211,102,.45);transition:transform .2s}
-    #whatsappFab:hover{transform:scale(1.1)}
-    /* ── Cookie banner ── */
     #cookieBanner{position:fixed;bottom:72px;left:0;right:0;background:#1e293b;color:#f1f5f9;padding:12px 16px;z-index:300;display:none;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px}
     #cookieBanner.show{display:flex}
     #cookieBanner button{padding:7px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600}
     #cookieAccept{background:#2563eb;color:#fff}
     #cookieDecline{background:transparent;color:#94a3b8;border:1px solid #475569!important}
-    /* ── Page progress bar ── */
     #progressBar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#2563eb,#7c3aed);width:0%;z-index:9999;transition:width .3s ease;border-radius:0 3px 3px 0}
     
+    .sticky-action-buttons {
+      position: sticky;
+      bottom: 80px;
+      background: var(--surface, #fff);
+      padding: 16px 0;
+      margin-top: 20px;
+      border-top: 1px solid var(--border, #e2e8f0);
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+    }
+    [data-theme="dark"] .sticky-action-buttons {
+      background: #0f172a;
+      border-color: #334155;
+    }
+    .sticky-order-buttons {
+      position: sticky;
+      bottom: 80px;
+      background: var(--surface, #fff);
+      padding: 16px 0;
+      margin-top: 20px;
+      border-top: 1px solid var(--border, #e2e8f0);
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+    }
+    [data-theme="dark"] .sticky-order-buttons {
+      background: #0f172a;
+      border-color: #334155;
+    }
+    #selectedProductCard {
+      padding-bottom: 0;
+    }
+    .card-body {
+      padding-bottom: 0;
+    }
   </style>
   <link rel="stylesheet" href="style.css">
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
@@ -305,7 +331,6 @@
         <span>Cart</span>
       </div>
       <div class="cta">
-        <!-- Dark mode toggle -->
         <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
           <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -369,7 +394,6 @@
 
       <div class="banner-carousel skeleton" id="bannerCarousel">
         <div class="banner-track" id="bannerTrack">
-          <!-- Instant skeleton banner shown before Firebase loads -->
           <div class="banner-slide skeleton-box" style="height:180px;border-radius:12px;flex-shrink:0;width:100%;"></div>
         </div>
         <div class="banner-controls" id="bannerControls"></div>
@@ -403,7 +427,6 @@
       </div>
 
       <div class="product-grid" id="homeProductGrid">
-        <!-- Instant skeleton shown while Firebase loads -->
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
@@ -681,13 +704,12 @@
               <h4>Product Details</h4>
               <p id="spFullDesc"></p>
             </div>
-            
-            <div class="sticky-order-buttons-fixed">
-              <button id="toUserInfo" class="btn" style="flex:1">Continue → Provide Your Info</button>
-              <button id="backToProducts" class="btn secondary" style="flex:1">Back to Products</button>
-            </div>
           </div>
         </div>
+      </div>
+      <div class="sticky-order-buttons">
+        <button id="toUserInfo" class="btn" style="flex:1">Continue → Provide Your Info</button>
+        <button id="backToProducts" class="btn secondary" style="flex:1">Back to Products</button>
       </div>
     </section>
 
@@ -730,17 +752,16 @@
               </select>
             </div>
             
-            <div class="sticky-action-buttons-fixed">
-              <button id="toPayment" class="btn" style="flex:1">Continue to Payment</button>
-              <button id="editOrder" class="btn secondary" style="flex:1">Edit Order Details</button>
-              <button id="saveUserInfo" class="btn secondary" style="flex:1">Save This Address</button>
-            </div>
-            
             <div style="margin-top:16px;color:var(--muted);font-size:14px">
               <strong>Note:</strong> If you prefer to change products, click "Edit Order Details" or use "Products" to go back.
             </div>
           </div>
         </div>
+      </div>
+      <div class="sticky-action-buttons">
+        <button id="toPayment" class="btn" style="flex:1">Continue to Payment</button>
+        <button id="editOrder" class="btn secondary" style="flex:1">Edit Order Details</button>
+        <button id="saveUserInfo" class="btn secondary" style="flex:1">Save This Address</button>
       </div>
     </section>
 
@@ -999,14 +1020,14 @@
 
   <div class="bottom-nav">
     <div class="bottom-nav-item active" onclick="showPage('homePage')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
         <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
       <span class="bottom-nav-label">Home</span>
     </div>
     <div class="bottom-nav-item" onclick="showPage('productsPage')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <rect x="3" y="3" width="7" height="7"></rect>
         <rect x="14" y="3" width="7" height="7"></rect>
         <rect x="14" y="14" width="7" height="7"></rect>
@@ -1015,7 +1036,7 @@
       <span class="bottom-nav-label">Products</span>
     </div>
     <div class="bottom-nav-item" onclick="checkAuthAndShowPage('myOrdersPage')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <circle cx="9" cy="21" r="1"></circle>
         <circle cx="20" cy="21" r="1"></circle>
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
@@ -1023,7 +1044,7 @@
       <span class="bottom-nav-label">Orders</span>
     </div>
     <div class="bottom-nav-item" onclick="checkAuthAndShowAccount()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bottom-nav-icon">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
       </svg>
@@ -1330,37 +1351,21 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-
-  <!-- ===== EXTERNAL SCRIPTS ===== -->
-  <!-- Security protection -->
   <script src="security.js" defer></script>
 
-  <!-- Main application logic -->
   <script src="main.js" defer></script>
 
-
-
-  <!-- ── Progress Bar ── -->
   <div id="progressBar"></div>
 
-  <!-- ── Back to Top ── -->
   <button id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top" aria-label="Back to top">↑</button>
 
-  <!-- ── WhatsApp FAB ── -->
-  <a id="whatsappFab" href="https://wa.me/919557987574?text=Hello%20Buyzo%20Cart%2C%20I%20need%20help!" target="_blank" rel="noopener" title="Chat on WhatsApp" aria-label="WhatsApp">
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-  </a>
-
-  <!-- ── Cookie Consent Banner ── -->
   <div id="cookieBanner" role="banner">
     <span style="flex:1;min-width:200px">🍪 We use cookies to improve your experience. <a href="privacy.html" style="color:#93c5fd;text-decoration:underline">Learn more</a></span>
     <button id="cookieAccept" onclick="acceptCookies()">Accept</button>
     <button id="cookieDecline" onclick="declineCookies()">Decline</button>
   </div>
 
-  <!-- ── New Feature Scripts ── -->
   <script>
-    // Dark mode toggle
     function toggleTheme() {
       const cur = document.documentElement.getAttribute('data-theme') || 'light';
       const next = cur === 'dark' ? 'light' : 'dark';
@@ -1371,7 +1376,6 @@
       if (sun) sun.style.display = next === 'dark' ? 'none' : 'block';
       if (moon) moon.style.display = next === 'dark' ? 'block' : 'none';
     }
-    // Init theme on load
     (function() {
       const t = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', t);
@@ -1383,13 +1387,11 @@
       }
     })();
 
-    // Back to top
     window.addEventListener('scroll', function() {
       const btn = document.getElementById('backToTop');
       if (btn) btn.classList.toggle('show', window.scrollY > 400);
     }, { passive: true });
 
-    // Cookie consent
     (function() {
       if (!localStorage.getItem('bz_cookie_consent')) {
         setTimeout(() => {
@@ -1407,7 +1409,6 @@
       document.getElementById('cookieBanner').classList.remove('show');
     }
 
-    // Page progress bar on scroll
     window.addEventListener('scroll', function() {
       const bar = document.getElementById('progressBar');
       if (!bar) return;
@@ -1417,13 +1418,11 @@
     }, { passive: true });
   </script>
 
-  <!-- Scroll To Top Button -->
   <button id="scrollTopBtn" title="Back to top" aria-label="Scroll to top" style="position:fixed;bottom:86px;right:16px;z-index:200;width:42px;height:42px;border-radius:50%;background:#2563eb;color:#fff;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,99,235,.4);font-size:18px;">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
   </button>
 
   <script>
-    // ── Dark Mode Toggle ──────────────────────────────────────
     (function(){
       var saved = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', saved);
@@ -1444,7 +1443,6 @@
       });
     })();
 
-    // ── Scroll To Top ─────────────────────────────────────────
     (function(){
       var btn = document.getElementById('scrollTopBtn');
       if (!btn) return;
