@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes" />
   <title>Buyzocart Shop - Best Deals & Products</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -230,57 +230,39 @@
       background: #dc2626;
     }
 
-    .zoom-modal .zoom-content {
-      position: relative;
-      max-width: 90vw;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .fullscreen-viewer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 10000;
+      display: none;
+      touch-action: none;
     }
-    .zoom-modal .zoom-image {
-      max-width: 100%;
-      max-height: 70vh;
-      object-fit: contain;
-      border-radius: 12px;
+    .fullscreen-viewer.active {
+      display: block;
     }
-    .zoom-modal .zoom-controls {
-      display: flex;
-      gap: 12px;
-      margin-top: 20px;
-      background: rgba(0,0,0,0.5);
-      padding: 12px 20px;
-      border-radius: 50px;
-      backdrop-filter: blur(10px);
-    }
-    .zoom-modal .zoom-btn {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: none;
-      background: #2563eb;
-      color: white;
-      font-size: 24px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-    .zoom-modal .zoom-btn:hover {
-      background: #1d4ed8;
-      transform: scale(1.05);
-    }
-    .zoom-modal .zoom-close {
+    .viewer-header {
       position: absolute;
-      top: -40px;
-      right: -40px;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      z-index: 10001;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+    }
+    .viewer-close {
       width: 40px;
       height: 40px;
       border-radius: 50%;
+      background: rgba(255,255,255,0.2);
       border: none;
-      background: rgba(0,0,0,0.7);
       color: white;
       font-size: 28px;
       cursor: pointer;
@@ -289,15 +271,55 @@
       justify-content: center;
       backdrop-filter: blur(10px);
     }
-    .zoom-nav {
+    .viewer-counter {
+      color: white;
+      font-size: 16px;
+      font-weight: 500;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 16px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .viewer-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+    .viewer-track {
+      display: flex;
+      height: 100%;
+      transition: transform 0.3s ease;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+    .viewer-slide {
+      flex: 0 0 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+    .viewer-slide img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      touch-action: pan-x pan-y pinch-zoom;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .viewer-nav {
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
       width: 50px;
       height: 50px;
       border-radius: 50%;
+      background: rgba(255,255,255,0.2);
       border: none;
-      background: rgba(0,0,0,0.6);
       color: white;
       font-size: 24px;
       cursor: pointer;
@@ -305,28 +327,86 @@
       align-items: center;
       justify-content: center;
       backdrop-filter: blur(10px);
+      z-index: 10001;
       transition: all 0.2s;
-      z-index: 10;
     }
-    .zoom-nav:hover {
+    .viewer-nav:hover {
       background: rgba(37, 99, 235, 0.8);
     }
-    .zoom-nav.prev {
-      left: -60px;
+    .viewer-nav.prev {
+      left: 16px;
     }
-    .zoom-nav.next {
-      right: -60px;
+    .viewer-nav.next {
+      right: 16px;
+    }
+    .viewer-dots {
+      position: absolute;
+      bottom: 100px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      z-index: 10001;
+    }
+    .viewer-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transition: all 0.3s;
+    }
+    .viewer-dot.active {
+      background: #2563eb;
+      width: 24px;
+      border-radius: 4px;
+    }
+    .viewer-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      z-index: 10001;
+      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    }
+    .viewer-footer button {
+      padding: 12px 24px;
+      border-radius: 30px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+    .viewer-footer .zoom-in-btn {
+      background: #2563eb;
+      color: white;
+    }
+    .viewer-footer .zoom-out-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+    }
+    .viewer-footer .reset-zoom-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
     }
     @media (max-width: 768px) {
-      .zoom-nav.prev {
-        left: 10px;
+      .viewer-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
       }
-      .zoom-nav.next {
-        right: 10px;
+      .viewer-nav.prev {
+        left: 8px;
       }
-      .zoom-modal .zoom-close {
-        top: 10px;
-        right: 10px;
+      .viewer-nav.next {
+        right: 8px;
+      }
+      .viewer-dots {
+        bottom: 140px;
       }
     }
   </style>
@@ -1329,29 +1409,21 @@
 
   <div class="toast" id="toast"></div>
 
-  <div class="product-image-modal" id="productImageModal">
-    <div class="product-image-modal-content">
-      <button class="product-image-modal-close" id="productImageModalClose">×</button>
-      <img class="product-image-modal-image" id="productImageModalImage" src="" alt="Product image">
-      <div class="product-image-modal-controls">
-        <button class="product-image-modal-prev" id="productImageModalPrev">❮</button>
-        <button class="product-image-modal-next" id="productImageModalNext">❯</button>
-      </div>
-      <div class="product-image-modal-dots" id="productImageModalDots"></div>
+  <div class="fullscreen-viewer" id="fullscreenViewer">
+    <div class="viewer-header">
+      <button class="viewer-close" id="viewerClose">×</button>
+      <div class="viewer-counter" id="viewerCounter">1 / 1</div>
     </div>
-  </div>
-
-  <div class="modal-overlay zoom-modal" id="zoomModal">
-    <div class="zoom-content">
-      <button class="zoom-close" id="zoomClose">×</button>
-      <button class="zoom-nav prev" id="zoomPrev">❮</button>
-      <button class="zoom-nav next" id="zoomNext">❯</button>
-      <img class="zoom-image" id="zoomImage" src="" alt="Zoomed product image">
-      <div class="zoom-controls">
-        <button class="zoom-btn" id="zoomIn">+</button>
-        <button class="zoom-btn" id="zoomOut">-</button>
-        <button class="zoom-btn" id="zoomReset">⟲</button>
-      </div>
+    <div class="viewer-container" id="viewerContainer">
+      <div class="viewer-track" id="viewerTrack"></div>
+    </div>
+    <button class="viewer-nav prev" id="viewerPrev">❮</button>
+    <button class="viewer-nav next" id="viewerNext">❯</button>
+    <div class="viewer-dots" id="viewerDots"></div>
+    <div class="viewer-footer">
+      <button class="zoom-in-btn" id="viewerZoomIn">+ Zoom In</button>
+      <button class="zoom-out-btn" id="viewerZoomOut">− Zoom Out</button>
+      <button class="reset-zoom-btn" id="viewerResetZoom">⟲ Reset</button>
     </div>
   </div>
 
