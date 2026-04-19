@@ -458,8 +458,8 @@
             <button class="btn-outline btn-sm" id="changePasswordBtn">Change</button>
           </div>
           <div class="settings-item">
-            <div class="settings-info"><h4>Two-Factor Authentication</h4><p>Extra security for your account</p></div>
-            <label class="toggle"><input type="checkbox" id="twoFactorToggle"><span class="toggle-slider"></span></label>
+            <div class="settings-info"><h4>Two-Factor Authentication</h4><p id="twoFactorStatus">Extra security for your account</p></div>
+            <button class="btn-outline btn-sm" id="twoFactorBtn" onclick="accOpen2FA()">Setup 2FA</button>
           </div>
           <div class="settings-item">
             <div class="settings-info"><h4>Last Login</h4><p id="lastLoginTime">Loading...</p></div>
@@ -610,11 +610,74 @@
     </div>
   </div>
 
+  <!-- 2FA Modal -->
+  <div class="modal" id="twoFactorModal">
+    <div class="modal-content" style="max-width:420px">
+      <div class="modal-header">
+        <h3 class="modal-title" id="twoFactorModalTitle">Two-Factor Authentication</h3>
+        <button class="modal-close" onclick="accClose2FA()">×</button>
+      </div>
+      <!-- Step 1: Enter phone -->
+      <div id="tfa-step-phone">
+        <p style="margin-bottom:1rem;color:var(--text-secondary)">Enter your mobile number to receive a verification OTP.</p>
+        <div class="form-group">
+          <label class="form-label">Mobile Number</label>
+          <div style="display:flex;gap:0.5rem">
+            <span style="padding:0.625rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);font-weight:600;white-space:nowrap">+91</span>
+            <input type="tel" class="form-control" id="tfaPhoneInput" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric">
+          </div>
+        </div>
+        <div id="tfa-recaptcha" style="margin-bottom:1rem"></div>
+        <p id="tfaPhoneError" style="color:var(--error);font-size:0.8rem;margin-bottom:0.75rem;display:none"></p>
+        <div class="modal-footer">
+          <button class="btn-outline" onclick="accClose2FA()">Cancel</button>
+          <button class="btn" id="tfaSendOtpBtn" onclick="accSend2FAOTP()">Send OTP</button>
+        </div>
+      </div>
+      <!-- Step 2: Enter OTP -->
+      <div id="tfa-step-otp" style="display:none">
+        <p style="margin-bottom:0.5rem;color:var(--text-secondary)">OTP sent to <strong id="tfaPhoneDisplay"></strong></p>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:0.85rem">Enter the 6-digit code below.</p>
+        <div class="form-group">
+          <label class="form-label">Enter OTP</label>
+          <input type="text" class="form-control" id="tfaOtpInput" placeholder="6-digit OTP" maxlength="6" inputmode="numeric" style="letter-spacing:0.4em;font-size:1.2rem;text-align:center">
+        </div>
+        <p id="tfaOtpError" style="color:var(--error);font-size:0.8rem;margin-bottom:0.75rem;display:none"></p>
+        <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1rem">
+          Did not receive? <button onclick="accResend2FAOTP()" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.82rem;padding:0" id="tfaResendBtn">Resend OTP</button>
+          <span id="tfaResendTimer" style="color:var(--text-secondary)"></span>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" onclick="accBack2FAToPhone()">Back</button>
+          <button class="btn" id="tfaVerifyBtn" onclick="accVerify2FAOTP()">Verify OTP</button>
+        </div>
+      </div>
+      <!-- Step 3: Success -->
+      <div id="tfa-step-success" style="display:none;text-align:center;padding:1.5rem 0">
+        <div style="font-size:3rem;margin-bottom:1rem">🔐</div>
+        <h3 style="color:var(--success);margin-bottom:0.5rem">2FA Enabled!</h3>
+        <p style="color:var(--text-secondary);margin-bottom:1.5rem">Your account is now secured with two-factor authentication.</p>
+        <button class="btn" onclick="accClose2FA()">Done</button>
+      </div>
+      <!-- Step: Disable 2FA -->
+      <div id="tfa-step-disable" style="display:none">
+        <div style="text-align:center;padding:1rem 0">
+          <div style="font-size:2.5rem;margin-bottom:1rem">🔐</div>
+          <p style="color:var(--text-secondary);margin-bottom:1.5rem">2FA is currently <strong style="color:var(--success)">enabled</strong> on your account.<br>Do you want to disable it?</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" onclick="accClose2FA()">Keep Enabled</button>
+          <button class="btn btn-danger" onclick="accDisable2FA()">Disable 2FA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Modular SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
     import { getDatabase, ref, set, get, update, remove, query, orderByChild, equalTo, push } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-    import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail, PhoneAuthProvider, RecaptchaVerifier, linkWithCredential, unlink } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
@@ -631,7 +694,7 @@
     const auth = getAuth(app);
 
     // ---- Expose to global scope ----
-    window._accFb = { db, auth, ref, set, get, update, remove, query, orderByChild, equalTo, push, signOut, sendPasswordResetEmail };
+    window._accFb = { db, auth, ref, set, get, update, remove, query, orderByChild, equalTo, push, signOut, sendPasswordResetEmail, PhoneAuthProvider, RecaptchaVerifier, linkWithCredential, unlink };
 
     // ---- Auth State ----
     onAuthStateChanged(auth, (user) => {
@@ -647,6 +710,8 @@
       accLoadAddresses();
       accLoadWishlist();
       accLoadOrders();
+      // 2FA status load karo
+      setTimeout(acc2FALoadStatus, 500);
     });
 
     // ---- Theme Init ----
@@ -1080,6 +1145,257 @@
           setTimeout(() => { window.location.href = 'index.html'; }, 1000);
         }).catch(() => accShowToast('Failed to logout', 'error'));
       });
+    }
+
+    // ========================================
+    // ---- Two-Factor Authentication (2FA) ----
+    // ========================================
+    let _tfaVerificationId = null;
+    let _tfaResendInterval = null;
+    let _tfaRecaptchaVerifier = null;
+
+    // Load 2FA status — button aur description update karo
+    function acc2FALoadStatus() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      fb.get(fb.ref(fb.db, 'users/' + user.uid + '/twoFactor')).then(snap => {
+        const statusEl = document.getElementById('twoFactorStatus');
+        const btn = document.getElementById('twoFactorBtn');
+        if (snap.exists() && snap.val().enabled) {
+          if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-weight:600">✅ Enabled</span> — ' + (snap.val().phone || '');
+          if (btn) { btn.textContent = 'Manage'; btn.style.borderColor = 'var(--success)'; btn.style.color = 'var(--success)'; }
+        } else {
+          if (statusEl) statusEl.textContent = 'Extra security for your account';
+          if (btn) { btn.textContent = 'Setup 2FA'; btn.style.borderColor = ''; btn.style.color = ''; }
+        }
+      }).catch(() => {});
+    }
+
+    // 2FA modal open karo
+    function accOpen2FA() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      fb.get(fb.ref(fb.db, 'users/' + user.uid + '/twoFactor')).then(snap => {
+        if (snap.exists() && snap.val().enabled) {
+          acc2FAShowStep('disable');
+        } else {
+          acc2FAShowStep('phone');
+        }
+        accOpenModal('twoFactorModal');
+      }).catch(() => {
+        acc2FAShowStep('phone');
+        accOpenModal('twoFactorModal');
+      });
+    }
+
+    // Step dikhao (phone / otp / success / disable)
+    function acc2FAShowStep(step) {
+      ['phone', 'otp', 'success', 'disable'].forEach(s => {
+        const el = document.getElementById('tfa-step-' + s);
+        if (el) el.style.display = (s === step) ? 'block' : 'none';
+      });
+      const pErr = document.getElementById('tfaPhoneError');
+      const oErr = document.getElementById('tfaOtpError');
+      if (pErr) { pErr.style.display = 'none'; pErr.textContent = ''; }
+      if (oErr) { oErr.style.display = 'none'; oErr.textContent = ''; }
+    }
+
+    // Modal band karo aur sab cleanup karo
+    function accClose2FA() {
+      accCloseModal('twoFactorModal');
+      if (_tfaRecaptchaVerifier) {
+        try { _tfaRecaptchaVerifier.clear(); } catch(e) {}
+        _tfaRecaptchaVerifier = null;
+      }
+      if (_tfaResendInterval) { clearInterval(_tfaResendInterval); _tfaResendInterval = null; }
+      _tfaVerificationId = null;
+      const otpInput = document.getElementById('tfaOtpInput');
+      if (otpInput) otpInput.value = '';
+      const phoneInput = document.getElementById('tfaPhoneInput');
+      if (phoneInput) phoneInput.value = '';
+    }
+
+    // OTP bhejo
+    async function accSend2FAOTP() {
+      const fb = window._accFb;
+      if (!fb) return;
+      const phoneInput = document.getElementById('tfaPhoneInput');
+      const phone = phoneInput?.value?.trim();
+      const errEl = document.getElementById('tfaPhoneError');
+      const btn = document.getElementById('tfaSendOtpBtn');
+
+      if (!phone || phone.length !== 10 || !/^[6-9]\d{9}$/.test(phone)) {
+        errEl.textContent = 'Kripya valid 10-digit Indian mobile number darj karein';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.6);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px"></span>Bhejna...';
+
+      try {
+        if (!_tfaRecaptchaVerifier) {
+          _tfaRecaptchaVerifier = new fb.RecaptchaVerifier(fb.auth, 'tfa-recaptcha', {
+            size: 'invisible',
+            callback: () => {}
+          });
+        }
+        const fullPhone = '+91' + phone;
+        const provider = new fb.PhoneAuthProvider(fb.auth);
+        _tfaVerificationId = await provider.verifyPhoneNumber(fullPhone, _tfaRecaptchaVerifier);
+
+        document.getElementById('tfaPhoneDisplay').textContent = '+91 ' + phone;
+        acc2FAShowStep('otp');
+        acc2FAStartResendTimer();
+      } catch (err) {
+        console.error('2FA OTP send error:', err);
+        if (_tfaRecaptchaVerifier) {
+          try { _tfaRecaptchaVerifier.clear(); } catch(e) {}
+          _tfaRecaptchaVerifier = null;
+        }
+        errEl.textContent = acc2FAFriendlyError(err);
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'OTP Bhejein';
+      }
+    }
+
+    // OTP dobara bhejo
+    async function accResend2FAOTP() {
+      if (_tfaResendInterval) { clearInterval(_tfaResendInterval); _tfaResendInterval = null; }
+      if (_tfaRecaptchaVerifier) {
+        try { _tfaRecaptchaVerifier.clear(); } catch(e) {}
+        _tfaRecaptchaVerifier = null;
+      }
+      _tfaVerificationId = null;
+      document.getElementById('tfaOtpInput').value = '';
+      acc2FAShowStep('phone');
+      setTimeout(accSend2FAOTP, 300);
+    }
+
+    // OTP verify karo
+    async function accVerify2FAOTP() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      const otp = document.getElementById('tfaOtpInput')?.value?.trim();
+      const phone = document.getElementById('tfaPhoneInput')?.value?.trim();
+      const errEl = document.getElementById('tfaOtpError');
+      const btn = document.getElementById('tfaVerifyBtn');
+
+      if (!otp || otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+        errEl.textContent = '6-digit OTP darj karein';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!_tfaVerificationId) {
+        errEl.textContent = 'Session khatam ho gaya. Wapas jakar OTP dobara bhejein.';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.6);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px"></span>Verify ho raha hai...';
+
+      try {
+        const credential = fb.PhoneAuthProvider.credential(_tfaVerificationId, otp);
+        try {
+          await fb.linkWithCredential(user, credential);
+        } catch(linkErr) {
+          if (linkErr.code !== 'auth/provider-already-linked' && linkErr.code !== 'auth/credential-already-in-use') {
+            throw linkErr;
+          }
+        }
+        // Firebase mein 2FA enabled save karo
+        await fb.update(fb.ref(fb.db, 'users/' + user.uid + '/twoFactor'), {
+          enabled: true,
+          phone: '+91 ' + phone,
+          enabledAt: Date.now()
+        });
+
+        if (_tfaResendInterval) { clearInterval(_tfaResendInterval); _tfaResendInterval = null; }
+        acc2FAShowStep('success');
+        acc2FALoadStatus();
+        accShowToast('2FA successfully enable ho gaya! Aapka account ab secure hai 🔐', 'success');
+      } catch (err) {
+        console.error('2FA verify error:', err);
+        errEl.textContent = acc2FAFriendlyError(err);
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Verify OTP';
+      }
+    }
+
+    // Phone step pe wapas jao
+    function accBack2FAToPhone() {
+      if (_tfaResendInterval) { clearInterval(_tfaResendInterval); _tfaResendInterval = null; }
+      if (_tfaRecaptchaVerifier) {
+        try { _tfaRecaptchaVerifier.clear(); } catch(e) {}
+        _tfaRecaptchaVerifier = null;
+      }
+      _tfaVerificationId = null;
+      document.getElementById('tfaOtpInput').value = '';
+      acc2FAShowStep('phone');
+    }
+
+    // 2FA disable karo
+    async function accDisable2FA() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      accShowAlert('2FA Disable Karein', 'Kya aap sure hain? 2FA disable karne se aapka account kam secure ho jayega.', async () => {
+        try {
+          try { await fb.unlink(user, 'phone'); } catch(e) { /* ignore */ }
+          await fb.update(fb.ref(fb.db, 'users/' + user.uid + '/twoFactor'), {
+            enabled: false,
+            disabledAt: Date.now()
+          });
+          accClose2FA();
+          acc2FALoadStatus();
+          accShowToast('2FA disable ho gaya.', 'error');
+        } catch(err) {
+          console.error('Disable 2FA error:', err);
+          accShowToast('2FA disable karne mein error aaya. Dobara try karein.', 'error');
+        }
+      });
+    }
+
+    // 30 second resend countdown
+    function acc2FAStartResendTimer() {
+      let seconds = 30;
+      const timerEl = document.getElementById('tfaResendTimer');
+      const resendBtn = document.getElementById('tfaResendBtn');
+      if (resendBtn) resendBtn.disabled = true;
+      if (timerEl) timerEl.textContent = ' (' + seconds + 's)';
+      if (_tfaResendInterval) clearInterval(_tfaResendInterval);
+      _tfaResendInterval = setInterval(() => {
+        seconds--;
+        if (seconds <= 0) {
+          clearInterval(_tfaResendInterval);
+          _tfaResendInterval = null;
+          if (timerEl) timerEl.textContent = '';
+          if (resendBtn) resendBtn.disabled = false;
+        } else {
+          if (timerEl) timerEl.textContent = ' (' + seconds + 's)';
+        }
+      }, 1000);
+    }
+
+    // User-friendly error messages
+    function acc2FAFriendlyError(err) {
+      const code = err.code || '';
+      if (code === 'auth/invalid-verification-code') return 'OTP galat hai. Dobara check karein.';
+      if (code === 'auth/code-expired') return 'OTP expire ho gaya. Dobara bhejein.';
+      if (code === 'auth/too-many-requests') return 'Bahut zyada attempts. Thodi der baad try karein.';
+      if (code === 'auth/invalid-phone-number') return 'Phone number galat hai. Check karke retry karein.';
+      if (code === 'auth/quota-exceeded') return 'SMS limit khatam ho gayi. Baad mein try karein.';
+      if (code === 'auth/captcha-check-failed') return 'reCAPTCHA fail hua. Page refresh karein.';
+      if (code === 'auth/missing-phone-number') return 'Phone number enter karein.';
+      if (code === 'auth/user-disabled') return 'Yeh account disable hai.';
+      return err.message || 'Kuch galat hua. Dobara try karein.';
     }
   </script>
 

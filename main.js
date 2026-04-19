@@ -584,6 +584,9 @@
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
+      // Sync any checkbox toggles (e.g. darkModeToggle in account.html)
+      const cb = document.getElementById('darkModeToggle');
+      if (cb) cb.checked = (newTheme === 'dark');
     }
 
     function showPage(pageId) {
@@ -3751,6 +3754,10 @@
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
+      document.getElementById('darkModeToggle')?.addEventListener('click', toggleTheme);
+      document.getElementById('nightModeBtn')?.addEventListener('click', toggleTheme);
+      // Top header avatar/profile chip → account.html
+      document.getElementById('userProfile')?.addEventListener('click', checkAuthAndShowAccount);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
       document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
       document.getElementById('clearHistoryBtn')?.addEventListener('click', clearSearchHistory);
@@ -3866,11 +3873,25 @@
       }
       document.getElementById('cancelCancel')?.addEventListener('click', () => document.getElementById('cancellationModal').classList.remove('active'));
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
+
+      // ── Global delegation: any element with data-action="toggleTheme" ──
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action="toggleTheme"], [data-toggle="theme"], .theme-toggle-btn, #themeToggle, #nightModeBtn, #darkModeBtn');
+        if (btn && btn.tagName !== 'INPUT') { // INPUT[type=checkbox] handled separately
+          e.stopPropagation();
+          toggleTheme();
+        }
+      });
     }
 
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
+      // Sync theme toggle button/checkbox initial state
+      const themeBtn = document.getElementById('themeToggle');
+      if (themeBtn) themeBtn.setAttribute('data-active', savedTheme === 'dark' ? 'true' : 'false');
+      const darkCb = document.getElementById('darkModeToggle');
+      if (darkCb) darkCb.checked = (savedTheme === 'dark');
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
       updateNotifBadge();
       setupEventListeners();
