@@ -2,1045 +2,432 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Account - BuyzoCart</title>
-  <meta name="description" content="Manage your BuyzoCart account, orders, wishlist, and preferences in one place." />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Account - Buyzo Cart</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    /* ===== CSS VARIABLES ===== */
     :root {
       --primary: #2563eb;
       --primary-dark: #1d4ed8;
       --primary-light: #3b82f6;
-      --secondary: #64748b;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --danger-dark: #dc2626;
-      --dark: #0f172a;
-      --light: #f8fafc;
-      --gray-100: #f1f5f9;
-      --gray-200: #e2e8f0;
-      --gray-300: #cbd5e1;
-      --gray-400: #94a3b8;
-      --gray-500: #64748b;
-      --gray-600: #475569;
-      --gray-700: #334155;
-      --gray-800: #1e293b;
-      --gray-900: #0f172a;
-      --bg: #ffffff;
-      --bg-secondary: #f8fafc;
-      --text: #0f172a;
-      --text-secondary: #475569;
-      --border: #e2e8f0;
+      --bg: #f8fafc;
       --card-bg: #ffffff;
-      --shadow: 0 1px 3px rgba(0,0,0,0.1);
-      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+      --text: #0f172a;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
       --radius: 12px;
       --radius-sm: 8px;
       --transition: all 0.2s ease;
+      --bg-secondary: #f1f5f9;
+      --success: #22c55e;
+      --error: #ef4444;
     }
-
     [data-theme="dark"] {
-      --primary: #3b82f6;
-      --primary-dark: #2563eb;
-      --primary-light: #60a5fa;
       --bg: #0f172a;
-      --bg-secondary: #1e293b;
-      --text: #f1f5f9;
-      --text-secondary: #cbd5e1;
-      --border: #334155;
       --card-bg: #1e293b;
+      --text: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border: #334155;
       --shadow: 0 1px 3px rgba(0,0,0,0.3);
-      --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
-      --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      --bg-secondary: #0f172a;
     }
 
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: "Inter", sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      transition: var(--transition);
       -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
     }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; height: auto; }
 
-    /* Header */
-    header {
+    /* ===== LOADING SCREEN ===== */
+    #loadingScreen {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      z-index: 9999; gap: 14px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loadingScreen p { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+
+    /* ===== HEADER ===== */
+    .acc-header {
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      backdrop-filter: blur(8px);
-      background: rgba(var(--card-bg-rgb), 0.95);
-    }
-
-    .header-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 1rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 700;
-      font-size: 1.5rem;
-      color: var(--text);
-      cursor: pointer;
-    }
-
-    .brand-chip {
-      background: var(--primary);
-      color: white;
-      padding: 0.25rem 0.75rem;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.625rem 1.25rem;
-      border-radius: var(--radius-sm);
-      font-weight: 500;
-      font-size: 0.875rem;
-      border: none;
-      cursor: pointer;
-      transition: var(--transition);
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn:hover {
-      background: var(--primary-dark);
-      transform: translateY(-1px);
-    }
-
-    .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    .btn-outline:hover {
-      background: var(--bg-secondary);
-      border-color: var(--primary);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-    }
-
-    .btn-danger:hover {
-      background: var(--danger-dark);
-    }
-
-    .btn-sm {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-
-    /* Theme Toggle */
-    .theme-toggle {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      color: var(--text);
-      transition: var(--transition);
-    }
-
-    .theme-toggle:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    .theme-toggle .moon-icon {
-      display: none;
-    }
-
-    [data-theme="dark"] .theme-toggle .sun-icon {
-      display: none;
-    }
-
-    [data-theme="dark"] .theme-toggle .moon-icon {
-      display: block;
-    }
-
-    /* User Profile */
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.5rem;
-      border-radius: 40px;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .user-profile:hover {
-      border-color: var(--primary);
-    }
-
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-
-    .user-avatar-img {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-
-    .user-name {
-      font-weight: 500;
-      font-size: 0.875rem;
-      color: var(--text);
-    }
-
-    /* Container */
-    .container {
-      max-width: 1280px;
-      margin: 2rem auto;
-      padding: 0 2rem;
-    }
-
-    /* Pages */
-    .page {
-      display: none;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .page.active {
-      display: block;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Cards */
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
+      position: sticky; top: 0; z-index: 50;
+      padding: 0.75rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
       box-shadow: var(--shadow);
-      transition: var(--transition);
     }
-
-    .card:hover {
-      box-shadow: var(--shadow-md);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-    }
-
-    .card-title {
-      font-size: 1.25rem;
-      font-weight: 600;
+    .acc-brand {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-weight: 700; font-size: 1.2rem; cursor: pointer;
       color: var(--text);
     }
-
-    /* Forms */
-    .form-group {
-      margin-bottom: 1.25rem;
+    .acc-brand-chip {
+      background: var(--primary); color: white;
+      padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.9rem;
     }
-
-    .form-label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-secondary);
+    .acc-header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 1rem; border: 1px solid var(--border);
+      border-radius: 8px; background: transparent; color: var(--text);
+      cursor: pointer; font-size: 0.85rem; font-family: inherit;
+      transition: var(--transition); font-weight: 500;
     }
-
-    .form-control {
-      width: 100%;
-      padding: 0.625rem 0.875rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.875rem;
-      transition: var(--transition);
+    .back-btn:hover { background: var(--bg-secondary); border-color: var(--primary); }
+    .user-chip {
+      display: none; align-items: center; gap: 0.5rem;
+      padding: 0.35rem 0.75rem; border: 1px solid var(--border);
+      border-radius: 40px; background: var(--bg-secondary);
     }
-
-    .form-control:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    .user-chip-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.75rem; overflow: hidden;
     }
+    .user-chip-avatar img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; display: none; }
+    .user-chip-name { font-weight: 500; font-size: 0.85rem; color: var(--text); }
 
-    .form-control:read-only {
-      background: var(--bg-secondary);
-      cursor: not-allowed;
+    /* ===== MAIN CONTAINER ===== */
+    .acc-main { max-width: 1100px; margin: 2rem auto; padding: 0 1.25rem; }
+
+    /* ===== PAGE TRANSITIONS ===== */
+    .page { display: none; animation: fadeIn 0.3s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow);
+      transition: var(--transition); margin-bottom: 1.5rem;
     }
+    .card:hover { box-shadow: var(--shadow-md); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.1rem; font-weight: 600; color: var(--text); }
 
-    /* Grid */
+    /* ===== GRID ===== */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
     }
 
-    /* Account Header */
+    /* ===== FORM ===== */
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); }
+    .form-control {
+      width: 100%; padding: 0.625rem 0.875rem;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg); color: var(--text); font-size: 0.875rem;
+      font-family: inherit; transition: var(--transition);
+    }
+    .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .form-control:read-only { background: var(--bg-secondary); cursor: not-allowed; }
+    textarea.form-control { resize: vertical; }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.625rem 1.25rem; border-radius: var(--radius-sm);
+      font-weight: 500; font-size: 0.875rem; border: none; cursor: pointer;
+      background: var(--primary); color: white; font-family: inherit;
+      transition: var(--transition);
+    }
+    .btn:hover { background: var(--primary-dark); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: transparent; color: var(--text);
+      cursor: pointer; font-size: 0.875rem; font-family: inherit;
+      transition: var(--transition); font-weight: 500;
+    }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-danger {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.625rem 1.25rem; background: var(--error); color: white;
+      border: none; border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 0.875rem; font-family: inherit; transition: var(--transition); font-weight: 500;
+    }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 0.4rem 0.875rem; font-size: 0.8rem; }
+
+    /* ===== ACCOUNT HEADER ===== */
     .account-header {
-      display: flex;
-      align-items: center;
-      gap: 2rem;
-      margin-bottom: 2rem;
-      padding: 2rem;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      border-radius: var(--radius);
-      color: white;
+      display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem;
+      padding: 2rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: var(--radius); color: white;
     }
-
     .account-avatar {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      font-weight: 600;
-      border: 3px solid rgba(255, 255, 255, 0.3);
+      width: 90px; height: 90px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; font-weight: 600; border: 3px solid rgba(255,255,255,0.3);
+      flex-shrink: 0; overflow: hidden;
     }
+    .account-avatar-img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: none; }
+    .account-info h1 { font-size: 1.7rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .account-info p { opacity: 0.9; font-size: 0.95rem; }
 
-    .account-avatar-img {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-
-    .account-info h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-
-    .account-info p {
-      opacity: 0.9;
-      font-size: 1rem;
-    }
-
-    /* Menu Grid */
+    /* ===== MENU GRID ===== */
     .menu-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem; margin-bottom: 2rem;
     }
-
     .menu-item {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .menu-item:hover {
-      border-color: var(--primary);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .menu-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--primary-light);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .menu-icon svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .menu-label {
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    /* Product Card */
-    .product-card {
-      display: flex;
-      gap: 1rem;
-      padding: 1rem;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      transition: var(--transition);
-      margin-bottom: 1rem;
-    }
-
-    .product-card:hover {
-      border-color: var(--primary);
-      box-shadow: var(--shadow-md);
-    }
-
-    .product-image {
-      width: 100px;
-      height: 100px;
-      border-radius: var(--radius-sm);
-      object-fit: cover;
-    }
-
-    .product-details {
-      flex: 1;
-    }
-
-    .product-title {
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-
-    .product-price {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-    }
-
-    .product-rating {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .star {
-      color: #fbbf24;
-    }
-
-    .star.inactive {
-      color: var(--gray-300);
-    }
-
-    /* Order Card */
-    .order-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-      transition: var(--transition);
-    }
-
-    .order-card:hover {
-      border-color: var(--primary);
-      box-shadow: var(--shadow-md);
-    }
-
-    .order-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .order-id {
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    .order-status {
-      padding: 0.25rem 1rem;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .order-status.delivered {
-      background: #d1fae5;
-      color: #065f46;
-    }
-
-    .order-status.processing {
-      background: #fed7aa;
-      color: #92400e;
-    }
-
-    .order-status.shipped {
-      background: #bfdbfe;
-      color: #1e40af;
-    }
-
-    .order-items {
-      display: grid;
-      gap: 0.75rem;
-    }
-
-    .order-item {
-      display: flex;
-      gap: 1rem;
-      padding: 0.75rem;
-      background: var(--bg-secondary);
-      border-radius: var(--radius-sm);
-    }
-
-    .order-item-image {
-      width: 60px;
-      height: 60px;
-      border-radius: var(--radius-sm);
-      object-fit: cover;
-    }
-
-    /* Address Card */
-    .address-card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      margin-bottom: 1rem;
-      transition: var(--transition);
-    }
-
-    .address-card:hover {
-      border-color: var(--primary);
-    }
-
-    .address-card.default {
-      border-left: 4px solid var(--primary);
-    }
-
-    .address-name {
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .address-details {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .address-badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      background: var(--primary-light);
-      color: white;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: capitalize;
-      margin-right: 0.5rem;
-    }
-
-    .address-badge.default {
-      background: var(--success);
-    }
-
-    .address-actions {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-
-    /* Settings Item */
-    .settings-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .settings-item:last-child {
-      border-bottom: none;
-    }
-
-    .settings-info h4 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-
-    .settings-info p {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    /* Toggle Switch */
-    .toggle {
-      position: relative;
-      display: inline-block;
-      width: 48px;
-      height: 24px;
-    }
-
-    .toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--gray-300);
-      transition: .3s;
-      border-radius: 24px;
-    }
-
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      transition: .3s;
-      border-radius: 50%;
-    }
-
-    input:checked + .toggle-slider {
-      background: var(--primary);
-    }
-
-    input:checked + .toggle-slider:before {
-      transform: translateX(24px);
-    }
-
-    /* Modal */
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(4px);
-    }
-
-    .modal.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .modal-content {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 2rem;
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-      transform: translateY(20px);
-      transition: all 0.3s ease;
-    }
-
-    .modal.active .modal-content {
-      transform: translateY(0);
-    }
-
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-    }
-
-    .modal-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: var(--text-secondary);
-    }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      margin-top: 1.5rem;
-    }
-
-    /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 2rem;
-      right: 2rem;
-      background: var(--card-bg);
-      border-left: 4px solid var(--primary);
-      border-radius: var(--radius-sm);
-      padding: 1rem 1.5rem;
-      box-shadow: var(--shadow-lg);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      z-index: 1000;
-      transform: translateX(400px);
-      transition: transform 0.3s ease;
-    }
-
-    .toast.show {
-      transform: translateX(0);
-    }
-
-    .toast.success {
-      border-left-color: var(--success);
-    }
-
-    .toast.error {
-      border-left-color: var(--danger);
-    }
-
-    .toast.warning {
-      border-left-color: var(--warning);
-    }
-
-    /* Loading Spinner */
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 2rem auto;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    /* Empty State */
-    .empty-state {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem 1rem;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.65rem; cursor: pointer; transition: var(--transition);
       text-align: center;
-      padding: 3rem 1.5rem;
-      color: var(--text-secondary);
     }
-
-    .empty-state-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
+    .menu-item:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .menu-icon {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--primary); color: white;
+      display: flex; align-items: center; justify-content: center;
     }
+    .menu-icon svg { width: 24px; height: 24px; }
+    .menu-label { font-weight: 600; color: var(--text); font-size: 0.9rem; }
 
-    .empty-state-title {
-      font-size: 1.125rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
+    /* ===== SETTINGS ===== */
+    .settings-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 0; border-bottom: 1px solid var(--border);
     }
-
-    .empty-state-description {
-      font-size: 0.875rem;
-      margin-bottom: 1.5rem;
+    .settings-item:last-child { border-bottom: none; }
+    .settings-info h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.2rem; }
+    .settings-info p { font-size: 0.8rem; color: var(--text-secondary); }
+    .toggle { position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: #cbd5e1;
+      border-radius: 34px; transition: 0.3s;
     }
-
-    /* Activity List */
-    .activity-list {
-      max-height: 400px;
-      overflow-y: auto;
+    .toggle-slider:before {
+      content: ''; position: absolute; height: 18px; width: 18px;
+      left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s;
     }
+    .toggle input:checked + .toggle-slider { background: var(--primary); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
 
+    /* ===== DANGER ZONE ===== */
+    .danger-zone { border-color: #fecaca; }
+    [data-theme="dark"] .danger-zone { border-color: #7f1d1d; }
+
+    /* ===== ADDRESS CARDS ===== */
+    .address-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;
+      position: relative; transition: var(--transition);
+    }
+    .address-card.default { border-color: var(--primary); }
+    .address-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .address-type-badge {
+      background: var(--bg-secondary); color: var(--text-secondary);
+      padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+      text-transform: capitalize;
+    }
+    .default-badge {
+      background: #dcfce7; color: #16a34a;
+      padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    }
+    .address-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+
+    /* ===== WISHLIST / PRODUCT CARDS ===== */
+    .product-card {
+      display: flex; gap: 1rem; padding: 1rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); transition: var(--transition); margin-bottom: 1rem;
+    }
+    .product-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+    .product-image { width: 90px; height: 90px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+    .product-details { flex: 1; }
+    .product-title { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.9rem; }
+    .product-price { font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
+    .product-rating { color: #f59e0b; font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .star.inactive { color: var(--border); }
+
+    /* ===== ORDER CARDS ===== */
+    .order-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem;
+      transition: var(--transition);
+    }
+    .order-card:hover { box-shadow: var(--shadow-md); }
+    .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+    .order-id { font-weight: 700; font-size: 0.95rem; }
+    .order-status {
+      padding: 0.25rem 0.75rem; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600; text-transform: capitalize;
+    }
+    .order-status.processing { background: #fef3c7; color: #d97706; }
+    .order-status.confirmed { background: #dcfce7; color: #16a34a; }
+    .order-status.shipped { background: #dbeafe; color: #1d4ed8; }
+    .order-status.delivered { background: #dcfce7; color: #15803d; }
+    .order-status.cancelled { background: #fee2e2; color: #dc2626; }
+    .order-items { display: flex; flex-direction: column; gap: 0.75rem; }
+    .order-item { display: flex; gap: 0.75rem; align-items: center; }
+    .order-item-image { width: 56px; height: 56px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+
+    /* ===== ACTIVITY LIST ===== */
     .activity-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.75rem 0; border-bottom: 1px solid var(--border);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-time { font-size: 0.875rem; font-weight: 500; }
+    .activity-device { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem; }
+    .activity-status { background: #dcfce7; color: #16a34a; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center; padding: 3rem 1rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .empty-state-description { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.25rem; }
+
+    /* ===== MODAL ===== */
+    .modal {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.5); align-items: center; justify-content: center;
       padding: 1rem;
-      border-bottom: 1px solid var(--border);
     }
-
-    .activity-item:last-child {
-      border-bottom: none;
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--card-bg); border-radius: var(--radius);
+      padding: 1.75rem; max-width: 480px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: fadeIn 0.2s ease;
     }
-
-    .activity-info {
-      flex: 1;
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .modal-title { font-size: 1.1rem; font-weight: 600; }
+    .modal-close {
+      background: none; border: none; font-size: 1.5rem; cursor: pointer;
+      color: var(--text-secondary); line-height: 1; padding: 0.25rem;
     }
+    .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; flex-wrap: wrap; }
 
-    .activity-time {
-      font-size: 0.875rem;
-      font-weight: 500;
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1e293b; color: white; padding: 0.75rem 1.5rem;
+      border-radius: 50px; font-size: 0.875rem; font-weight: 500;
+      z-index: 9999; opacity: 0; transition: all 0.3s ease; pointer-events: none;
+      white-space: nowrap; max-width: 90vw; text-align: center;
     }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.success { background: #16a34a; }
+    .toast.error { background: #dc2626; }
 
-    .activity-device {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
-
-    .activity-status {
-      padding: 0.25rem 0.75rem;
-      background: var(--success);
-      color: white;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    /* Danger Zone */
-    .danger-zone {
-      background: linear-gradient(135deg, #fef2f2, #fee2e2);
-      border-left: 4px solid var(--danger);
-    }
-
-    [data-theme="dark"] .danger-zone {
-      background: linear-gradient(135deg, #7f1d1d, #991b1b);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .header-inner {
-        padding: 1rem;
-      }
-
-      .container {
-        padding: 0 1rem;
-        margin: 1rem auto;
-      }
-
-      .account-header {
-        flex-direction: column;
-        text-align: center;
-        padding: 1.5rem;
-      }
-
-      .menu-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .product-card {
-        flex-direction: column;
-      }
-
-      .product-image {
-        width: 100%;
-        height: 200px;
-      }
-
-      .order-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-      }
-
-      .toast {
-        left: 1rem;
-        right: 1rem;
-        bottom: 1rem;
-        transform: translateY(100px);
-      }
-
-      .toast.show {
-        transform: translateY(0);
-      }
-    }
-
-    @media (max-width: 480px) {
-      .menu-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .account-avatar {
-        width: 80px;
-        height: 80px;
-        font-size: 2rem;
-      }
-
-      .account-avatar-img {
-        width: 80px;
-        height: 80px;
-      }
-
-      .account-info h1 {
-        font-size: 1.5rem;
-      }
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 640px) {
+      .acc-header { padding: 0.65rem 1rem; }
+      .acc-main { padding: 0 0.75rem; margin-top: 1.25rem; }
+      .account-header { padding: 1.25rem; gap: 1rem; }
+      .account-info h1 { font-size: 1.3rem; }
+      .account-avatar { width: 70px; height: 70px; font-size: 1.7rem; }
+      .account-avatar-img { width: 70px; height: 70px; }
+      .grid { grid-template-columns: 1fr; }
+      .menu-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
 <body>
+
+  <!-- Loading Screen -->
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p>Loading your account...</p>
+  </div>
+
   <!-- Header -->
-  <header>
-    <div class="header-inner">
-      <div class="brand" onclick="window.location.href='index.html'">
-        <span class="brand-chip">BUYZO</span>
-        <span>Cart</span>
-      </div>
-      <div class="header-actions">
-        <button class="theme-toggle" id="themeToggle">
-          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"/>
-            <line x1="12" y1="1" x2="12" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="23"/>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-            <line x1="1" y1="12" x2="3" y2="12"/>
-            <line x1="21" y1="12" x2="23" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
-          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-        </button>
-        <button class="btn-outline btn-sm" onclick="window.location.href='index.html'">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to Home
-        </button>
-        <div class="user-profile" id="userProfile" style="display: none;">
-          <div class="user-avatar" id="userAvatar">
-            <img class="user-avatar-img" id="userAvatarImg" style="display: none;" />
-            <span id="userAvatarInitial">U</span>
-          </div>
-          <span class="user-name" id="userName">User</span>
+  <header class="acc-header">
+    <div class="acc-brand" onclick="window.location.href='index.html'">
+      <span class="acc-brand-chip">BUYZO</span>
+      <span>Cart</span>
+    </div>
+    <div class="acc-header-actions">
+      <div class="user-chip" id="userChip">
+        <div class="user-chip-avatar">
+          <img id="chipAvatarImg" alt="" />
+          <span id="chipAvatarInitial">U</span>
         </div>
+        <span class="user-chip-name" id="chipUserName">User</span>
       </div>
+      <button class="back-btn" onclick="window.location.href='index.html'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </button>
     </div>
   </header>
 
-  <main class="container">
-    <!-- Account Page -->
+  <!-- Main Content -->
+  <main class="acc-main">
+
+    <!-- Account Home -->
     <section class="page active" id="accountPage">
       <div class="account-header">
         <div class="account-avatar" id="accountPageAvatar">
-          <img class="account-avatar-img" id="accountPageAvatarImg" style="display: none;" />
+          <img class="account-avatar-img" id="accountPageAvatarImg" alt="" />
           <span id="accountPageAvatarInitial">U</span>
         </div>
         <div class="account-info">
           <h1 id="accountPageName">User Name</h1>
-          <p id="accountPageEmail">user@example.com</p>
+          <p id="accountPageEmail">user@email.com</p>
         </div>
       </div>
 
       <div class="menu-grid">
-        <div class="menu-item" onclick="showPage('ordersPage')">
+        <div class="menu-item" onclick="accShowSubPage('ordersPage')">
           <div class="menu-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="9" cy="21" r="1"/>
-              <circle cx="20" cy="21" r="1"/>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           </div>
           <span class="menu-label">My Orders</span>
         </div>
-        <div class="menu-item" onclick="showPage('wishlistPage')">
+        <div class="menu-item" onclick="accShowSubPage('wishlistPage')">
           <div class="menu-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           </div>
           <span class="menu-label">Wishlist</span>
         </div>
-        <div class="menu-item" onclick="showPage('addressPage')">
+        <div class="menu-item" onclick="accShowSubPage('addressPage')">
           <div class="menu-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           </div>
           <span class="menu-label">Addresses</span>
         </div>
-        <div class="menu-item" onclick="showPage('settingsPage')">
+        <div class="menu-item" onclick="accShowSubPage('settingsPage')">
           <div class="menu-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </div>
           <span class="menu-label">Settings</span>
         </div>
@@ -1048,9 +435,7 @@
 
       <div class="grid">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Profile Information</h3>
-          </div>
+          <div class="card-header"><h3 class="card-title">Profile Information</h3></div>
           <div class="form-group">
             <label class="form-label">Full Name</label>
             <input type="text" class="form-control" id="profileName" placeholder="Enter your full name">
@@ -1067,55 +452,33 @@
         </div>
 
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Account Security</h3>
-          </div>
+          <div class="card-header"><h3 class="card-title">Account Security</h3></div>
           <div class="settings-item">
-            <div class="settings-info">
-              <h4>Change Password</h4>
-              <p>Update your password regularly</p>
-            </div>
+            <div class="settings-info"><h4>Change Password</h4><p>Update your password regularly</p></div>
             <button class="btn-outline btn-sm" id="changePasswordBtn">Change</button>
           </div>
           <div class="settings-item">
-            <div class="settings-info">
-              <h4>Two-Factor Authentication</h4>
-              <p>Add extra security to your account</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="twoFactorToggle">
-              <span class="toggle-slider"></span>
-            </label>
+            <div class="settings-info"><h4>Two-Factor Authentication</h4><p>Extra security for your account</p></div>
+            <label class="toggle"><input type="checkbox" id="twoFactorToggle"><span class="toggle-slider"></span></label>
           </div>
           <div class="settings-item">
-            <div class="settings-info">
-              <h4>Last Login</h4>
-              <p id="lastLoginTime">Loading...</p>
-            </div>
+            <div class="settings-info"><h4>Last Login</h4><p id="lastLoginTime">Loading...</p></div>
             <button class="btn-outline btn-sm" id="viewLoginActivity">View All</button>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Session</h3>
-          </div>
-          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Sign out from your account on this device.</p>
+          <div class="card-header"><h3 class="card-title">Session</h3></div>
+          <p style="margin-bottom:1rem;color:var(--text-secondary)">Sign out from your account on this device.</p>
           <button class="btn-danger" id="accountLogoutBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             Logout
           </button>
         </div>
 
         <div class="card danger-zone">
-          <div class="card-header">
-            <h3 class="card-title">Danger Zone</h3>
-          </div>
-          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Once you delete your account, there is no going back.</p>
+          <div class="card-header"><h3 class="card-title">Danger Zone</h3></div>
+          <p style="margin-bottom:1rem;color:var(--text-secondary)">Once you delete your account, there is no going back.</p>
           <button class="btn-danger" id="deleteAccountBtn">Delete Account</button>
         </div>
       </div>
@@ -1123,177 +486,57 @@
 
     <!-- Settings Page -->
     <section class="page" id="settingsPage">
-      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
+      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
-
-      <h2 style="margin-bottom: 1.5rem;">Settings</h2>
-
+      <h2 style="margin-bottom:1.5rem">Settings</h2>
       <div class="grid">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Notifications</h3>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Email Notifications</h4>
-              <p>Receive order updates and promotions</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="emailNotifications" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>SMS Notifications</h4>
-              <p>Receive order updates via SMS</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="smsNotifications" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Push Notifications</h4>
-              <p>Receive push notifications</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="pushNotifications" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
+          <div class="card-header"><h3 class="card-title">Notifications</h3></div>
+          <div class="settings-item"><div class="settings-info"><h4>Email Notifications</h4><p>Receive order updates and promotions</p></div><label class="toggle"><input type="checkbox" id="emailNotifications" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item"><div class="settings-info"><h4>SMS Notifications</h4><p>Receive order updates via SMS</p></div><label class="toggle"><input type="checkbox" id="smsNotifications" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item"><div class="settings-info"><h4>Push Notifications</h4><p>Receive push notifications</p></div><label class="toggle"><input type="checkbox" id="pushNotifications" checked><span class="toggle-slider"></span></label></div>
         </div>
-
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Privacy</h3>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Personalized Recommendations</h4>
-              <p>Get recommendations based on history</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="personalizedRecs" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Data Sharing</h4>
-              <p>Allow us to improve our services</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="dataSharing" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
+          <div class="card-header"><h3 class="card-title">Privacy</h3></div>
+          <div class="settings-item"><div class="settings-info"><h4>Personalized Recommendations</h4><p>Get recommendations based on history</p></div><label class="toggle"><input type="checkbox" id="personalizedRecs" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item"><div class="settings-info"><h4>Data Sharing</h4><p>Allow us to improve our services</p></div><label class="toggle"><input type="checkbox" id="dataSharing" checked><span class="toggle-slider"></span></label></div>
         </div>
-
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Appearance</h3>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Dark Mode</h4>
-              <p>Toggle light/dark theme</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="darkModeToggle">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Language</h4>
-              <p>Select your preferred language</p>
-            </div>
-            <select class="form-control" id="languageSelect" style="width: auto;">
-              <option value="en">English</option>
-              <option value="hi">हिन्दी</option>
-            </select>
-          </div>
-          <div class="settings-item">
-            <div class="settings-info">
-              <h4>Currency</h4>
-              <p>Select your preferred currency</p>
-            </div>
-            <select class="form-control" id="currencySelect" style="width: auto;">
-              <option value="INR">₹ INR</option>
-              <option value="USD">$ USD</option>
-            </select>
-          </div>
+          <div class="card-header"><h3 class="card-title">Appearance</h3></div>
+          <div class="settings-item"><div class="settings-info"><h4>Dark Mode</h4><p>Toggle light/dark theme</p></div><label class="toggle"><input type="checkbox" id="darkModeToggle"><span class="toggle-slider"></span></label></div>
+          <div class="settings-item"><div class="settings-info"><h4>Language</h4><p>Select your preferred language</p></div><select class="form-control" id="languageSelect" style="width:auto"><option value="en">English</option><option value="hi">हिन्दी</option></select></div>
+          <div class="settings-item"><div class="settings-info"><h4>Currency</h4><p>Select your preferred currency</p></div><select class="form-control" id="currencySelect" style="width:auto"><option value="INR">₹ INR</option><option value="USD">$ USD</option></select></div>
         </div>
       </div>
-
-      <button class="btn" id="saveSettings" style="margin-top: 1.5rem;">Save Settings</button>
+      <button class="btn" id="saveSettings" style="margin-top:1.5rem">Save Settings</button>
     </section>
 
     <!-- Address Page -->
     <section class="page" id="addressPage">
-      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
+      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem">
         <h2>My Addresses</h2>
         <button class="btn" id="addNewAddress">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add New Address
         </button>
       </div>
-
       <div id="savedAddresses"></div>
-
-      <div class="card" id="newAddressForm" style="display: none;">
-        <div class="card-header">
-          <h3 class="card-title">Add New Address</h3>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Full Name *</label>
-          <input type="text" class="form-control" id="addressName" placeholder="Enter full name">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Mobile Number *</label>
-          <input type="tel" class="form-control" id="addressMobile" placeholder="10-digit mobile number">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Pincode *</label>
-          <input type="text" class="form-control" id="addressPincode" placeholder="Pincode">
-        </div>
-        <div class="form-group">
-          <label class="form-label">City *</label>
-          <input type="text" class="form-control" id="addressCity" placeholder="City">
-        </div>
-        <div class="form-group">
-          <label class="form-label">State *</label>
-          <input type="text" class="form-control" id="addressState" placeholder="State">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Address Type</label>
-          <select class="form-control" id="addressType">
-            <option value="home">Home</option>
-            <option value="work">Work</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">House / Street *</label>
-          <textarea class="form-control" id="addressStreet" placeholder="House no., Building, Street, Area" rows="3"></textarea>
-        </div>
-        <div style="display: flex; gap: 1rem;">
+      <div class="card" id="newAddressForm" style="display:none">
+        <div class="card-header"><h3 class="card-title" id="addressFormTitle">Add New Address</h3></div>
+        <div class="form-group"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="addressName" placeholder="Enter full name"></div>
+        <div class="form-group"><label class="form-label">Mobile Number *</label><input type="tel" class="form-control" id="addressMobile" placeholder="10-digit mobile number"></div>
+        <div class="form-group"><label class="form-label">Pincode *</label><input type="text" class="form-control" id="addressPincode" placeholder="Pincode"></div>
+        <div class="form-group"><label class="form-label">City *</label><input type="text" class="form-control" id="addressCity" placeholder="City"></div>
+        <div class="form-group"><label class="form-label">State *</label><input type="text" class="form-control" id="addressState" placeholder="State"></div>
+        <div class="form-group"><label class="form-label">Address Type</label><select class="form-control" id="addressType"><option value="home">Home</option><option value="work">Work</option><option value="other">Other</option></select></div>
+        <div class="form-group"><label class="form-label">House / Street *</label><textarea class="form-control" id="addressStreet" placeholder="House no., Building, Street, Area" rows="3"></textarea></div>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
           <button class="btn" id="saveAddress">Save Address</button>
           <button class="btn-outline" id="cancelAddAddress">Cancel</button>
         </div>
@@ -1302,57 +545,38 @@
 
     <!-- Wishlist Page -->
     <section class="page" id="wishlistPage">
-      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
+      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
-
-      <h2 style="margin-bottom: 1.5rem;">My Wishlist</h2>
+      <h2 style="margin-bottom:1.5rem">My Wishlist</h2>
       <div id="wishlistItems"></div>
     </section>
 
     <!-- Orders Page -->
     <section class="page" id="ordersPage">
-      <button class="btn-outline btn-sm" onclick="showPage('accountPage')" style="margin-bottom: 1.5rem;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
+      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
-
-      <h2 style="margin-bottom: 1.5rem;">My Orders</h2>
+      <h2 style="margin-bottom:1.5rem">My Orders</h2>
       <div id="ordersList"></div>
     </section>
+
   </main>
 
   <!-- Toast -->
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="accToast"></div>
 
-  <!-- Modals -->
-  <div class="modal" id="alertModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title" id="alertTitle">Alert</h3>
-        <button class="modal-close" onclick="closeModal('alertModal')">×</button>
-      </div>
-      <p id="alertMessage" style="margin-bottom: 1.5rem;"></p>
-      <div class="modal-footer">
-        <button class="btn-outline" id="alertCancelBtn">Cancel</button>
-        <button class="btn" id="alertConfirmBtn">Confirm</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- Change Password Modal -->
   <div class="modal" id="changePasswordModal">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">Change Password</h3>
-        <button class="modal-close" onclick="closeModal('changePasswordModal')">×</button>
+        <button class="modal-close" onclick="accCloseModal('changePasswordModal')">×</button>
       </div>
       <p>We will send a password reset link to:</p>
-      <p style="font-weight: 600; color: var(--primary); margin: 1rem 0;" id="changePasswordEmail"></p>
+      <p style="font-weight:600;color:var(--primary);margin:1rem 0" id="changePasswordEmail"></p>
       <div class="modal-footer">
         <button class="btn-outline" id="cancelChangePassword">Cancel</button>
         <button class="btn" id="sendResetLink">Send Reset Link</button>
@@ -1360,18 +584,38 @@
     </div>
   </div>
 
-  <div class="modal" id="loginActivityModal">
-    <div class="modal-content" style="max-width: 600px;">
+  <!-- Alert Modal -->
+  <div class="modal" id="alertModal">
+    <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">Login Activity</h3>
-        <button class="modal-close" onclick="closeModal('loginActivityModal')">×</button>
+        <h3 class="modal-title" id="alertTitle">Alert</h3>
+        <button class="modal-close" onclick="accCloseModal('alertModal')">×</button>
       </div>
-      <div class="activity-list" id="loginActivityList"></div>
+      <p id="alertMessage" style="margin-bottom:1.5rem"></p>
+      <div class="modal-footer">
+        <button class="btn-outline" id="alertCancelBtn">Cancel</button>
+        <button class="btn" id="alertConfirmBtn">Confirm</button>
+      </div>
     </div>
   </div>
 
-  <!-- Firebase Config -->
-  <script>
+  <!-- Login Activity Modal -->
+  <div class="modal" id="loginActivityModal">
+    <div class="modal-content" style="max-width:560px">
+      <div class="modal-header">
+        <h3 class="modal-title">Login Activity</h3>
+        <button class="modal-close" onclick="accCloseModal('loginActivityModal')">×</button>
+      </div>
+      <div id="loginActivityList"></div>
+    </div>
+  </div>
+
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, remove, query, orderByChild, equalTo, push } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
       authDomain: "buyzocart.firebaseapp.com",
@@ -1382,205 +626,214 @@
       appId: "1:640560737762:web:7fe368df6486d6da759dbb"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+    const auth = getAuth(app);
 
-    // Global state
-    let currentUser = null;
-    let editingAddressId = null;
-    let alertCallback = null;
+    // ---- Expose to global scope ----
+    window._accFb = { db, auth, ref, set, get, update, remove, query, orderByChild, equalTo, push, signOut, sendPasswordResetEmail };
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      initTheme();
-      setupEventListeners();
-      
-      auth.onAuthStateChanged(user => {
-        if (user) {
-          currentUser = user;
-          updateUIForUser(user);
-          loadUserData(user);
-          loadAddresses();
-          loadWishlist();
-          loadOrders();
-        } else {
-          window.location.href = 'index.html';
-        }
-      });
+    // ---- Auth State ----
+    onAuthStateChanged(auth, (user) => {
+      document.getElementById('loadingScreen').style.display = 'none';
+      if (!user) {
+        // Not logged in — back to index
+        window.location.href = 'index.html';
+        return;
+      }
+      window._accCurrentUser = user;
+      accUpdateUIForUser(user);
+      accLoadUserData(user);
+      accLoadAddresses();
+      accLoadWishlist();
+      accLoadOrders();
     });
 
-    function initTheme() {
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      if (savedTheme === 'dark') {
-        document.getElementById('darkModeToggle').checked = true;
-      }
-    }
+    // ---- Theme Init ----
+    (function() {
+      const t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      const tog = document.getElementById('darkModeToggle');
+      if (tog) tog.checked = (t === 'dark');
+    })();
 
-    function setupEventListeners() {
-      // Theme
-      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      document.getElementById('darkModeToggle').addEventListener('change', function(e) {
+    // ---- Setup event listeners ----
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('saveProfile')?.addEventListener('click', accSaveProfile);
+      document.getElementById('changePasswordBtn')?.addEventListener('click', () => {
+        document.getElementById('changePasswordEmail').textContent = window._accCurrentUser?.email || '';
+        accOpenModal('changePasswordModal');
+      });
+      document.getElementById('deleteAccountBtn')?.addEventListener('click', () => {
+        accShowAlert('Delete Account', 'Are you sure you want to permanently delete your account? This cannot be undone.', () => {
+          accShowToast('Account deletion requested. Please contact support.', 'error');
+        });
+      });
+      document.getElementById('accountLogoutBtn')?.addEventListener('click', accShowLogoutConfirmation);
+      document.getElementById('viewLoginActivity')?.addEventListener('click', accShowLoginActivity);
+      document.getElementById('saveSettings')?.addEventListener('click', accSaveSettings);
+      document.getElementById('addNewAddress')?.addEventListener('click', () => accShowAddressForm());
+      document.getElementById('cancelAddAddress')?.addEventListener('click', accHideAddressForm);
+      document.getElementById('saveAddress')?.addEventListener('click', accSaveAddress);
+      document.getElementById('cancelChangePassword')?.addEventListener('click', () => accCloseModal('changePasswordModal'));
+      document.getElementById('sendResetLink')?.addEventListener('click', accSendPasswordReset);
+      document.getElementById('alertCancelBtn')?.addEventListener('click', () => accCloseModal('alertModal'));
+      document.getElementById('alertConfirmBtn')?.addEventListener('click', accHandleAlertConfirm);
+      document.getElementById('darkModeToggle')?.addEventListener('change', function(e) {
         const theme = e.target.checked ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
       });
+    });
+  </script>
 
-      // Profile
-      document.getElementById('saveProfile').addEventListener('click', saveProfile);
-      document.getElementById('changePasswordBtn').addEventListener('click', () => openModal('changePasswordModal'));
-      document.getElementById('deleteAccountBtn').addEventListener('click', showDeleteConfirmation);
-      document.getElementById('accountLogoutBtn').addEventListener('click', showLogoutConfirmation);
-      document.getElementById('viewLoginActivity').addEventListener('click', showLoginActivity);
-      
-      // Settings
-      document.getElementById('saveSettings').addEventListener('click', saveSettings);
+  <script>
+    // ======== ACCOUNT PAGE FUNCTIONS ========
+    let _accAlertCallback = null;
+    let _accEditingAddressId = null;
 
-      // Address
-      document.getElementById('addNewAddress').addEventListener('click', showAddressForm);
-      document.getElementById('cancelAddAddress').addEventListener('click', hideAddressForm);
-      document.getElementById('saveAddress').addEventListener('click', saveAddress);
-
-      // Password modal
-      document.getElementById('cancelChangePassword').addEventListener('click', () => closeModal('changePasswordModal'));
-      document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
-
-      // Alert modal
-      document.getElementById('alertCancelBtn').addEventListener('click', () => closeModal('alertModal'));
-      document.getElementById('alertConfirmBtn').addEventListener('click', handleAlertConfirm);
-    }
-
-    // Utility Functions
-    function openModal(id) {
-      document.getElementById(id).classList.add('active');
-    }
-
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('active');
-    }
-
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.className = `toast ${type}`;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-
-    function showPage(pageId) {
+    // ---- Navigation ----
+    function accShowSubPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById(pageId).classList.add('active');
-      window.scrollTo(0, 0);
+      const pg = document.getElementById(pageId);
+      if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
     }
 
-    // Theme
-    function toggleTheme() {
-      const current = document.documentElement.getAttribute('data-theme');
-      const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-      document.getElementById('darkModeToggle').checked = next === 'dark';
+    // ---- Toast ----
+    function accShowToast(msg, type = 'success') {
+      const t = document.getElementById('accToast');
+      if (!t) return;
+      t.textContent = msg;
+      t.className = 'toast ' + type;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
     }
 
-    // User Functions
-    function updateUIForUser(user) {
-      document.getElementById('userProfile').style.display = 'flex';
-      
+    // ---- Modal ----
+    function accOpenModal(id) { document.getElementById(id)?.classList.add('active'); }
+    function accCloseModal(id) { document.getElementById(id)?.classList.remove('active'); }
+    function accShowAlert(title, msg, onConfirm) {
+      document.getElementById('alertTitle').textContent = title;
+      document.getElementById('alertMessage').textContent = msg;
+      _accAlertCallback = onConfirm;
+      accOpenModal('alertModal');
+    }
+    function accHandleAlertConfirm() {
+      if (_accAlertCallback) _accAlertCallback();
+      accCloseModal('alertModal');
+    }
+
+    // ---- UI Update ----
+    function accUpdateUIForUser(user) {
+      const chip = document.getElementById('userChip');
+      if (chip) chip.style.display = 'flex';
       if (user.photoURL) {
-        document.getElementById('userAvatarImg').src = user.photoURL;
-        document.getElementById('userAvatarImg').style.display = 'block';
-        document.getElementById('userAvatarInitial').style.display = 'none';
-        document.getElementById('accountPageAvatarImg').src = user.photoURL;
-        document.getElementById('accountPageAvatarImg').style.display = 'block';
-        document.getElementById('accountPageAvatarInitial').style.display = 'none';
+        const img = document.getElementById('chipAvatarImg');
+        if (img) { img.src = user.photoURL; img.style.display = 'block'; }
+        const init = document.getElementById('chipAvatarInitial');
+        if (init) init.style.display = 'none';
+        const pgImg = document.getElementById('accountPageAvatarImg');
+        if (pgImg) { pgImg.src = user.photoURL; pgImg.style.display = 'block'; }
+        const pgInit = document.getElementById('accountPageAvatarInitial');
+        if (pgInit) pgInit.style.display = 'none';
       } else {
         const initial = (user.displayName || 'U').charAt(0).toUpperCase();
-        document.getElementById('userAvatarInitial').textContent = initial;
-        document.getElementById('accountPageAvatarInitial').textContent = initial;
+        const chipInit = document.getElementById('chipAvatarInitial');
+        if (chipInit) chipInit.textContent = initial;
+        const pgInit = document.getElementById('accountPageAvatarInitial');
+        if (pgInit) pgInit.textContent = initial;
       }
-
-      document.getElementById('userName').textContent = user.displayName || 'User';
-      document.getElementById('accountPageName').textContent = user.displayName || 'User';
-      document.getElementById('accountPageEmail').textContent = user.email;
-      document.getElementById('profileEmail').value = user.email;
+      const chipName = document.getElementById('chipUserName');
+      if (chipName) chipName.textContent = user.displayName || 'User';
+      const pgName = document.getElementById('accountPageName');
+      if (pgName) pgName.textContent = user.displayName || 'User';
+      const pgEmail = document.getElementById('accountPageEmail');
+      if (pgEmail) pgEmail.textContent = user.email;
+      const profEmail = document.getElementById('profileEmail');
+      if (profEmail) profEmail.value = user.email;
     }
 
-    function loadUserData(user) {
-      db.ref(`users/${user.uid}`).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          document.getElementById('profileName').value = data.name || user.displayName || '';
-          document.getElementById('profilePhone').value = data.phone || '';
-          
-          if (data.lastLoginAt) {
-            document.getElementById('lastLoginTime').textContent = new Date(data.lastLoginAt).toLocaleString();
-          }
-
-          if (data.settings) {
-            loadSettings(data.settings);
-          }
+    // ---- Load User Data ----
+    function accLoadUserData(user) {
+      const fb = window._accFb;
+      if (!fb) return;
+      fb.get(fb.ref(fb.db, 'users/' + user.uid)).then(snap => {
+        if (snap.exists()) {
+          const data = snap.val();
+          const pName = document.getElementById('profileName');
+          if (pName) pName.value = data.name || user.displayName || '';
+          const pPhone = document.getElementById('profilePhone');
+          if (pPhone) pPhone.value = data.phone || '';
+          const lastLogin = document.getElementById('lastLoginTime');
+          if (lastLogin && data.lastLoginAt) lastLogin.textContent = new Date(data.lastLoginAt).toLocaleString();
+          if (data.settings) accLoadSettings(data.settings);
         }
+      }).catch(() => {});
+    }
+
+    // ---- Save Profile ----
+    function accSaveProfile() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      const name = document.getElementById('profileName')?.value;
+      const phone = document.getElementById('profilePhone')?.value;
+      if (!name) { accShowToast('Please enter your name', 'error'); return; }
+      fb.update(fb.ref(fb.db, 'users/' + user.uid), { name, phone, updatedAt: Date.now() })
+        .then(() => {
+          accShowToast('Profile updated successfully', 'success');
+          const pgName = document.getElementById('accountPageName');
+          if (pgName) pgName.textContent = name;
+          const chipName = document.getElementById('chipUserName');
+          if (chipName) chipName.textContent = name;
+          const chipInit = document.getElementById('chipAvatarInitial');
+          if (chipInit) chipInit.textContent = name.charAt(0).toUpperCase();
+          const pgInit = document.getElementById('accountPageAvatarInitial');
+          if (pgInit) pgInit.textContent = name.charAt(0).toUpperCase();
+          // Signal index.html to refresh name (via localStorage broadcast)
+          localStorage.setItem('bz_profile_updated', JSON.stringify({ name, ts: Date.now() }));
+        })
+        .catch(() => accShowToast('Failed to update profile', 'error'));
+    }
+
+    // ---- Settings ----
+    function accLoadSettings(settings) {
+      const fields = ['emailNotifications','smsNotifications','pushNotifications','personalizedRecs','dataSharing'];
+      fields.forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.checked = settings[f] ?? true;
       });
+      const lang = document.getElementById('languageSelect');
+      if (lang) lang.value = settings.language || 'en';
+      const curr = document.getElementById('currencySelect');
+      if (curr) curr.value = settings.currency || 'INR';
     }
-
-    function loadSettings(settings) {
-      document.getElementById('emailNotifications').checked = settings.emailNotifications ?? true;
-      document.getElementById('smsNotifications').checked = settings.smsNotifications ?? true;
-      document.getElementById('pushNotifications').checked = settings.pushNotifications ?? true;
-      document.getElementById('personalizedRecs').checked = settings.personalizedRecs ?? true;
-      document.getElementById('dataSharing').checked = settings.dataSharing ?? true;
-      document.getElementById('languageSelect').value = settings.language || 'en';
-      document.getElementById('currencySelect').value = settings.currency || 'INR';
-    }
-
-    function saveProfile() {
-      const name = document.getElementById('profileName').value;
-      const phone = document.getElementById('profilePhone').value;
-
-      if (!name) {
-        showToast('Please enter your name', 'error');
-        return;
-      }
-
-      db.ref(`users/${currentUser.uid}`).update({
-        name,
-        phone,
-        updatedAt: Date.now()
-      }).then(() => {
-        showToast('Profile updated successfully', 'success');
-        document.getElementById('userName').textContent = name;
-        document.getElementById('accountPageName').textContent = name;
-        document.getElementById('userAvatarInitial').textContent = name.charAt(0).toUpperCase();
-        document.getElementById('accountPageAvatarInitial').textContent = name.charAt(0).toUpperCase();
-      }).catch(error => {
-        showToast('Failed to update profile', 'error');
-      });
-    }
-
-    function saveSettings() {
+    function accSaveSettings() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
       const settings = {
-        emailNotifications: document.getElementById('emailNotifications').checked,
-        smsNotifications: document.getElementById('smsNotifications').checked,
-        pushNotifications: document.getElementById('pushNotifications').checked,
-        personalizedRecs: document.getElementById('personalizedRecs').checked,
-        dataSharing: document.getElementById('dataSharing').checked,
-        language: document.getElementById('languageSelect').value,
-        currency: document.getElementById('currencySelect').value
+        emailNotifications: document.getElementById('emailNotifications')?.checked,
+        smsNotifications: document.getElementById('smsNotifications')?.checked,
+        pushNotifications: document.getElementById('pushNotifications')?.checked,
+        personalizedRecs: document.getElementById('personalizedRecs')?.checked,
+        dataSharing: document.getElementById('dataSharing')?.checked,
+        language: document.getElementById('languageSelect')?.value,
+        currency: document.getElementById('currencySelect')?.value
       };
-
-      db.ref(`users/${currentUser.uid}/settings`).set(settings)
-        .then(() => showToast('Settings saved', 'success'))
-        .catch(() => showToast('Failed to save settings', 'error'));
+      fb.set(fb.ref(fb.db, 'users/' + user.uid + '/settings'), settings)
+        .then(() => accShowToast('Settings saved', 'success'))
+        .catch(() => accShowToast('Failed to save settings', 'error'));
     }
 
-    // Address Functions
-    function showAddressForm(address = null) {
+    // ---- Address Functions ----
+    function accShowAddressForm(address = null) {
       document.getElementById('newAddressForm').style.display = 'block';
       document.getElementById('addNewAddress').style.display = 'none';
-      
+      const titleEl = document.getElementById('addressFormTitle');
       if (address) {
-        editingAddressId = address.id;
+        _accEditingAddressId = address.id;
+        if (titleEl) titleEl.textContent = 'Edit Address';
         document.getElementById('addressName').value = address.name || '';
         document.getElementById('addressMobile').value = address.mobile || '';
         document.getElementById('addressPincode').value = address.pincode || '';
@@ -1588,332 +841,247 @@
         document.getElementById('addressState').value = address.state || '';
         document.getElementById('addressStreet').value = address.street || '';
         document.getElementById('addressType').value = address.type || 'home';
-        document.querySelector('.card-title').textContent = 'Edit Address';
       } else {
-        editingAddressId = null;
-        document.getElementById('addressName').value = '';
-        document.getElementById('addressMobile').value = '';
-        document.getElementById('addressPincode').value = '';
-        document.getElementById('addressCity').value = '';
-        document.getElementById('addressState').value = '';
-        document.getElementById('addressStreet').value = '';
+        _accEditingAddressId = null;
+        if (titleEl) titleEl.textContent = 'Add New Address';
+        ['addressName','addressMobile','addressPincode','addressCity','addressState','addressStreet'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
         document.getElementById('addressType').value = 'home';
-        document.querySelector('.card-title').textContent = 'Add New Address';
       }
     }
-
-    function hideAddressForm() {
+    function accHideAddressForm() {
       document.getElementById('newAddressForm').style.display = 'none';
-      document.getElementById('addNewAddress').style.display = 'block';
-      editingAddressId = null;
+      document.getElementById('addNewAddress').style.display = 'inline-flex';
+      _accEditingAddressId = null;
     }
-
-    function saveAddress() {
+    function accSaveAddress() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
       const address = {
-        name: document.getElementById('addressName').value,
-        mobile: document.getElementById('addressMobile').value,
-        pincode: document.getElementById('addressPincode').value,
-        city: document.getElementById('addressCity').value,
-        state: document.getElementById('addressState').value,
-        street: document.getElementById('addressStreet').value,
-        type: document.getElementById('addressType').value,
-        userId: currentUser.uid,
+        name: document.getElementById('addressName')?.value || '',
+        mobile: document.getElementById('addressMobile')?.value || '',
+        pincode: document.getElementById('addressPincode')?.value || '',
+        city: document.getElementById('addressCity')?.value || '',
+        state: document.getElementById('addressState')?.value || '',
+        street: document.getElementById('addressStreet')?.value || '',
+        type: document.getElementById('addressType')?.value || 'home',
+        userId: user.uid,
         updatedAt: Date.now()
       };
-
       if (!address.name || !address.mobile || !address.pincode || !address.city || !address.state || !address.street) {
-        showToast('Please fill all required fields', 'error');
-        return;
+        accShowToast('Please fill all required fields', 'error'); return;
       }
-
-      const promise = editingAddressId
-        ? db.ref(`addresses/${editingAddressId}`).update(address)
-        : db.ref('addresses').push(address);
-
-      promise.then(() => {
-        showToast(`Address ${editingAddressId ? 'updated' : 'added'} successfully`, 'success');
-        hideAddressForm();
-        loadAddresses();
-      }).catch(() => {
-        showToast(`Failed to ${editingAddressId ? 'update' : 'add'} address`, 'error');
-      });
+      const promise = _accEditingAddressId
+        ? fb.update(fb.ref(fb.db, 'addresses/' + _accEditingAddressId), address)
+        : fb.push(fb.ref(fb.db, 'addresses'), address);
+      promise
+        .then(() => {
+          accShowToast('Address ' + (_accEditingAddressId ? 'updated' : 'added') + ' successfully', 'success');
+          accHideAddressForm();
+          accLoadAddresses();
+          // Signal index.html to reload addresses
+          localStorage.setItem('bz_address_updated', Date.now().toString());
+        })
+        .catch(() => accShowToast('Failed to save address', 'error'));
     }
-
-    function loadAddresses() {
+    function accLoadAddresses() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
       const container = document.getElementById('savedAddresses');
-      container.innerHTML = '<div class="spinner"></div>';
-
-      db.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
+      if (!fb || !user || !container) return;
+      container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
+      fb.get(fb.query(fb.ref(fb.db, 'addresses'), fb.orderByChild('userId'), fb.equalTo(user.uid)))
+        .then(snap => {
           container.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            container.innerHTML = `
-              <div class="empty-state">
-                <div class="empty-state-icon">🏠</div>
-                <div class="empty-state-title">No addresses saved</div>
-                <div class="empty-state-description">Add your first address to make checkout faster</div>
-              </div>
-            `;
+          if (!snap.exists()) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
             return;
           }
-
-          const addresses = [];
-          snapshot.forEach(child => addresses.push({ id: child.key, ...child.val() }));
-          addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
-
-          addresses.forEach(address => {
+          snap.forEach(child => {
+            const a = { id: child.key, ...child.val() };
             const card = document.createElement('div');
-            card.className = `address-card ${address.isDefault ? 'default' : ''}`;
+            card.className = 'address-card' + (a.isDefault ? ' default' : '');
             card.innerHTML = `
-              <div class="address-name">${address.name}</div>
-              <div class="address-details">
-                ${address.street}<br>
-                ${address.city}, ${address.state} - ${address.pincode}<br>
-                Mobile: ${address.mobile}
+              <div class="address-card-header">
+                <span class="address-type-badge">${a.type || 'home'}</span>
+                ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
               </div>
-              <div>
-                <span class="address-badge">${address.type}</span>
-                ${address.isDefault ? '<span class="address-badge default">Default</span>' : ''}
-              </div>
+              <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
+              <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
+              <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
               <div class="address-actions">
-                <button class="btn-outline btn-sm" onclick="editAddress('${address.id}')">Edit</button>
-                <button class="btn-outline btn-sm" onclick="deleteAddress('${address.id}')">Delete</button>
-                ${!address.isDefault ? `<button class="btn-sm" onclick="setDefaultAddress('${address.id}')">Set as Default</button>` : ''}
-              </div>
-            `;
+                <button class="btn-outline btn-sm" onclick="accEditAddress('${a.id}')">Edit</button>
+                <button class="btn-outline btn-sm" onclick="accDeleteAddress('${a.id}')">Delete</button>
+                ${!a.isDefault ? `<button class="btn-outline btn-sm" onclick="accSetDefaultAddress('${a.id}')">Set Default</button>` : ''}
+              </div>`;
             container.appendChild(card);
           });
-        });
+        }).catch(() => { container.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:2rem">Could not load addresses. Please try again.</p>'; });
     }
-
-    window.editAddress = function(id) {
-      db.ref(`addresses/${id}`).once('value').then(snapshot => {
-        if (snapshot.exists()) {
-          showAddressForm({ id, ...snapshot.val() });
-        }
+    window.accEditAddress = function(id) {
+      const fb = window._accFb;
+      if (!fb) return;
+      fb.get(fb.ref(fb.db, 'addresses/' + id)).then(snap => {
+        if (snap.exists()) accShowAddressForm({ id, ...snap.val() });
       });
     };
-
-    window.deleteAddress = function(id) {
-      if (confirm('Are you sure you want to delete this address?')) {
-        db.ref(`addresses/${id}`).remove()
+    window.accDeleteAddress = function(id) {
+      const fb = window._accFb;
+      if (!fb) return;
+      accShowAlert('Delete Address', 'Are you sure you want to delete this address?', () => {
+        fb.remove(fb.ref(fb.db, 'addresses/' + id))
           .then(() => {
-            showToast('Address deleted', 'success');
-            loadAddresses();
+            accShowToast('Address deleted', 'success');
+            accLoadAddresses();
+            localStorage.setItem('bz_address_updated', Date.now().toString());
           })
-          .catch(() => showToast('Failed to delete address', 'error'));
-      }
+          .catch(() => accShowToast('Failed to delete address', 'error'));
+      });
     };
-
-    window.setDefaultAddress = function(id) {
-      db.ref('addresses').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
+    window.accSetDefaultAddress = function(id) {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      fb.get(fb.query(fb.ref(fb.db, 'addresses'), fb.orderByChild('userId'), fb.equalTo(user.uid)))
+        .then(snap => {
           const updates = {};
-          snapshot.forEach(child => {
-            updates[`addresses/${child.key}/isDefault`] = child.key === id;
-          });
-          return db.ref().update(updates);
+          snap.forEach(child => { updates['addresses/' + child.key + '/isDefault'] = (child.key === id); });
+          return fb.update(fb.ref(fb.db), updates);
         })
-        .then(() => {
-          showToast('Default address updated', 'success');
-          loadAddresses();
-        })
-        .catch(() => showToast('Failed to update default address', 'error'));
+        .then(() => { accShowToast('Default address updated', 'success'); accLoadAddresses(); })
+        .catch(() => accShowToast('Failed to set default', 'error'));
     };
 
-    // Wishlist Functions
-    function loadWishlist() {
+    // ---- Wishlist ----
+    function accLoadWishlist() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
       const container = document.getElementById('wishlistItems');
-      container.innerHTML = '<div class="spinner"></div>';
-
-      db.ref('wishlist').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
+      if (!fb || !user || !container) return;
+      container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
+      fb.get(fb.query(fb.ref(fb.db, 'wishlist'), fb.orderByChild('userId'), fb.equalTo(user.uid)))
+        .then(snap => {
           container.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            container.innerHTML = `
-              <div class="empty-state">
-                <div class="empty-state-icon">❤️</div>
-                <div class="empty-state-title">Your wishlist is empty</div>
-                <div class="empty-state-description">Start adding products you love</div>
-                <button class="btn" onclick="window.location.href='index.html'">Browse Products</button>
-              </div>
-            `;
+          if (!snap.exists()) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❤️</div><div class="empty-state-title">Your wishlist is empty</div><div class="empty-state-description">Save products you love to view them here</div><button class="btn" onclick="window.location.href=\'index.html\'">Browse Products</button></div>';
             return;
           }
-
-          snapshot.forEach(child => {
+          snap.forEach(child => {
             const item = child.val();
             const card = document.createElement('div');
             card.className = 'product-card';
             card.innerHTML = `
-              <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${item.name}" class="product-image" onerror="this.src='https://via.placeholder.com/100'">
+              <img src="${item.image||'https://via.placeholder.com/100'}" alt="${item.name||''}" class="product-image" onerror="this.src='https://via.placeholder.com/100'">
               <div class="product-details">
-                <div class="product-title">${item.name || 'Product'}</div>
-                <div class="product-price">₹${item.price || 0}</div>
-                <div class="product-rating">
-                  ${Array(5).fill().map((_, i) => `
-                    <span class="star ${i < Math.floor(item.rating || 4) ? '' : 'inactive'}">★</span>
-                  `).join('')}
+                <div class="product-title">${item.name||'Product'}</div>
+                <div class="product-price">₹${item.price||0}</div>
+                <div class="product-rating">${Array(5).fill('').map((_,i)=>`<span class="star${i<Math.floor(item.rating||4)?'':' inactive'}">★</span>`).join('')}</div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                  <button class="btn-outline btn-sm" onclick="accRemoveWishlist('${child.key}')">Remove</button>
+                  <button class="btn btn-sm" onclick="window.location.href='index.html'">View</button>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button class="btn-outline btn-sm" onclick="removeFromWishlist('${child.key}')">Remove</button>
-                  <button class="btn-sm" onclick="viewProduct('${item.productId}')">View</button>
-                </div>
-              </div>
-            `;
+              </div>`;
             container.appendChild(card);
           });
-        });
+        }).catch(() => { container.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:2rem">Could not load wishlist.</p>'; });
     }
-
-    window.removeFromWishlist = function(id) {
-      db.ref(`wishlist/${id}`).remove()
-        .then(() => {
-          showToast('Removed from wishlist', 'success');
-          loadWishlist();
-        })
-        .catch(() => showToast('Failed to remove', 'error'));
+    window.accRemoveWishlist = function(id) {
+      const fb = window._accFb;
+      if (!fb) return;
+      fb.remove(fb.ref(fb.db, 'wishlist/' + id))
+        .then(() => { accShowToast('Removed from wishlist', 'success'); accLoadWishlist(); })
+        .catch(() => accShowToast('Failed to remove', 'error'));
     };
 
-    window.viewProduct = function(productId) {
-      sessionStorage.setItem('viewProduct', productId);
-      window.location.href = 'index.html#productDetailPage';
-    };
-
-    // Orders Functions
-    function loadOrders() {
+    // ---- Orders ----
+    function accLoadOrders() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
       const container = document.getElementById('ordersList');
-      container.innerHTML = '<div class="spinner"></div>';
-
-      db.ref('orders').orderByChild('userId').equalTo(currentUser.uid).once('value')
-        .then(snapshot => {
+      if (!fb || !user || !container) return;
+      container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
+      fb.get(fb.query(fb.ref(fb.db, 'orders'), fb.orderByChild('userId'), fb.equalTo(user.uid)))
+        .then(snap => {
           container.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            container.innerHTML = `
-              <div class="empty-state">
-                <div class="empty-state-icon">📦</div>
-                <div class="empty-state-title">No orders yet</div>
-                <div class="empty-state-description">Start shopping to see your orders here</div>
-                <button class="btn" onclick="window.location.href='index.html'">Shop Now</button>
-              </div>
-            `;
+          if (!snap.exists()) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Start shopping to see your orders here</div><button class="btn" onclick="window.location.href=\'index.html\'">Shop Now</button></div>';
             return;
           }
-
           const orders = [];
-          snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
-          orders.sort((a, b) => (b.orderDate || b.timestamp || 0) - (a.orderDate || a.timestamp || 0));
-
+          snap.forEach(child => orders.push({ id: child.key, ...child.val() }));
+          orders.sort((a, b) => (b.orderDate||b.timestamp||0) - (a.orderDate||a.timestamp||0));
           orders.forEach(order => {
             const card = document.createElement('div');
             card.className = 'order-card';
-            
             const status = order.status || 'processing';
-            const date = new Date(order.orderDate || order.timestamp || Date.now()).toLocaleDateString();
-            
+            const date = new Date(order.orderDate||order.timestamp||Date.now()).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
             card.innerHTML = `
               <div class="order-header">
-                <div>
-                  <div class="order-id">${order.orderId || '#' + order.id.slice(-8)}</div>
-                  <div style="font-size: 0.75rem; color: var(--text-secondary);">${date}</div>
-                </div>
-                <span class="order-status ${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                <div><div class="order-id">${order.orderId||('#'+String(order.id).slice(-8))}</div><div style="font-size:0.75rem;color:var(--text-secondary)">${date}</div></div>
+                <span class="order-status ${status}">${status.charAt(0).toUpperCase()+status.slice(1)}</span>
               </div>
               <div class="order-items">
-                ${(order.items || []).map(item => `
+                ${(order.items||[{name:order.productName||'Product',image:order.image||'',price:order.price||order.totalAmount||0,quantity:order.quantity||1}]).map(item=>`
                   <div class="order-item">
-                    <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image">
-                    <div style="flex: 1;">
-                      <div style="font-weight: 500;">${item.name}</div>
-                      <div style="font-size: 0.875rem; color: var(--text-secondary);">Qty: ${item.quantity || 1}</div>
-                      <div style="font-weight: 600; color: var(--primary);">₹${item.price || 0}</div>
-                    </div>
-                  </div>
-                `).join('')}
+                    <img src="${item.image||'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image" onerror="this.src='https://via.placeholder.com/60'">
+                    <div style="flex:1"><div style="font-weight:500">${item.name}</div><div style="font-size:0.875rem;color:var(--text-secondary)">Qty: ${item.quantity||1}</div><div style="font-weight:600;color:var(--primary)">₹${item.price||0}</div></div>
+                  </div>`).join('')}
               </div>
-              <div style="margin-top: 1rem; font-weight: 600;">
-                Total: ₹${order.totalAmount || order.total || 0}
-              </div>
-            `;
+              <div style="margin-top:1rem;font-weight:600;border-top:1px solid var(--border);padding-top:0.75rem">Total: ₹${order.totalAmount||order.total||0}</div>`;
             container.appendChild(card);
           });
-        });
+        }).catch(() => { container.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:2rem">Could not load orders.</p>'; });
     }
 
-    // Login Activity
-    function showLoginActivity() {
-      db.ref(`loginActivity/${currentUser.uid}`).once('value')
-        .then(snapshot => {
-          const list = document.getElementById('loginActivityList');
-          list.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-            list.innerHTML = '<p style="text-align: center; padding: 2rem;">No login activity found</p>';
-            return;
-          }
-
-          const activities = [];
-          snapshot.forEach(child => activities.push({ id: child.key, ...child.val() }));
-          activities.sort((a, b) => b.timestamp - a.timestamp);
-
-          activities.forEach(activity => {
+    // ---- Login Activity ----
+    function accShowLoginActivity() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      fb.get(fb.ref(fb.db, 'loginActivity/' + user.uid)).then(snap => {
+        const list = document.getElementById('loginActivityList');
+        list.innerHTML = '';
+        if (!snap.exists()) { list.innerHTML = '<p style="text-align:center;padding:2rem;color:var(--text-secondary)">No login activity found</p>'; }
+        else {
+          const acts = [];
+          snap.forEach(c => acts.push({ id: c.key, ...c.val() }));
+          acts.sort((a,b) => b.timestamp - a.timestamp);
+          acts.forEach(a => {
             const item = document.createElement('div');
             item.className = 'activity-item';
-            item.innerHTML = `
-              <div class="activity-info">
-                <div class="activity-time">${new Date(activity.timestamp).toLocaleString()}</div>
-                <div class="activity-device">${activity.deviceType || 'Unknown'}</div>
-              </div>
-              <span class="activity-status">Success</span>
-            `;
+            item.innerHTML = `<div class="activity-info"><div class="activity-time">${new Date(a.timestamp).toLocaleString()}</div><div class="activity-device">${a.deviceType||'Unknown Device'}</div></div><span class="activity-status">Success</span>`;
             list.appendChild(item);
           });
-
-          openModal('loginActivityModal');
-        });
+        }
+        accOpenModal('loginActivityModal');
+      }).catch(() => accShowToast('Could not load activity', 'error'));
     }
 
-    // Password Reset
-    function sendPasswordReset() {
-      document.getElementById('changePasswordEmail').textContent = currentUser.email;
-      auth.sendPasswordResetEmail(currentUser.email)
-        .then(() => {
-          showToast('Password reset link sent to your email', 'success');
-          closeModal('changePasswordModal');
-        })
-        .catch(() => showToast('Failed to send reset email', 'error'));
+    // ---- Password Reset ----
+    function accSendPasswordReset() {
+      const fb = window._accFb;
+      const user = window._accCurrentUser;
+      if (!fb || !user) return;
+      fb.sendPasswordResetEmail(fb.auth, user.email)
+        .then(() => { accShowToast('Password reset link sent to your email', 'success'); accCloseModal('changePasswordModal'); })
+        .catch(() => accShowToast('Failed to send reset email', 'error'));
     }
 
-    // Alert Handlers
-    function showAlert(title, message, onConfirm) {
-      document.getElementById('alertTitle').textContent = title;
-      document.getElementById('alertMessage').textContent = message;
-      alertCallback = onConfirm;
-      openModal('alertModal');
-    }
-
-    function handleAlertConfirm() {
-      if (alertCallback) alertCallback();
-      closeModal('alertModal');
-    }
-
-    function showLogoutConfirmation() {
-      showAlert('Logout Confirmation', 'Are you sure you want to logout?', () => {
-        auth.signOut().then(() => {
-          showToast('Logged out successfully', 'success');
-          setTimeout(() => window.location.href = 'index.html', 1000);
-        });
-      });
-    }
-
-    function showDeleteConfirmation() {
-      showAlert('Delete Account', 'This action cannot be undone. Are you sure?', () => {
-        showToast('Account deletion feature coming soon', 'info');
+    // ---- Logout ----
+    function accShowLogoutConfirmation() {
+      accShowAlert('Logout Confirmation', 'Are you sure you want to logout?', () => {
+        const fb = window._accFb;
+        if (!fb) return;
+        fb.signOut(fb.auth).then(() => {
+          accShowToast('Logged out successfully', 'success');
+          setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+        }).catch(() => accShowToast('Failed to logout', 'error'));
       });
     }
   </script>
+
 </body>
 </html>

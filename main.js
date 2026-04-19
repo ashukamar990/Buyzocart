@@ -3371,6 +3371,16 @@
         if (snapshot.exists()) {
           const userData = snapshot.val();
           userInfo = { ...userInfo, ...userData };
+          // Update header name from Firebase profile (reflects account.html changes)
+          if (userData.name) {
+            const headerName = document.getElementById('headerUserNameShort');
+            if (headerName) {
+              const short = userData.name.split(' ')[0];
+              headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
+            }
+            const avatarInit = document.getElementById('userAvatarInitial');
+            if (avatarInit) avatarInit.textContent = userData.name.charAt(0).toUpperCase();
+          }
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -3875,6 +3885,9 @@
             document.getElementById('authModal')?.classList.remove('active');
 
             // Pending account navigation — login ke baad account.html open karo
+            // Real-time sync: name/address changes in account.html reflect here
+            setupAccountRealtimeSync(user.uid);
+
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
               setTimeout(() => { window.location.href = 'account.html'; }, 300);
@@ -4294,7 +4307,110 @@
       `;
       document.head.appendChild(style);
 
-      // Debounce scroll handler
+  
+    // ============================================================
+    //  ACCOUNT PAGE — Navigation & Firebase Real-time Sync
+    // ============================================================
+
+    /** Header profile button + mobile menu profile → account.html */
+    function openAccountPage() {
+      window.location.href = 'account.html';
+    }
+
+    /** Called after login if user had clicked Account before logging in */
+    function closeAccountPage() {
+      showPage('homePage');
+    }
+
+    /**
+     * Real-time listener on users/{uid} — any name/phone saved in
+     * account.html immediately updates the header avatar & name here.
+     */
+    function setupAccountRealtimeSync(uid) {
+      if (!window.firebase || !window.firebase.onValue) return;
+      const userRef = window.firebase.ref(window.firebase.database, 'users/' + uid);
+      window.firebase.onValue(userRef, function(snapshot) {
+        if (!snapshot.exists()) return;
+        const data = snapshot.val();
+        // Update header name
+        const headerName = document.getElementById('headerUserNameShort');
+        if (headerName && data.name) {
+          const short = data.name.split(' ')[0];
+          headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
+        }
+        // Update avatar initial
+        const avatarInitial = document.getElementById('userAvatarInitial');
+        if (avatarInitial && data.name) {
+          avatarInitial.textContent = data.name.charAt(0).toUpperCase();
+        }
+        // Store name so order flow uses updated name
+        if (data.name && typeof userInfo !== 'undefined') {
+          userInfo.fullName = userInfo.fullName || data.name;
+        }
+      });
+
+      // Real-time listener on addresses — account.html changes auto-sync
+      const addrRef = window.firebase.ref(window.firebase.database, 'addresses');
+      window.firebase.onValue(
+        window.firebase.query(addrRef,
+          window.firebase.orderByChild('userId'),
+          window.firebase.equalTo(uid)
+        ),
+        function(snapshot) {
+          if (!snapshot.exists()) { savedAddresses = []; return; }
+          const obj = snapshot.val();
+          const list = Object.keys(obj).map(k => ({ id: k, ...obj[k] }));
+          savedAddresses = list.sort((a, b) =>
+            (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt || 0) - (a.createdAt || 0)
+          );
+          // Re-render saved addresses in the checkout form if open
+          if (typeof renderSavedAddresses === 'function') {
+            const section = document.getElementById('savedAddressesSection');
+            if (section) {
+              section.style.display = savedAddresses.length > 0 ? 'block' : 'none';
+              renderSavedAddresses();
+              const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+              if (def && typeof fillAddressForm === 'function') fillAddressForm(def);
+            }
+          }
+        }
+      );
+    }
+
+
+    // ── Cross-page Sync (account.html ↔ index.html) ───────────────────────────
+    // When user saves profile/address in account.html and comes back,
+    // index.html auto-refreshes the name and addresses.
+    window.addEventListener('storage', function(e) {
+      if (!currentUser) return;
+      if (e.key === 'bz_profile_updated' && e.newValue) {
+        try {
+          const d = JSON.parse(e.newValue);
+          if (d.name) {
+            const headerName = document.getElementById('headerUserNameShort');
+            if (headerName) {
+              const short = d.name.split(' ')[0];
+              headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
+            }
+            const avatarInit = document.getElementById('userAvatarInitial');
+            if (avatarInit) avatarInit.textContent = d.name.charAt(0).toUpperCase();
+          }
+        } catch(e2) {}
+      }
+      if (e.key === 'bz_address_updated') {
+        loadSavedAddresses();
+      }
+    });
+
+    // Also refresh when user tabs back to index.html from account.html
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible' && currentUser) {
+        loadSavedAddresses();
+        loadUserData(currentUser);
+      }
+    });
+
+    // Debounce scroll handler
       let scrollRAF = null;
       window.addEventListener('scroll', () => {
         if (scrollRAF) return;
