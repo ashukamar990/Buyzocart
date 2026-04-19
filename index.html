@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=yes" />
   <title>Buyzocart Shop - Best Deals & Products</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -230,38 +230,70 @@
       background: #dc2626;
     }
 
-    .fullscreen-viewer {
+    .zoom-modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      right: 0;
+      bottom: 0;
       background: #000;
       z-index: 10000;
       display: none;
       touch-action: none;
     }
-    .fullscreen-viewer.active {
+    .zoom-modal-overlay.active {
       display: block;
     }
-    .viewer-header {
+    .zoom-modal-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    .zoom-slider-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    .zoom-slider-track {
+      display: flex;
+      height: 100%;
+      transition: transform 0.3s ease;
+      touch-action: pan-y pinch-zoom;
+    }
+    .zoom-slide {
+      flex-shrink: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .zoom-slide img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 0.1s ease;
+      pointer-events: none;
+    }
+    .zoom-controls-top {
       position: absolute;
-      top: 0;
+      top: 16px;
       left: 0;
       right: 0;
-      padding: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: white;
+      padding: 0 16px;
       z-index: 10001;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
     }
-    .viewer-close {
-      width: 40px;
-      height: 40px;
+    .zoom-close-btn {
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.6);
       border: none;
       color: white;
       font-size: 28px;
@@ -271,75 +303,45 @@
       justify-content: center;
       backdrop-filter: blur(10px);
     }
-    .viewer-counter {
+    .zoom-counter {
+      background: rgba(0,0,0,0.6);
       color: white;
-      font-size: 16px;
-      font-weight: 500;
-      background: rgba(0,0,0,0.5);
       padding: 8px 16px;
       border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
       backdrop-filter: blur(10px);
     }
-    .viewer-container {
+    .zoom-nav-buttons {
       position: absolute;
-      top: 0;
+      bottom: 32px;
       left: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      touch-action: pan-x pan-y pinch-zoom;
-    }
-    .viewer-track {
+      right: 0;
       display: flex;
-      height: 100%;
-      transition: transform 0.3s ease;
-      touch-action: pan-x pan-y pinch-zoom;
-    }
-    .viewer-slide {
-      flex: 0 0 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
       justify-content: center;
-      touch-action: pan-x pan-y pinch-zoom;
+      gap: 16px;
+      z-index: 10001;
     }
-    .viewer-slide img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      touch-action: pan-x pan-y pinch-zoom;
-      user-select: none;
-      -webkit-user-drag: none;
-    }
-    .viewer-nav {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 50px;
-      height: 50px;
+    .zoom-nav-btn {
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.6);
       border: none;
       color: white;
-      font-size: 24px;
+      font-size: 28px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       backdrop-filter: blur(10px);
-      z-index: 10001;
       transition: all 0.2s;
     }
-    .viewer-nav:hover {
-      background: rgba(37, 99, 235, 0.8);
+    .zoom-nav-btn:active {
+      background: #2563eb;
+      transform: scale(0.95);
     }
-    .viewer-nav.prev {
-      left: 16px;
-    }
-    .viewer-nav.next {
-      right: 16px;
-    }
-    .viewer-dots {
+    .zoom-dots {
       position: absolute;
       bottom: 100px;
       left: 0;
@@ -349,65 +351,27 @@
       gap: 8px;
       z-index: 10001;
     }
-    .viewer-dot {
+    .zoom-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: rgba(255,255,255,0.4);
       transition: all 0.3s;
     }
-    .viewer-dot.active {
-      background: #2563eb;
+    .zoom-dot.active {
       width: 24px;
       border-radius: 4px;
+      background: #2563eb;
     }
-    .viewer-footer {
+    .zoom-instruction {
       position: absolute;
-      bottom: 0;
+      bottom: 160px;
       left: 0;
       right: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 16px;
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
       z-index: 10001;
-      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-    }
-    .viewer-footer button {
-      padding: 12px 24px;
-      border-radius: 30px;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      backdrop-filter: blur(10px);
-    }
-    .viewer-footer .zoom-in-btn {
-      background: #2563eb;
-      color: white;
-    }
-    .viewer-footer .zoom-out-btn {
-      background: rgba(255,255,255,0.2);
-      color: white;
-    }
-    .viewer-footer .reset-zoom-btn {
-      background: rgba(255,255,255,0.2);
-      color: white;
-    }
-    @media (max-width: 768px) {
-      .viewer-nav {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
-      }
-      .viewer-nav.prev {
-        left: 8px;
-      }
-      .viewer-nav.next {
-        right: 8px;
-      }
-      .viewer-dots {
-        bottom: 140px;
-      }
     }
   </style>
   <link rel="stylesheet" href="style.css">
@@ -1409,21 +1373,33 @@
 
   <div class="toast" id="toast"></div>
 
-  <div class="fullscreen-viewer" id="fullscreenViewer">
-    <div class="viewer-header">
-      <button class="viewer-close" id="viewerClose">×</button>
-      <div class="viewer-counter" id="viewerCounter">1 / 1</div>
+  <div class="product-image-modal" id="productImageModal">
+    <div class="product-image-modal-content">
+      <button class="product-image-modal-close" id="productImageModalClose">×</button>
+      <img class="product-image-modal-image" id="productImageModalImage" src="" alt="Product image">
+      <div class="product-image-modal-controls">
+        <button class="product-image-modal-prev" id="productImageModalPrev">❮</button>
+        <button class="product-image-modal-next" id="productImageModalNext">❯</button>
+      </div>
+      <div class="product-image-modal-dots" id="productImageModalDots"></div>
     </div>
-    <div class="viewer-container" id="viewerContainer">
-      <div class="viewer-track" id="viewerTrack"></div>
-    </div>
-    <button class="viewer-nav prev" id="viewerPrev">❮</button>
-    <button class="viewer-nav next" id="viewerNext">❯</button>
-    <div class="viewer-dots" id="viewerDots"></div>
-    <div class="viewer-footer">
-      <button class="zoom-in-btn" id="viewerZoomIn">+ Zoom In</button>
-      <button class="zoom-out-btn" id="viewerZoomOut">− Zoom Out</button>
-      <button class="reset-zoom-btn" id="viewerResetZoom">⟲ Reset</button>
+  </div>
+
+  <div class="zoom-modal-overlay" id="zoomModalOverlay">
+    <div class="zoom-modal-container">
+      <div class="zoom-controls-top">
+        <button class="zoom-close-btn" id="zoomModalClose">×</button>
+        <div class="zoom-counter" id="zoomCounter">1 / 5</div>
+      </div>
+      <div class="zoom-slider-container" id="zoomSliderContainer">
+        <div class="zoom-slider-track" id="zoomSliderTrack"></div>
+      </div>
+      <div class="zoom-dots" id="zoomDots"></div>
+      <div class="zoom-instruction">← Swipe to navigate • Pinch to zoom →</div>
+      <div class="zoom-nav-buttons">
+        <button class="zoom-nav-btn" id="zoomPrevBtn">❮</button>
+        <button class="zoom-nav-btn" id="zoomNextBtn">❯</button>
+      </div>
     </div>
   </div>
 
@@ -1723,6 +1699,124 @@
       if (firstReason) firstReason.classList.add('selected');
       const firstReturn = document.querySelector('#returnReplaceModal .cancellation-reason');
       if (firstReturn) firstReturn.classList.add('selected');
+    });
+
+    window.zoomImages = [];
+    window.currentZoomIndex = 0;
+    window.zoomScale = 1;
+
+    window.openZoomModal = function(images, startIndex) {
+      window.zoomImages = images || [];
+      window.currentZoomIndex = startIndex || 0;
+      window.zoomScale = 1;
+      
+      const track = document.getElementById('zoomSliderTrack');
+      const dots = document.getElementById('zoomDots');
+      const counter = document.getElementById('zoomCounter');
+      
+      track.innerHTML = '';
+      dots.innerHTML = '';
+      
+      window.zoomImages.forEach((img, i) => {
+        const slide = document.createElement('div');
+        slide.className = 'zoom-slide';
+        const image = document.createElement('img');
+        image.src = img;
+        image.alt = 'Product image ' + (i + 1);
+        image.style.transform = 'scale(1)';
+        slide.appendChild(image);
+        track.appendChild(slide);
+        
+        const dot = document.createElement('div');
+        dot.className = 'zoom-dot' + (i === window.currentZoomIndex ? ' active' : '');
+        dots.appendChild(dot);
+      });
+      
+      updateZoomCounter();
+      updateZoomPosition();
+      
+      document.getElementById('zoomModalOverlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    };
+
+    function updateZoomCounter() {
+      const counter = document.getElementById('zoomCounter');
+      if (counter) {
+        counter.textContent = (window.currentZoomIndex + 1) + ' / ' + window.zoomImages.length;
+      }
+    }
+
+    function updateZoomPosition() {
+      const track = document.getElementById('zoomSliderTrack');
+      if (track) {
+        track.style.transform = 'translateX(-' + (window.currentZoomIndex * 100) + '%)';
+      }
+      
+      const dots = document.querySelectorAll('.zoom-dot');
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === window.currentZoomIndex);
+      });
+    }
+
+    function nextZoomImage() {
+      if (window.currentZoomIndex < window.zoomImages.length - 1) {
+        window.currentZoomIndex++;
+        updateZoomPosition();
+        updateZoomCounter();
+      }
+    }
+
+    function prevZoomImage() {
+      if (window.currentZoomIndex > 0) {
+        window.currentZoomIndex--;
+        updateZoomPosition();
+        updateZoomCounter();
+      }
+    }
+
+    function closeZoomModal() {
+      document.getElementById('zoomModalOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+      window.zoomScale = 1;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('zoomModalClose').addEventListener('click', closeZoomModal);
+      document.getElementById('zoomPrevBtn').addEventListener('click', prevZoomImage);
+      document.getElementById('zoomNextBtn').addEventListener('click', nextZoomImage);
+      
+      document.getElementById('zoomModalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeZoomModal();
+      });
+      
+      let startX = 0;
+      let currentX = 0;
+      let isDragging = false;
+      const track = document.getElementById('zoomSliderTrack');
+      
+      track.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+      });
+      
+      track.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        const diff = startX - currentX;
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            nextZoomImage();
+          } else {
+            prevZoomImage();
+          }
+          isDragging = false;
+        }
+      });
+      
+      track.addEventListener('touchend', function() {
+        isDragging = false;
+      });
     });
   </script>
 
