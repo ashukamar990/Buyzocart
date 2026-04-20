@@ -2130,22 +2130,20 @@
         }
 
         reviewItem.innerHTML = `
-          <div class="review-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
-            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-              ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
-              <div style="min-width:0;">
-                <span class="reviewer-name">${review.userName || 'Customer'}</span>
-                ${isVerified} ${isPending}
-              </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            <div style="flex:1;min-width:0;">
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              ${isVerified} ${isPending}
             </div>
-            <div class="review-date" style="flex-shrink:0;font-size:12px;color:#64748b;margin-top:2px;">${date}</div>
           </div>
-          <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:4px;">${stars}</div>
-          <div class="review-text" style="margin-bottom:6px;">${review.text}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
+          <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
-            `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;">
-              <button class="review-delete-btn" data-review-id="${review.id}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:4px 12px;border-radius:6px;font-weight:500;">🗑 Delete my review</button>
+            `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
+              <button class="review-delete-btn" data-review-id="${review.id}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
             </div>` : ''}
         `;
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
@@ -2186,7 +2184,14 @@
         if (!snapshot.exists()) return false;
         const ordersObj = snapshot.val();
         const userOrders = Object.keys(ordersObj).map(key => ordersObj[key]);
-        return userOrders.some(order => order.productId === productId && order.status === 'delivered');
+        return userOrders.some(order => {
+          // productId match — exact ya productName se bhi check
+          const pidMatch = order.productId === productId;
+          if (!pidMatch) return false;
+          // Status check — 'delivered' case-insensitive, ya 'deliver' contain kare
+          const status = (order.status || '').toLowerCase().trim();
+          return status === 'delivered' || status === 'deliver' || status.includes('deliver');
+        });
       } catch (error) {
         console.error('Error checking user orders:', error);
         return false;
@@ -4059,6 +4064,9 @@
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
+      document.getElementById('darkModeToggle')?.addEventListener('click', toggleTheme);
+      // Top header avatar → account.html (har baar kaam kare)
+      document.getElementById('userProfile')?.addEventListener('click', checkAuthAndShowAccount);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
       document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
       document.getElementById('clearHistoryBtn')?.addEventListener('click', clearSearchHistory);
