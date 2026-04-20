@@ -1153,12 +1153,13 @@
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('mainProductImage');
       const dotsContainer = document.getElementById('detailCarouselDots');
-      const zoomBtn = document.getElementById('imageZoomBtn');
       if (!mainImage || !dotsContainer) return;
       currentProductImages = getProductImages(product);
       if (currentProductImages.length === 0) currentProductImages = [getProductImage(product)];
       currentImageIndex = 0;
-      updateMainImage();
+      _updateDetailMainImage();
+
+      // Build dots
       dotsContainer.innerHTML = '';
       currentProductImages.forEach((_, index) => {
         const dot = document.createElement('div');
@@ -1166,48 +1167,52 @@
         dot.addEventListener('click', () => {
           pauseSlide();
           currentImageIndex = index;
-          updateMainImage();
-          updateDots();
+          _updateDetailMainImage();
+          _updateDetailDots();
           resumeSlideAfterDelay();
         });
         dotsContainer.appendChild(dot);
       });
-      if (zoomBtn) {
-        // Remove old listener then add fresh
-        const newZoomBtn = zoomBtn.cloneNode(true);
-        zoomBtn.parentNode.replaceChild(newZoomBtn, zoomBtn);
-        newZoomBtn.addEventListener('click', (e) => {
+
+      // Zoom button — open fullscreen viewer (NO cloneNode — use flag to avoid duplicate listeners)
+      const zoomBtn = document.getElementById('imageZoomBtn');
+      if (zoomBtn && !zoomBtn._fvBound) {
+        zoomBtn._fvBound = true;
+        zoomBtn.style.display = 'none'; // FIX 1: Hide zoom button as requested
+        zoomBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           pauseSlide();
           openFullscreenViewer(currentProductImages, currentImageIndex);
           resumeSlideAfterDelay();
         });
+      } else if (zoomBtn) {
+        zoomBtn.style.display = 'none'; // keep hidden on re-init
       }
-      // Also open viewer when tapping the main image itself
-      if (mainImage) {
+
+      // Tap on main image → open fullscreen viewer (NO cloneNode)
+      if (mainImage && !mainImage._fvBound) {
+        mainImage._fvBound = true;
         mainImage.style.cursor = 'zoom-in';
-        const newMain = mainImage.cloneNode(true);
-        mainImage.parentNode.replaceChild(newMain, mainImage);
-        // Re-grab reference after clone
-        const freshMain = document.getElementById('mainProductImage');
-        if (freshMain) {
-          freshMain.addEventListener('click', (e) => {
-            if (e.target.closest('.detail-carousel-control') || e.target.closest('.image-zoom-btn')) return;
-            openFullscreenViewer(currentProductImages, currentImageIndex);
-          });
-        }
-      }
-      startAutoSlide();
-      function updateMainImage() {
-        if (currentProductImages[currentImageIndex]) {
-          mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
-        }
-      }
-      function updateDots() {
-        document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
-          dot.classList.toggle('active', index === currentImageIndex);
+        mainImage.addEventListener('click', (e) => {
+          if (e.target.closest('.detail-carousel-control')) return;
+          openFullscreenViewer(currentProductImages, currentImageIndex);
         });
       }
+
+      startAutoSlide();
+    }
+
+    // Standalone helpers (outside initProductDetailGallery so prev/next buttons can call them)
+    function _updateDetailMainImage() {
+      const mainImage = document.getElementById('mainProductImage');
+      if (mainImage && currentProductImages[currentImageIndex]) {
+        mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
+      }
+    }
+    function _updateDetailDots() {
+      document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
+        dot.classList.toggle('active', index === currentImageIndex);
+      });
     }
 
     // ============================================================
@@ -1539,23 +1544,20 @@
     function prevDetailImage() {
       if (!currentProductImages || currentProductImages.length <= 1) return;
       currentImageIndex = (currentImageIndex - 1 + currentProductImages.length) % currentProductImages.length;
-      updateDetailImage();
+      _updateDetailMainImage();
+      _updateDetailDots();
     }
 
     function nextDetailImage() {
       if (!currentProductImages || currentProductImages.length <= 1) return;
       currentImageIndex = (currentImageIndex + 1) % currentProductImages.length;
-      updateDetailImage();
+      _updateDetailMainImage();
+      _updateDetailDots();
     }
 
     function updateDetailImage() {
-      const mainImage = document.getElementById('mainProductImage');
-      if (mainImage && currentProductImages[currentImageIndex]) {
-        mainImage.style.backgroundImage = `url('${currentProductImages[currentImageIndex]}')`;
-      }
-      document.querySelectorAll('.detail-carousel-dot').forEach((dot, index) => {
-        dot.classList.toggle('active', index === currentImageIndex);
-      });
+      _updateDetailMainImage();
+      _updateDetailDots();
     }
 
     function openProductImageModal() {
@@ -2128,21 +2130,23 @@
         }
 
         reviewItem.innerHTML = `
-          <div class="review-header">
-            <div style="display:flex;align-items:center;gap:8px;">
-              ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;">${(review.userName||'?')[0].toUpperCase()}</div>`}
-              <div>
+          <div class="review-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+              ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+              <div style="min-width:0;">
                 <span class="reviewer-name">${review.userName || 'Customer'}</span>
                 ${isVerified} ${isPending}
               </div>
             </div>
-            <div class="review-date">${date}</div>
+            <div class="review-date" style="flex-shrink:0;font-size:12px;color:#64748b;margin-top:2px;">${date}</div>
           </div>
-          <div class="review-rating" style="color:#f59e0b;font-size:16px;">${stars}</div>
-          <div class="review-text">${review.text}</div>
+          <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:4px;">${stars}</div>
+          <div class="review-text" style="margin-bottom:6px;">${review.text}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
-            `<button class="review-delete-btn" data-review-id="${review.id}" style="margin-top:8px;background:none;border:none;color:#ef4444;font-size:12px;cursor:pointer;">Delete my review</button>` : ''}
+            `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;">
+              <button class="review-delete-btn" data-review-id="${review.id}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:4px 12px;border-radius:6px;font-weight:500;">🗑 Delete my review</button>
+            </div>` : ''}
         `;
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
         if (deleteBtn) deleteBtn.addEventListener('click', () => deleteReview(review.id));
