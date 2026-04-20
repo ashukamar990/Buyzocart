@@ -215,6 +215,16 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -448,8 +458,8 @@
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
         const ratingVal = calculateProductRating(product.id);
         card.innerHTML = `
-          <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
-          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="height:72px; background-image:url('${escapeHTML(getProductImage(product))}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
+          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(product.name || product.title || '')}</div>
           <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
@@ -463,10 +473,10 @@
         suggestion.className = 'search-suggestion';
         const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
+          <div class="search-suggestion-img" style="background-image: url('${escapeHTML(getProductImage(product))}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-name">${escapeHTML(product.name || product.title || 'Product')}</div>
+            <div class="search-suggestion-category">${escapeHTML(productCategory)}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -476,7 +486,7 @@
       if (results.length > 3) {
         const viewAll = document.createElement('div');
         viewAll.className = 'search-suggestion';
-        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
+        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${escapeHTML(query)}"</div></div>`;
         viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
@@ -508,8 +518,8 @@
         const item = document.createElement('div');
         item.className = 'recent-search-item';
         item.innerHTML = `
-          <span class="recent-search-text">${search}</span>
-          <button class="recent-search-remove" data-search="${search}">×</button>
+          <span class="recent-search-text">${escapeHTML(search)}</span>
+          <button class="recent-search-remove" data-search="${escapeHTML(search)}">×</button>
         `;
         item.querySelector('.recent-search-text').addEventListener('click', () => {
           document.getElementById('searchPanelInput').value = search;
@@ -891,14 +901,14 @@
       } else if (isTrending) {
         badgeHtml = `<div class="professional-badge">TRENDING</div>`;
       } else if (productBadge) {
-        badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
+        badgeHtml = `<div class="product-card-badge">${escapeHTML(productBadge)}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image" style="background-image: url('${escapeHTML(productImage)}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${productName}</div>
+          <div class="product-card-title">${escapeHTML(productName)}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -1432,9 +1442,9 @@
         const sliderItem = document.createElement('div');
         sliderItem.className = 'slider-item';
         sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
+          <div class="slider-item-img" style="background-image: url('${escapeHTML(getProductImage(product))}'); background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
           <div class="slider-item-body">
-            <div class="slider-item-title">${product.name || product.title || 'Product Name'}</div>
+            <div class="slider-item-title">${escapeHTML(product.name || product.title || 'Product Name')}</div>
             <div class="slider-item-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -1822,16 +1832,16 @@
         reviewItem.innerHTML = `
           <div class="review-header">
             <div style="display:flex;align-items:center;gap:8px;">
-              ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+              ${review.userPhoto ? `<img src="${escapeHTML(review.userPhoto)}" width="28" height="28" style="border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;">${escapeHTML((review.userName||'?')[0].toUpperCase())}</div>`}
               <div>
-                <span class="reviewer-name">${review.userName || 'Customer'}</span>
+                <span class="reviewer-name">${escapeHTML(review.userName || 'Customer')}</span>
                 ${isVerified} ${isPending}
               </div>
             </div>
             <div class="review-date">${date}</div>
           </div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;">${stars}</div>
-          <div class="review-text">${review.text}</div>
+          <div class="review-text">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<button class="review-delete-btn" data-review-id="${review.id}" style="margin-top:8px;background:none;border:none;color:#ef4444;font-size:12px;cursor:pointer;">Delete my review</button>` : ''}
@@ -2129,17 +2139,17 @@
         orderCard.innerHTML = `
           <div class="order-header">
             <div>
-              <div class="order-id">${order.orderId || order.id || ''}</div>
+              <div class="order-id">${escapeHTML(order.orderId || order.id || '')}</div>
               <div class="order-date">${orderDate.toLocaleDateString('en-IN')}</div>
             </div>
             <div class="order-status ${statusClass}">${statusText}</div>
           </div>
           <div class="order-details">
-            <div class="order-product-image" style="background-image: url('${imgUrl}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color:#f8fafc;"></div>
+            <div class="order-product-image" style="background-image: url('${escapeHTML(imgUrl)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color:#f8fafc;"></div>
             <div class="order-product-info">
-              <div class="order-product-title">${order.productName || 'Product'}</div>
+              <div class="order-product-title">${escapeHTML(order.productName || 'Product')}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount || 0)}</div>
-              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
+              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${escapeHTML(order.size || 'N/A')}</div>
             </div>
           </div>
           ${trackingHtml}
@@ -2223,7 +2233,7 @@
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
-          <div class="order-detail-value">${order.orderId}</div>
+          <div class="order-detail-value">${escapeHTML(order.orderId)}</div>
         </div>
         <div class="order-detail-section">
           <div class="order-detail-label">Order Date</div>
@@ -2236,12 +2246,12 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Product</div>
           <div class="order-detail-product">
-            <div class="order-detail-image" style="background-image: url('${getProductImage(products.find(p => p.id === order.productId))}')"></div>
+            <div class="order-detail-image" style="background-image: url('${escapeHTML(getProductImage(products.find(p => p.id === order.productId)))}')"></div>
             <div class="order-detail-product-info">
-              <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
+              <div style="font-weight:600;margin-bottom:8px">${escapeHTML(order.productName)}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${order.size}
+                Qty: ${order.quantity} | Size: ${escapeHTML(order.size)}
               </div>
             </div>
           </div>
@@ -2275,10 +2285,10 @@
         <div class="order-detail-section">
           <div class="order-detail-label">Delivery Address</div>
           <div class="order-detail-value">
-            <div>${order.userInfo?.fullName || ''}</div>
-            <div>${order.userInfo?.house || ''}</div>
-            <div>${order.userInfo?.city || ''}, ${order.userInfo?.state || ''} - ${order.userInfo?.pincode || ''}</div>
-            <div>Mobile: ${order.userInfo?.mobile || ''}</div>
+            <div>${escapeHTML(order.userInfo?.fullName || '')}</div>
+            <div>${escapeHTML(order.userInfo?.house || '')}</div>
+            <div>${escapeHTML(order.userInfo?.city || '')}, ${escapeHTML(order.userInfo?.state || '')} - ${escapeHTML(order.userInfo?.pincode || '')}</div>
+            <div>Mobile: ${escapeHTML(order.userInfo?.mobile || '')}</div>
           </div>
         </div>
       `;
@@ -2450,8 +2460,8 @@
         const circle = document.createElement('div');
         circle.className = 'category-circle';
         circle.innerHTML = `
-          <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
-          <div class="category-circle-name">${category.name || 'Category'}</div>
+          <div class="category-circle-image" style="background-image: url('${escapeHTML(getProductImage(category))}')"></div>
+          <div class="category-circle-name">${escapeHTML(category.name || 'Category')}</div>
         `;
         circle.addEventListener('click', () => filterByCategory(category.id));
         fragment.appendChild(circle);
@@ -2967,13 +2977,13 @@
         const isDefault = address.isDefault ? '• Default' : '';
         addressCard.innerHTML = `
           <div style="display:flex;align-items:center;gap:10px;">
-            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
+            <input type="radio" name="savedAddress" value="${escapeHTML(address.id)}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}</div>
-              <div>${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
+              <div style="font-weight:600">${escapeHTML(address.name)}</div>
+              <div>${escapeHTML(address.street)}</div>
+              <div>${escapeHTML(address.city)}, ${escapeHTML(address.state)} - ${escapeHTML(address.pincode)}</div>
+              <div>Mobile: ${escapeHTML(address.mobile)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${escapeHTML(addressType)} ${isDefault}</div>
             </div>
           </div>
           <div class="address-actions">
@@ -3207,7 +3217,7 @@
       const icons = {order:'🛍️', offer:'🎁', system:'🔔', warning:'⚠️'};
       const el = document.createElement('div');
       el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-18px);background:var(--surface,#fff);border:1.5px solid var(--border,#e2e8f0);border-left:4px solid var(--accent,#2563eb);border-radius:12px;padding:12px 18px;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-width:340px;width:90%;display:flex;gap:12px;align-items:center;opacity:0;transition:all 0.35s ease;pointer-events:none;';
-      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">'+(icons[n.type]||'🔔')+'</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;color:var(--text,#0f172a);">'+n.title+'</div><div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+n.message+'</div></div>';
+      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">'+(icons[n.type]||'🔔')+'</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;color:var(--text,#0f172a);">'+escapeHTML(n.title)+'</div><div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHTML(n.message)+'</div></div>';
       document.body.appendChild(el);
       requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
       setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(-12px)'; setTimeout(()=>el.remove(),400); }, 3500);
@@ -4086,11 +4096,11 @@
           <div class="notif-icon ${n.type}">${icons[n.type] || icons.system}</div>
           <div class="notif-content">
             <div class="notif-header">
-              <span class="notif-title">${n.title}</span>
+              <span class="notif-title">${escapeHTML(n.title)}</span>
               <span class="notif-time">${timeAgoNotif(n.timestamp)}</span>
             </div>
-            <div class="notif-message">${n.message}</div>
-            <span class="notif-badge ${n.type}">${n.badge}</span>
+            <div class="notif-message">${escapeHTML(n.message)}</div>
+            <span class="notif-badge ${n.type}">${escapeHTML(n.badge)}</span>
           </div>
         </div>
       `).join('');
