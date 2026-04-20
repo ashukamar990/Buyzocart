@@ -459,12 +459,12 @@
           </div>
           <div class="settings-item">
             <div class="settings-info">
-              <h4>Two-Factor Authentication &nbsp;<span style="background:#f59e0b;color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle;letter-spacing:0.03em">COMING SOON</span></h4>
+              <h4>Two-Factor Authentication &nbsp;<span id="twoFactorComingSoonBadge" style="background:#f59e0b;color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle">COMING SOON</span></h4>
               <p id="twoFactorStatusText">Extra security — Admin se enable hoga</p>
             </div>
-            <label class="toggle" title="Admin se enable hoga">
+            <label class="toggle" id="twoFactorLabel" title="Admin se enable hoga">
               <input type="checkbox" id="twoFactorToggle" disabled style="pointer-events:none">
-              <span class="toggle-slider" style="opacity:0.4"></span>
+              <span class="toggle-slider" id="twoFactorSlider" style="opacity:0.4"></span>
             </label>
           </div>
           <div class="settings-item">
@@ -653,8 +653,7 @@
       accLoadAddresses();
       accLoadWishlist();
       accLoadOrders();
-      // Admin se 2FA enable hai to toggle clickable karo
-      setTimeout(() => acc2FACheckAdminStatus(user.uid), 600);
+      setTimeout(() => acc2FACheckAdminStatus(user.uid), 800);
     });
 
     // ---- Theme Init ----
@@ -1091,50 +1090,45 @@
     }
 
     // ---- 2FA Admin Control ----
-    // Admin panel mein adminSettings/features/twoFactorAuth = true → toggle enable
     function acc2FACheckAdminStatus(uid) {
       const fb = window._accFb;
       if (!fb) return;
       fb.get(fb.ref(fb.db, 'adminSettings/features/twoFactorAuth')).then(snap => {
-        const adminEnabled = snap.exists() && snap.val() === true;
-        const toggle = document.getElementById('twoFactorToggle');
-        const slider = toggle ? toggle.nextElementSibling : null;
-        const badge  = document.querySelector('#twoFactorToggle')?.closest('.settings-item')?.querySelector('h4 span');
+        const enabled = snap.exists() && snap.val() === true;
+        const toggle  = document.getElementById('twoFactorToggle');
+        const slider  = document.getElementById('twoFactorSlider');
+        const badge   = document.getElementById('twoFactorComingSoonBadge');
         const statusP = document.getElementById('twoFactorStatusText');
-
-        if (adminEnabled) {
-          // Admin ne enable kiya — toggle active karo
+        if (enabled) {
           if (toggle)  { toggle.disabled = false; toggle.style.pointerEvents = ''; }
           if (slider)  slider.style.opacity = '1';
-          if (badge)   badge.style.display = 'none'; // Coming Soon badge hide
+          if (badge)   badge.style.display = 'none';
           if (statusP) statusP.textContent = 'Extra security for your account';
-          // User ka current state load karo
-          fb.get(fb.ref(fb.db, 'users/' + uid + '/twoFactor/enabled')).then(userSnap => {
-            if (toggle) toggle.checked = userSnap.exists() && userSnap.val() === true;
+          // Load user's own 2FA state
+          fb.get(fb.ref(fb.db, 'users/' + uid + '/twoFactor/enabled')).then(s => {
+            if (toggle) toggle.checked = s.exists() && s.val() === true;
           });
-          // Change listener (sirf ek baar attach karo)
-          if (toggle && !toggle._2faListenerAdded) {
-            toggle._2faListenerAdded = true;
+          // Attach listener only once
+          if (toggle && !toggle._2faReady) {
+            toggle._2faReady = true;
             toggle.addEventListener('change', function() {
               fb.update(fb.ref(fb.db, 'users/' + uid + '/twoFactor'), {
-                enabled: this.checked,
-                updatedAt: Date.now()
+                enabled: this.checked, updatedAt: Date.now()
               }).then(() => {
-                accShowToast(this.checked ? '2FA enable ho gaya ✅' : '2FA disable ho gaya', this.checked ? 'success' : 'error');
+                accShowToast(this.checked ? '2FA enabled ✅' : '2FA disabled', this.checked ? 'success' : 'error');
               }).catch(() => {
-                accShowToast('Update nahi hua, dobara try karein', 'error');
-                this.checked = !this.checked; // revert
+                accShowToast('Update failed, try again', 'error');
+                this.checked = !this.checked;
               });
             });
           }
         } else {
-          // Admin ne disable rakha — Coming Soon dikhao
           if (toggle)  { toggle.disabled = true; toggle.style.pointerEvents = 'none'; toggle.checked = false; }
           if (slider)  slider.style.opacity = '0.4';
           if (badge)   badge.style.display = '';
           if (statusP) statusP.textContent = 'Extra security — Admin se enable hoga';
         }
-      }).catch(() => {}); // silently fail — feature stays disabled
+      }).catch(() => {});
     }
   </script>
 
