@@ -838,6 +838,16 @@
     let currentUser = null;
 
     // Format time ago
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function timeAgo(timestamp) {
       const seconds = Math.floor((Date.now() - timestamp) / 1000);
       
@@ -921,11 +931,11 @@
         </div>
         <div class="notification-content">
           <div class="notification-header">
-            <span class="notification-title">${notification.title}</span>
+            <span class="notification-title">${escapeHTML(notification.title)}</span>
             <span class="notification-time">${timeAgoText}</span>
           </div>
-          <div class="notification-message">${notification.message}</div>
-          <div class="notification-badge badge-${notification.type}">${notification.badge}</div>
+          <div class="notification-message">${escapeHTML(notification.message)}</div>
+          <div class="notification-badge badge-${notification.type}">${escapeHTML(notification.badge)}</div>
         </div>
       `;
       

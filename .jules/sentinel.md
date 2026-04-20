@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2026-04-20 - [Comprehensive Sanitization for Dynamic UI Components]
+**Vulnerability:** Persistent and Reflected XSS through unsanitized dynamic data (product names, search queries, reviews, notifications, etc.) injected via `innerHTML`.
+**Learning:** Even with client-side "security theater" like F12 blocking, the absence of systematic output escaping in core rendering functions leaves high-impact attack vectors. Complex UI components (product cards, order histories) often aggregate data from multiple sources, making consistent escaping critical.
+**Prevention:** Implement and maintain a robust `escapeHTML` utility. Audit all `innerHTML` usage to ensure every dynamic variable is sanitized at the point of injection, especially in shared rendering components.
