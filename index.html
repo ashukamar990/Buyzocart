@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=yes" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes" />
   <title>Buyzocart Shop - Best Deals & Products</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -230,149 +230,281 @@
       background: #dc2626;
     }
 
-    .zoom-modal-overlay {
+    /* ===== FULLSCREEN IMAGE VIEWER ===== */
+    .fullscreen-viewer {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       background: #000;
       z-index: 10000;
       display: none;
+      flex-direction: column;
       touch-action: none;
+      user-select: none;
     }
-    .zoom-modal-overlay.active {
-      display: block;
-    }
-    .zoom-modal-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      overflow: hidden;
-    }
-    .zoom-slider-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      overflow: hidden;
-    }
-    .zoom-slider-track {
-      display: flex;
-      height: 100%;
-      transition: transform 0.3s ease;
-      touch-action: pan-y pinch-zoom;
-    }
-    .zoom-slide {
-      flex-shrink: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .zoom-slide img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      transition: transform 0.1s ease;
-      pointer-events: none;
-    }
-    .zoom-controls-top {
+    .fullscreen-viewer.active { display: flex; }
+
+    /* Header */
+    .viewer-header {
       position: absolute;
-      top: 16px;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
+      padding: 14px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0 16px;
-      z-index: 10001;
+      z-index: 10002;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%);
     }
-    .zoom-close-btn {
-      width: 44px;
-      height: 44px;
+    .viewer-close {
+      width: 40px; height: 40px;
       border-radius: 50%;
-      background: rgba(0,0,0,0.6);
-      border: none;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.25);
       color: white;
-      font-size: 28px;
+      font-size: 26px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(12px);
+      transition: background .2s;
     }
-    .zoom-counter {
-      background: rgba(0,0,0,0.6);
+    .viewer-close:hover { background: rgba(255,255,255,0.35); }
+    .viewer-counter {
       color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
       font-size: 14px;
       font-weight: 600;
+      background: rgba(0,0,0,0.55);
+      padding: 6px 14px;
+      border-radius: 20px;
       backdrop-filter: blur(10px);
+      letter-spacing: .02em;
     }
-    .zoom-nav-buttons {
+
+    /* Main canvas area */
+    .viewer-container {
       position: absolute;
-      bottom: 32px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      z-index: 10001;
+      inset: 0;
+      overflow: hidden;
+      touch-action: none;
     }
-    .zoom-nav-btn {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.6);
-      border: none;
-      color: white;
-      font-size: 28px;
-      cursor: pointer;
+    .viewer-track {
+      display: flex;
+      height: 100%;
+      will-change: transform;
+      touch-action: none;
+    }
+    .viewer-slide {
+      flex: 0 0 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(10px);
-      transition: all 0.2s;
+      touch-action: none;
+      overflow: hidden;
     }
-    .zoom-nav-btn:active {
-      background: #2563eb;
-      transform: scale(0.95);
+    .viewer-slide img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      will-change: transform;
+      transition: transform 0.05s linear;
+      display: block;
     }
-    .zoom-dots {
+
+    /* Prev / Next nav buttons */
+    .viewer-nav {
       position: absolute;
-      bottom: 100px;
-      left: 0;
-      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(10px);
+      z-index: 10002;
+      transition: background .2s, transform .2s;
+    }
+    .viewer-nav:hover { background: rgba(37,99,235,0.75); }
+    .viewer-nav:active { transform: translateY(-50%) scale(0.93); }
+    .viewer-nav.prev { left: 12px; }
+    .viewer-nav.next { right: 12px; }
+
+    /* Image dots */
+    .viewer-dots {
+      position: absolute;
+      bottom: 150px;
+      left: 0; right: 0;
       display: flex;
       justify-content: center;
-      gap: 8px;
-      z-index: 10001;
+      gap: 7px;
+      z-index: 10002;
     }
-    .zoom-dot {
-      width: 8px;
-      height: 8px;
+    .viewer-dot {
+      width: 7px; height: 7px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.4);
-      transition: all 0.3s;
+      background: rgba(255,255,255,0.38);
+      transition: all .3s;
+      cursor: pointer;
     }
-    .zoom-dot.active {
-      width: 24px;
-      border-radius: 4px;
+    .viewer-dot.active {
       background: #2563eb;
+      width: 22px;
+      border-radius: 4px;
     }
-    .zoom-instruction {
+
+    /* Footer — zoom slider + buttons */
+    .viewer-footer {
       position: absolute;
-      bottom: 160px;
-      left: 0;
-      right: 0;
-      text-align: center;
+      bottom: 0; left: 0; right: 0;
+      padding: 16px 20px 20px;
+      z-index: 10002;
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+    /* Zoom slider row */
+    .viewer-zoom-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 380px;
+    }
+    .viewer-zoom-label {
       color: rgba(255,255,255,0.7);
       font-size: 12px;
-      z-index: 10001;
+      font-weight: 600;
+      white-space: nowrap;
+      min-width: 36px;
+      text-align: right;
     }
+    #viewerZoomSlider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.25);
+      outline: none;
+      cursor: pointer;
+    }
+    #viewerZoomSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      border: 2px solid #fff;
+    }
+    /* Zoom buttons row */
+    .viewer-btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .viewer-btn-row button {
+      padding: 10px 20px;
+      border-radius: 30px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: background .2s, transform .15s;
+    }
+    .viewer-btn-row button:active { transform: scale(0.95); }
+    .zoom-in-btn  { background: #2563eb; color: #fff; }
+    .zoom-out-btn { background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,.25)!important; }
+    .reset-zoom-btn { background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,.25)!important; }
+
+    @media (max-width: 480px) {
+      .viewer-nav { width: 36px; height: 36px; font-size: 16px; }
+      .viewer-nav.prev { left: 6px; }
+      .viewer-nav.next { right: 6px; }
+      .viewer-dots { bottom: 155px; }
+      .viewer-btn-row button { padding: 9px 14px; font-size: 13px; }
+    }
+
+    /* ===== PRODUCT IMAGE SIZE INCREASES ===== */
+
+    /* Product card image — grid mein badi dikhegi */
+    .product-card-image {
+      height: 220px !important;
+      min-height: 220px !important;
+      background-size: contain !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+      background-color: #f8fafc !important;
+      cursor: zoom-in;
+    }
+    [data-theme="dark"] .product-card-image {
+      background-color: #1e293b !important;
+    }
+
+    /* Detail page main image — bahut badi */
+    .main-product-image,
+    #mainProductImage {
+      height: 400px !important;
+      min-height: 400px !important;
+      background-size: contain !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+      background-color: #f8fafc !important;
+      border-radius: 16px !important;
+      position: relative !important;
+      overflow: hidden !important;
+      cursor: zoom-in !important;
+    }
+    [data-theme="dark"] .main-product-image,
+    [data-theme="dark"] #mainProductImage {
+      background-color: #1e293b !important;
+    }
+
+    @media (max-width: 480px) {
+      .product-card-image { height: 180px !important; min-height: 180px !important; }
+      .main-product-image, #mainProductImage { height: 300px !important; min-height: 300px !important; }
+    }
+    @media (min-width: 769px) {
+      .product-card-image { height: 260px !important; min-height: 260px !important; }
+      .main-product-image, #mainProductImage { height: 480px !important; min-height: 480px !important; }
+    }
+
+    /* Zoom button — always visible, prominent */
+    .image-zoom-btn, #imageZoomBtn {
+      position: absolute !important;
+      bottom: 12px !important;
+      right: 12px !important;
+      width: 44px !important;
+      height: 44px !important;
+      border-radius: 50% !important;
+      background: rgba(37,99,235,0.92) !important;
+      border: 2px solid rgba(255,255,255,0.6) !important;
+      color: #fff !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      backdrop-filter: blur(8px) !important;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.4) !important;
+      z-index: 10 !important;
+      transition: transform .15s, background .2s !important;
+    }
+    .image-zoom-btn:hover, #imageZoomBtn:hover {
+      transform: scale(1.12) !important;
+      background: #2563eb !important;
+    }
+    .image-zoom-btn:active, #imageZoomBtn:active {
+      transform: scale(0.95) !important;
+    }
+    /* ===== END PRODUCT IMAGE OVERRIDES ===== */
   </style>
   <link rel="stylesheet" href="style.css">
   <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
@@ -1373,32 +1505,29 @@
 
   <div class="toast" id="toast"></div>
 
-  <div class="product-image-modal" id="productImageModal">
-    <div class="product-image-modal-content">
-      <button class="product-image-modal-close" id="productImageModalClose">×</button>
-      <img class="product-image-modal-image" id="productImageModalImage" src="" alt="Product image">
-      <div class="product-image-modal-controls">
-        <button class="product-image-modal-prev" id="productImageModalPrev">❮</button>
-        <button class="product-image-modal-next" id="productImageModalNext">❯</button>
-      </div>
-      <div class="product-image-modal-dots" id="productImageModalDots"></div>
+  <div class="fullscreen-viewer" id="fullscreenViewer">
+    <div class="viewer-header">
+      <button class="viewer-close" id="viewerClose">×</button>
+      <div class="viewer-counter" id="viewerCounter">1 / 1</div>
     </div>
-  </div>
-
-  <div class="zoom-modal-overlay" id="zoomModalOverlay">
-    <div class="zoom-modal-container">
-      <div class="zoom-controls-top">
-        <button class="zoom-close-btn" id="zoomModalClose">×</button>
-        <div class="zoom-counter" id="zoomCounter">1 / 5</div>
+    <div class="viewer-container" id="viewerContainer">
+      <div class="viewer-track" id="viewerTrack"></div>
+    </div>
+    <button class="viewer-nav prev" id="viewerPrev">❮</button>
+    <button class="viewer-nav next" id="viewerNext">❯</button>
+    <div class="viewer-dots" id="viewerDots"></div>
+    <div class="viewer-footer">
+      <!-- Zoom Slider -->
+      <div class="viewer-zoom-row">
+        <span style="color:rgba(255,255,255,0.65);font-size:12px">🔍</span>
+        <input type="range" id="viewerZoomSlider" min="100" max="500" value="100" step="5">
+        <span class="viewer-zoom-label" id="viewerZoomLabel">1×</span>
       </div>
-      <div class="zoom-slider-container" id="zoomSliderContainer">
-        <div class="zoom-slider-track" id="zoomSliderTrack"></div>
-      </div>
-      <div class="zoom-dots" id="zoomDots"></div>
-      <div class="zoom-instruction">← Swipe to navigate • Pinch to zoom →</div>
-      <div class="zoom-nav-buttons">
-        <button class="zoom-nav-btn" id="zoomPrevBtn">❮</button>
-        <button class="zoom-nav-btn" id="zoomNextBtn">❯</button>
+      <!-- Buttons -->
+      <div class="viewer-btn-row">
+        <button class="zoom-in-btn" id="viewerZoomIn">＋ Zoom In</button>
+        <button class="zoom-out-btn" id="viewerZoomOut">－ Zoom Out</button>
+        <button class="reset-zoom-btn" id="viewerResetZoom">⟲ Reset</button>
       </div>
     </div>
   </div>
@@ -1699,124 +1828,6 @@
       if (firstReason) firstReason.classList.add('selected');
       const firstReturn = document.querySelector('#returnReplaceModal .cancellation-reason');
       if (firstReturn) firstReturn.classList.add('selected');
-    });
-
-    window.zoomImages = [];
-    window.currentZoomIndex = 0;
-    window.zoomScale = 1;
-
-    window.openZoomModal = function(images, startIndex) {
-      window.zoomImages = images || [];
-      window.currentZoomIndex = startIndex || 0;
-      window.zoomScale = 1;
-      
-      const track = document.getElementById('zoomSliderTrack');
-      const dots = document.getElementById('zoomDots');
-      const counter = document.getElementById('zoomCounter');
-      
-      track.innerHTML = '';
-      dots.innerHTML = '';
-      
-      window.zoomImages.forEach((img, i) => {
-        const slide = document.createElement('div');
-        slide.className = 'zoom-slide';
-        const image = document.createElement('img');
-        image.src = img;
-        image.alt = 'Product image ' + (i + 1);
-        image.style.transform = 'scale(1)';
-        slide.appendChild(image);
-        track.appendChild(slide);
-        
-        const dot = document.createElement('div');
-        dot.className = 'zoom-dot' + (i === window.currentZoomIndex ? ' active' : '');
-        dots.appendChild(dot);
-      });
-      
-      updateZoomCounter();
-      updateZoomPosition();
-      
-      document.getElementById('zoomModalOverlay').classList.add('active');
-      document.body.style.overflow = 'hidden';
-    };
-
-    function updateZoomCounter() {
-      const counter = document.getElementById('zoomCounter');
-      if (counter) {
-        counter.textContent = (window.currentZoomIndex + 1) + ' / ' + window.zoomImages.length;
-      }
-    }
-
-    function updateZoomPosition() {
-      const track = document.getElementById('zoomSliderTrack');
-      if (track) {
-        track.style.transform = 'translateX(-' + (window.currentZoomIndex * 100) + '%)';
-      }
-      
-      const dots = document.querySelectorAll('.zoom-dot');
-      dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === window.currentZoomIndex);
-      });
-    }
-
-    function nextZoomImage() {
-      if (window.currentZoomIndex < window.zoomImages.length - 1) {
-        window.currentZoomIndex++;
-        updateZoomPosition();
-        updateZoomCounter();
-      }
-    }
-
-    function prevZoomImage() {
-      if (window.currentZoomIndex > 0) {
-        window.currentZoomIndex--;
-        updateZoomPosition();
-        updateZoomCounter();
-      }
-    }
-
-    function closeZoomModal() {
-      document.getElementById('zoomModalOverlay').classList.remove('active');
-      document.body.style.overflow = '';
-      window.zoomScale = 1;
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('zoomModalClose').addEventListener('click', closeZoomModal);
-      document.getElementById('zoomPrevBtn').addEventListener('click', prevZoomImage);
-      document.getElementById('zoomNextBtn').addEventListener('click', nextZoomImage);
-      
-      document.getElementById('zoomModalOverlay').addEventListener('click', function(e) {
-        if (e.target === this) closeZoomModal();
-      });
-      
-      let startX = 0;
-      let currentX = 0;
-      let isDragging = false;
-      const track = document.getElementById('zoomSliderTrack');
-      
-      track.addEventListener('touchstart', function(e) {
-        startX = e.touches[0].clientX;
-        isDragging = true;
-      });
-      
-      track.addEventListener('touchmove', function(e) {
-        if (!isDragging) return;
-        currentX = e.touches[0].clientX;
-        const diff = startX - currentX;
-        
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) {
-            nextZoomImage();
-          } else {
-            prevZoomImage();
-          }
-          isDragging = false;
-        }
-      });
-      
-      track.addEventListener('touchend', function() {
-        isDragging = false;
-      });
     });
   </script>
 

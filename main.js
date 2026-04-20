@@ -584,9 +584,6 @@
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
-      // Sync any checkbox toggles (e.g. darkModeToggle in account.html)
-      const cb = document.getElementById('darkModeToggle');
-      if (cb) cb.checked = (newTheme === 'dark');
     }
 
     function showPage(pageId) {
@@ -1176,12 +1173,29 @@
         dotsContainer.appendChild(dot);
       });
       if (zoomBtn) {
-        zoomBtn.addEventListener('click', (e) => {
+        // Remove old listener then add fresh
+        const newZoomBtn = zoomBtn.cloneNode(true);
+        zoomBtn.parentNode.replaceChild(newZoomBtn, zoomBtn);
+        newZoomBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           pauseSlide();
-          openZoomModal(currentProductImages[currentImageIndex]);
+          openFullscreenViewer(currentProductImages, currentImageIndex);
           resumeSlideAfterDelay();
         });
+      }
+      // Also open viewer when tapping the main image itself
+      if (mainImage) {
+        mainImage.style.cursor = 'zoom-in';
+        const newMain = mainImage.cloneNode(true);
+        mainImage.parentNode.replaceChild(newMain, mainImage);
+        // Re-grab reference after clone
+        const freshMain = document.getElementById('mainProductImage');
+        if (freshMain) {
+          freshMain.addEventListener('click', (e) => {
+            if (e.target.closest('.detail-carousel-control') || e.target.closest('.image-zoom-btn')) return;
+            openFullscreenViewer(currentProductImages, currentImageIndex);
+          });
+        }
       }
       startAutoSlide();
       function updateMainImage() {
@@ -1196,17 +1210,311 @@
       }
     }
 
-    function openZoomModal(imageSrc) {
-      const zoomModal = document.getElementById('zoomModal');
-      const zoomImage = document.getElementById('zoomImage');
-      if (!zoomModal || !zoomImage) return;
-      zoomImage.src = imageSrc;
-      currentZoomLevel = 1;
-      zoomImage.style.transform = 'scale(1)';
-      zoomImage.style.transition = 'transform 0.2s ease';
-      zoomModal.style.display = 'flex';
-      zoomModal.classList.add('active');
+    // ============================================================
+    //  FULLSCREEN IMAGE VIEWER — Pinch Zoom + Drag + Slider
+    // ============================================================
+    const _FV = {
+      images: [],          // all product images
+      index: 0,            // current image index
+      zoom: 1,             // current zoom level
+      minZoom: 1,
+      maxZoom: 5,
+      // pan state
+      panX: 0, panY: 0,
+      lastPanX: 0, lastPanY: 0,
+      dragging: false,
+      dragStartX: 0, dragStartY: 0,
+      // pinch state
+      pinching: false,
+      pinchStartDist: 0,
+      pinchStartZoom: 1,
+      // swipe state (for image nav when zoom=1)
+      swipeStartX: 0,
+      swipeStartY: 0,
+      swipeMoved: false,
+    };
+
+    function openFullscreenViewer(images, startIndex) {
+      _FV.images = images && images.length ? images : [images];
+      _FV.index  = startIndex || 0;
+      _FV.zoom   = 1;
+      _FV.panX   = 0; _FV.panY = 0;
+
+      const viewer = document.getElementById('fullscreenViewer');
+      viewer.classList.add('active');
       document.body.style.overflow = 'hidden';
+
+      fvBuildSlides();
+      fvUpdateCounter();
+      fvUpdateDots();
+      fvApplyTransform();
+      fvSyncSlider();
+      fvBindEvents();
+    }
+
+    // Keep old name working (called from imageZoomBtn)
+    function openZoomModal(imageSrc) {
+      openFullscreenViewer(currentProductImages, currentImageIndex);
+    }
+
+    function fvClose() {
+      document.getElementById('fullscreenViewer').classList.remove('active');
+      document.body.style.overflow = '';
+      fvUnbindEvents();
+      // reset
+      _FV.zoom = 1; _FV.panX = 0; _FV.panY = 0;
+    }
+
+    function fvBuildSlides() {
+      const track = document.getElementById('viewerTrack');
+      track.innerHTML = '';
+      // Position slides via JS transform (faster than flex for zoom)
+      track.style.transform = `translateX(-${_FV.index * 100}%)`;
+      _FV.images.forEach((src, i) => {
+        const slide = document.createElement('div');
+        slide.className = 'viewer-slide';
+        slide.id = 'vslide_' + i;
+        const img = document.createElement('img');
+        img.src = src;
+        img.draggable = false;
+        img.alt = 'Product image ' + (i+1);
+        slide.appendChild(img);
+        track.appendChild(slide);
+      });
+    }
+
+    function fvCurrentImg() {
+      const slide = document.getElementById('vslide_' + _FV.index);
+      return slide ? slide.querySelector('img') : null;
+    }
+
+    function fvApplyTransform() {
+      const img = fvCurrentImg();
+      if (!img) return;
+      img.style.transform = `scale(${_FV.zoom}) translate(${_FV.panX/_FV.zoom}px, ${_FV.panY/_FV.zoom}px)`;
+      img.style.transition = 'none';
+    }
+
+    function fvSetZoom(newZoom, animated) {
+      _FV.zoom = Math.max(_FV.minZoom, Math.min(_FV.maxZoom, newZoom));
+      if (_FV.zoom <= 1) { _FV.panX = 0; _FV.panY = 0; }
+      fvClampPan();
+      const img = fvCurrentImg();
+      if (img) {
+        img.style.transition = animated ? 'transform 0.2s ease' : 'none';
+        img.style.transform = `scale(${_FV.zoom}) translate(${_FV.panX/_FV.zoom}px, ${_FV.panY/_FV.zoom}px)`;
+      }
+      fvSyncSlider();
+    }
+
+    function fvClampPan() {
+      const img = fvCurrentImg();
+      if (!img) return;
+      const maxPanX = (img.naturalWidth  * _FV.zoom - img.clientWidth)  / 2;
+      const maxPanY = (img.naturalHeight * _FV.zoom - img.clientHeight) / 2;
+      _FV.panX = Math.max(-Math.abs(maxPanX), Math.min(Math.abs(maxPanX), _FV.panX));
+      _FV.panY = Math.max(-Math.abs(maxPanY), Math.min(Math.abs(maxPanY), _FV.panY));
+    }
+
+    function fvSyncSlider() {
+      const slider = document.getElementById('viewerZoomSlider');
+      const label  = document.getElementById('viewerZoomLabel');
+      if (slider) slider.value = Math.round(_FV.zoom * 100);
+      if (label)  label.textContent = _FV.zoom.toFixed(1) + '×';
+    }
+
+    function fvUpdateCounter() {
+      const el = document.getElementById('viewerCounter');
+      if (el) el.textContent = (_FV.index+1) + ' / ' + _FV.images.length;
+    }
+
+    function fvUpdateDots() {
+      const container = document.getElementById('viewerDots');
+      if (!container) return;
+      container.innerHTML = '';
+      if (_FV.images.length <= 1) return;
+      _FV.images.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'viewer-dot' + (i === _FV.index ? ' active' : '');
+        dot.addEventListener('click', () => fvGoTo(i));
+        container.appendChild(dot);
+      });
+    }
+
+    function fvGoTo(idx) {
+      if (idx < 0 || idx >= _FV.images.length) return;
+      _FV.index = idx;
+      _FV.zoom = 1; _FV.panX = 0; _FV.panY = 0;
+      const track = document.getElementById('viewerTrack');
+      if (track) {
+        track.style.transition = 'transform 0.3s ease';
+        track.style.transform = `translateX(-${_FV.index * 100}%)`;
+        setTimeout(() => { if(track) track.style.transition = 'none'; }, 320);
+      }
+      fvUpdateCounter();
+      fvUpdateDots();
+      fvSyncSlider();
+    }
+
+    // ---- Touch Events ----
+    function fvOnTouchStart(e) {
+      if (e.touches.length === 2) {
+        // Pinch start
+        _FV.pinching = true;
+        _FV.pinchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        _FV.pinchStartZoom = _FV.zoom;
+        e.preventDefault();
+      } else if (e.touches.length === 1) {
+        _FV.dragging   = false;
+        _FV.swipeMoved = false;
+        _FV.swipeStartX = e.touches[0].clientX;
+        _FV.swipeStartY = e.touches[0].clientY;
+        if (_FV.zoom > 1) {
+          // Drag pan mode
+          _FV.dragging  = true;
+          _FV.dragStartX = e.touches[0].clientX - _FV.panX;
+          _FV.dragStartY = e.touches[0].clientY - _FV.panY;
+        }
+      }
+    }
+
+    function fvOnTouchMove(e) {
+      if (_FV.pinching && e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const newZoom = _FV.pinchStartZoom * (dist / _FV.pinchStartDist);
+        fvSetZoom(newZoom, false);
+        return;
+      }
+      if (_FV.dragging && e.touches.length === 1 && _FV.zoom > 1) {
+        e.preventDefault();
+        _FV.panX = e.touches[0].clientX - _FV.dragStartX;
+        _FV.panY = e.touches[0].clientY - _FV.dragStartY;
+        fvClampPan();
+        fvApplyTransform();
+        return;
+      }
+      if (e.touches.length === 1) {
+        const dx = Math.abs(e.touches[0].clientX - _FV.swipeStartX);
+        const dy = Math.abs(e.touches[0].clientY - _FV.swipeStartY);
+        if (dx > 8 || dy > 8) _FV.swipeMoved = true;
+      }
+    }
+
+    function fvOnTouchEnd(e) {
+      if (_FV.pinching) {
+        _FV.pinching = false;
+        return;
+      }
+      if (_FV.dragging) {
+        _FV.dragging = false;
+        return;
+      }
+      // Swipe nav (only when zoom = 1)
+      if (_FV.zoom <= 1 && e.changedTouches.length === 1 && _FV.swipeMoved) {
+        const dx = e.changedTouches[0].clientX - _FV.swipeStartX;
+        if (Math.abs(dx) > 50) {
+          dx < 0 ? fvGoTo(_FV.index + 1) : fvGoTo(_FV.index - 1);
+        }
+      }
+      // Double tap to zoom
+      if (!_FV.swipeMoved && e.changedTouches.length === 1) {
+        const now = Date.now();
+        if (_FV._lastTap && now - _FV._lastTap < 300) {
+          _FV._lastTap = 0;
+          if (_FV.zoom > 1) fvSetZoom(1, true);
+          else fvSetZoom(2.5, true);
+        } else {
+          _FV._lastTap = now;
+        }
+      }
+    }
+
+    // ---- Mouse Events (desktop) ----
+    function fvOnMouseDown(e) {
+      if (_FV.zoom > 1) {
+        _FV.dragging  = true;
+        _FV.dragStartX = e.clientX - _FV.panX;
+        _FV.dragStartY = e.clientY - _FV.panY;
+        document.getElementById('fullscreenViewer').style.cursor = 'grabbing';
+      }
+    }
+    function fvOnMouseMove(e) {
+      if (!_FV.dragging) return;
+      _FV.panX = e.clientX - _FV.dragStartX;
+      _FV.panY = e.clientY - _FV.dragStartY;
+      fvClampPan();
+      fvApplyTransform();
+    }
+    function fvOnMouseUp() {
+      _FV.dragging = false;
+      document.getElementById('fullscreenViewer').style.cursor = '';
+    }
+    function fvOnWheel(e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.15 : 0.15;
+      fvSetZoom(_FV.zoom + delta, false);
+    }
+
+    // ---- Bind / Unbind ----
+    function fvBindEvents() {
+      const v = document.getElementById('fullscreenViewer');
+      const c = document.getElementById('viewerContainer');
+      document.getElementById('viewerClose')?.addEventListener('click', fvClose);
+      document.getElementById('viewerPrev')?.addEventListener('click', () => fvGoTo(_FV.index - 1));
+      document.getElementById('viewerNext')?.addEventListener('click', () => fvGoTo(_FV.index + 1));
+      document.getElementById('viewerZoomIn')?.addEventListener('click', () => fvSetZoom(_FV.zoom + 0.5, true));
+      document.getElementById('viewerZoomOut')?.addEventListener('click', () => fvSetZoom(_FV.zoom - 0.5, true));
+      document.getElementById('viewerResetZoom')?.addEventListener('click', () => { fvSetZoom(1, true); _FV.panX=0; _FV.panY=0; fvApplyTransform(); });
+      document.getElementById('viewerZoomSlider')?.addEventListener('input', function() {
+        fvSetZoom(parseInt(this.value) / 100, false);
+        fvApplyTransform();
+      });
+      c?.addEventListener('touchstart',  fvOnTouchStart, { passive: false });
+      c?.addEventListener('touchmove',   fvOnTouchMove,  { passive: false });
+      c?.addEventListener('touchend',    fvOnTouchEnd,   { passive: true  });
+      c?.addEventListener('mousedown',   fvOnMouseDown);
+      c?.addEventListener('mousemove',   fvOnMouseMove);
+      c?.addEventListener('mouseup',     fvOnMouseUp);
+      c?.addEventListener('mouseleave',  fvOnMouseUp);
+      c?.addEventListener('wheel',       fvOnWheel, { passive: false });
+      // Close on background click (not on image)
+      v?.addEventListener('click', (e) => {
+        if (e.target === v) fvClose();
+      });
+      // Keyboard
+      document.addEventListener('keydown', _fvKeyHandler);
+    }
+
+    function fvUnbindEvents() {
+      const c = document.getElementById('viewerContainer');
+      document.getElementById('viewerClose')?.removeEventListener('click', fvClose);
+      document.getElementById('viewerPrev')?.removeEventListener('click', () => fvGoTo(_FV.index - 1));
+      document.getElementById('viewerNext')?.removeEventListener('click', () => fvGoTo(_FV.index + 1));
+      c?.removeEventListener('touchstart',  fvOnTouchStart);
+      c?.removeEventListener('touchmove',   fvOnTouchMove);
+      c?.removeEventListener('touchend',    fvOnTouchEnd);
+      c?.removeEventListener('mousedown',   fvOnMouseDown);
+      c?.removeEventListener('mousemove',   fvOnMouseMove);
+      c?.removeEventListener('mouseup',     fvOnMouseUp);
+      c?.removeEventListener('mouseleave',  fvOnMouseUp);
+      c?.removeEventListener('wheel',       fvOnWheel);
+      document.removeEventListener('keydown', _fvKeyHandler);
+    }
+
+    function _fvKeyHandler(e) {
+      if (!document.getElementById('fullscreenViewer')?.classList.contains('active')) return;
+      if (e.key === 'Escape')      fvClose();
+      if (e.key === 'ArrowLeft')   fvGoTo(_FV.index - 1);
+      if (e.key === 'ArrowRight')  fvGoTo(_FV.index + 1);
+      if (e.key === '+' || e.key === '=') fvSetZoom(_FV.zoom + 0.5, true);
+      if (e.key === '-')           fvSetZoom(_FV.zoom - 0.5, true);
     }
 
     function startAutoSlide() {
@@ -3635,16 +3943,9 @@
       });
     }
 
-    function adjustZoom(delta) {
-      currentZoomLevel += delta;
-      currentZoomLevel = Math.max(0.5, Math.min(3, currentZoomLevel));
-      document.getElementById('zoomImage').style.transform = `scale(${currentZoomLevel})`;
-    }
-
-    function resetZoom() {
-      currentZoomLevel = 1;
-      document.getElementById('zoomImage').style.transform = 'scale(1)';
-    }
+    // adjustZoom / resetZoom — now handled by fullscreen viewer (fvSetZoom)
+    function adjustZoom(delta) { fvSetZoom((_FV.zoom||1) + delta, true); }
+    function resetZoom() { fvSetZoom(1, true); _FV.panX=0; _FV.panY=0; fvApplyTransform(); }
 
     function handleNewsletterSubscription() {
       const email = document.getElementById('newsletterEmail').value;
@@ -3754,10 +4055,6 @@
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
-      document.getElementById('darkModeToggle')?.addEventListener('click', toggleTheme);
-      document.getElementById('nightModeBtn')?.addEventListener('click', toggleTheme);
-      // Top header avatar/profile chip → account.html
-      document.getElementById('userProfile')?.addEventListener('click', checkAuthAndShowAccount);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
       document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
       document.getElementById('clearHistoryBtn')?.addEventListener('click', clearSearchHistory);
@@ -3784,20 +4081,7 @@
       document.getElementById('mobileLogoutBtn')?.addEventListener('click', showLogoutConfirmation);
       document.getElementById('alertCancelBtn')?.addEventListener('click', () => document.getElementById('alertModal').classList.remove('active'));
       document.getElementById('alertConfirmBtn')?.addEventListener('click', confirmLogout);
-      document.getElementById('zoomClose')?.addEventListener('click', () => {
-        const zm = document.getElementById('zoomModal');
-        zm.classList.remove('active');
-        document.body.style.overflow = '';
-      });
-      document.getElementById('zoomModal')?.addEventListener('click', function(e) {
-        if (e.target === this) {
-          this.classList.remove('active');
-          document.body.style.overflow = '';
-        }
-      });
-      document.getElementById('zoomIn')?.addEventListener('click', () => adjustZoom(0.2));
-      document.getElementById('zoomOut')?.addEventListener('click', () => adjustZoom(-0.2));
-      document.getElementById('zoomReset')?.addEventListener('click', resetZoom);
+      // zoomModal listeners removed — fullscreen viewer uses fvBindEvents() on open
       document.getElementById('productImageModalClose')?.addEventListener('click', () => document.getElementById('productImageModal').classList.remove('active'));
       document.getElementById('productImageModalPrev')?.addEventListener('click', prevProductModalImage);
       document.getElementById('productImageModalNext')?.addEventListener('click', nextProductModalImage);
@@ -3873,25 +4157,11 @@
       }
       document.getElementById('cancelCancel')?.addEventListener('click', () => document.getElementById('cancellationModal').classList.remove('active'));
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
-
-      // ── Global delegation: any element with data-action="toggleTheme" ──
-      document.addEventListener('click', function(e) {
-        const btn = e.target.closest('[data-action="toggleTheme"], [data-toggle="theme"], .theme-toggle-btn, #themeToggle, #nightModeBtn, #darkModeBtn');
-        if (btn && btn.tagName !== 'INPUT') { // INPUT[type=checkbox] handled separately
-          e.stopPropagation();
-          toggleTheme();
-        }
-      });
     }
 
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
-      // Sync theme toggle button/checkbox initial state
-      const themeBtn = document.getElementById('themeToggle');
-      if (themeBtn) themeBtn.setAttribute('data-active', savedTheme === 'dark' ? 'true' : 'false');
-      const darkCb = document.getElementById('darkModeToggle');
-      if (darkCb) darkCb.checked = (savedTheme === 'dark');
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
       updateNotifBadge();
       setupEventListeners();
