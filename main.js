@@ -378,7 +378,11 @@
       return similarity > 30 ? similarity : 0;
     }
 
-    function searchProducts(query) {
+    /**
+     * Searches products with fuzzy matching.
+     * PERFORMANCE: Uses optional ratingMap for O(N log N) sorting instead of O(N log N * R).
+     */
+    function searchProducts(query, ratingMap = null) {
       if (!query.trim()) return [];
       const q = query.trim();
       const scored = [];
@@ -398,8 +402,8 @@
       // Sort by score DESC, then by rating
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
+        const rA = ratingMap && ratingMap[a.product.id] ? ratingMap[a.product.id].rating : (ratingMap ? 0 : calculateProductRating(a.product.id));
+        const rB = ratingMap && ratingMap[b.product.id] ? ratingMap[b.product.id].rating : (ratingMap ? 0 : calculateProductRating(b.product.id));
         return rB - rA;
       });
       return scored.map(s => s.product);
@@ -417,12 +421,18 @@
       closeSearchPanel();
     }
 
+    /**
+     * PERFORMANCE: Debouncing search input to 300ms reduces expensive fuzzy search frequency
+     * and DOM updates while the user is typing.
+     */
+    const debouncedShowSuggestions = debounce(showSearchSuggestions, 300);
+
     function handleSearchPanelInput(e) {
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        showSearchSuggestions(query);
+        debouncedShowSuggestions(query);
         suggestionsContainer.style.display = 'block';
       } else {
         clearSearchSuggestions();
@@ -430,10 +440,15 @@
       }
     }
 
+    /**
+     * Shows search suggestions with top 3 products.
+     * PERFORMANCE: Pre-calculates ratingMap once to avoid O(R) calls inside search and render loops.
+     */
     function showSearchSuggestions(query) {
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
-      const results = searchProducts(query);
+      const ratingMap = getRatingMap(reviews);
+      const results = searchProducts(query, ratingMap);
       const topThree = results.slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
@@ -446,7 +461,7 @@
       topThree.forEach(product => {
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
-        const ratingVal = calculateProductRating(product.id);
+        const ratingVal = ratingMap[product.id] ? ratingMap[product.id].rating : 0;
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
           <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
@@ -865,7 +880,32 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    /**
+     * PERFORMANCE: Processes all reviews in O(R) to create a lookup map.
+     * Reduces rendering complexity from O(P * R) to O(P + R).
+     */
+    function getRatingMap(reviewsArray) {
+      const map = {};
+      if (!reviewsArray || !Array.isArray(reviewsArray)) return map;
+      reviewsArray.forEach(r => {
+        if (!r.productId) return;
+        if (!map[r.productId]) {
+          map[r.productId] = { sum: 0, count: 0 };
+        }
+        map[r.productId].sum += (r.rating || 0);
+        map[r.productId].count += 1;
+      });
+      Object.keys(map).forEach(pid => {
+        map[pid].rating = map[pid].sum / map[pid].count;
+      });
+      return map;
+    }
+
+    /**
+     * Creates a product card element.
+     * PERFORMANCE: Accepts pre-calculated ratings to avoid redundant O(R) lookups during batch rendering.
+     */
+    function createProductCard(product, precalculatedRating = null, precalculatedReviewCount = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -875,7 +915,8 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = precalculatedRating !== null ? precalculatedRating : calculateProductRating(productId);
+      const reviewCount = precalculatedReviewCount !== null ? precalculatedReviewCount : (product.reviewCount || '0');
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -898,7 +939,7 @@
           <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
-            <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
+            <div class="product-card-review-count">(${reviewCount})</div>
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${productPrice}</div>
@@ -1623,22 +1664,21 @@
       updateProductModalImage();
     }
 
+    /**
+     * Loads and renders similar products.
+     * PERFORMANCE: Uses ratingMap for efficient O(N) sorting and rendering.
+     */
     function loadSimilarProducts(product) {
       const adminSimilarIds = (product.similarFromAdmin && Array.isArray(product.similarFromAdmin)) ? product.similarFromAdmin : [];
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
+      const ratingMap = getRatingMap(reviews);
+      similarProducts.sort((a, b) => {
+        const rA = ratingMap[a.id] ? ratingMap[a.id].rating : 0;
+        const rB = ratingMap[b.id] ? ratingMap[b.id].rating : 0;
+        return rB - rA;
       });
-      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -2777,25 +2817,31 @@
       container.appendChild(fragment);
     }
 
+    /**
+     * Renders a list of products.
+     * PERFORMANCE: Pre-calculates ratingMap once for the entire list to achieve O(P + R) complexity.
+     */
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
+      const ratingMap = getRatingMap(reviews);
+      const sorted = [...productsToRender].sort((a, b) => {
+        const rA = ratingMap[a.id] ? ratingMap[a.id].rating : 0;
+        const rB = ratingMap[b.id] ? ratingMap[b.id].rating : 0;
+        return rB - rA;
       });
-      const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">Abhi koi products available nahi hain</p></div></div>';
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          const rData = ratingMap[product.id] || { rating: 0, count: 0 };
+          fragment.appendChild(createProductCard(product, rData.rating, rData.count));
+        }
+      });
       container.appendChild(fragment);
     }
 
