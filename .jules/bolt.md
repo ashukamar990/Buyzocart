@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2025-04-21 - Batch Rating Calculation and Search Debouncing
+**Learning:** Nested review filtering in search sorting and product rendering created (N \log N \times R)$ and (P \times R)$ bottlenecks. Pre-calculating average ratings in a single (R)$ pass and using a lookup map reduces this to (N \log N)$ and (P + R)$ respectively. Additionally, search suggestions without debouncing caused redundant fuzzy search calls.
+**Action:** Always pre-calculate derived data maps for batch rendering and apply debouncing to intensive UI events like search input.
