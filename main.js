@@ -215,6 +215,18 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      const chars = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return String(str).replace(/[&<>"']/g, m => chars[m]);
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -2133,13 +2145,13 @@
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${escapeHTML(review.userName || 'Customer')}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
