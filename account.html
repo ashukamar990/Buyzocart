@@ -371,7 +371,7 @@
 
   <!-- Header -->
   <header class="acc-header">
-    <div class="acc-brand" onclick="window.location.href='index.html'">
+    <div class="acc-brand" onclick="window.location.href='/'">
       <span class="acc-brand-chip">BUYZO</span>
       <span>Cart</span>
     </div>
@@ -383,7 +383,7 @@
         </div>
         <span class="user-chip-name" id="chipUserName">User</span>
       </div>
-      <button class="back-btn" onclick="window.location.href='index.html'">
+      <button class="back-btn" onclick="window.location.href='/'">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back
       </button>
@@ -462,7 +462,7 @@
               <h4>Two-Factor Authentication &nbsp;<span id="twoFactorComingSoonBadge" style="background:#f59e0b;color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle">COMING SOON</span></h4>
               <p id="twoFactorStatusText">Extra security — Admin se enable hoga</p>
             </div>
-            <label class="toggle" id="twoFactorLabel" title="Admin se enable hoga">
+            <label class="toggle" title="Admin se enable hoga">
               <input type="checkbox" id="twoFactorToggle" disabled style="pointer-events:none">
               <span class="toggle-slider" id="twoFactorSlider" style="opacity:0.4"></span>
             </label>
@@ -643,17 +643,24 @@
     onAuthStateChanged(auth, (user) => {
       document.getElementById('loadingScreen').style.display = 'none';
       if (!user) {
-        // Not logged in — back to index
-        window.location.href = 'index.html';
+        window.location.href = '/';
         return;
       }
       window._accCurrentUser = user;
-      accUpdateUIForUser(user);
-      accLoadUserData(user);
-      accLoadAddresses();
-      accLoadWishlist();
-      accLoadOrders();
-      setTimeout(() => acc2FACheckAdminStatus(user.uid), 800);
+      // Poll until non-module functions are ready
+      (function waitReady(tries) {
+        if (typeof accUpdateUIForUser === 'function') {
+          accUpdateUIForUser(user);
+          accLoadUserData(user);
+          accLoadAddresses(user);
+          accLoadWishlist(user);
+          accLoadOrders(user);
+          if (typeof acc2FACheckAdminStatus === 'function')
+            setTimeout(() => acc2FACheckAdminStatus(user.uid), 800);
+        } else if (tries < 40) {
+          setTimeout(() => waitReady(tries + 1), 50);
+        }
+      })(0);
     });
 
     // ---- Theme Init ----
@@ -894,9 +901,9 @@
         })
         .catch(() => accShowToast('Failed to save address', 'error'));
     }
-    function accLoadAddresses() {
+    function accLoadAddresses(userArg) {
       const fb = window._accFb;
-      const user = window._accCurrentUser;
+      const user = userArg || window._accCurrentUser;
       const container = document.getElementById('savedAddresses');
       if (!fb || !user || !container) return;
       container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
@@ -963,9 +970,9 @@
     };
 
     // ---- Wishlist ----
-    function accLoadWishlist() {
+    function accLoadWishlist(userArg) {
       const fb = window._accFb;
-      const user = window._accCurrentUser;
+      const user = userArg || window._accCurrentUser;
       const container = document.getElementById('wishlistItems');
       if (!fb || !user || !container) return;
       container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
@@ -973,7 +980,7 @@
         .then(snap => {
           container.innerHTML = '';
           if (!snap.exists()) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❤️</div><div class="empty-state-title">Your wishlist is empty</div><div class="empty-state-description">Save products you love to view them here</div><button class="btn" onclick="window.location.href=\'index.html\'">Browse Products</button></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❤️</div><div class="empty-state-title">Your wishlist is empty</div><div class="empty-state-description">Save products you love to view them here</div><button class="btn" onclick="window.location.href=\'/'">Browse Products</button></div>';
             return;
           }
           snap.forEach(child => {
@@ -988,7 +995,7 @@
                 <div class="product-rating">${Array(5).fill('').map((_,i)=>`<span class="star${i<Math.floor(item.rating||4)?'':' inactive'}">★</span>`).join('')}</div>
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
                   <button class="btn-outline btn-sm" onclick="accRemoveWishlist('${child.key}')">Remove</button>
-                  <button class="btn btn-sm" onclick="window.location.href='index.html'">View</button>
+                  <button class="btn btn-sm" onclick="window.location.href='/'">View</button>
                 </div>
               </div>`;
             container.appendChild(card);
@@ -1004,9 +1011,9 @@
     };
 
     // ---- Orders ----
-    function accLoadOrders() {
+    function accLoadOrders(userArg) {
       const fb = window._accFb;
-      const user = window._accCurrentUser;
+      const user = userArg || window._accCurrentUser;
       const container = document.getElementById('ordersList');
       if (!fb || !user || !container) return;
       container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
@@ -1014,7 +1021,7 @@
         .then(snap => {
           container.innerHTML = '';
           if (!snap.exists()) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Start shopping to see your orders here</div><button class="btn" onclick="window.location.href=\'index.html\'">Shop Now</button></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Start shopping to see your orders here</div><button class="btn" onclick="window.location.href=\'/'">Shop Now</button></div>';
             return;
           }
           const orders = [];
@@ -1031,9 +1038,9 @@
                 <span class="order-status ${status}">${status.charAt(0).toUpperCase()+status.slice(1)}</span>
               </div>
               <div class="order-items">
-                ${(order.items||[{name:order.productName||'Product',image:order.image||'',price:order.price||order.totalAmount||0,quantity:order.quantity||1}]).map(item=>`
+                ${(order.items||[{name:order.productName||order.title||'Product',image:order.productImage||order.image||'',price:order.productPrice||order.price||order.totalAmount||0,quantity:order.quantity||1}]).map(item=>`
                   <div class="order-item">
-                    <img src="${item.image||'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image" onerror="this.src='https://via.placeholder.com/60'">
+                    <img src="${item.image||item.productImage||'https://via.placeholder.com/60'}" alt="${item.name||item.productName||'Product'}" class="order-item-image" onerror="this.src='https://via.placeholder.com/60'">
                     <div style="flex:1"><div style="font-weight:500">${item.name}</div><div style="font-size:0.875rem;color:var(--text-secondary)">Qty: ${item.quantity||1}</div><div style="font-weight:600;color:var(--primary)">₹${item.price||0}</div></div>
                   </div>`).join('')}
               </div>
@@ -1084,7 +1091,7 @@
         if (!fb) return;
         fb.signOut(fb.auth).then(() => {
           accShowToast('Logged out successfully', 'success');
-          setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+          setTimeout(() => { window.location.href = '/'; }, 1000);
         }).catch(() => accShowToast('Failed to logout', 'error'));
       });
     }
@@ -1104,11 +1111,9 @@
           if (slider)  slider.style.opacity = '1';
           if (badge)   badge.style.display = 'none';
           if (statusP) statusP.textContent = 'Extra security for your account';
-          // Load user's own 2FA state
           fb.get(fb.ref(fb.db, 'users/' + uid + '/twoFactor/enabled')).then(s => {
             if (toggle) toggle.checked = s.exists() && s.val() === true;
           });
-          // Attach listener only once
           if (toggle && !toggle._2faReady) {
             toggle._2faReady = true;
             toggle.addEventListener('change', function() {
@@ -1116,10 +1121,7 @@
                 enabled: this.checked, updatedAt: Date.now()
               }).then(() => {
                 accShowToast(this.checked ? '2FA enabled ✅' : '2FA disabled', this.checked ? 'success' : 'error');
-              }).catch(() => {
-                accShowToast('Update failed, try again', 'error');
-                this.checked = !this.checked;
-              });
+              }).catch(() => { accShowToast('Update failed', 'error'); this.checked = !this.checked; });
             });
           }
         } else {

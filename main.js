@@ -572,11 +572,35 @@
         element.className = 'search-tag';
         element.textContent = tag;
         element.addEventListener('click', () => {
-          document.getElementById('searchPanelInput').value = tag;
-          performSearch(tag);
+          // Search panel band karo
+          closeSearchPanel();
+          // Tag se match hone wale products filter karo
+          filterProductsByTag(tag);
         });
         container.appendChild(element);
       });
+    }
+
+    function filterProductsByTag(tag) {
+      if (!tag) return;
+      const tagLower = tag.toLowerCase().trim();
+      // Products filter karo — tags array, name, category, description mein dhundho
+      const filtered = products.filter(p => {
+        const name = (p.name || p.title || '').toLowerCase();
+        const cat  = (p.category || '').toLowerCase();
+        const desc = (p.description || p.desc || '').toLowerCase();
+        const tags = Array.isArray(p.tags) ? p.tags.map(t => t.toLowerCase()) : [];
+        return (
+          name.includes(tagLower) ||
+          cat.includes(tagLower) ||
+          desc.includes(tagLower) ||
+          tags.some(t => t.includes(tagLower))
+        );
+      });
+      window.currentSearchQuery   = tag;
+      window.currentSearchResults = filtered;
+      showPage('searchResultsPage');
+      renderSearchResults(filtered, tag);
     }
 
     function toggleTheme() {
@@ -584,6 +608,14 @@
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
+      // Sun/Moon icon sync
+      const sun  = document.querySelector('.theme-toggle-btn .sun-icon');
+      const moon = document.querySelector('.theme-toggle-btn .moon-icon');
+      if (sun)  sun.style.display  = newTheme === 'dark' ? 'none'  : 'block';
+      if (moon) moon.style.display = newTheme === 'dark' ? 'block' : 'none';
+      // Checkbox sync
+      const cb = document.getElementById('darkModeToggle');
+      if (cb) cb.checked = (newTheme === 'dark');
     }
 
     function showPage(pageId) {
@@ -4063,8 +4095,10 @@
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
-      document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
-      document.getElementById('darkModeToggle')?.addEventListener('click', toggleTheme);
+      // Night mode — multiple possible IDs handle karo
+      ['themeToggle','themeToggleBtn','darkModeToggle','darkModeBtn','nightModeBtn'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', toggleTheme);
+      });
       // Top header avatar → account.html (har baar kaam kare)
       document.getElementById('userProfile')?.addEventListener('click', checkAuthAndShowAccount);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
