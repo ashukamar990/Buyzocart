@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2024-04-22 - Search Complexity and UI Race Conditions
+**Learning:** In a static frontend, search performance is dominated by redundant string processing and expensive sort comparators. Pre-calculating ratings into a flat Map before sorting reduces complexity from $O(N \log N \times R)$ to $O(N \log N)$. Additionally, search debouncing without a cancellation mechanism causes UI "flicker" where old suggestions appear after an input is cleared.
+**Action:** Always pre-calculate sort keys for dynamic data and ensure debounced UI handlers can be cancelled or ignore stale results.
