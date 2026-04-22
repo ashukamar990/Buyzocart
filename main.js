@@ -12,20 +12,16 @@
     };
 
     const cacheManager = {
-      // localStorage cache with TTL (1 hour for products/categories, longer for settings)
-      set(key, data, ttl = 60 * 60 * 1000) { // 1 hour default
+      set(key, data, ttl = 60 * 60 * 1000) {
         const item = { data, timestamp: Date.now(), ttl };
         try { localStorage.setItem(key, JSON.stringify(item)); } catch (e) {}
-        // Also store in sessionStorage for instant same-session access
         try { sessionStorage.setItem(key + '_session', JSON.stringify(data)); } catch (e) {}
       },
       get(key) {
-        // Try sessionStorage first (instant, no TTL needed)
         try {
           const sess = sessionStorage.getItem(key + '_session');
           if (sess) return JSON.parse(sess);
         } catch (e) {}
-        // Fall back to localStorage with TTL check
         const item = localStorage.getItem(key);
         if (!item) return null;
         try {
@@ -315,7 +311,6 @@
       }, 3000);
     }
 
-    // EmailJS init — keys config.js se aate hain
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -325,7 +320,6 @@
       } catch(e) {}
     })();
 
-    // Helper: EmailJS se actual email bhejo
     function bzSendEmail(templateId, params) {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -367,7 +361,6 @@
       document.getElementById('searchSuggestions').style.display = 'none';
     }
 
-    // ===== SMART FUZZY SEARCH ENGINE =====
     function fuzzyScore(text, query) {
       if (!text || !query) return 0;
       const t = text.toLowerCase();
@@ -375,7 +368,6 @@
       if (t === q) return 100;
       if (t.startsWith(q)) return 90;
       if (t.includes(q)) return 80;
-      // Levenshtein distance for typo tolerance
       const lenT = t.length, lenQ = q.length;
       if (Math.abs(lenT - lenQ) > 5) return 0;
       const dp = Array.from({length: lenQ + 1}, (_, i) => i);
@@ -404,14 +396,12 @@
         const cat = p.category || '';
         const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
         const combined = [name, desc, cat, tags].join(' ');
-        // Exact match gets highest score
         let score = 0;
         score = Math.max(score, fuzzyScore(name, q));
         score = Math.max(score, fuzzyScore(cat, q) * 0.7);
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
-      // Sort by score DESC, then by rating
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
         const rA = calculateProductRating(a.product.id);
@@ -456,7 +446,6 @@
         suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted);padding:12px;">No matching products found</div>';
         return;
       }
-      // Top 3 as image cards (sorted by rating)
       const imageRow = document.createElement('div');
       imageRow.style.cssText = 'display:flex; gap:8px; padding:10px 10px 4px; overflow-x:auto;';
       topThree.forEach(product => {
@@ -473,7 +462,6 @@
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
-      // Text list below
       topThree.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
@@ -588,9 +576,7 @@
         element.className = 'search-tag';
         element.textContent = tag;
         element.addEventListener('click', () => {
-          // Search panel band karo
           closeSearchPanel();
-          // Tag se match hone wale products filter karo
           filterProductsByTag(tag);
         });
         container.appendChild(element);
@@ -600,7 +586,6 @@
     function filterProductsByTag(tag) {
       if (!tag) return;
       const tagLower = tag.toLowerCase().trim();
-      // Products filter karo — tags array, name, category, description mein dhundho
       const filtered = products.filter(p => {
         const name = (p.name || p.title || '').toLowerCase();
         const cat  = (p.category || '').toLowerCase();
@@ -624,12 +609,10 @@
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
-      // Sun/Moon icon — remove inline style so CSS [data-theme] rules take effect
       const sun  = document.querySelector('.theme-toggle-btn .sun-icon');
       const moon = document.querySelector('.theme-toggle-btn .moon-icon');
       if (sun)  { sun.removeAttribute('style');  sun.style.display  = newTheme === 'dark' ? 'none'  : ''; }
       if (moon) { moon.removeAttribute('style'); moon.style.display = newTheme === 'dark' ? ''      : 'none'; }
-      // Checkbox sync
       const cb = document.getElementById('darkModeToggle');
       if (cb) cb.checked = (newTheme === 'dark');
     }
@@ -1207,7 +1190,6 @@
       currentImageIndex = 0;
       _updateDetailMainImage();
 
-      // Build dots
       dotsContainer.innerHTML = '';
       currentProductImages.forEach((_, index) => {
         const dot = document.createElement('div');
@@ -1222,11 +1204,10 @@
         dotsContainer.appendChild(dot);
       });
 
-      // Zoom button — open fullscreen viewer (NO cloneNode — use flag to avoid duplicate listeners)
       const zoomBtn = document.getElementById('imageZoomBtn');
       if (zoomBtn && !zoomBtn._fvBound) {
         zoomBtn._fvBound = true;
-        zoomBtn.style.display = 'none'; // FIX 1: Hide zoom button as requested
+        zoomBtn.style.display = 'none';
         zoomBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           pauseSlide();
@@ -1234,10 +1215,9 @@
           resumeSlideAfterDelay();
         });
       } else if (zoomBtn) {
-        zoomBtn.style.display = 'none'; // keep hidden on re-init
+        zoomBtn.style.display = 'none';
       }
 
-      // Tap on main image → open fullscreen viewer (NO cloneNode)
       if (mainImage && !mainImage._fvBound) {
         mainImage._fvBound = true;
         mainImage.style.cursor = 'zoom-in';
@@ -1250,7 +1230,6 @@
       startAutoSlide();
     }
 
-    // Standalone helpers (outside initProductDetailGallery so prev/next buttons can call them)
     function _updateDetailMainImage() {
       const mainImage = document.getElementById('mainProductImage');
       if (mainImage && currentProductImages[currentImageIndex]) {
@@ -1263,25 +1242,19 @@
       });
     }
 
-    // ============================================================
-    //  FULLSCREEN IMAGE VIEWER — Pinch Zoom + Drag + Slider
-    // ============================================================
     const _FV = {
-      images: [],          // all product images
-      index: 0,            // current image index
-      zoom: 1,             // current zoom level
+      images: [],
+      index: 0,
+      zoom: 1,
       minZoom: 1,
       maxZoom: 5,
-      // pan state
       panX: 0, panY: 0,
       lastPanX: 0, lastPanY: 0,
       dragging: false,
       dragStartX: 0, dragStartY: 0,
-      // pinch state
       pinching: false,
       pinchStartDist: 0,
       pinchStartZoom: 1,
-      // swipe state (for image nav when zoom=1)
       swipeStartX: 0,
       swipeStartY: 0,
       swipeMoved: false,
@@ -1305,7 +1278,6 @@
       fvBindEvents();
     }
 
-    // Keep old name working (called from imageZoomBtn)
     function openZoomModal(imageSrc) {
       openFullscreenViewer(currentProductImages, currentImageIndex);
     }
@@ -1314,14 +1286,12 @@
       document.getElementById('fullscreenViewer').classList.remove('active');
       document.body.style.overflow = '';
       fvUnbindEvents();
-      // reset
       _FV.zoom = 1; _FV.panX = 0; _FV.panY = 0;
     }
 
     function fvBuildSlides() {
       const track = document.getElementById('viewerTrack');
       track.innerHTML = '';
-      // Position slides via JS transform (faster than flex for zoom)
       track.style.transform = `translateX(-${_FV.index * 100}%)`;
       _FV.images.forEach((src, i) => {
         const slide = document.createElement('div');
@@ -1409,10 +1379,8 @@
       fvSyncSlider();
     }
 
-    // ---- Touch Events ----
     function fvOnTouchStart(e) {
       if (e.touches.length === 2) {
-        // Pinch start
         _FV.pinching = true;
         _FV.pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -1426,7 +1394,6 @@
         _FV.swipeStartX = e.touches[0].clientX;
         _FV.swipeStartY = e.touches[0].clientY;
         if (_FV.zoom > 1) {
-          // Drag pan mode
           _FV.dragging  = true;
           _FV.dragStartX = e.touches[0].clientX - _FV.panX;
           _FV.dragStartY = e.touches[0].clientY - _FV.panY;
@@ -1469,14 +1436,12 @@
         _FV.dragging = false;
         return;
       }
-      // Swipe nav (only when zoom = 1)
       if (_FV.zoom <= 1 && e.changedTouches.length === 1 && _FV.swipeMoved) {
         const dx = e.changedTouches[0].clientX - _FV.swipeStartX;
         if (Math.abs(dx) > 50) {
           dx < 0 ? fvGoTo(_FV.index + 1) : fvGoTo(_FV.index - 1);
         }
       }
-      // Double tap to zoom
       if (!_FV.swipeMoved && e.changedTouches.length === 1) {
         const now = Date.now();
         if (_FV._lastTap && now - _FV._lastTap < 300) {
@@ -1489,7 +1454,6 @@
       }
     }
 
-    // ---- Mouse Events (desktop) ----
     function fvOnMouseDown(e) {
       if (_FV.zoom > 1) {
         _FV.dragging  = true;
@@ -1515,7 +1479,6 @@
       fvSetZoom(_FV.zoom + delta, false);
     }
 
-    // ---- Bind / Unbind ----
     function fvBindEvents() {
       const v = document.getElementById('fullscreenViewer');
       const c = document.getElementById('viewerContainer');
@@ -1537,11 +1500,9 @@
       c?.addEventListener('mouseup',     fvOnMouseUp);
       c?.addEventListener('mouseleave',  fvOnMouseUp);
       c?.addEventListener('wheel',       fvOnWheel, { passive: false });
-      // Close on background click (not on image)
       v?.addEventListener('click', (e) => {
         if (e.target === v) fvClose();
       });
-      // Keyboard
       document.addEventListener('keydown', _fvKeyHandler);
     }
 
@@ -1818,8 +1779,30 @@
         showToast('Added to wishlist', 'success');
       }
       localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
+      
+      if (currentUser && window.firebase) {
+        const wishlistRef = window.firebase.ref(window.firebase.database, 'wishlist/' + currentUser.uid + '/' + productId);
+        if (isWishlisted) {
+          window.firebase.remove(wishlistRef).catch(function(e) { console.warn('Wishlist remove error:', e); });
+        } else {
+          const product = products.find(function(p) { return p.id === productId || p._id === productId; });
+          if (product) {
+            window.firebase.set(wishlistRef, {
+              productId: productId,
+              name: product.name || product.title || 'Product',
+              price: product.price,
+              image: getProductImage(product),
+              addedAt: Date.now(),
+              userId: currentUser.uid
+            }).catch(function(e) { console.warn('Wishlist add error:', e); });
+          }
+        }
+      }
+      
       updateWishlistButtons();
-      if (document.getElementById('wishlistPage')?.classList.contains('active')) renderWishlist();
+      if (document.getElementById('wishlistPage') && document.getElementById('wishlistPage').classList.contains('active')) {
+        renderWishlist();
+      }
     }
 
     function toggleWishlistFromDetail() {
@@ -1866,7 +1849,6 @@
 
     function orderProductFromDetail() {
       if (!currentProduct) return;
-      // Only block if explicitly marked as out of stock (quantity = 0 AND field exists)
       const hasQuantityField = currentProduct.quantity !== undefined || currentProduct.stock !== undefined || currentProduct.inventory !== undefined;
       const quantity = currentProduct.quantity ?? currentProduct.stock ?? currentProduct.inventory ?? 1;
       if (hasQuantityField && quantity <= 0) {
@@ -1957,10 +1939,8 @@
       }
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
 
-      // Auto-save address to Firebase if user is logged in
       if (currentUser) {
         try {
-          // Check if this exact address already saved (by mobile+pincode)
           const alreadySaved = savedAddresses.some(a => a.mobile === mobile && a.pincode === pincode && a.street === house);
           if (!alreadySaved) {
             const addressId = 'address_' + Date.now();
@@ -1975,7 +1955,7 @@
             savedAddresses.push({ id: addressId, ...addressData });
             cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
           }
-        } catch (e) { /* silent fail – order still proceeds */ }
+        } catch (e) {}
       }
 
       showPage('paymentPage');
@@ -2039,7 +2019,6 @@
           }
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
-        // Also index under user path for fast per-user lookup
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), true);
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
@@ -2132,14 +2111,12 @@
         }
         const reviewsObj = snapshot.val();
         const allReviews = Object.keys(reviewsObj).map(key => ({ id: key, ...reviewsObj[key] }));
-        // Only show approved reviews publicly (or user's own pending)
         reviews = allReviews.filter(r =>
           r.status === 'approved' ||
-          !r.status || // Legacy reviews without status field show by default
-          (currentUser && r.userId === currentUser.uid) // User sees their own pending
+          !r.status ||
+          (currentUser && r.userId === currentUser.uid)
         );
         reviews.sort((a, b) => b.date - a.date);
-        // Show top rated first, then recent
         const sorted = [...reviews].sort((a,b) => {
           if (b.rating !== a.rating) return b.rating - a.rating;
           return b.date - a.date;
@@ -2233,10 +2210,8 @@
         const ordersObj = snapshot.val();
         const userOrders = Object.keys(ordersObj).map(key => ordersObj[key]);
         return userOrders.some(order => {
-          // productId match — exact ya productName se bhi check
           const pidMatch = order.productId === productId;
           if (!pidMatch) return false;
-          // Status check — 'delivered' case-insensitive, ya 'deliver' contain kare
           const status = (order.status || '').toLowerCase().trim();
           return status === 'delivered' || status === 'deliver' || status.includes('deliver');
         });
@@ -2250,7 +2225,6 @@
       if (!currentUser) { showLoginModal(); return; }
       if (!currentProduct) { showToast('No product selected', 'error'); return; }
 
-      // 1. Verified purchase check
       const canReview = await checkUserCanReview(currentProduct.id);
       if (!canReview) {
         document.getElementById('reviewError').textContent = 'Only customers who received this product can review it.';
@@ -2258,7 +2232,6 @@
         return;
       }
 
-      // 2. One review per product per user
       try {
         const existingSnap = await window.firebase.get(
           window.firebase.query(
@@ -2272,7 +2245,7 @@
           document.getElementById('reviewError').style.display = 'block';
           return;
         }
-      } catch (e) { /* allow if index not set */ }
+      } catch (e) {}
 
       const activeStars = document.querySelectorAll('.rating-star.active');
       const rating = activeStars.length;
@@ -2280,7 +2253,6 @@
       if (rating === 0) { showToast('Please select a rating', 'error'); return; }
       if (!reviewTextValue) { showToast('Please write a review', 'error'); return; }
 
-      // 3. Image upload via ImgBB if available
       let fileUrl = null;
       let fileType = null;
       const fileInput = document.getElementById('reviewFile');
@@ -2289,7 +2261,6 @@
         if (file.size > 5 * 1024 * 1024) { showToast('File max 5MB', 'error'); return; }
         if (file.type.startsWith('image/')) {
           fileType = 'image';
-          // Try ImgBB upload
           try {
             const formData = new FormData();
             const base64 = await new Promise(res => {
@@ -2315,7 +2286,6 @@
         }
       }
 
-      // 4. YouTube URL (from input if present)
       const youtubeInput = document.getElementById('reviewYoutubeUrl');
       const youtubeUrl = youtubeInput?.value?.trim() || null;
 
@@ -2335,7 +2305,7 @@
           text: reviewTextValue,
           date: Date.now(),
           isVerifiedPurchase: true,
-          status: 'pending', // Admin must approve before showing
+          status: 'pending',
           fileUrl: fileUrl,
           fileType: fileType,
           youtubeUrl: youtubeUrl
@@ -2400,7 +2370,6 @@
       const empty = document.getElementById('orders-empty');
       if (ordersList) ordersList.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);">Loading orders...</div>';
       try {
-        // First try the fast user-indexed path
         const userOrdersSnap = await window.firebase.get(
           window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid)
         );
@@ -2413,7 +2382,6 @@
           const snapshots = await Promise.all(orderPromises);
           orders = snapshots.filter(s => s.exists()).map(s => ({ id: s.key, ...s.val() }));
         } else {
-          // Fallback: query by userId (needs Firebase index)
           const snapshot = await window.firebase.get(
             window.firebase.query(
               window.firebase.ref(window.firebase.database, 'orders'),
@@ -2424,7 +2392,6 @@
           if (snapshot.exists()) {
             const ordersObj = snapshot.val();
             orders = Object.keys(ordersObj).map(key => ({ id: key, ...ordersObj[key] }));
-            // Back-fill userOrders index for future fast lookup
             orders.forEach(o => {
               window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + o.id), true).catch(()=>{});
             });
@@ -2466,7 +2433,6 @@
         const liveProduct = products.find(p => p.id === order.productId);
         const imgUrl = (liveProduct ? getProductImage(liveProduct) : null) || order.productImage || 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=No+Image';
 
-        // Order Tracking Steps
         const steps = [
           { key: 'confirmed', label: 'Confirmed', icon: '✅' },
           { key: 'shipped',   label: 'Shipped',   icon: '🚚' },
@@ -2529,7 +2495,6 @@
       if (product) {
         showProductDetail(product);
       } else {
-        // Fetch from Firebase if not in local cache
         window.firebase.get(window.firebase.ref(window.firebase.database, 'products/' + productId))
           .then(snap => {
             if (snap.exists()) {
@@ -2852,7 +2817,6 @@
       const controls = document.getElementById('bannerControls');
       if (!track || !controls) return;
 
-      // Preload all banner images eagerly before rendering
       const preloadImages = banners.map(banner => {
         return new Promise(resolve => {
           const img = new Image();
@@ -2887,7 +2851,6 @@
       setupBannerAutoSlide();
       setupBannerTouchEvents();
 
-      // Start preloading — reveal immediately without waiting
       Promise.all(preloadImages).catch(() => {});
     }
 
@@ -2932,11 +2895,9 @@
         const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
-            // Swipe left → go to next
             const nextIndex = (activeIndex + 1) % banners.length;
             setBannerSlide(nextIndex);
           } else {
-            // Swipe right → go to previous
             const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
             setBannerSlide(prevIndex);
           }
@@ -3216,7 +3177,6 @@
     }
 
     function updateUIForUser(user) {
-      // Set per-user notification keys FIRST before loading notifs
       setNotifKeysForUser(user.uid);
       appNotifications = [];
       loadNotifs();
@@ -3231,7 +3191,6 @@
     }
 
     function updateUIForGuest() {
-      // Reset to guest key so logged-out users get fresh empty notifications
       setNotifKeysForUser(null);
       appNotifications = [];
       updateNotifBadge();
@@ -3305,12 +3264,10 @@
         if (addresses.length > 0) {
           savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-          // Auto-fill form with default (first sorted) address
           const defaultAddr = savedAddresses[0];
           if (defaultAddr) {
             fillAddressForm(defaultAddr);
             userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
-            // Mark that radio button as checked
             const radios = document.querySelectorAll('input[name="savedAddress"]');
             radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
           }
@@ -3498,7 +3455,6 @@
       };
     }
 
-    // ===== LAZY BACKGROUND IMAGE LOADER =====
     (function setupLazyImages() {
       if (!('IntersectionObserver' in window)) return;
       const observer = new IntersectionObserver((entries) => {
@@ -3514,7 +3470,6 @@
           observer.unobserve(el);
         });
       }, { rootMargin: '200px' });
-      // Watch for new elements
       window._lazyObserver = observer;
     })();
 
@@ -3527,7 +3482,7 @@
         el.style.backgroundImage = `url('${url}')`;
       }
     }
-    // Keys are per-user — set after auth, default to guest key
+
     let NOTIF_KEY = 'bz_notifications_guest';
     let NOTIF_META_KEY = 'bz_notif_meta_guest';
 
@@ -3545,14 +3500,12 @@
         const s = localStorage.getItem(NOTIF_KEY);
         if (s) {
           const p = JSON.parse(s);
-          // Filter out old hardcoded demo notifications (ids 1-5 with demo content)
           const cleaned = p.filter(n =>
             n.id > 100 ||
             (n.id >= 1000) ||
             (typeof n.id === 'number' && n.id > 5)
           );
           if (Array.isArray(cleaned)) appNotifications = cleaned;
-          // Persist cleaned version
           localStorage.setItem(NOTIF_KEY, JSON.stringify(appNotifications));
         }
       } catch(e) {}
@@ -3589,7 +3542,6 @@
       }
       meta.hasLoggedIn = true;
       localStorage.setItem(NOTIF_META_KEY, JSON.stringify(meta));
-      // Actual email via EmailJS
       const cfg = window.BZ_CONFIG?.emailjs;
       bzSendEmail(cfg?.loginTemplateId, {
         to_email: email,
@@ -3601,7 +3553,6 @@
 
     function sendWelcomeEmail(email, name) {
       addNotif({type:'system', title:'Welcome to Buyzo Cart! 🎉', message:'Hi '+(name||'there')+'! Account created. Enjoy shopping!', badge:'Welcome'});
-      // Actual welcome email
       const cfg = window.BZ_CONFIG?.emailjs;
       bzSendEmail(cfg?.loginTemplateId, {
         to_email: email,
@@ -3613,7 +3564,6 @@
 
     function sendOrderNotification(email, orderId, productName, total) {
       addNotif({type:'order', title:'Order Placed! 🛍️', message:(productName||'')+(orderId?' — Order '+orderId:'')+(total?' | ₹'+total:''), badge:'Order Confirmed'});
-      // Actual order confirmation email
       const cfg = window.BZ_CONFIG?.emailjs;
       bzSendEmail(cfg?.orderTemplateId, {
         to_email: email,
@@ -3632,7 +3582,6 @@
 
     function loadAdminOfferNotifs() {
       if (!window.firebase || !window.firebase.database) return;
-      // Only load once per session to avoid duplicate notifications on refresh
       const sessionKey = 'bz_offer_notifs_loaded_' + (currentUser ? currentUser.uid : '');
       if (sessionStorage.getItem(sessionKey)) return;
       sessionStorage.setItem(sessionKey, '1');
@@ -3697,13 +3646,10 @@
         loadSearchTags();
       }
 
-      // ===== DYNAMIC HERO STATS =====
-      // Use admin-set values if available, otherwise auto-calculate from Firebase
       updateHeroStats();
     }
 
     function updateHeroStats() {
-      // Admin can override stats in adminSettings.heroStats
       if (adminSettings.heroStats) {
         const s = adminSettings.heroStats;
         setHeroStat('heroStatProducts', s.products || null);
@@ -3711,25 +3657,21 @@
         setHeroStat('heroStatRating', s.rating ? s.rating + '★' : null);
         return;
       }
-      // Auto-calculate from real data
       const db = window.firebase?.database;
       const ref = window.firebase?.ref;
       const get = window.firebase?.get;
       if (!db || !ref || !get) return;
 
-      // Products count
       get(ref(db, 'products')).then(snap => {
         const count = snap.exists() ? Object.keys(snap.val()).length : 0;
         setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
       }).catch(()=>{});
 
-      // Users count
       get(ref(db, 'users')).then(snap => {
         const count = snap.exists() ? Object.keys(snap.val()).length : 0;
         setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
       }).catch(()=>{});
 
-      // Avg rating from reviews
       get(ref(db, 'reviews')).then(snap => {
         if (!snap.exists()) { setHeroStat('heroStatRating', null); return; }
         const vals = Object.values(snap.val());
@@ -3746,7 +3688,6 @@
         el.textContent = value;
         if (row) row.style.display = '';
       } else {
-        // Hide the whole stats bar if no data
         el.textContent = '—';
       }
     }
@@ -3766,7 +3707,6 @@
         if (snapshot.exists()) {
           const userData = snapshot.val();
           userInfo = { ...userInfo, ...userData };
-          // Update header name from Firebase profile (reflects account.html changes)
           if (userData.name) {
             const headerName = document.getElementById('headerUserNameShort');
             if (headerName) {
@@ -3790,7 +3730,6 @@
       updateCurrencySymbols();
       updateHeroContent();
 
-      // Sync footer contact info from adminSettings
       const emailSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
       const phoneSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>`;
 
@@ -3906,12 +3845,10 @@
     }
 
     function loadCachedData() {
-      // Load from cache IMMEDIATELY — replaces skeleton with real data
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
         window.products = products;
-        // Render instantly to replace skeleton
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         const trending = products.filter(p => p.isTrending || p.trending).slice(0, 10);
@@ -4012,13 +3949,11 @@
         if (outOfStockObj) window.outOfStockItems = outOfStockObj;
       });
 
-      // Listen for admin-pushed notifications (broadcast to all users)
       let _lastAdminNotifTs = Date.now();
       onValue(ref(database, 'adminNotifications'), snapshot => {
         if (!snapshot.exists()) return;
         snapshot.forEach(child => {
           const n = child.val();
-          // Only show notifications that arrived after page load
           if (n.timestamp && n.timestamp > _lastAdminNotifTs) {
             _lastAdminNotifTs = n.timestamp;
             addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info' });
@@ -4027,7 +3962,6 @@
       });
     }
 
-    // adjustZoom / resetZoom — now handled by fullscreen viewer (fvSetZoom)
     function adjustZoom(delta) { fvSetZoom((_FV.zoom||1) + delta, true); }
     function resetZoom() { fvSetZoom(1, true); _FV.panX=0; _FV.panY=0; fvApplyTransform(); }
 
@@ -4138,11 +4072,9 @@
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
-      // Night mode — multiple possible IDs handle karo
       ['themeToggle','themeToggleBtn','darkModeToggle','darkModeBtn','nightModeBtn'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', toggleTheme);
       });
-      // Top header avatar → account.html (har baar kaam kare)
       document.getElementById('userProfile')?.addEventListener('click', checkAuthAndShowAccount);
       document.getElementById('searchPanelClose')?.addEventListener('click', closeSearchPanel);
       document.getElementById('searchPanelInput')?.addEventListener('input', handleSearchPanelInput);
@@ -4170,7 +4102,6 @@
       document.getElementById('mobileLogoutBtn')?.addEventListener('click', showLogoutConfirmation);
       document.getElementById('alertCancelBtn')?.addEventListener('click', () => document.getElementById('alertModal').classList.remove('active'));
       document.getElementById('alertConfirmBtn')?.addEventListener('click', confirmLogout);
-      // zoomModal listeners removed — fullscreen viewer uses fvBindEvents() on open
       document.getElementById('productImageModalClose')?.addEventListener('click', () => document.getElementById('productImageModal').classList.remove('active'));
       document.getElementById('productImageModalPrev')?.addEventListener('click', prevProductModalImage);
       document.getElementById('productImageModalNext')?.addEventListener('click', nextProductModalImage);
@@ -4264,8 +4195,6 @@
             loadSavedAddresses();
             document.getElementById('authModal')?.classList.remove('active');
 
-            // Pending account navigation — login ke baad account.html open karo
-            // Real-time sync: name/address changes in account.html reflect here
             setupAccountRealtimeSync(user.uid);
 
             if (window._pendingAccountNav) {
@@ -4273,12 +4202,9 @@
               setTimeout(() => { window.location.href = 'account.html'; }, 300);
             }
 
-            // ===== PRESENCE TRACKING =====
-            // Register user as online; auto-remove on disconnect
             try {
               const presenceRef = window.firebase.ref(window.firebase.database, 'presence/' + user.uid);
               window.firebase.set(presenceRef, { uid: user.uid, online: true, lastSeen: Date.now() });
-              // Firebase built-in disconnect hook
               const connRef = window.firebase.ref(window.firebase.database, '.info/connected');
               window.firebase.onValue(connRef, snap => {
                 if (snap.val() === true) {
@@ -4290,14 +4216,12 @@
               });
             } catch(e) {}
 
-            // Only load offer notifs on fresh session
             const freshSessionKey = 'bz_fresh_session_' + user.uid;
             if (!sessionStorage.getItem(freshSessionKey)) {
               sessionStorage.setItem(freshSessionKey, '1');
               setTimeout(loadAdminOfferNotifs, 1500);
             }
           } else {
-            // Remove presence on logout
             if (currentUser) {
               try { window.firebase.remove(window.firebase.ref(window.firebase.database, 'presence/' + currentUser.uid)).catch(()=>{}); } catch(e) {}
             }
@@ -4476,10 +4400,8 @@
 
     function updateNotifBadge() {
       const unread = appNotifications.filter(n => !n.read).length;
-      // Only show dot on notification menu item, NOT on hamburger menu icon
       const badge = document.getElementById('menuNotifBadge');
-      if (badge) badge.style.display = 'none'; // Never show on hamburger
-      // Show red dot on the notification menu item inside sidebar
+      if (badge) badge.style.display = 'none';
       const notifMenuDot = document.getElementById('notifMenuItemDot');
       if (notifMenuDot) {
         notifMenuDot.style.display = unread > 0 ? 'inline-block' : 'none';
@@ -4554,20 +4476,13 @@
       }
     };
 
-    // ====================================================
-    // 🤖 BZ AI SELF-HEALING AGENT
-    // Monitors errors, fixes broken images, retries Firebase,
-    // and keeps the site healthy automatically.
-    // ====================================================
     const BzAgent = (() => {
       const MAX_RETRIES = 3;
       const retryMap = new Map();
       const PLACEHOLDER = 'https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image';
 
-      // 1. Global error capture
       window.addEventListener('error', (e) => {
         if (e.target && e.target.tagName === 'IMG') {
-          // Broken image — auto-replace with placeholder
           if (e.target.src !== PLACEHOLDER) e.target.src = PLACEHOLDER;
           return;
         }
@@ -4577,13 +4492,11 @@
       window.addEventListener('unhandledrejection', (e) => {
         const msg = e.reason?.message || String(e.reason) || 'Promise rejected';
         logError('UnhandledPromise', msg, '');
-        // Auto-retry Firebase operations that fail with network errors
         if (msg.includes('network') || msg.includes('Failed to fetch') || msg.includes('offline')) {
           scheduleFirebaseRetry();
         }
       });
 
-      // 2. Fix background-image broken urls
       function fixBrokenBgImages() {
         document.querySelectorAll('[style*="background-image"]').forEach(el => {
           const style = el.style.backgroundImage;
@@ -4599,7 +4512,6 @@
         });
       }
 
-      // 3. Firebase reconnect scheduler
       let fbRetryTimer = null;
       function scheduleFirebaseRetry() {
         if (fbRetryTimer) return;
@@ -4613,7 +4525,6 @@
         }, 3000);
       }
 
-      // 4. Error logger (to Firebase for monitoring)
       function logError(type, msg, loc) {
         try {
           if (!window.firebase?.database || !currentUser) return;
@@ -4625,7 +4536,6 @@
         } catch(e) {}
       }
 
-      // 5. Performance observer — log long tasks
       if ('PerformanceObserver' in window) {
         try {
           new PerformanceObserver((list) => {
@@ -4638,27 +4548,19 @@
         } catch(e) {}
       }
 
-      // 6. Periodic health check every 60s
       setInterval(() => {
-        // Fix any broken bg images that appeared
         fixBrokenBgImages();
-        // If products array is empty and firebase is available, refetch
         if (!products.length && window.firebase?.database) {
           fetchLiveData();
         }
       }, 60000);
 
-      // Initial fix after page load
       setTimeout(fixBrokenBgImages, 2000);
 
       return { logError, scheduleFirebaseRetry, fixBrokenBgImages };
     })();
 
-    // ====================================================
-    // ⚡ PERFORMANCE: 120fps optimizations
-    // ====================================================
     (function applyPerfOptimizations() {
-      // Use passive listeners everywhere possible
       const origAddEventListener = EventTarget.prototype.addEventListener;
       EventTarget.prototype.addEventListener = function(type, fn, opts) {
         if (['scroll', 'touchstart', 'touchmove', 'wheel'].includes(type)) {
@@ -4669,7 +4571,6 @@
         origAddEventListener.call(this, type, fn, opts);
       };
 
-      // Apply will-change to animated elements for GPU layer promotion
       const style = document.createElement('style');
       style.textContent = `
         .banner-slide, .slider-item, .product-card, .bottom-nav-item {
@@ -4687,49 +4588,43 @@
       `;
       document.head.appendChild(style);
 
-  
-    // ============================================================
-    //  ACCOUNT PAGE — Navigation & Firebase Real-time Sync
-    // ============================================================
+      let scrollRAF = null;
+      window.addEventListener('scroll', () => {
+        if (scrollRAF) return;
+        scrollRAF = requestAnimationFrame(() => {
+          scrollRAF = null;
+        });
+      }, { passive: true });
+    })();
 
-    /** Header profile button + mobile menu profile → account.html */
     function openAccountPage() {
       window.location.href = 'account.html';
     }
 
-    /** Called after login if user had clicked Account before logging in */
     function closeAccountPage() {
       showPage('homePage');
     }
 
-    /**
-     * Real-time listener on users/{uid} — any name/phone saved in
-     * account.html immediately updates the header avatar & name here.
-     */
     function setupAccountRealtimeSync(uid) {
       if (!window.firebase || !window.firebase.onValue) return;
       const userRef = window.firebase.ref(window.firebase.database, 'users/' + uid);
       window.firebase.onValue(userRef, function(snapshot) {
         if (!snapshot.exists()) return;
         const data = snapshot.val();
-        // Update header name
         const headerName = document.getElementById('headerUserNameShort');
         if (headerName && data.name) {
           const short = data.name.split(' ')[0];
           headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
         }
-        // Update avatar initial
         const avatarInitial = document.getElementById('userAvatarInitial');
         if (avatarInitial && data.name) {
           avatarInitial.textContent = data.name.charAt(0).toUpperCase();
         }
-        // Store name so order flow uses updated name
         if (data.name && typeof userInfo !== 'undefined') {
           userInfo.fullName = userInfo.fullName || data.name;
         }
       });
 
-      // Real-time listener on addresses — account.html changes auto-sync
       const addrRef = window.firebase.ref(window.firebase.database, 'addresses');
       window.firebase.onValue(
         window.firebase.query(addrRef,
@@ -4743,7 +4638,6 @@
           savedAddresses = list.sort((a, b) =>
             (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt || 0) - (a.createdAt || 0)
           );
-          // Re-render saved addresses in the checkout form if open
           if (typeof renderSavedAddresses === 'function') {
             const section = document.getElementById('savedAddressesSection');
             if (section) {
@@ -4757,10 +4651,6 @@
       );
     }
 
-
-    // ── Cross-page Sync (account.html ↔ index.html) ───────────────────────────
-    // When user saves profile/address in account.html and comes back,
-    // index.html auto-refreshes the name and addresses.
     window.addEventListener('storage', function(e) {
       if (!currentUser) return;
       if (e.key === 'bz_profile_updated' && e.newValue) {
@@ -4782,21 +4672,9 @@
       }
     });
 
-    // Also refresh when user tabs back to index.html from account.html
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'visible' && currentUser) {
         loadSavedAddresses();
         loadUserData(currentUser);
       }
     });
-
-    // Debounce scroll handler
-      let scrollRAF = null;
-      window.addEventListener('scroll', () => {
-        if (scrollRAF) return;
-        scrollRAF = requestAnimationFrame(() => {
-          scrollRAF = null;
-        });
-      }, { passive: true });
-    })();
-
