@@ -223,6 +223,16 @@
       };
     }
 
+    function escapeHTML(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -524,8 +534,8 @@
         const item = document.createElement('div');
         item.className = 'recent-search-item';
         item.innerHTML = `
-          <span class="recent-search-text">${search}</span>
-          <button class="recent-search-remove" data-search="${search}">×</button>
+          <span class="recent-search-text">${escapeHTML(search)}</span>
+          <button class="recent-search-remove" data-search="${escapeHTML(search)}">×</button>
         `;
         item.querySelector('.recent-search-text').addEventListener('click', () => {
           document.getElementById('searchPanelInput').value = search;
@@ -2179,15 +2189,15 @@
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${escapeHTML(review.userName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${escapeHTML(review.userName || 'Customer')}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
@@ -2210,6 +2220,12 @@
       if (!currentUser) return;
       if (!confirm('Are you sure you want to delete this review?')) return;
       try {
+        // Defense-in-depth: check ownership before removal request
+        const snap = await window.firebase.get(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
+        if (snap.exists() && snap.val().userId !== currentUser.uid) {
+          showToast('Unauthorized: You can only delete your own reviews', 'error');
+          return;
+        }
         await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
         showToast('Review deleted successfully', 'success');
         if (currentProduct) loadProductReviews(currentProduct.id);
@@ -3334,11 +3350,11 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
-              <div style="font-weight:600">${address.name}</div>
-              <div>${address.street}</div>
-              <div>${address.city}, ${address.state} - ${address.pincode}</div>
-              <div>Mobile: ${address.mobile}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
+              <div style="font-weight:600">${escapeHTML(address.name)}</div>
+              <div>${escapeHTML(address.street)}</div>
+              <div>${escapeHTML(address.city)}, ${escapeHTML(address.state)} - ${escapeHTML(address.pincode)}</div>
+              <div>Mobile: ${escapeHTML(address.mobile)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${escapeHTML(addressType)} ${escapeHTML(isDefault)}</div>
             </div>
           </div>
           <div class="address-actions">
@@ -3572,7 +3588,7 @@
       const icons = {order:'🛍️', offer:'🎁', system:'🔔', warning:'⚠️'};
       const el = document.createElement('div');
       el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-18px);background:var(--surface,#fff);border:1.5px solid var(--border,#e2e8f0);border-left:4px solid var(--accent,#2563eb);border-radius:12px;padding:12px 18px;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-width:340px;width:90%;display:flex;gap:12px;align-items:center;opacity:0;transition:all 0.35s ease;pointer-events:none;';
-      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">'+(icons[n.type]||'🔔')+'</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;color:var(--text,#0f172a);">'+n.title+'</div><div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+n.message+'</div></div>';
+      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">'+(icons[n.type]||'🔔')+'</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;color:var(--text,#0f172a);">'+escapeHTML(n.title)+'</div><div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHTML(n.message)+'</div></div>';
       document.body.appendChild(el);
       requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
       setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(-12px)'; setTimeout(()=>el.remove(),400); }, 3500);
@@ -4445,11 +4461,11 @@
           <div class="notif-icon ${n.type}">${icons[n.type] || icons.system}</div>
           <div class="notif-content">
             <div class="notif-header">
-              <span class="notif-title">${n.title}</span>
+              <span class="notif-title">${escapeHTML(n.title)}</span>
               <span class="notif-time">${timeAgoNotif(n.timestamp)}</span>
             </div>
-            <div class="notif-message">${n.message}</div>
-            <span class="notif-badge ${n.type}">${n.badge}</span>
+            <div class="notif-message">${escapeHTML(n.message)}</div>
+            <span class="notif-badge ${n.type}">${escapeHTML(n.badge)}</span>
           </div>
         </div>
       `).join('');
