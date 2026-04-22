@@ -647,8 +647,8 @@
         return;
       }
       window._accCurrentUser = user;
-      // Poll until non-module functions are ready
-      (function waitReady(tries) {
+      // Non-module functions ready hone ka wait karo
+      (function waitReady(n) {
         if (typeof accUpdateUIForUser === 'function') {
           accUpdateUIForUser(user);
           accLoadUserData(user);
@@ -656,10 +656,8 @@
           accLoadWishlist(user);
           accLoadOrders(user);
           if (typeof acc2FACheckAdminStatus === 'function')
-            setTimeout(() => acc2FACheckAdminStatus(user.uid), 800);
-        } else if (tries < 40) {
-          setTimeout(() => waitReady(tries + 1), 50);
-        }
+            setTimeout(() => acc2FACheckAdminStatus(user.uid), 600);
+        } else if (n < 40) setTimeout(() => waitReady(n+1), 50);
       })(0);
     });
 
@@ -980,7 +978,7 @@
         .then(snap => {
           container.innerHTML = '';
           if (!snap.exists()) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❤️</div><div class="empty-state-title">Your wishlist is empty</div><div class="empty-state-description">Save products you love to view them here</div><button class="btn" onclick="window.location.href=\'/'">Browse Products</button></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❤️</div><div class="empty-state-title">Your wishlist is empty</div><div class="empty-state-description">Save products you love to view them here</div><button class="btn" onclick="window.location.href=\'/\'">Browse Products</button></div>';
             return;
           }
           snap.forEach(child => {
@@ -1021,7 +1019,7 @@
         .then(snap => {
           container.innerHTML = '';
           if (!snap.exists()) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Start shopping to see your orders here</div><button class="btn" onclick="window.location.href=\'/'">Shop Now</button></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Start shopping to see your orders here</div><button class="btn" onclick="window.location.href=\'/\'">Shop Now</button></div>';
             return;
           }
           const orders = [];
@@ -1040,7 +1038,7 @@
               <div class="order-items">
                 ${(order.items||[{name:order.productName||order.title||'Product',image:order.productImage||order.image||'',price:order.productPrice||order.price||order.totalAmount||0,quantity:order.quantity||1}]).map(item=>`
                   <div class="order-item">
-                    <img src="${item.image||item.productImage||'https://via.placeholder.com/60'}" alt="${item.name||item.productName||'Product'}" class="order-item-image" onerror="this.src='https://via.placeholder.com/60'">
+                    <img src="${item.image||item.productImage||'https://via.placeholder.com/60'}" alt="${item.name}" class="order-item-image" onerror="this.src='https://via.placeholder.com/60'">
                     <div style="flex:1"><div style="font-weight:500">${item.name}</div><div style="font-size:0.875rem;color:var(--text-secondary)">Qty: ${item.quantity||1}</div><div style="font-weight:600;color:var(--primary)">₹${item.price||0}</div></div>
                   </div>`).join('')}
               </div>
@@ -1094,43 +1092,6 @@
           setTimeout(() => { window.location.href = '/'; }, 1000);
         }).catch(() => accShowToast('Failed to logout', 'error'));
       });
-    }
-
-    // ---- 2FA Admin Control ----
-    function acc2FACheckAdminStatus(uid) {
-      const fb = window._accFb;
-      if (!fb) return;
-      fb.get(fb.ref(fb.db, 'adminSettings/features/twoFactorAuth')).then(snap => {
-        const enabled = snap.exists() && snap.val() === true;
-        const toggle  = document.getElementById('twoFactorToggle');
-        const slider  = document.getElementById('twoFactorSlider');
-        const badge   = document.getElementById('twoFactorComingSoonBadge');
-        const statusP = document.getElementById('twoFactorStatusText');
-        if (enabled) {
-          if (toggle)  { toggle.disabled = false; toggle.style.pointerEvents = ''; }
-          if (slider)  slider.style.opacity = '1';
-          if (badge)   badge.style.display = 'none';
-          if (statusP) statusP.textContent = 'Extra security for your account';
-          fb.get(fb.ref(fb.db, 'users/' + uid + '/twoFactor/enabled')).then(s => {
-            if (toggle) toggle.checked = s.exists() && s.val() === true;
-          });
-          if (toggle && !toggle._2faReady) {
-            toggle._2faReady = true;
-            toggle.addEventListener('change', function() {
-              fb.update(fb.ref(fb.db, 'users/' + uid + '/twoFactor'), {
-                enabled: this.checked, updatedAt: Date.now()
-              }).then(() => {
-                accShowToast(this.checked ? '2FA enabled ✅' : '2FA disabled', this.checked ? 'success' : 'error');
-              }).catch(() => { accShowToast('Update failed', 'error'); this.checked = !this.checked; });
-            });
-          }
-        } else {
-          if (toggle)  { toggle.disabled = true; toggle.style.pointerEvents = 'none'; toggle.checked = false; }
-          if (slider)  slider.style.opacity = '0.4';
-          if (badge)   badge.style.display = '';
-          if (statusP) statusP.textContent = 'Extra security — Admin se enable hoga';
-        }
-      }).catch(() => {});
     }
   </script>
 
