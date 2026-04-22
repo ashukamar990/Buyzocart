@@ -217,10 +217,12 @@
 
     function debounce(func, wait) {
       let timeout;
-      return function(...args) {
+      const debounced = function(...args) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
       };
+      debounced.cancel = () => clearTimeout(timeout);
+      return debounced;
     }
 
     function parsePrice(p) {
@@ -368,10 +370,8 @@
     }
 
     // ===== SMART FUZZY SEARCH ENGINE =====
-    function fuzzyScore(text, query) {
-      if (!text || !query) return 0;
-      const t = text.toLowerCase();
-      const q = query.toLowerCase();
+    function fuzzyScore(t, q) {
+      if (!t || !q) return 0;
       if (t === q) return 100;
       if (t.startsWith(q)) return 90;
       if (t.includes(q)) return 80;
@@ -396,27 +396,30 @@
 
     function searchProducts(query) {
       if (!query.trim()) return [];
-      const q = query.trim();
+      const q = query.trim().toLowerCase();
       const scored = [];
       products.forEach(p => {
-        const name = p.name || p.title || '';
-        const desc = p.description || '';
-        const cat = p.category || '';
-        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
-        const combined = [name, desc, cat, tags].join(' ');
-        // Exact match gets highest score
+        if (p._sName === undefined) p._sName = (p.name || p.title || '').toLowerCase();
+        if (p._sCat === undefined) p._sCat = (p.category || '').toLowerCase();
+        if (p._sComb === undefined) {
+          const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+          p._sComb = [p._sName, (p.description || '').toLowerCase(), p._sCat, tags.toLowerCase()].join(' ');
+        }
         let score = 0;
-        score = Math.max(score, fuzzyScore(name, q));
-        score = Math.max(score, fuzzyScore(cat, q) * 0.7);
-        score = Math.max(score, fuzzyScore(combined, q) * 0.5);
+        score = Math.max(score, fuzzyScore(p._sName, q));
+        score = Math.max(score, fuzzyScore(p._sCat, q) * 0.7);
+        score = Math.max(score, fuzzyScore(p._sComb, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
-      // Sort by score DESC, then by rating
+      // Pre-calculate ratings for results to avoid O(R) lookup in sort
+      const rMap = {};
+      scored.forEach(s => {
+        const pid = s.product.id;
+        if (rMap[pid] === undefined) rMap[pid] = calculateProductRating(pid);
+      });
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
-        return rB - rA;
+        return (rMap[b.product.id] || 0) - (rMap[a.product.id] || 0);
       });
       return scored.map(s => s.product);
     }
@@ -433,14 +436,16 @@
       closeSearchPanel();
     }
 
+    const _debouncedShowSuggestions = debounce((q) => showSearchSuggestions(q), 300);
     function handleSearchPanelInput(e) {
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        showSearchSuggestions(query);
+        _debouncedShowSuggestions(query);
         suggestionsContainer.style.display = 'block';
       } else {
+        _debouncedShowSuggestions.cancel();
         clearSearchSuggestions();
         suggestionsContainer.style.display = 'none';
       }
