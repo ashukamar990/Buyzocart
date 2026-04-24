@@ -213,10 +213,12 @@
 
     function debounce(func, wait) {
       let timeout;
-      return function(...args) {
+      const debounced = function(...args) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
       };
+      debounced.cancel = () => clearTimeout(timeout);
+      return debounced;
     }
 
     function parsePrice(p) {
@@ -363,18 +365,17 @@
 
     function fuzzyScore(text, query) {
       if (!text || !query) return 0;
-      const t = text.toLowerCase();
-      const q = query.toLowerCase();
-      if (t === q) return 100;
-      if (t.startsWith(q)) return 90;
-      if (t.includes(q)) return 80;
-      const lenT = t.length, lenQ = q.length;
+      if (text === query) return 100;
+      if (text.startsWith(query)) return 90;
+      if (text.includes(query)) return 80;
+      const lenT = text.length, lenQ = query.length;
       if (Math.abs(lenT - lenQ) > 5) return 0;
-      const dp = Array.from({length: lenQ + 1}, (_, i) => i);
+      const dp = new Int32Array(lenQ + 1);
+      for (let i = 0; i <= lenQ; i++) dp[i] = i;
       for (let j = 1; j <= lenT; j++) {
         let prev = j;
         for (let i = 1; i <= lenQ; i++) {
-          const cur = t[j-1] === q[i-1] ? dp[i-1] : Math.min(dp[i-1], dp[i], prev) + 1;
+          const cur = text[j-1] === query[i-1] ? dp[i-1] : Math.min(dp[i-1], dp[i], prev) + 1;
           dp[i-1] = prev;
           prev = cur;
         }
@@ -388,25 +389,27 @@
 
     function searchProducts(query) {
       if (!query.trim()) return [];
-      const q = query.trim();
+      const q = query.trim().toLowerCase();
       const scored = [];
       products.forEach(p => {
-        const name = p.name || p.title || '';
-        const desc = p.description || '';
-        const cat = p.category || '';
-        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
-        const combined = [name, desc, cat, tags].join(' ');
+        const name = p._sName || (p.name || p.title || '').toLowerCase();
+        const cat = p._sCat || (p.category || '').toLowerCase();
+        const combined = p._sComb || ((p.name || p.title || '') + ' ' + (p.category || '') + ' ' + (p.description || '') + ' ' + (Array.isArray(p.tags) ? p.tags.join(' ') : '')).toLowerCase();
         let score = 0;
         score = Math.max(score, fuzzyScore(name, q));
         score = Math.max(score, fuzzyScore(cat, q) * 0.7);
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
+      const ratingMap = {};
+      scored.forEach(s => {
+        const pid = s.product.id;
+        const pr = reviews.filter(r => r.productId === pid);
+        ratingMap[pid] = pr.length ? pr.reduce((acc, r) => acc + r.rating, 0) / pr.length : 0;
+      });
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
-        return rB - rA;
+        return (ratingMap[b.product.id] || 0) - (ratingMap[a.product.id] || 0);
       });
       return scored.map(s => s.product);
     }
@@ -423,14 +426,19 @@
       closeSearchPanel();
     }
 
+    const debouncedShowSuggestions = debounce((query) => {
+      showSearchSuggestions(query);
+    }, 300);
+
     function handleSearchPanelInput(e) {
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        showSearchSuggestions(query);
+        debouncedShowSuggestions(query);
         suggestionsContainer.style.display = 'block';
       } else {
+        debouncedShowSuggestions.cancel();
         clearSearchSuggestions();
         suggestionsContainer.style.display = 'none';
       }
@@ -3761,9 +3769,16 @@
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
             const product = productsObj[key];
+            const pName = product.name || product.title || '';
+            const pCat = product.category || '';
+            const pDesc = product.description || '';
+            const pTags = Array.isArray(product.tags) ? product.tags.join(' ') : '';
             return {
               id: key,
               ...product,
+              _sName: pName.toLowerCase(),
+              _sCat: pCat.toLowerCase(),
+              _sComb: (pName + ' ' + pCat + ' ' + pDesc + ' ' + pTags).toLowerCase(),
               images: product.images ? 
                 (Array.isArray(product.images) ? product.images : [product.images]) : 
                 (product.image ? [product.image] : 
@@ -3847,7 +3862,19 @@
     function loadCachedData() {
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
-        products = cachedProducts;
+        products = cachedProducts.map(p => {
+          if (p._sName) return p;
+          const pName = p.name || p.title || '';
+          const pCat = p.category || '';
+          const pDesc = p.description || '';
+          const pTags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+          return {
+            ...p,
+            _sName: pName.toLowerCase(),
+            _sCat: pCat.toLowerCase(),
+            _sComb: (pName + ' ' + pCat + ' ' + pDesc + ' ' + pTags).toLowerCase()
+          };
+        });
         window.products = products;
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
@@ -3883,9 +3910,16 @@
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
             const product = productsObj[key];
+            const pName = product.name || product.title || '';
+            const pCat = product.category || '';
+            const pDesc = product.description || '';
+            const pTags = Array.isArray(product.tags) ? product.tags.join(' ') : '';
             return {
               id: key,
               ...product,
+              _sName: pName.toLowerCase(),
+              _sCat: pCat.toLowerCase(),
+              _sComb: (pName + ' ' + pCat + ' ' + pDesc + ' ' + pTags).toLowerCase(),
               images: product.images ? 
                 (Array.isArray(product.images) ? product.images : [product.images]) : 
                 (product.image ? [product.image] : 
