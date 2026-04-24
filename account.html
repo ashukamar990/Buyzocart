@@ -47,9 +47,22 @@
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
       min-height: 100vh;
+      /* Disable text selection & copy */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    /* Allow selection in input fields */
+    input, textarea, select {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
     a { color: inherit; text-decoration: none; }
-    img { max-width: 100%; height: auto; }
+    img { max-width: 100%; height: auto; pointer-events: none; -webkit-user-drag: none; }
     #loadingScreen {
       position: fixed; inset: 0;
       background: var(--bg);
@@ -318,7 +331,7 @@
     }
   </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
   <div id="loadingScreen">
     <div class="spinner"></div>
     <p>Loading your account...</p>
@@ -336,7 +349,7 @@
         </div>
         <span class="user-chip-name" id="chipUserName">User</span>
       </div>
-      <button class="back-btn" onclick="window.location.href='/'">
+      <button class="back-btn" onclick="accGoBack()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back
       </button>
@@ -434,7 +447,7 @@
       </div>
     </section>
     <section class="page" id="settingsPage">
-      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
@@ -487,7 +500,7 @@
       <button class="btn" id="saveSettings" style="margin-top:1.5rem">Save Settings</button>
     </section>
     <section class="page" id="addressPage">
-      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
@@ -515,7 +528,7 @@
       </div>
     </section>
     <section class="page" id="wishlistPage">
-      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
@@ -523,7 +536,7 @@
       <div id="wishlistItems"></div>
     </section>
     <section class="page" id="ordersPage">
-      <button class="btn-outline btn-sm" onclick="accShowSubPage('accountPage')" style="margin-bottom:1.5rem">
+      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Back to Account
       </button>
@@ -637,13 +650,37 @@
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
       });
-      // Load notification settings
       accLoadNotifSettings();
+      
+      // Initialize history for back button handling
+      accInitHistory();
     });
   </script>
   <script>
     let _accAlertCallback = null;
     let _accEditingAddressId = null;
+    let _accPageHistory = ['accountPage'];
+    
+    // Initialize history - push initial state
+    function accInitHistory() {
+      // Push initial state
+      window.history.replaceState({ page: 'accountPage', internal: true }, '', window.location.href);
+      window.history.pushState({ page: 'accountPage', internal: true }, '', window.location.href);
+    }
+    
+    // Custom back function - goes to previous sub-page or account page
+    function accGoBack() {
+      if (_accPageHistory.length > 1) {
+        // Remove current page
+        _accPageHistory.pop();
+        // Get previous page
+        const prevPage = _accPageHistory[_accPageHistory.length - 1];
+        // Show it without adding to history
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const pg = document.getElementById(prevPage);
+        if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
+      }
+    }
     
     function accLoadAdminCurrency() {
       const fb = window._accFb;
@@ -673,10 +710,17 @@
     }
     
     function accShowSubPage(pageId) {
+      // Don't add if already on same page
+      if (_accPageHistory[_accPageHistory.length - 1] !== pageId) {
+        _accPageHistory.push(pageId);
+        // Push to browser history
+        window.history.pushState({ page: pageId, internal: true }, '', window.location.href);
+      }
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const pg = document.getElementById(pageId);
       if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
     }
+    
     function accShowToast(msg, type = 'success') {
       const t = document.getElementById('accToast');
       if (!t) return;
@@ -764,7 +808,6 @@
         .catch(() => accShowToast('Failed to update profile', 'error'));
     }
     function accLoadSettings(settings) {
-      // Load from user settings in Firebase (if available)
       const fields = ['emailNotifications','smsNotifications','pushNotifications','personalizedRecs','dataSharing'];
       fields.forEach(f => {
         const el = document.getElementById(f);
@@ -782,19 +825,16 @@
         pushNotifications: document.getElementById('pushNotifications')?.checked,
         personalizedRecs: document.getElementById('personalizedRecs')?.checked,
         dataSharing: document.getElementById('dataSharing')?.checked,
-        language: 'en' // Fixed to English only
+        language: 'en'
       };
       
-      // Save to localStorage
       localStorage.setItem('bz_notif_settings_' + user.uid, JSON.stringify(settings));
       
-      // Also save to Firebase
       fb.set(fb.ref(fb.db, 'users/' + user.uid + '/settings'), settings)
         .then(() => {
           accShowToast('Settings saved successfully', 'success');
         })
         .catch(() => {
-          // Still show success since localStorage is saved
           accShowToast('Settings saved locally', 'success');
         });
     }
@@ -1047,6 +1087,55 @@
         }).catch(() => accShowToast('Failed to logout', 'error'));
       });
     }
+    
+    // Handle browser back button
+    window.addEventListener('popstate', function(e) {
+      if (e.state && e.state.internal) {
+        // Internal navigation - go back in our page history
+        if (_accPageHistory.length > 1) {
+          _accPageHistory.pop();
+          const prevPage = _accPageHistory[_accPageHistory.length - 1];
+          document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+          const pg = document.getElementById(prevPage);
+          if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
+        } else {
+          // No more internal pages, go to account page
+          _accPageHistory = ['accountPage'];
+          document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+          const pg = document.getElementById('accountPage');
+          if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
+        }
+      } else {
+        // External navigation - go to main site
+        window.location.href = '/';
+      }
+    });
+    
+    // Prevent copy events
+    document.addEventListener('copy', function(e) {
+      e.preventDefault();
+      accShowToast('Copying is not allowed', 'error');
+      return false;
+    });
+    
+    document.addEventListener('cut', function(e) {
+      e.preventDefault();
+      accShowToast('Cutting is not allowed', 'error');
+      return false;
+    });
+    
+    // Prevent keyboard shortcuts for copy
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X')) {
+        // Allow in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        accShowToast('Copying is not allowed', 'error');
+      }
+    });
+    
     window.addEventListener('storage', function(e) {
       if (e.key === 'bz_address_updated') {
         if (typeof accLoadAddresses === 'function') {
