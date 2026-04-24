@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2025-05-14 - Search and Sorting Optimization
+**Learning:** Redundant string processing in search loops and expensive $O(R)$ operations in sort comparators (like filtering reviews for each comparison) are major performance killers in static frontends.
+**Action:** Pre-calculate normalized search fields and rating maps during data ingestion or before starting a sort/search operation to achieve $O(1)$ lookups in tight loops.
