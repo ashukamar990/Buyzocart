@@ -442,20 +442,46 @@
       <div class="grid">
         <div class="card">
           <div class="card-header"><h3 class="card-title">Notifications</h3></div>
-          <div class="settings-item"><div class="settings-info"><h4>Email Notifications</h4><p>Receive order updates and promotions</p></div><label class="toggle"><input type="checkbox" id="emailNotifications" checked><span class="toggle-slider"></span></label></div>
-          <div class="settings-item"><div class="settings-info"><h4>SMS Notifications</h4><p>Receive order updates via SMS</p></div><label class="toggle"><input type="checkbox" id="smsNotifications" checked><span class="toggle-slider"></span></label></div>
-          <div class="settings-item"><div class="settings-info"><h4>Push Notifications</h4><p>Receive push notifications</p></div><label class="toggle"><input type="checkbox" id="pushNotifications" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Email Notifications</h4><p>Receive order updates and promotions via email</p></div>
+            <label class="toggle"><input type="checkbox" id="emailNotifications" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>SMS Notifications</h4><p>Receive order updates via SMS</p></div>
+            <label class="toggle"><input type="checkbox" id="smsNotifications" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Push Notifications</h4><p>Receive in-app push notifications and badges</p></div>
+            <label class="toggle"><input type="checkbox" id="pushNotifications" checked><span class="toggle-slider"></span></label>
+          </div>
         </div>
         <div class="card">
           <div class="card-header"><h3 class="card-title">Privacy</h3></div>
-          <div class="settings-item"><div class="settings-info"><h4>Personalized Recommendations</h4><p>Get recommendations based on history</p></div><label class="toggle"><input type="checkbox" id="personalizedRecs" checked><span class="toggle-slider"></span></label></div>
-          <div class="settings-item"><div class="settings-info"><h4>Data Sharing</h4><p>Allow us to improve our services</p></div><label class="toggle"><input type="checkbox" id="dataSharing" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Personalized Recommendations</h4><p>Get product recommendations based on your browsing history</p></div>
+            <label class="toggle"><input type="checkbox" id="personalizedRecs" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Data Sharing</h4><p>Allow us to collect usage data to improve our services</p></div>
+            <label class="toggle"><input type="checkbox" id="dataSharing" checked><span class="toggle-slider"></span></label>
+          </div>
         </div>
         <div class="card">
           <div class="card-header"><h3 class="card-title">Appearance</h3></div>
-          <div class="settings-item"><div class="settings-info"><h4>Dark Mode</h4><p>Toggle light/dark theme</p></div><label class="toggle"><input type="checkbox" id="darkModeToggle"><span class="toggle-slider"></span></label></div>
-          <div class="settings-item"><div class="settings-info"><h4>Language</h4><p>Select your preferred language</p></div><select class="form-control" id="languageSelect" style="width:auto"><option value="en">English</option><option value="hi">हिन्दी</option></select></div>
-          <div class="settings-item"><div class="settings-info"><h4>Currency</h4><p>Select your preferred currency</p></div><select class="form-control" id="currencySelect" style="width:auto"><option value="INR">₹ INR</option><option value="USD">$ USD</option></select></div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Dark Mode</h4><p>Toggle light/dark theme</p></div>
+            <label class="toggle"><input type="checkbox" id="darkModeToggle"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Language</h4><p>Select your preferred language</p></div>
+            <select class="form-control" id="languageSelect" style="width:auto">
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info"><h4>Currency</h4><p>Currency is set by admin</p></div>
+            <div id="currencyDisplay" style="font-weight:600;color:var(--primary);">₹ INR</div>
+          </div>
         </div>
       </div>
       <button class="btn" id="saveSettings" style="margin-top:1.5rem">Save Settings</button>
@@ -573,6 +599,7 @@
           accLoadAddresses(user);
           accLoadWishlist(user);
           accLoadOrders(user);
+          accLoadAdminCurrency();
           if (typeof acc2FACheckAdminStatus === 'function')
             setTimeout(() => acc2FACheckAdminStatus(user.uid), 600);
         } else if (n < 40) setTimeout(() => waitReady(n+1), 50);
@@ -610,11 +637,41 @@
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
       });
+      // Load notification settings
+      accLoadNotifSettings();
     });
   </script>
   <script>
     let _accAlertCallback = null;
     let _accEditingAddressId = null;
+    
+    function accLoadAdminCurrency() {
+      const fb = window._accFb;
+      if (!fb) return;
+      fb.get(fb.ref(fb.db, 'adminSettings')).then(snap => {
+        if (snap.exists()) {
+          const settings = snap.val();
+          const currencySymbol = settings.currencySymbol || '₹';
+          const currencyCode = settings.currencyCode || 'INR';
+          const display = document.getElementById('currencyDisplay');
+          if (display) display.textContent = currencySymbol + ' ' + currencyCode;
+        }
+      }).catch(() => {});
+    }
+    
+    function accLoadNotifSettings() {
+      const settingsStr = localStorage.getItem('bz_notif_settings_' + (window._accCurrentUser?.uid || 'guest'));
+      if (!settingsStr) return;
+      try {
+        const settings = JSON.parse(settingsStr);
+        if (document.getElementById('emailNotifications')) document.getElementById('emailNotifications').checked = settings.emailNotifications !== false;
+        if (document.getElementById('smsNotifications')) document.getElementById('smsNotifications').checked = settings.smsNotifications !== false;
+        if (document.getElementById('pushNotifications')) document.getElementById('pushNotifications').checked = settings.pushNotifications !== false;
+        if (document.getElementById('personalizedRecs')) document.getElementById('personalizedRecs').checked = settings.personalizedRecs !== false;
+        if (document.getElementById('dataSharing')) document.getElementById('dataSharing').checked = settings.dataSharing !== false;
+      } catch(e) {}
+    }
+    
     function accShowSubPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const pg = document.getElementById(pageId);
@@ -707,32 +764,39 @@
         .catch(() => accShowToast('Failed to update profile', 'error'));
     }
     function accLoadSettings(settings) {
+      // Load from user settings in Firebase (if available)
       const fields = ['emailNotifications','smsNotifications','pushNotifications','personalizedRecs','dataSharing'];
       fields.forEach(f => {
         const el = document.getElementById(f);
-        if (el) el.checked = settings[f] ?? true;
+        if (el && settings[f] !== undefined) el.checked = settings[f];
       });
-      const lang = document.getElementById('languageSelect');
-      if (lang) lang.value = settings.language || 'en';
-      const curr = document.getElementById('currencySelect');
-      if (curr) curr.value = settings.currency || 'INR';
     }
     function accSaveSettings() {
       const fb = window._accFb;
       const user = window._accCurrentUser;
       if (!fb || !user) return;
+      
       const settings = {
         emailNotifications: document.getElementById('emailNotifications')?.checked,
         smsNotifications: document.getElementById('smsNotifications')?.checked,
         pushNotifications: document.getElementById('pushNotifications')?.checked,
         personalizedRecs: document.getElementById('personalizedRecs')?.checked,
         dataSharing: document.getElementById('dataSharing')?.checked,
-        language: document.getElementById('languageSelect')?.value,
-        currency: document.getElementById('currencySelect')?.value
+        language: 'en' // Fixed to English only
       };
+      
+      // Save to localStorage
+      localStorage.setItem('bz_notif_settings_' + user.uid, JSON.stringify(settings));
+      
+      // Also save to Firebase
       fb.set(fb.ref(fb.db, 'users/' + user.uid + '/settings'), settings)
-        .then(() => accShowToast('Settings saved', 'success'))
-        .catch(() => accShowToast('Failed to save settings', 'error'));
+        .then(() => {
+          accShowToast('Settings saved successfully', 'success');
+        })
+        .catch(() => {
+          // Still show success since localStorage is saved
+          accShowToast('Settings saved locally', 'success');
+        });
     }
     function accShowAddressForm(address = null) {
       document.getElementById('newAddressForm').style.display = 'block';
