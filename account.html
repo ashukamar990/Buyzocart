@@ -885,9 +885,20 @@
       if (!address.name || !address.mobile || !address.pincode || !address.city || !address.state || !address.street) {
         accShowToast('Please fill all required fields', 'error'); return;
       }
-      const promise = _accEditingAddressId
-        ? fb.update(fb.ref(fb.db, 'addresses/' + _accEditingAddressId), address)
-        : fb.push(fb.ref(fb.db, 'addresses'), address);
+      let promise;
+      if (_accEditingAddressId) {
+        promise = fb.update(fb.ref(fb.db, 'addresses/' + _accEditingAddressId), address);
+      } else {
+        const localAddrs = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+        if (localAddrs.some(la => la.name === address.name && la.mobile === address.mobile && la.pincode === address.pincode && la.street === address.street)) {
+          accShowToast('Address already exists', 'warning');
+          return;
+        }
+        address.isDefault = localAddrs.length === 0;
+        address.createdAt = Date.now();
+        promise = fb.push(fb.ref(fb.db, 'addresses'), address);
+      }
+
       promise
         .then(() => {
           accShowToast('Address ' + (_accEditingAddressId ? 'updated' : 'added') + ' successfully', 'success');
@@ -906,26 +917,47 @@
       fb.get(fb.query(fb.ref(fb.db, 'addresses'), fb.orderByChild('userId'), fb.equalTo(user.uid)))
         .then(snap => {
           container.innerHTML = '';
-          if (!snap.exists()) {
+          let addresses = [];
+          if (snap.exists()) {
+            snap.forEach(child => { addresses.push({ id: child.key, ...child.val() }); });
+          }
+
+          // Merge with localStorage addresses if any
+          const localData = localStorage.getItem('bz_addresses');
+          if (localData) {
+            try {
+              const localAddrs = JSON.parse(localData);
+              if (Array.isArray(localAddrs)) {
+                localAddrs.forEach(la => {
+                  if (!addresses.some(a => a.id === la.id)) addresses.push(la);
+                });
+              }
+            } catch(e) {}
+          }
+
+          if (addresses.length === 0) {
             container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
             return;
           }
-          snap.forEach(child => {
-            const a = { id: child.key, ...child.val() };
+
+          addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt || 0) - (a.createdAt || 0));
+          localStorage.setItem('bz_addresses', JSON.stringify(addresses));
+
+          addresses.forEach(a => {
             const card = document.createElement('div');
             card.className = 'address-card' + (a.isDefault ? ' default' : '');
+            card.style.cssText = 'padding:1.25rem; margin-bottom:1rem; border-radius:12px;';
             card.innerHTML = `
-              <div class="address-card-header">
-                <span class="address-type-badge">${a.type || 'home'}</span>
-                ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
+              <div class="address-card-header" style="margin-bottom:0.75rem;">
+                <span class="address-type-badge" style="background:var(--bg-secondary);padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;">${a.type || 'home'}</span>
+                ${a.isDefault ? '<span class="default-badge" style="background:var(--primary);color:white;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;">DEFAULT</span>' : ''}
               </div>
-              <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
-              <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
-              <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
-              <div class="address-actions">
-                <button class="btn-outline btn-sm" onclick="accEditAddress('${a.id}')">Edit</button>
-                <button class="btn-outline btn-sm" onclick="accDeleteAddress('${a.id}')">Delete</button>
-                ${!a.isDefault ? `<button class="btn-outline btn-sm" onclick="accSetDefaultAddress('${a.id}')">Set Default</button>` : ''}
+              <div style="font-weight:700;font-size:1rem;margin-bottom:0.4rem;color:var(--text);">${a.name} <span style="margin-left:1rem;font-weight:600;color:var(--text-secondary);">${a.mobile}</span></div>
+              <div style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">${a.street}, ${a.city}, ${a.state} - <span style="font-weight:600;">${a.pincode}</span></div>
+              <div class="address-actions" style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;display:flex;gap:12px;">
+                <button class="btn-outline btn-sm" style="flex:1;border-radius:6px;font-weight:600;" onclick="accEditAddress('${a.id}')">EDIT</button>
+                <button class="btn-outline btn-sm" style="flex:1;border-radius:6px;font-weight:600;color:var(--error);border-color:var(--border);" onclick="accDeleteAddress('${a.id}')">DELETE</button>
+                ${!a.isDefault ? `<button class="btn-outline btn-sm" style="flex:1.5;border-radius:6px;font-weight:600;" onclick="accSetDefaultAddress('${a.id}')">SET AS DEFAULT</button>` : ''}
               </div>`;
             container.appendChild(card);
           });
