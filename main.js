@@ -3605,6 +3605,12 @@
     }
 
     function addNotif(notif) {
+      const settings = getNotificationSettings();
+
+      if (!settings.pushNotifications) {
+        return;
+      }
+
       const n = { id: Date.now() + Math.floor(Math.random()*999), read: false,
         timestamp: Date.now(), badge: notif.badge||'Info',
         type: notif.type||'system', title: notif.title, message: notif.message };
@@ -3625,6 +3631,8 @@
     }
 
     function sendLoginNotification(email) {
+      const settings = getNotificationSettings();
+
       const meta = JSON.parse(localStorage.getItem(NOTIF_META_KEY)||'{}');
       if (meta.loggedOut) {
         meta.loggedOut = false;
@@ -3635,45 +3643,68 @@
       }
       meta.hasLoggedIn = true;
       localStorage.setItem(NOTIF_META_KEY, JSON.stringify(meta));
-      const cfg = window.BZ_CONFIG?.emailjs;
-      bzSendEmail(cfg?.loginTemplateId, {
-        to_email: email,
-        store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
-        login_time: new Date().toLocaleString('en-IN'),
-        device: navigator.userAgent.slice(0,60)
-      });
+
+      if (settings.emailNotifications) {
+        const cfg = window.BZ_CONFIG?.emailjs;
+        bzSendEmail(cfg?.loginTemplateId, {
+          to_email: email,
+          store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
+          login_time: new Date().toLocaleString('en-IN'),
+          device: navigator.userAgent.slice(0,60)
+        });
+      }
     }
 
     function sendWelcomeEmail(email, name) {
-      addNotif({type:'system', title:'Welcome to Buyzo Cart! 🎉', message:'Hi '+(name||'there')+'! Account created. Enjoy shopping!', badge:'Welcome'});
-      const cfg = window.BZ_CONFIG?.emailjs;
-      bzSendEmail(cfg?.loginTemplateId, {
-        to_email: email,
-        to_name: name || 'Customer',
-        store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
-        message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Aapka account successfully create ho gaya hai.'
-      });
+      const settings = getNotificationSettings();
+
+      if (settings.pushNotifications) {
+        addNotif({type:'system', title:'Welcome to Buyzo Cart! 🎉', message:'Hi '+(name||'there')+'! Account created. Enjoy shopping!', badge:'Welcome'});
+      }
+
+      if (settings.emailNotifications) {
+        const cfg = window.BZ_CONFIG?.emailjs;
+        bzSendEmail(cfg?.loginTemplateId, {
+          to_email: email,
+          to_name: name || 'Customer',
+          store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
+          message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Aapka account successfully create ho gaya hai.'
+        });
+      }
     }
 
     function sendOrderNotification(email, orderId, productName, total) {
-      addNotif({type:'order', title:'Order Placed! 🛍️', message:(productName||'')+(orderId?' — Order '+orderId:'')+(total?' | ₹'+total:''), badge:'Order Confirmed'});
-      const cfg = window.BZ_CONFIG?.emailjs;
-      bzSendEmail(cfg?.orderTemplateId, {
-        to_email: email,
-        order_id: orderId,
-        product_name: productName || 'Product',
-        total_amount: '₹' + total,
-        store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
-        order_date: new Date().toLocaleDateString('en-IN'),
-        store_email: window.BZ_CONFIG?.store?.email || ''
-      });
+      const settings = getNotificationSettings();
+
+      if (settings.pushNotifications) {
+        addNotif({type:'order', title:'Order Placed! 🛍️', message:(productName||'')+(orderId?' — Order '+orderId:'')+(total?' | ₹'+total:''), badge:'Order Confirmed'});
+      }
+
+      if (settings.emailNotifications) {
+        const cfg = window.BZ_CONFIG?.emailjs;
+        bzSendEmail(cfg?.orderTemplateId, {
+          to_email: email,
+          order_id: orderId,
+          product_name: productName || 'Product',
+          total_amount: '₹' + total,
+          store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
+          order_date: new Date().toLocaleDateString('en-IN'),
+          store_email: window.BZ_CONFIG?.store?.email || ''
+        });
+      }
     }
 
     function sendPasswordChangeNotif() {
-      addNotif({type:'system', title:'Password Changed 🔐', message:'Your password was changed. Contact support if this was not you.', badge:'Security'});
+      const settings = getNotificationSettings();
+      if (settings.pushNotifications) {
+        addNotif({type:'system', title:'Password Changed 🔐', message:'Your password was changed. Contact support if this was not you.', badge:'Security'});
+      }
     }
 
     function loadAdminOfferNotifs() {
+      const settings = getNotificationSettings();
+      if (!settings.pushNotifications) return;
+
       if (!window.firebase || !window.firebase.database) return;
       const sessionKey = 'bz_offer_notifs_loaded_' + (currentUser ? currentUser.uid : '');
       if (sessionStorage.getItem(sessionKey)) return;
@@ -4272,6 +4303,31 @@
       document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
     }
 
+    function getNotificationSettings() {
+      const uid = currentUser ? currentUser.uid : 'guest';
+      const settingsStr = localStorage.getItem('bz_notif_settings_' + uid);
+      if (!settingsStr) {
+        return {
+          emailNotifications: true,
+          smsNotifications: true,
+          pushNotifications: true,
+          personalizedRecs: true,
+          dataSharing: true
+        };
+      }
+      try {
+        return JSON.parse(settingsStr);
+      } catch(e) {
+        return {
+          emailNotifications: true,
+          smsNotifications: true,
+          pushNotifications: true,
+          personalizedRecs: true,
+          dataSharing: true
+        };
+      }
+    }
+
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -4333,6 +4389,12 @@
       setupBackButton();
       setupSearchInput();
       setupViewAllRatings();
+      // Sync notification settings from account page
+      window.addEventListener('storage', function(e) {
+        if (e.key && e.key.startsWith('bz_notif_settings_')) {
+          updateNotifBadge();
+        }
+      });
       updateAdminSettingsUI();
       if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
         const productId = window.location.hash.split('=')[1];
@@ -4492,14 +4554,30 @@
     }
 
     function updateNotifBadge() {
+      const settings = getNotificationSettings();
       const unread = appNotifications.filter(n => !n.read).length;
       const badge = document.getElementById('menuNotifBadge');
-      if (badge) badge.style.display = 'none';
+
+      if (badge) {
+        if (settings.pushNotifications && unread > 0) {
+          badge.style.display = 'flex';
+          badge.textContent = unread > 9 ? '9+' : unread;
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
       const notifMenuDot = document.getElementById('notifMenuItemDot');
       if (notifMenuDot) {
-        notifMenuDot.style.display = unread > 0 ? 'inline-block' : 'none';
-        notifMenuDot.textContent = unread > 9 ? '9+' : unread;
+        if (settings.pushNotifications && unread > 0) {
+          notifMenuDot.style.display = 'inline-block';
+          notifMenuDot.textContent = unread > 9 ? '9+' : unread;
+        } else {
+          notifMenuDot.style.display = 'none';
+          notifMenuDot.textContent = '';
+        }
       }
+
       saveNotifs();
     }
 
