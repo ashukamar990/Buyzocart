@@ -219,6 +219,17 @@
       };
     }
 
+    /**
+     * Sanitizes a string by escaping HTML special characters to prevent XSS.
+     * Use this for all dynamic content injected via innerHTML.
+     */
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    }
+
     function isDuplicateAddress(newAddr, existingAddrs) {
       if (!Array.isArray(existingAddrs)) return false;
       return existingAddrs.some(addr =>
@@ -462,9 +473,10 @@
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
         const ratingVal = calculateProductRating(product.id);
+        // SECURITY: Escaping dynamic data to prevent XSS in search suggestions
         card.innerHTML = `
-          <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
-          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="height:72px; background-image:url('${escapeHTML(getProductImage(product))}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
+          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(product.name || product.title || '')}</div>
           <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
@@ -476,11 +488,12 @@
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
         const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
+        // SECURITY: Escaping dynamic data to prevent XSS in search suggestions
         suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
+          <div class="search-suggestion-img" style="background-image: url('${escapeHTML(getProductImage(product))}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-name">${escapeHTML(product.name || product.title || 'Product')}</div>
+            <div class="search-suggestion-category">${escapeHTML(productCategory)}</div>
             <div class="search-suggestion-price">${formatPrice(product.price)}</div>
           </div>
         `;
@@ -490,7 +503,7 @@
       if (results.length > 3) {
         const viewAll = document.createElement('div');
         viewAll.className = 'search-suggestion';
-        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
+        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${escapeHTML(query)}"</div></div>`;
         viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
@@ -2178,30 +2191,31 @@
 
         let mediaHtml = '';
         if (review.fileUrl && review.fileType === 'image') {
-          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
+          mediaHtml = `<div class="review-file-preview"><img src="${escapeHTML(review.fileUrl)}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${escapeHTML(review.fileUrl)}','_blank')"></div>`;
         } else if (review.fileUrl && review.fileType === 'video') {
-          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
+          mediaHtml = `<div class="review-file-preview"><video controls src="${escapeHTML(review.fileUrl)}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
         if (review.youtubeUrl) {
           const ytId = extractYouTubeId(review.youtubeUrl);
-          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${escapeHTML(review.youtubeUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
         }
 
+        // SECURITY: Sanitize user input to prevent XSS in reviews
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${escapeHTML(review.userPhoto)}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${escapeHTML((review.userName||'?')[0].toUpperCase())}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${escapeHTML(review.userName || 'Customer')}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
-              <button class="review-delete-btn" data-review-id="${review.id}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
+              <button class="review-delete-btn" data-review-id="${escapeHTML(review.id)}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
             </div>` : ''}
         `;
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
@@ -3335,23 +3349,24 @@
         const addressType = address.type || 'home';
         const isDefaultLabel = address.isDefault ? '<span style="background:var(--accent);color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:8px;">DEFAULT</span>' : '';
 
+        // SECURITY: Escaping user-provided address details to prevent XSS
         addressCard.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
             <div style="display:flex;align-items:center;gap:10px;">
-              <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer;">
-              <span style="background:#f1f5f9;color:var(--muted);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;">${addressType}</span>
+              <input type="radio" name="savedAddress" value="${escapeHTML(address.id)}" ${address.isDefault ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer;">
+              <span style="background:#f1f5f9;color:var(--muted);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;">${escapeHTML(addressType)}</span>
               ${isDefaultLabel}
             </div>
           </div>
           <div style="padding-left:28px;">
-            <div style="font-weight:700;font-size:15px;margin-bottom:4px;color:var(--ink);">${address.name} <span style="margin-left:12px;font-weight:600;">${address.mobile}</span></div>
+            <div style="font-weight:700;font-size:15px;margin-bottom:4px;color:var(--ink);">${escapeHTML(address.name)} <span style="margin-left:12px;font-weight:600;">${escapeHTML(address.mobile)}</span></div>
             <div style="font-size:13px;color:var(--ink-2);line-height:1.4;">
-              ${address.street}, ${address.city}, ${address.state} - <span style="font-weight:600;">${address.pincode}</span>
+              ${escapeHTML(address.street)}, ${escapeHTML(address.city)}, ${escapeHTML(address.state)} - <span style="font-weight:600;">${escapeHTML(address.pincode)}</span>
             </div>
           </div>
           <div class="address-actions" style="margin-top:12px;padding-left:28px;justify-content:flex-start;gap:12px;">
-            <button class="btn secondary edit-address" style="padding:6px 16px;font-size:12px;border-radius:6px;background:#f8fafc;border:1px solid var(--border);" data-id="${address.id}">EDIT</button>
-            <button class="btn error delete-address" style="padding:6px 16px;font-size:12px;border-radius:6px;" data-id="${address.id}">DELETE</button>
+            <button class="btn secondary edit-address" style="padding:6px 16px;font-size:12px;border-radius:6px;background:#f8fafc;border:1px solid var(--border);" data-id="${escapeHTML(address.id)}">EDIT</button>
+            <button class="btn error delete-address" style="padding:6px 16px;font-size:12px;border-radius:6px;" data-id="${escapeHTML(address.id)}">DELETE</button>
           </div>
         `;
 
