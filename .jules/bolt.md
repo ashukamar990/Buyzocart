@@ -19,3 +19,7 @@
     - Applied throttling to the `scroll` event and debouncing (300ms) to the search input.
 - **Impact:** Significantly reduced main-thread blocking, smoother scrolling and animations, and faster perceived load times due to optimized image delivery.
 - **Measurement Verification:** Playwright scripts and visual inspection confirmed smooth transitions, correct lazy-loading behavior, and UI stability.
+
+## 2025-05-14 - Optimized Search Responsiveness via Debouncing
+**Learning:** Real-time search suggestions without debouncing caused excessive CPU load and UI lag due to frequent fuzzy search calculations and DOM updates on every keystroke.
+**Action:** Implemented a enhanced `debounce` utility with a `.cancel()` method and applied a 300ms delay to the search input handler to ensure smooth UI performance and prevent race conditions.
