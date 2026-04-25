@@ -211,12 +211,20 @@
     }
     const sliderController = new GlobalSliderController();
 
+    /**
+     * Debounce utility to limit how often a function is executed.
+     * Includes a .cancel() method to abort pending executions.
+     * @param {Function} func - The function to debounce.
+     * @param {number} wait - Delay in milliseconds.
+     */
     function debounce(func, wait) {
       let timeout;
-      return function(...args) {
+      const debounced = function(...args) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
       };
+      debounced.cancel = () => clearTimeout(timeout);
+      return debounced;
     }
 
     function isDuplicateAddress(newAddr, existingAddrs) {
@@ -433,14 +441,19 @@
       closeSearchPanel();
     }
 
+    // Debounce search suggestions to prevent expensive fuzzy search and DOM updates on every keystroke.
+    const debouncedShowSuggestions = debounce(showSearchSuggestions, 300);
     function handleSearchPanelInput(e) {
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        showSearchSuggestions(query);
+        // Execute search suggestions after 300ms of inactivity
+        debouncedShowSuggestions(query);
         suggestionsContainer.style.display = 'block';
       } else {
+        // Cancel any pending search if the user clears the input
+        debouncedShowSuggestions.cancel();
         clearSearchSuggestions();
         suggestionsContainer.style.display = 'none';
       }
