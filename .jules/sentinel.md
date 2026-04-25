@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2025-04-25 - [Limitations of HTML Escaping in Attribute Contexts]
+**Vulnerability:** Persistent XSS through user-controlled strings in `onclick` and `style="background-image: url(...)"` attributes.
+**Learning:** `escapeHTML()` (escaping `&`, `<`, `>`, `"`, `'`) prevents breaking out of the HTML attribute but is insufficient if the browser decodes these entities *before* execution (JS context) or parsing (CSS context). For example, a malicious URL `javascript:alert(1)` or `") ; breakout` might still be effective.
+**Prevention:** For attributes, use dedicated sanitizers for URLs and avoid inline JavaScript. Prefer `element.addEventListener` and `element.style.backgroundImage` which handle escaping natively.
