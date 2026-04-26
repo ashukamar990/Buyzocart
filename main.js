@@ -219,6 +219,16 @@
       };
     }
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -454,8 +464,8 @@
         const ratingVal = calculateProductRating(product.id);
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
-          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
-          <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
+          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(product.name || product.title || '')}</div>
+          <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${escapeHTML(formatPrice(product.price))}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
         card.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
@@ -469,9 +479,9 @@
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
           <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
-            <div class="search-suggestion-price">${formatPrice(product.price)}</div>
+            <div class="search-suggestion-name">${escapeHTML(product.name || product.title || 'Product')}</div>
+            <div class="search-suggestion-category">${escapeHTML(productCategory)}</div>
+            <div class="search-suggestion-price">${escapeHTML(formatPrice(product.price))}</div>
           </div>
         `;
         suggestion.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
@@ -480,7 +490,7 @@
       if (results.length > 3) {
         const viewAll = document.createElement('div');
         viewAll.className = 'search-suggestion';
-        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
+        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${escapeHTML(query)}"</div></div>`;
         viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
@@ -3525,7 +3535,7 @@
       const icons = {order:'🛍️', offer:'🎁', system:'🔔', warning:'⚠️'};
       const el = document.createElement('div');
       el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-18px);background:var(--surface,#fff);border:1.5px solid var(--border,#e2e8f0);border-left:4px solid var(--accent,#2563eb);border-radius:12px;padding:12px 18px;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-width:340px;width:90%;display:flex;gap:12px;align-items:center;opacity:0;transition:all 0.35s ease;pointer-events:none;';
-      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">'+(icons[n.type]||'🔔')+'</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;color:var(--text,#0f172a);">'+n.title+'</div><div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+n.message+'</div></div>';
+      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">'+(icons[n.type]||'🔔')+'</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;color:var(--text,#0f172a);">'+escapeHTML(n.title)+'</div><div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHTML(n.message)+'</div></div>';
       document.body.appendChild(el);
       requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
       setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(-12px)'; setTimeout(()=>el.remove(),400); }, 3500);
@@ -4369,11 +4379,11 @@
           <div class="notif-icon ${n.type}">${icons[n.type] || icons.system}</div>
           <div class="notif-content">
             <div class="notif-header">
-              <span class="notif-title">${n.title}</span>
+              <span class="notif-title">${escapeHTML(n.title)}</span>
               <span class="notif-time">${timeAgoNotif(n.timestamp)}</span>
             </div>
-            <div class="notif-message">${n.message}</div>
-            <span class="notif-badge ${n.type}">${n.badge}</span>
+            <div class="notif-message">${escapeHTML(n.message)}</div>
+            <span class="notif-badge ${n.type}">${escapeHTML(n.badge)}</span>
           </div>
         </div>
       `).join('');
