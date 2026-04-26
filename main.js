@@ -928,7 +928,7 @@
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
-            <div class="product-card-stars">${generateStarRating(rating)}</div>
+            <div class="product-card-stars" role="img" aria-label="Rated ${rating.toFixed(1)} out of 5 stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
           </div>
           <div class="product-card-price">
