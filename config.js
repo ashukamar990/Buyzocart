@@ -1,7 +1,7 @@
 // ============================================================
 //  Buyzo Cart — API Keys & Config (config.js)
-//  Is file ko server pe rakhen, publicly share na karen
-//  Isi file mein saari API keys hain
+//  Keep this file on the server, do not share publicly
+//  This file contains all the API keys
 // ============================================================
 
 window.BZ_CONFIG = {
@@ -40,7 +40,7 @@ window.BZ_CONFIG = {
   payment: {
     razorpayKeyId:     "YOUR_RAZORPAY_KEY_ID",   // e.g. "rzp_live_..."
     razorpayKeySecret: "NEVER_PUT_SECRET_IN_FRONTEND" // Server-side only!
-    // Note: Secret key kabhi bhi frontend mein mat daalein
+    // Note: Never put the secret key in the frontend
   },
 
   // ---- Store Settings ----
@@ -53,5 +53,5 @@ window.BZ_CONFIG = {
 
 };
 
-// ---- Helper: ImgBB key ko main.js mein expose karo ----
+// ---- Helper: Expose ImgBB key to main.js ----
 window._reviewImgbbKey = window.BZ_CONFIG.imgbb.apiKey;

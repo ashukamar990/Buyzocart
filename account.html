@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="config.js"></script>
   <style>
     :root {
       --primary: #2563eb;
@@ -133,6 +134,12 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
+    }
+    .address-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
     }
     .form-group { margin-bottom: 1.25rem; }
     .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); }
@@ -425,9 +432,9 @@
           <div class="settings-item">
             <div class="settings-info">
               <h4>Two-Factor Authentication &nbsp;<span id="twoFactorComingSoonBadge" style="background:#f59e0b;color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle">COMING SOON</span></h4>
-              <p id="twoFactorStatusText">Extra security — Admin se enable hoga</p>
+              <p id="twoFactorStatusText">Extra security — Will be enabled by Admin</p>
             </div>
-            <label class="toggle" title="Admin se enable hoga">
+            <label class="toggle" title="Will be enabled by Admin">
               <input type="checkbox" id="twoFactorToggle" disabled style="pointer-events:none">
               <span class="toggle-slider" id="twoFactorSlider" style="opacity:0.4"></span>
             </label>
@@ -517,7 +524,7 @@
           Add New Address
         </button>
       </div>
-      <div id="savedAddresses"></div>
+      <div id="savedAddresses" class="address-grid"></div>
       <div class="card" id="newAddressForm" style="display:none">
         <div class="card-header"><h3 class="card-title" id="addressFormTitle">Add New Address</h3></div>
         <div class="form-group"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="addressName" placeholder="Enter full name"></div>
@@ -608,6 +615,42 @@
     </section>
   </main>
   <div class="toast" id="accToast"></div>
+  <div class="modal" id="sellerAddProductModal">
+    <div class="modal-content" style="max-width:600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="sellerProductModalTitle">Add New Product</h3>
+        <button class="modal-close" onclick="accCloseModal('sellerAddProductModal')">×</button>
+      </div>
+      <div style="max-height:70vh;overflow-y:auto;padding-right:5px;">
+        <input type="hidden" id="sellerEditProductId">
+        <div class="form-group"><label class="form-label">Product Name *</label><input type="text" class="form-control" id="sellerProductName" placeholder="e.g. Trendy Cotton T-Shirt"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group"><label class="form-label">Price (₹) *</label><input type="number" class="form-control" id="sellerProductPrice" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Stock Qty *</label><input type="number" class="form-control" id="sellerProductStock" placeholder="0"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Category *</label>
+          <select class="form-control" id="sellerProductCategory">
+            <option value="">Select Category</option>
+            <option>Electronics</option><option>Fashion & Clothing</option><option>Home & Living</option>
+            <option>Books & Stationery</option><option>Sports & Fitness</option><option>Beauty & Personal Care</option>
+            <option>Toys & Games</option><option>Food & Beverages</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Short Description *</label><input type="text" class="form-control" id="sellerProductDesc" placeholder="Briefly describe your product"></div>
+        <div class="form-group"><label class="form-label">Full Details</label><textarea class="form-control" id="sellerProductFullDesc" rows="3" placeholder="Detailed product specifications..."></textarea></div>
+        <div class="form-group">
+          <label class="form-label">Product Images *</label>
+          <input type="file" class="form-control" id="sellerProductImages" multiple accept="image/*">
+          <div id="sellerImagePreviews" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" onclick="accCloseModal('sellerAddProductModal')">Cancel</button>
+        <button class="btn" id="sellerSaveProductBtn">Save Product</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="changePasswordModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -679,6 +722,11 @@
           if (typeof acc2FACheckAdminStatus === 'function')
             setTimeout(() => acc2FACheckAdminStatus(user.uid), 600);
         } else if (n < 40) setTimeout(() => waitReady(n+1), 50);
+        // Check hash for direct navigation
+        const hash = window.location.hash;
+        if (hash === '#sell') {
+          setTimeout(accOpenSellProduct, 500);
+        }
       })(0);
     });
     (function() {
@@ -1003,22 +1051,38 @@
             container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
             return;
           }
+          const addresses = [];
           snap.forEach(child => {
-            const a = { id: child.key, ...child.val() };
+            addresses.push({ id: child.key, ...child.val() });
+          });
+
+          // Sort default first, then by date
+          addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
+
+          addresses.forEach(a => {
             const card = document.createElement('div');
             card.className = 'address-card' + (a.isDefault ? ' default' : '');
+            card.style.height = '100%';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
             card.innerHTML = `
               <div class="address-card-header">
                 <span class="address-type-badge">${a.type || 'home'}</span>
                 ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
               </div>
-              <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
-              <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
-              <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
-              <div class="address-actions">
-                <button class="btn-outline btn-sm" onclick="accEditAddress('${a.id}')">Edit</button>
-                <button class="btn-outline btn-sm" onclick="accDeleteAddress('${a.id}')">Delete</button>
-                ${!a.isDefault ? `<button class="btn-outline btn-sm" onclick="accSetDefaultAddress('${a.id}')">Set Default</button>` : ''}
+              <div style="font-weight:700;margin-bottom:0.4rem;font-size:0.95rem;">${a.name}</div>
+              <div style="color:var(--text-secondary);font-size:0.85rem;line-height:1.4;flex:1;">
+                ${a.street}<br>
+                ${a.city}, ${a.state} - ${a.pincode}
+              </div>
+              <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.6rem;font-weight:500;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                ${a.mobile}
+              </div>
+              <div class="address-actions" style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+                <button class="btn-outline btn-sm" onclick="accEditAddress('${a.id}')" style="padding:4px 10px;">Edit</button>
+                <button class="btn-outline btn-sm" onclick="accDeleteAddress('${a.id}')" style="padding:4px 10px;color:var(--error);border-color:rgba(239,68,68,0.2);">Delete</button>
+                ${!a.isDefault ? `<button class="btn-outline btn-sm" onclick="accSetDefaultAddress('${a.id}')" style="padding:4px 10px;margin-left:auto;">Set Default</button>` : ''}
               </div>`;
             container.appendChild(card);
           });
@@ -1517,12 +1581,144 @@
       });
     }
 
+    let _sellerUploadedImages = [];
+
     function accShowSellerAddProduct() {
-      // Simple add product modal for sellers
-      accShowToast('Product form coming soon!', 'success');
+      document.getElementById('sellerEditProductId').value = '';
+      document.getElementById('sellerProductModalTitle').textContent = 'Add New Product';
+      document.getElementById('sellerProductName').value = '';
+      document.getElementById('sellerProductPrice').value = '';
+      document.getElementById('sellerProductStock').value = '';
+      document.getElementById('sellerProductCategory').value = '';
+      document.getElementById('sellerProductDesc').value = '';
+      document.getElementById('sellerProductFullDesc').value = '';
+      document.getElementById('sellerImagePreviews').innerHTML = '';
+      _sellerUploadedImages = [];
+      accOpenModal('sellerAddProductModal');
     }
 
-    window.accEditSellerProduct = function(id) { accShowToast('Edit product: ' + id, 'success'); };
+    let _sellerImageFiles = [];
+
+    document.getElementById('sellerProductImages')?.addEventListener('change', function(e) {
+      const files = Array.from(e.target.files);
+      const preview = document.getElementById('sellerImagePreviews');
+      preview.innerHTML = '';
+      _sellerImageFiles = files;
+
+      for (const file of files) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = document.createElement('img');
+          img.src = event.target.result;
+          img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById('sellerSaveProductBtn')?.addEventListener('click', async function() {
+      const user = window._accCurrentUser;
+      const fb = window._accFb;
+      if (!user || !fb) return;
+
+      const editId = document.getElementById('sellerEditProductId').value;
+      const name = document.getElementById('sellerProductName').value.trim();
+      const price = parseFloat(document.getElementById('sellerProductPrice').value);
+      const stock = parseInt(document.getElementById('sellerProductStock').value);
+      const category = document.getElementById('sellerProductCategory').value;
+      const desc = document.getElementById('sellerProductDesc').value.trim();
+      const fullDesc = document.getElementById('sellerProductFullDesc').value.trim();
+
+      if (!name || isNaN(price) || isNaN(stock) || !category || !desc || (!editId && _sellerImageFiles.length === 0)) {
+        accShowToast('Please fill all required fields and add images', 'error'); return;
+      }
+
+      this.disabled = true;
+      const originalBtnText = this.textContent;
+      this.textContent = 'Uploading images...';
+
+      try {
+        const imgbbKey = window.BZ_CONFIG?.imgbb?.apiKey;
+        const uploadedUrls = editId ? [..._sellerUploadedImages] : [];
+
+        if (_sellerImageFiles.length > 0) {
+          for (const file of _sellerImageFiles) {
+            const formData = new FormData();
+            formData.append('image', file);
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+              uploadedUrls.push(data.data.url);
+            }
+          }
+        }
+
+        this.textContent = 'Saving product...';
+        const productId = editId || ('p_' + Date.now());
+        const productData = {
+          id: productId,
+          title: name,
+          price: price,
+          stock: stock,
+          category: category,
+          desc: desc,
+          fullDesc: fullDesc,
+          images: uploadedUrls,
+          sellerId: user.uid,
+          status: 'active',
+          updatedAt: Date.now()
+        };
+        if (!editId) productData.createdAt = Date.now();
+
+        await fb.set(fb.ref(fb.db, 'products/' + productId), productData);
+        await fb.set(fb.ref(fb.db, 'sellerProducts/' + user.uid + '/' + productId), productData);
+
+        accShowToast('Product saved successfully!', 'success');
+        accCloseModal('sellerAddProductModal');
+        accLoadSellerDashboard();
+      } catch (err) {
+        accShowToast('Error saving product', 'error');
+      } finally {
+        this.disabled = false;
+        this.textContent = originalBtnText;
+        _sellerImageFiles = [];
+      }
+    });
+
+    window.accEditSellerProduct = function(id) {
+      const user = window._accCurrentUser;
+      const fb = window._accFb;
+      if (!user || !fb) return;
+
+      fb.get(fb.ref(fb.db, 'sellerProducts/' + user.uid + '/' + id)).then(snap => {
+        if (!snap.exists()) return;
+        const p = snap.val();
+        document.getElementById('sellerEditProductId').value = id;
+        document.getElementById('sellerProductModalTitle').textContent = 'Edit Product';
+        document.getElementById('sellerProductName').value = p.title || '';
+        document.getElementById('sellerProductPrice').value = p.price || '';
+        document.getElementById('sellerProductStock').value = p.stock || '';
+        document.getElementById('sellerProductCategory').value = p.category || '';
+        document.getElementById('sellerProductDesc').value = p.desc || '';
+        document.getElementById('sellerProductFullDesc').value = p.fullDesc || '';
+
+        const preview = document.getElementById('sellerImagePreviews');
+        preview.innerHTML = '';
+        _sellerUploadedImages = p.images || [];
+        _sellerUploadedImages.forEach(src => {
+          const img = document.createElement('img');
+          img.src = src;
+          img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
+          preview.appendChild(img);
+        });
+
+        accOpenModal('sellerAddProductModal');
+      });
+    };
     window.accDeleteSellerProduct = function(id) {
       const user = window._accCurrentUser;
       const fb = window._accFb;

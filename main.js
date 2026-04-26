@@ -388,26 +388,39 @@
 
     function searchProducts(query) {
       if (!query.trim()) return [];
-      const q = query.trim();
+      const q = query.trim().toLowerCase();
       const scored = [];
       products.forEach(p => {
-        const name = p.name || p.title || '';
-        const desc = p.description || '';
-        const cat = p.category || '';
-        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+        const name = (p.name || p.title || '').toLowerCase();
+        const desc = (p.description || p.desc || '').toLowerCase();
+        const cat = (p.category || '').toLowerCase();
+        const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
         const combined = [name, desc, cat, tags].join(' ');
+
         let score = 0;
-        score = Math.max(score, fuzzyScore(name, q));
-        score = Math.max(score, fuzzyScore(cat, q) * 0.7);
-        score = Math.max(score, fuzzyScore(combined, q) * 0.5);
+        // Exact match boost
+        if (name === q) score = 110;
+        else if (name.startsWith(q)) score = 100;
+        else if (name.includes(q)) score = 90;
+        else if (cat.includes(q)) score = 80;
+        else if (tags.includes(q)) score = 70;
+        else if (desc.includes(q)) score = 60;
+
+        // Fuzzy score as fallback/refinement
+        const fScore = fuzzyScore(name, q);
+        const cfScore = fuzzyScore(cat, q) * 0.8;
+        score = Math.max(score, fScore, cfScore);
+
         if (score > 25) scored.push({ product: p, score });
       });
+
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
         const rA = calculateProductRating(a.product.id);
         const rB = calculateProductRating(b.product.id);
         return rB - rA;
       });
+
       return scored.map(s => s.product);
     }
 
@@ -452,9 +465,11 @@
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
         const ratingVal = calculateProductRating(product.id);
+        const productCategory = categories.find(c => c.id === product.category || c.name === product.category)?.name || product.category || '';
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
-          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="padding:4px 5px 1px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="padding:0 5px; font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${productCategory}</div>
           <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
@@ -465,7 +480,7 @@
       topThree.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
-        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
+        const productCategory = categories.find(c => c.id === product.category || c.name === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
           <div class="search-suggestion-info">
@@ -1926,38 +1941,18 @@
     }
 
     async function toPayment() {
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
+      const fullname = document.getElementById('fullname').value.trim();
+      const mobile = document.getElementById('mobile').value.trim();
+      const pincode = document.getElementById('pincode').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const state = document.getElementById('state').value.trim();
+      const house = document.getElementById('house').value.trim();
       const addressType = document.getElementById('addressType')?.value || 'home';
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-
-      if (currentUser) {
-        try {
-          const alreadySaved = savedAddresses.some(a => a.mobile === mobile && a.pincode === pincode && a.street === house);
-          if (!alreadySaved) {
-            const addressId = 'address_' + Date.now();
-            const addressData = {
-              name: fullname, mobile, pincode, city, state,
-              street: house, type: addressType,
-              userId: currentUser.uid,
-              isDefault: savedAddresses.length === 0,
-              createdAt: Date.now()
-            };
-            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
-            savedAddresses.push({ id: addressId, ...addressData });
-            cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
-          }
-        } catch (e) {}
-      }
-
       showPage('paymentPage');
     }
 
@@ -2020,6 +2015,41 @@
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), true);
+
+        // Save/Update Address and mark as default
+        try {
+          const addressData = {
+            name: userInfo.fullName,
+            mobile: userInfo.mobile,
+            pincode: userInfo.pincode,
+            city: userInfo.city,
+            state: userInfo.state,
+            street: userInfo.house,
+            type: document.getElementById('addressType')?.value || 'home',
+            userId: currentUser.uid,
+            isDefault: true,
+            updatedAt: Date.now()
+          };
+
+          // Reset other addresses' isDefault
+          const addrSnap = await window.firebase.get(window.firebase.query(window.firebase.ref(window.firebase.database, 'addresses'), window.firebase.orderByChild('userId'), window.firebase.equalTo(currentUser.uid)));
+          if (addrSnap.exists()) {
+            const updates = {};
+            addrSnap.forEach(child => { updates['addresses/' + child.key + '/isDefault'] = false; });
+            await window.firebase.update(window.firebase.ref(window.firebase.database), updates);
+          }
+
+          // Check if identical address exists
+          const existing = savedAddresses.find(a => a.mobile === userInfo.mobile && a.pincode === userInfo.pincode && a.street === userInfo.house);
+          if (existing) {
+            await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + existing.id), addressData);
+          } else {
+            const addressId = 'address_' + Date.now();
+            addressData.createdAt = Date.now();
+            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+          }
+          localStorage.setItem('bz_address_updated', Date.now().toString());
+        } catch(e) { console.warn('Address sync error:', e); }
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
@@ -2804,7 +2834,7 @@
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">Abhi koi products available nahi hain</p></div></div>';
+        container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">No products available at the moment</p></div></div>';
         return;
       }
       const fragment = document.createDocumentFragment();
@@ -3500,25 +3530,31 @@
         const s = localStorage.getItem(NOTIF_KEY);
         if (s) {
           const p = JSON.parse(s);
-          const cleaned = p.filter(n =>
-            n.id > 100 ||
-            (n.id >= 1000) ||
-            (typeof n.id === 'number' && n.id > 5)
-          );
-          if (Array.isArray(cleaned)) appNotifications = cleaned;
-          localStorage.setItem(NOTIF_KEY, JSON.stringify(appNotifications));
+          if (Array.isArray(p)) appNotifications = p;
         }
       } catch(e) {}
     }
 
     function addNotif(notif) {
-      const n = { id: Date.now() + Math.floor(Math.random()*999), read: false,
-        timestamp: Date.now(), badge: notif.badge||'Info',
-        type: notif.type||'system', title: notif.title, message: notif.message };
+      const id = notif.id || (Date.now() + Math.floor(Math.random()*999));
+      if (appNotifications.some(existing => String(existing.id) === String(id))) return;
+
+      const n = {
+        id: id,
+        read: false,
+        timestamp: notif.timestamp || Date.now(),
+        badge: notif.badge || 'Info',
+        type: notif.type || 'system',
+        title: notif.title,
+        message: notif.message
+      };
       appNotifications.unshift(n);
+      appNotifications.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      if (appNotifications.length > 50) appNotifications = appNotifications.slice(0, 50);
+
       saveNotifs();
       updateNotifBadge();
-      showNotifPopup(n);
+      if (notif.showPopup !== false) showNotifPopup(n);
     }
 
     function showNotifPopup(n) {
@@ -3558,7 +3594,7 @@
         to_email: email,
         to_name: name || 'Customer',
         store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
-        message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Aapka account successfully create ho gaya hai.'
+        message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Your account has been created successfully.'
       });
     }
 
@@ -3952,13 +3988,25 @@
       let _lastAdminNotifTs = Date.now();
       onValue(ref(database, 'adminNotifications'), snapshot => {
         if (!snapshot.exists()) return;
+        let latestTs = _lastAdminNotifTs;
         snapshot.forEach(child => {
           const n = child.val();
-          if (n.timestamp && n.timestamp > _lastAdminNotifTs) {
-            _lastAdminNotifTs = n.timestamp;
-            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info' });
-          }
+          const notifId = child.key;
+          const isNew = n.timestamp && n.timestamp > _lastAdminNotifTs;
+
+          addNotif({
+            id: notifId,
+            type: n.type || 'system',
+            title: n.title,
+            message: n.message,
+            badge: n.badge || 'Info',
+            timestamp: n.timestamp,
+            showPopup: isNew
+          });
+
+          if (n.timestamp && n.timestamp > latestTs) latestTs = n.timestamp;
         });
+        _lastAdminNotifTs = latestTs;
       });
     }
 
@@ -4200,6 +4248,10 @@
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
               setTimeout(() => { window.location.href = 'account.html'; }, 300);
+            }
+            if (window._pendingSellNav) {
+              window._pendingSellNav = false;
+              setTimeout(() => { window.location.href = 'account.html#sell'; }, 300);
             }
 
             try {
@@ -4601,6 +4653,15 @@
       window.location.href = 'account.html';
     }
 
+    function openSellProductPage() {
+      if (!currentUser) {
+        window._pendingSellNav = true;
+        showLoginModal();
+        return;
+      }
+      window.location.href = 'account.html#sell';
+    }
+
     function closeAccountPage() {
       showPage('homePage');
     }
@@ -4649,6 +4710,26 @@
           }
         }
       );
+
+      const wishlistRef = window.firebase.ref(window.firebase.database, 'wishlist/' + uid);
+      window.firebase.onValue(wishlistRef, function(snapshot) {
+        let wishlist = [];
+        if (snapshot.exists()) {
+          wishlist = Object.keys(snapshot.val());
+        }
+        localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
+        updateWishlistButtons();
+        if (document.getElementById('wishlistPage')?.classList.contains('active')) {
+          renderWishlist();
+        }
+      });
+
+      const ordersRef = window.firebase.ref(window.firebase.database, 'userOrders/' + uid);
+      window.firebase.onValue(ordersRef, function() {
+        if (document.getElementById('myOrdersPage')?.classList.contains('active')) {
+          showMyOrders();
+        }
+      });
     }
 
     window.addEventListener('storage', function(e) {

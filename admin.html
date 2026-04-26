@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
+  <script src="config.js"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -2486,6 +2487,23 @@
                   <input type="text" id="searchTagsField" class="form-control" placeholder="Summer Collection, New Arrivals, Best Sellers">
                 </div>
 
+                <hr style="margin:20px 0;border-color:#e2e8f0;">
+                <h4 style="margin-bottom:16px;color:#334155;">📈 Hero Section Stats (Manual Overrides)</h4>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+                  <div class="form-group">
+                    <label for="heroStatProductsInput">Products Count</label>
+                    <input type="text" id="heroStatProductsInput" class="form-control" placeholder="e.g. 500+">
+                  </div>
+                  <div class="form-group">
+                    <label for="heroStatCustomersInput">Customers Count</label>
+                    <input type="text" id="heroStatCustomersInput" class="form-control" placeholder="e.g. 10K+">
+                  </div>
+                  <div class="form-group">
+                    <label for="heroStatRatingInput">Avg Rating</label>
+                    <input type="text" id="heroStatRatingInput" class="form-control" placeholder="e.g. 4.9">
+                  </div>
+                </div>
+
                 <button type="submit" class="btn btn-primary">Save Settings</button>
               </form>
             </div>
@@ -2497,11 +2515,11 @@
               <h2 style="margin:0"><i class="fas fa-toggle-on" style="color:var(--primary);margin-right:8px"></i>Feature Flags</h2>
             </div>
             <div class="card-body">
-              <p style="color:#64748b;margin-bottom:20px;font-size:0.9rem">App ke features yahan se enable/disable karein. Changes turant live hote hain.</p>
+              <p style="color:#64748b;margin-bottom:20px;font-size:0.9rem">Enable or disable app features here. Changes take effect immediately.</p>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">
                 <div>
                   <div style="font-weight:600;font-size:0.95rem;color:#0f172a;margin-bottom:4px">🔐 Two-Factor Authentication (2FA)</div>
-                  <div style="font-size:0.82rem;color:#64748b">ON → users 2FA setup kar sakte hain. OFF → "Coming Soon" dikhega.</div>
+                  <div style="font-size:0.82rem;color:#64748b">ON → users can set up 2FA. OFF → "Coming Soon" will be displayed.</div>
                   <div id="tfa2FABadge" style="margin-top:6px"></div>
                 </div>
                 <label style="position:relative;display:inline-block;width:52px;height:28px;flex-shrink:0;margin-left:16px;cursor:pointer">
@@ -3302,13 +3320,13 @@
 
     // ===== PAGE VISIBILITY FIX - website tab switch karke wapas aane per kaam kare =====
     function setupPageVisibilityFix() {
-      // Fix: Tab switch karke wapas aane par buttons kaam nahi karte
+      // Fix: buttons don't work when returning from tab switching
       document.addEventListener('visibilitychange', function() {
         if (!document.hidden) {
           const panel = document.getElementById('adminPanel');
           if (panel && panel.style.display !== 'none') {
             database.goOnline && database.goOnline();
-            // Current tab reload karo
+            // Reload the current tab
             setTimeout(() => {
               const tab = currentAdminTab;
               if (tab === 'dashboard') loadDashboardData();
@@ -3798,7 +3816,7 @@
       }
 
       // ===== GMAIL VERIFICATION =====
-      // Agar shareData mein email hai toh Gmail se login karna zaroori hai
+      // If shareData contains an email, Gmail login is required
       const requiredEmail = (shareData.email || '').toLowerCase().trim();
       
       if (requiredEmail) {
@@ -4812,7 +4830,7 @@
 
     // Load orders with date filter
     function loadOrders() {
-      // Shared admin ke liye REST API use karo (Firebase rules bypass)
+      // Use REST API for shared admin (to bypass Firebase rules)
       const doLoad = isSharedAdmin
         ? fetch('https://buyzocart-default-rtdb.firebaseio.com/orders.json').then(r => r.json()).then(data => ({ val: () => data }))
         : database.ref('orders').once('value');
@@ -5349,7 +5367,7 @@
 
     // Load settings
     function loadSettings() {
-      const settingsRef = database.ref('settings');
+      const settingsRef = database.ref('adminSettings');
       settingsRef.once('value', snapshot => {
         const settings = snapshot.val() || {};
         
@@ -5357,30 +5375,63 @@
         if (settings.storeEmail) document.getElementById('storeEmail').value = settings.storeEmail;
         if (settings.storePhone) document.getElementById('storePhone').value = settings.storePhone;
         if (settings.storeAddress) document.getElementById('storeAddress').value = settings.storeAddress;
-        if (settings.shippingCost) document.getElementById('shippingCost').value = settings.shippingCost;
+        if (settings.deliveryCharge) document.getElementById('shippingCost').value = settings.deliveryCharge;
         if (settings.currency) document.getElementById('currency').value = settings.currency;
         if (settings.maxItemsPerOrder) document.getElementById('maxItemsPerOrder').value = settings.maxItemsPerOrder;
-        if (settings.freeShippingThreshold) document.getElementById('freeShippingThreshold').value = settings.freeShippingThreshold;
-        if (settings.paymentGatewayCharge) document.getElementById('paymentGatewayCharge').value = settings.paymentGatewayCharge;
+        if (settings.freeShippingOver) document.getElementById('freeShippingThreshold').value = settings.freeShippingOver;
+        if (settings.gatewayChargePercent) document.getElementById('paymentGatewayCharge').value = settings.gatewayChargePercent;
+
+        // Hero Content
+        if (settings.heroHeading) document.getElementById('heroHeading').value = settings.heroHeading;
+        if (settings.heroSubheading) document.getElementById('heroSubheading').value = settings.heroSubheading;
+        if (settings.highlightText) document.getElementById('highlightText').value = settings.highlightText;
+        if (settings.heroMessages) document.getElementById('heroMessages').value = Array.isArray(settings.heroMessages) ? settings.heroMessages.join('\n') : (settings.heroMessages || '');
+        if (settings.popularSearches) document.getElementById('popularSearchesField').value = Array.isArray(settings.popularSearches) ? settings.popularSearches.join(', ') : (settings.popularSearches || '');
+        if (settings.searchTags) document.getElementById('searchTagsField').value = Array.isArray(settings.searchTags) ? settings.searchTags.join(', ') : (settings.searchTags || '');
+
+        // Hero Stats
+        if (settings.heroStats) {
+          document.getElementById('heroStatProductsInput').value = settings.heroStats.products || '';
+          document.getElementById('heroStatCustomersInput').value = settings.heroStats.customers || '';
+          document.getElementById('heroStatRatingInput').value = settings.heroStats.rating || '';
+        }
+
       }).catch(error => {
         console.error('Error loading settings:', error);
       });
     }
 
     function saveSettings() {
+      const heroMsgs = document.getElementById('heroMessages').value.split('\n').map(m => m.trim()).filter(m => m);
+      const popSearches = document.getElementById('popularSearchesField').value.split(',').map(s => s.trim()).filter(s => s);
+      const sTags = document.getElementById('searchTagsField').value.split(',').map(t => t.trim()).filter(t => t);
+
       const settings = {
         storeName: document.getElementById('storeName').value,
         storeEmail: document.getElementById('storeEmail').value,
         storePhone: document.getElementById('storePhone').value,
         storeAddress: document.getElementById('storeAddress').value,
-        shippingCost: document.getElementById('shippingCost').value,
+        deliveryCharge: parseFloat(document.getElementById('shippingCost').value) || 0,
         currency: document.getElementById('currency').value,
-        maxItemsPerOrder: document.getElementById('maxItemsPerOrder').value,
-        freeShippingThreshold: document.getElementById('freeShippingThreshold').value,
-        paymentGatewayCharge: document.getElementById('paymentGatewayCharge').value
+        maxItemsPerOrder: parseInt(document.getElementById('maxItemsPerOrder').value) || 3,
+        freeShippingOver: parseFloat(document.getElementById('freeShippingThreshold').value) || 0,
+        gatewayChargePercent: parseFloat(document.getElementById('paymentGatewayCharge').value) || 0,
+
+        // Hero Content
+        heroHeading: document.getElementById('heroHeading').value,
+        heroSubheading: document.getElementById('heroSubheading').value,
+        highlightText: document.getElementById('highlightText').value,
+        heroMessages: heroMsgs,
+        popularSearches: popSearches,
+        searchTags: sTags,
+        heroStats: {
+          products: document.getElementById('heroStatProductsInput').value,
+          customers: document.getElementById('heroStatCustomersInput').value,
+          rating: document.getElementById('heroStatRatingInput').value
+        }
       };
       
-      database.ref('settings').set(settings)
+      database.ref('adminSettings').update(settings)
         .then(() => showToast('Settings saved successfully!', 'success'))
         .catch(error => {
           console.error('Error saving settings:', error);
@@ -5749,12 +5800,14 @@
       });
     }
 
+    let _productImageFiles = [];
+
     // Image upload functions
-    async function handleProductImageUpload(e) {
+    function handleProductImageUpload(e) {
       const files = Array.from(e.target.files);
       const previewContainer = document.getElementById('productImagePreviews');
       previewContainer.innerHTML = '';
-      uploadedImages = [];
+      _productImageFiles = files;
       if (!files.length) return;
 
       for (let i = 0; i < files.length; i++) {
@@ -5768,17 +5821,6 @@
         img.style.cssText = 'width:80px;height:80px;object-fit:contain;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;display:block;';
         previewItem.appendChild(img);
         previewContainer.appendChild(previewItem);
-
-        try {
-          const base64 = await fileToBase64(file);
-          uploadedImages.push(base64);
-          const badge = document.createElement('div');
-          badge.style.cssText = 'position:absolute;bottom:2px;left:2px;right:2px;background:rgba(34,197,94,0.92);color:#fff;font-size:9px;border-radius:4px;padding:2px 4px;text-align:center;font-weight:700;';
-          badge.textContent = '✓ Done';
-          previewItem.appendChild(badge);
-        } catch(err) {
-          console.error('Upload failed:', err.message);
-        }
       }
     }
 
@@ -5858,40 +5900,68 @@
       
       const saveBtn = document.getElementById('saveProductBtn');
       const originalText = saveBtn.innerHTML;
-      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
       saveBtn.disabled = true;
       
       // Async version to avoid callback issues
       (async () => {
-        let nextId = 1;
         try {
-          const snap = await database.ref('products').once('value');
-          const pData = snap.val();
-          if (pData) {
-            const ids = Object.values(pData).map(p => parseInt(p.id)).filter(id => !isNaN(id));
-            nextId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
-          }
-        } catch(e) { nextId = Date.now(); }
-        const productId = String(nextId);
-        const sizes = sizesInput ? sizesInput.split(',').map(s => s.trim()).filter(s => s) : [];
-        const tagsRaw = document.getElementById('productSearchTags')?.value?.trim() || '';
-        const productTags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+          const imgbbKey = window.BZ_CONFIG?.imgbb?.apiKey;
+          const finalImgUrls = [...uploadedImages]; // Images added from URL
 
-        const newProduct = {
-          id: productId,
-          title: name,
-          price: parseFloat(price),
-          stock: stock ? parseInt(stock) : 0,
-          desc: desc,
-          fullDesc: fullDesc,
-          images: uploadedImages,
-          sizes: sizes,
-          category: category,
-          trending: trending,
-          status: status,
-          tags: productTags,
-          timestamp: Date.now()
-        };
+          if (_productImageFiles.length > 0) {
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            for (const file of _productImageFiles) {
+              const formData = new FormData();
+              formData.append('image', file);
+              const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+                method: 'POST',
+                body: formData
+              });
+              const data = await res.json();
+              if (data.success) {
+                finalImgUrls.push(data.data.url);
+              }
+            }
+          }
+
+          if (finalImgUrls.length === 0) {
+            showToast('Please upload at least one image', 'error');
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            return;
+          }
+
+          saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+          let nextId = 1;
+          try {
+            const snap = await database.ref('products').once('value');
+            const pData = snap.val();
+            if (pData) {
+              const ids = Object.values(pData).map(p => parseInt(p.id)).filter(id => !isNaN(id));
+              nextId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+            }
+          } catch(e) { nextId = Date.now(); }
+          const productId = String(nextId);
+          const sizes = sizesInput ? sizesInput.split(',').map(s => s.trim()).filter(s => s) : [];
+          const tagsRaw = document.getElementById('productSearchTags')?.value?.trim() || '';
+          const productTags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+          const newProduct = {
+            id: productId,
+            title: name,
+            price: parseFloat(price),
+            stock: stock ? parseInt(stock) : 0,
+            desc: desc,
+            fullDesc: fullDesc,
+            images: finalImgUrls,
+            sizes: sizes,
+            category: category,
+            trending: trending,
+            status: status,
+            tags: productTags,
+            timestamp: Date.now()
+          };
         
         // Use firebaseWrite - works for both super admin and shared admin
         try {
