@@ -10,6 +10,11 @@
 - **Security Improvement:** Prevents unexpected application behavior or crashes that could potentially be exploited through local data manipulation.
 - **Measurement Verification:** Playwright tests confirmed that injecting corrupted JSON into `localStorage` (e.g., `invalid json {[` ) no longer crashes the site and still allows the application to load data from the network.
 
+## 2026-04-26 - [XSS Mitigation in Search Suggestions and Notifications]
+**Vulnerability:** Dynamic product data in search suggestions and notification messages were being injected directly into the DOM using `innerHTML`, creating Reflected XSS sinks.
+**Learning:** In a template-heavy vanilla JS frontend, `innerHTML` is often used for convenience, but it requires rigorous sanitization of every dynamic variable within the template.
+**Prevention:** Apply `escapeHTML()` to all variables within template literals before passing them to `innerHTML`. For simple text updates, prioritize `textContent` to bypass the HTML parser entirely.
+
 ## 2024-12-31 - [XSS Protection in Dynamic HTML and Attributes]
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
