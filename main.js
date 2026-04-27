@@ -388,39 +388,26 @@
 
     function searchProducts(query) {
       if (!query.trim()) return [];
-      const q = query.trim().toLowerCase();
+      const q = query.trim();
       const scored = [];
       products.forEach(p => {
-        const name = (p.name || p.title || '').toLowerCase();
-        const desc = (p.description || p.desc || '').toLowerCase();
-        const cat = (p.category || '').toLowerCase();
-        const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+        const name = p.name || p.title || '';
+        const desc = p.description || '';
+        const cat = p.category || '';
+        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
         const combined = [name, desc, cat, tags].join(' ');
-
         let score = 0;
-        // Exact match boost
-        if (name === q) score = 110;
-        else if (name.startsWith(q)) score = 100;
-        else if (name.includes(q)) score = 90;
-        else if (cat.includes(q)) score = 80;
-        else if (tags.includes(q)) score = 70;
-        else if (desc.includes(q)) score = 60;
-
-        // Fuzzy score as fallback/refinement
-        const fScore = fuzzyScore(name, q);
-        const cfScore = fuzzyScore(cat, q) * 0.8;
-        score = Math.max(score, fScore, cfScore);
-
+        score = Math.max(score, fuzzyScore(name, q));
+        score = Math.max(score, fuzzyScore(cat, q) * 0.7);
+        score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
-
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
         const rA = calculateProductRating(a.product.id);
         const rB = calculateProductRating(b.product.id);
         return rB - rA;
       });
-
       return scored.map(s => s.product);
     }
 
@@ -465,11 +452,9 @@
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
         const ratingVal = calculateProductRating(product.id);
-        const productCategory = categories.find(c => c.id === product.category || c.name === product.category)?.name || product.category || '';
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
-          <div style="padding:4px 5px 1px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
-          <div style="padding:0 5px; font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${productCategory}</div>
+          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
           <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
@@ -480,7 +465,7 @@
       topThree.forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'search-suggestion';
-        const productCategory = categories.find(c => c.id === product.category || c.name === product.category)?.name || product.category || '';
+        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
         suggestion.innerHTML = `
           <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
           <div class="search-suggestion-info">
@@ -1941,18 +1926,38 @@
     }
 
     async function toPayment() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType')?.value || 'home';
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      if (currentUser) {
+        try {
+          const alreadySaved = savedAddresses.some(a => a.mobile === mobile && a.pincode === pincode && a.street === house);
+          if (!alreadySaved) {
+            const addressId = 'address_' + Date.now();
+            const addressData = {
+              name: fullname, mobile, pincode, city, state,
+              street: house, type: addressType,
+              userId: currentUser.uid,
+              isDefault: savedAddresses.length === 0,
+              createdAt: Date.now()
+            };
+            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+            savedAddresses.push({ id: addressId, ...addressData });
+            cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+          }
+        } catch (e) {}
+      }
+
       showPage('paymentPage');
     }
 
@@ -2015,41 +2020,6 @@
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), true);
-
-        // Save/Update Address and mark as default
-        try {
-          const addressData = {
-            name: userInfo.fullName,
-            mobile: userInfo.mobile,
-            pincode: userInfo.pincode,
-            city: userInfo.city,
-            state: userInfo.state,
-            street: userInfo.house,
-            type: document.getElementById('addressType')?.value || 'home',
-            userId: currentUser.uid,
-            isDefault: true,
-            updatedAt: Date.now()
-          };
-
-          // Reset other addresses' isDefault
-          const addrSnap = await window.firebase.get(window.firebase.query(window.firebase.ref(window.firebase.database, 'addresses'), window.firebase.orderByChild('userId'), window.firebase.equalTo(currentUser.uid)));
-          if (addrSnap.exists()) {
-            const updates = {};
-            addrSnap.forEach(child => { updates['addresses/' + child.key + '/isDefault'] = false; });
-            await window.firebase.update(window.firebase.ref(window.firebase.database), updates);
-          }
-
-          // Check if identical address exists
-          const existing = savedAddresses.find(a => a.mobile === userInfo.mobile && a.pincode === userInfo.pincode && a.street === userInfo.house);
-          if (existing) {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + existing.id), addressData);
-          } else {
-            const addressId = 'address_' + Date.now();
-            addressData.createdAt = Date.now();
-            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
-          }
-          localStorage.setItem('bz_address_updated', Date.now().toString());
-        } catch(e) { console.warn('Address sync error:', e); }
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
@@ -2834,7 +2804,7 @@
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">No products available at the moment</p></div></div>';
+        container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">Abhi koi products available nahi hain</p></div></div>';
         return;
       }
       const fragment = document.createDocumentFragment();
@@ -3530,31 +3500,25 @@
         const s = localStorage.getItem(NOTIF_KEY);
         if (s) {
           const p = JSON.parse(s);
-          if (Array.isArray(p)) appNotifications = p;
+          const cleaned = p.filter(n =>
+            n.id > 100 ||
+            (n.id >= 1000) ||
+            (typeof n.id === 'number' && n.id > 5)
+          );
+          if (Array.isArray(cleaned)) appNotifications = cleaned;
+          localStorage.setItem(NOTIF_KEY, JSON.stringify(appNotifications));
         }
       } catch(e) {}
     }
 
     function addNotif(notif) {
-      const id = notif.id || (Date.now() + Math.floor(Math.random()*999));
-      if (appNotifications.some(existing => String(existing.id) === String(id))) return;
-
-      const n = {
-        id: id,
-        read: false,
-        timestamp: notif.timestamp || Date.now(),
-        badge: notif.badge || 'Info',
-        type: notif.type || 'system',
-        title: notif.title,
-        message: notif.message
-      };
+      const n = { id: Date.now() + Math.floor(Math.random()*999), read: false,
+        timestamp: Date.now(), badge: notif.badge||'Info',
+        type: notif.type||'system', title: notif.title, message: notif.message };
       appNotifications.unshift(n);
-      appNotifications.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      if (appNotifications.length > 50) appNotifications = appNotifications.slice(0, 50);
-
       saveNotifs();
       updateNotifBadge();
-      if (notif.showPopup !== false) showNotifPopup(n);
+      showNotifPopup(n);
     }
 
     function showNotifPopup(n) {
@@ -3594,7 +3558,7 @@
         to_email: email,
         to_name: name || 'Customer',
         store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
-        message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Your account has been created successfully.'
+        message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Aapka account successfully create ho gaya hai.'
       });
     }
 
@@ -3988,25 +3952,13 @@
       let _lastAdminNotifTs = Date.now();
       onValue(ref(database, 'adminNotifications'), snapshot => {
         if (!snapshot.exists()) return;
-        let latestTs = _lastAdminNotifTs;
         snapshot.forEach(child => {
           const n = child.val();
-          const notifId = child.key;
-          const isNew = n.timestamp && n.timestamp > _lastAdminNotifTs;
-
-          addNotif({
-            id: notifId,
-            type: n.type || 'system',
-            title: n.title,
-            message: n.message,
-            badge: n.badge || 'Info',
-            timestamp: n.timestamp,
-            showPopup: isNew
-          });
-
-          if (n.timestamp && n.timestamp > latestTs) latestTs = n.timestamp;
+          if (n.timestamp && n.timestamp > _lastAdminNotifTs) {
+            _lastAdminNotifTs = n.timestamp;
+            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info' });
+          }
         });
-        _lastAdminNotifTs = latestTs;
       });
     }
 
@@ -4248,10 +4200,6 @@
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
               setTimeout(() => { window.location.href = 'account.html'; }, 300);
-            }
-            if (window._pendingSellNav) {
-              window._pendingSellNav = false;
-              setTimeout(() => { window.location.href = 'account.html#sell'; }, 300);
             }
 
             try {
@@ -4653,15 +4601,6 @@
       window.location.href = 'account.html';
     }
 
-    function openSellProductPage() {
-      if (!currentUser) {
-        window._pendingSellNav = true;
-        showLoginModal();
-        return;
-      }
-      window.location.href = 'account.html#sell';
-    }
-
     function closeAccountPage() {
       showPage('homePage');
     }
@@ -4710,26 +4649,6 @@
           }
         }
       );
-
-      const wishlistRef = window.firebase.ref(window.firebase.database, 'wishlist/' + uid);
-      window.firebase.onValue(wishlistRef, function(snapshot) {
-        let wishlist = [];
-        if (snapshot.exists()) {
-          wishlist = Object.keys(snapshot.val());
-        }
-        localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
-        updateWishlistButtons();
-        if (document.getElementById('wishlistPage')?.classList.contains('active')) {
-          renderWishlist();
-        }
-      });
-
-      const ordersRef = window.firebase.ref(window.firebase.database, 'userOrders/' + uid);
-      window.firebase.onValue(ordersRef, function() {
-        if (document.getElementById('myOrdersPage')?.classList.contains('active')) {
-          showMyOrders();
-        }
-      });
     }
 
     window.addEventListener('storage', function(e) {
@@ -4758,4 +4677,835 @@
         loadSavedAddresses();
         loadUserData(currentUser);
       }
+    });/**
+ * ============================================================
+ *  BUYZO CART — main-patch.js
+ *  INTEGRATION: Append this file's contents to the end of main.js
+ *  OR include it as a separate <script src="main-patch.js"></script>
+ *  AFTER main.js in your HTML.
+ * ============================================================
+ *
+ *  Includes:
+ *  1. Admin Notification Banner — shows Firebase adminNotifications as
+ *     a real-time dismissible banner on the user-facing website.
+ *  2. Enhanced Search Results — shows product category badges in grid.
+ *  3. Address Auto-fill in Checkout — fills saved address into order form.
+ *  4. Sell Product Menu Entry — injects "Sell Product" nav link.
+ *  5. Hero Section — reads adminSettings.heroHeading etc. from Firebase.
+ * ============================================================
+ */
+
+/* ──────────────────────────────────────────────
+   1. ADMIN NOTIFICATION BANNER SYSTEM
+   Reads from Firebase `adminNotifications` and
+   shows a dismissible top banner in real-time.
+   ────────────────────────────────────────────── */
+(function initAdminNotifBanner() {
+  // Inject styles once
+  const style = document.createElement('style');
+  style.textContent = `
+    #bzAdminNotifBanner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 99999;
+      transform: translateY(-100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+    #bzAdminNotifBanner.visible {
+      transform: translateY(0);
+      pointer-events: all;
+    }
+    .bz-notif-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      gap: 12px;
+      min-height: 48px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .bz-notif-bar.info    { background: #1d4ed8; color: #fff; }
+    .bz-notif-bar.offer   { background: linear-gradient(90deg,#7c3aed,#db2777); color: #fff; }
+    .bz-notif-bar.order   { background: #16a34a; color: #fff; }
+    .bz-notif-bar.warning { background: #d97706; color: #fff; }
+    .bz-notif-bar.system  { background: #0f172a; color: #f1f5f9; }
+    .bz-notif-text {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .bz-notif-badge {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.2);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .bz-notif-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bz-notif-msg   { opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+    .bz-notif-dismiss {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: inherit;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .bz-notif-dismiss:hover { background: rgba(255,255,255,0.35); }
+  `;
+  document.head.appendChild(style);
+
+  // Create banner DOM
+  const banner = document.createElement('div');
+  banner.id = 'bzAdminNotifBanner';
+  banner.innerHTML = `<div class="bz-notif-bar info" id="bzNotifBar">
+    <div class="bz-notif-text">
+      <span class="bz-notif-badge" id="bzNotifBadge">Info</span>
+      <span class="bz-notif-title" id="bzNotifTitle"></span>
+      <span class="bz-notif-msg" id="bzNotifMsg"></span>
+    </div>
+    <button class="bz-notif-dismiss" id="bzNotifDismiss" title="Dismiss">×</button>
+  </div>`;
+  document.body.prepend(banner);
+
+  let dismissTimer = null;
+  let lastShownId = localStorage.getItem('bz_last_notif_id') || null;
+
+  document.getElementById('bzNotifDismiss').addEventListener('click', hideBanner);
+
+  function showBanner(notif) {
+    const bar   = document.getElementById('bzNotifBar');
+    const badge = document.getElementById('bzNotifBadge');
+    const title = document.getElementById('bzNotifTitle');
+    const msg   = document.getElementById('bzNotifMsg');
+
+    // Set type class
+    bar.className = 'bz-notif-bar ' + (notif.type || 'info');
+    badge.textContent = notif.badge || 'Notice';
+    title.textContent = notif.title || '';
+    msg.textContent   = notif.message || '';
+
+    banner.classList.add('visible');
+
+    // Auto-dismiss after 8 seconds
+    clearTimeout(dismissTimer);
+    dismissTimer = setTimeout(hideBanner, 8000);
+  }
+
+  function hideBanner() {
+    banner.classList.remove('visible');
+    clearTimeout(dismissTimer);
+  }
+
+  // Connect to Firebase once it's available
+  function connectToFirebase() {
+    const firebase = window.firebase;
+    if (!firebase || !firebase.database) {
+      setTimeout(connectToFirebase, 1000);
+      return;
+    }
+    const db = firebase.database();
+
+    // Listen for new notifications in real-time
+    db.ref('adminNotifications').orderByChild('timestamp').limitToLast(5).on('value', snap => {
+      if (!snap.exists()) return;
+
+      let newest = null;
+      snap.forEach(child => {
+        const n = child.val();
+        if (!newest || (n.timestamp || 0) > (newest.timestamp || 0)) {
+          newest = { id: child.key, ...n };
+        }
+      });
+
+      if (newest && newest.id !== lastShownId) {
+        lastShownId = newest.id;
+        localStorage.setItem('bz_last_notif_id', newest.id);
+        showBanner(newest);
+
+        // Also push to internal notification list if available
+        if (typeof addNotif === 'function') {
+          addNotif({
+            type: newest.type || 'system',
+            title: newest.title,
+            message: newest.message,
+            badge: newest.badge || 'Admin'
+          });
+        }
+      }
     });
+  }
+
+  // Start connection attempt after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', connectToFirebase);
+  } else {
+    setTimeout(connectToFirebase, 500);
+  }
+})();
+
+
+/* ──────────────────────────────────────────────
+   2. ENHANCED SEARCH RESULTS WITH CATEGORY BADGE
+   Replaces the renderSearchResults() function to
+   show category labels under each product card.
+   ────────────────────────────────────────────── */
+(function patchSearchResults() {
+  // Inject extra styles for search category badges
+  const style = document.createElement('style');
+  style.textContent = `
+    .product-card .pc-category-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent, #2563eb);
+      background: rgba(37,99,235,0.08);
+      padding: 2px 7px;
+      border-radius: 20px;
+      margin-bottom: 4px;
+      text-transform: capitalize;
+    }
+    .search-result-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .search-category-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #2563eb;
+      background: #eff6ff;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: capitalize;
+    }
+    .search-condition-tag {
+      font-size: 11px;
+      font-weight: 500;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 2px 7px;
+      border-radius: 12px;
+    }
+    /* Highlighted match text */
+    .search-match { background: #fef08a; border-radius: 2px; }
+  `;
+  document.head.appendChild(style);
+
+  /**
+   * Override renderSearchResults to show category info.
+   * This wraps the existing function safely.
+   */
+  const _originalRender = window.renderSearchResults;
+
+  window.renderSearchResults = function(results, query) {
+    const grid = document.getElementById('searchResultsGrid');
+    const countEl = document.getElementById('searchResultsCount');
+    const noResults = document.getElementById('noSearchResultsMessage');
+    if (!grid) {
+      if (typeof _originalRender === 'function') _originalRender(results, query);
+      return;
+    }
+
+    grid.innerHTML = '';
+
+    if (!results || results.length === 0) {
+      if (noResults) noResults.style.display = 'block';
+      if (countEl) countEl.textContent = 'No products found';
+      return;
+    }
+
+    if (noResults) noResults.style.display = 'none';
+    if (countEl) countEl.textContent = `${results.length} product${results.length !== 1 ? 's' : ''} found for "${query}"`;
+
+    results.forEach(product => {
+      // Use the existing createProductCard if available
+      let card;
+      if (typeof createProductCard === 'function') {
+        card = createProductCard(product);
+      } else {
+        card = document.createElement('div');
+        card.className = 'product-card';
+        card.textContent = product.name || 'Product';
+      }
+
+      // Inject category badge into card body
+      const cardBody = card.querySelector('.product-card-body') || card;
+      const titleEl  = card.querySelector('.product-card-title');
+
+      // Find category name
+      let catName = '';
+      if (typeof categories !== 'undefined' && Array.isArray(categories)) {
+        const catObj = categories.find(c =>
+          c.id === product.category || c.name === product.category
+        );
+        catName = catObj?.name || product.category || '';
+      } else {
+        catName = product.category || '';
+      }
+
+      if (catName) {
+        const metaRow = document.createElement('div');
+        metaRow.className = 'search-result-meta';
+        metaRow.innerHTML = `<span class="search-category-tag">🏷️ ${catName}</span>`;
+        if (product.condition && product.condition !== 'new') {
+          metaRow.innerHTML += `<span class="search-condition-tag">${product.condition}</span>`;
+        }
+        // Insert before title
+        if (titleEl) {
+          cardBody.insertBefore(metaRow, titleEl);
+        } else {
+          cardBody.appendChild(metaRow);
+        }
+      }
+
+      grid.appendChild(card);
+    });
+  };
+})();
+
+
+/* ──────────────────────────────────────────────
+   3. ADDRESS AUTO-FILL IN CHECKOUT
+   When opening checkout/order page, automatically
+   fills the form with the user's default address
+   from localStorage / Firebase.
+   ────────────────────────────────────────────── */
+(function initCheckoutAddressFill() {
+  /**
+   * Key: address fields in checkout form → address object keys
+   * Adjust IDs to match your actual checkout form field IDs.
+   */
+  const FIELD_MAP = {
+    // Checkout form ID : Address object key
+    'fullName'      : 'name',
+    'userName'      : 'name',
+    'userFullName'  : 'name',
+    'checkoutName'  : 'name',
+    'mobileNumber'  : 'mobile',
+    'userMobile'    : 'mobile',
+    'checkoutMobile': 'mobile',
+    'pincode'       : 'pincode',
+    'userPincode'   : 'pincode',
+    'cityName'      : 'city',
+    'userCity'      : 'city',
+    'checkoutCity'  : 'city',
+    'stateName'     : 'state',
+    'userState'     : 'state',
+    'checkoutState' : 'state',
+    'streetAddress' : 'street',
+    'userAddress'   : 'street',
+    'addressLine'   : 'street',
+    'checkoutAddr'  : 'street',
+    // Common patterns in forms
+    'name'          : 'name',
+    'mobile'        : 'mobile',
+    'phone'         : 'mobile',
+    'city'          : 'city',
+    'state'         : 'state',
+    'address'       : 'street',
+    'street'        : 'street',
+  };
+
+  /**
+   * Fill checkout form fields with address data.
+   * @param {Object} address — saved address object
+   */
+  window.fillAddressForm = function(address) {
+    if (!address) return;
+    Object.entries(FIELD_MAP).forEach(([fieldId, key]) => {
+      const el = document.getElementById(fieldId);
+      if (el && address[key]) el.value = address[key];
+    });
+  };
+
+  /**
+   * Load the default (or first) saved address for current user
+   * and fill the checkout form.
+   */
+  window.loadAndFillDefaultAddress = function() {
+    // Try from global savedAddresses first (populated by main.js)
+    if (typeof savedAddresses !== 'undefined' && savedAddresses.length > 0) {
+      const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+      fillAddressForm(def);
+      renderSavedAddressesInCheckout(savedAddresses);
+      return;
+    }
+
+    // Fallback: load directly from Firebase
+    const firebase = window.firebase;
+    const user = typeof currentUser !== 'undefined' ? currentUser : null;
+    if (!firebase || !user) return;
+
+    firebase.database()
+      .ref('addresses')
+      .orderByChild('userId')
+      .equalTo(user.uid)
+      .get()
+      .then(snap => {
+        if (!snap.exists()) return;
+        const list = [];
+        snap.forEach(child => list.push({ id: child.key, ...child.val() }));
+        list.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+        if (list.length > 0) {
+          const def = list.find(a => a.isDefault) || list[0];
+          fillAddressForm(def);
+          renderSavedAddressesInCheckout(list);
+        }
+      })
+      .catch(() => {});
+  };
+
+  /**
+   * Render saved address selector inside checkout page.
+   * Injects a select-an-address panel above the form.
+   */
+  function renderSavedAddressesInCheckout(addresses) {
+    // Find the checkout form container
+    const containers = [
+      document.getElementById('checkoutFormContainer'),
+      document.getElementById('addressFormContainer'),
+      document.getElementById('userInfoForm'),
+      document.querySelector('.checkout-form'),
+      document.querySelector('#userPage form'),
+      document.querySelector('#orderPage .address-section'),
+    ].filter(Boolean);
+
+    if (containers.length === 0) return;
+    const container = containers[0];
+
+    // Remove existing panel if already injected
+    const existing = document.getElementById('bzSavedAddressPanel');
+    if (existing) existing.remove();
+
+    if (addresses.length === 0) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'bzSavedAddressPanel';
+    panel.style.cssText = `
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-family: inherit;
+    `;
+
+    panel.innerHTML = `
+      <div style="font-size:13px;font-weight:600;color:#1d4ed8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <span>📍</span> Saved Addresses
+      </div>
+      <div id="bzAddrList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    `;
+
+    const listEl = panel.querySelector('#bzAddrList');
+    addresses.forEach(addr => {
+      const row = document.createElement('label');
+      row.style.cssText = `
+        display:flex;align-items:flex-start;gap:10px;
+        padding:10px;border-radius:8px;cursor:pointer;
+        border:2px solid ${addr.isDefault ? '#2563eb' : '#e2e8f0'};
+        background:${addr.isDefault ? '#fff' : 'transparent'};
+        transition:all 0.15s;font-size:13px;
+      `;
+      row.innerHTML = `
+        <input type="radio" name="bzAddrSelect" value="${addr.id}"
+          ${addr.isDefault ? 'checked' : ''}
+          style="margin-top:2px;accent-color:#2563eb;">
+        <div>
+          <div style="font-weight:600;">${addr.name} &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400;">${addr.type || 'home'}</span></div>
+          <div style="color:#475569;margin-top:2px;">${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}</div>
+          <div style="color:#64748b;margin-top:1px;">📞 ${addr.mobile}</div>
+        </div>
+      `;
+      row.querySelector('input').addEventListener('change', () => {
+        fillAddressForm(addr);
+        // Update border styles
+        listEl.querySelectorAll('label').forEach(l => {
+          l.style.borderColor = '#e2e8f0';
+          l.style.background = 'transparent';
+        });
+        row.style.borderColor = '#2563eb';
+        row.style.background = '#fff';
+      });
+      listEl.appendChild(row);
+    });
+
+    container.prepend(panel);
+  }
+
+  // Auto-trigger when checkout/order/userPage becomes visible
+  const _origShowPage = window.showPage;
+  if (typeof _origShowPage === 'function') {
+    window.showPage = function(pageId) {
+      _origShowPage.call(this, pageId);
+      const checkoutPages = ['userPage', 'orderPage', 'checkoutPage', 'paymentPage'];
+      if (checkoutPages.includes(pageId) && typeof currentUser !== 'undefined' && currentUser) {
+        setTimeout(loadAndFillDefaultAddress, 200);
+      }
+    };
+  }
+
+  // Also fill when user logs in and is on a checkout page
+  const origSetupAccount = window.setupAccountRealtimeSync;
+  if (typeof origSetupAccount === 'function') {
+    window.setupAccountRealtimeSync = function(uid) {
+      origSetupAccount.call(this, uid);
+      setTimeout(() => {
+        const activePage = document.querySelector('.page.active')?.id || '';
+        if (['userPage','orderPage','checkoutPage'].includes(activePage)) {
+          loadAndFillDefaultAddress();
+        }
+      }, 800);
+    };
+  }
+})();
+
+
+/* ──────────────────────────────────────────────
+   4. "SELL PRODUCT" MENU LINK INJECTION
+   Adds "Sell Product" to the mobile/desktop nav.
+   ────────────────────────────────────────────── */
+(function injectSellLink() {
+  function doInject() {
+    const sellUrl = 'sell-product.html';
+
+    // ── Desktop / sidebar nav ──
+    const navSelectors = [
+      '#mobileMenu ul',
+      '#sideMenu ul',
+      '.nav-links',
+      '.bottom-nav',
+      '#navLinks',
+    ];
+
+    navSelectors.forEach(sel => {
+      const nav = document.querySelector(sel);
+      if (!nav || nav.querySelector('[data-sell-link]')) return;
+
+      const li = document.createElement('li');
+      li.setAttribute('data-sell-link', '1');
+      li.innerHTML = `
+        <a href="${sellUrl}" style="
+          display:flex;align-items:center;gap:10px;
+          padding:12px 20px;color:inherit;text-decoration:none;
+          font-weight:500;font-size:0.9rem;transition:all 0.2s;
+        ">
+          <span style="font-size:1.1rem;">🏪</span>
+          Sell Product
+        </a>
+      `;
+      nav.appendChild(li);
+    });
+
+    // ── Bottom nav bar (mobile) ──
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav && !bottomNav.querySelector('[data-sell-link]')) {
+      const item = document.createElement('div');
+      item.className = 'bottom-nav-item';
+      item.setAttribute('data-sell-link', '1');
+      item.style.cssText = 'cursor:pointer;';
+      item.innerHTML = `
+        <div style="font-size:1.3rem;">🏪</div>
+        <div style="font-size:10px;font-weight:500;">Sell</div>
+      `;
+      item.addEventListener('click', () => { window.location.href = sellUrl; });
+      bottomNav.appendChild(item);
+    }
+
+    // ── Header user area ──
+    const headerRight = document.querySelector('.header-right, .nav-actions, #headerActions');
+    if (headerRight && !headerRight.querySelector('[data-sell-link]')) {
+      const btn = document.createElement('a');
+      btn.href = sellUrl;
+      btn.setAttribute('data-sell-link', '1');
+      btn.style.cssText = `
+        display:inline-flex;align-items:center;gap:6px;
+        padding:7px 14px;background:#2563eb;color:#fff;
+        border-radius:8px;font-size:13px;font-weight:600;
+        text-decoration:none;transition:all 0.2s;
+      `;
+      btn.innerHTML = '🏪 Sell';
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#1d4ed8'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#2563eb'; });
+      headerRight.prepend(btn);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', doInject);
+  } else {
+    doInject();
+    // Also retry after a bit to catch dynamically rendered menus
+    setTimeout(doInject, 800);
+  }
+})();
+
+
+/* ──────────────────────────────────────────────
+   5. HERO SECTION — READ FROM FIREBASE
+   Admin panel writes to adminSettings.hero*.
+   This reads those values and updates the hero.
+   ────────────────────────────────────────────── */
+(function initHeroSync() {
+  function applyHeroSettings(settings) {
+    if (!settings) return;
+
+    // Heading
+    const headings = [
+      document.getElementById('heroHeading'),
+      document.querySelector('.hero-heading'),
+      document.querySelector('.hero h1'),
+      document.querySelector('.hero-title'),
+    ].filter(Boolean);
+    if (settings.heroHeading) {
+      headings.forEach(el => { el.innerHTML = settings.heroHeading; });
+    }
+
+    // Subheading
+    const subheadings = [
+      document.getElementById('heroSubheading'),
+      document.querySelector('.hero-subheading'),
+      document.querySelector('.hero p'),
+      document.querySelector('.hero-subtitle'),
+    ].filter(Boolean);
+    if (settings.heroSubheading) {
+      subheadings.forEach(el => { el.textContent = settings.heroSubheading; });
+    }
+
+    // Hero background image
+    const heroBg = document.getElementById('heroSection') || document.querySelector('.hero-section');
+    if (heroBg && settings.heroBgImage) {
+      heroBg.style.backgroundImage = `url('${settings.heroBgImage}')`;
+    }
+
+    // Rating display
+    if (settings.heroRating) {
+      const ratingEls = document.querySelectorAll('.hero-rating, #heroRating');
+      ratingEls.forEach(el => { el.textContent = settings.heroRating; });
+    }
+
+    // CTA Button text
+    if (settings.heroCtaText) {
+      const ctaBtns = document.querySelectorAll('.hero-cta, #heroCta');
+      ctaBtns.forEach(el => { el.textContent = settings.heroCtaText; });
+    }
+
+    // Scrolling messages ticker
+    if (settings.heroMessages && Array.isArray(settings.heroMessages)) {
+      const ticker = document.getElementById('heroTicker') || document.querySelector('.hero-ticker');
+      if (ticker && settings.heroMessages.length > 0) {
+        ticker.textContent = settings.heroMessages[0];
+        let idx = 0;
+        setInterval(() => {
+          idx = (idx + 1) % settings.heroMessages.length;
+          ticker.style.opacity = '0';
+          setTimeout(() => {
+            ticker.textContent = settings.heroMessages[idx];
+            ticker.style.opacity = '1';
+          }, 300);
+        }, 3000);
+      }
+    }
+  }
+
+  function connectFirebaseForHero() {
+    const firebase = window.firebase;
+    if (!firebase || !firebase.database) { setTimeout(connectFirebaseForHero, 1000); return; }
+
+    // Listen for admin settings changes
+    firebase.database().ref('adminSettings').on('value', snap => {
+      if (snap.exists()) applyHeroSettings(snap.val());
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', connectFirebaseForHero);
+  } else {
+    setTimeout(connectFirebaseForHero, 500);
+  }
+})();
+
+
+/* ──────────────────────────────────────────────
+   6. ADDRESS SAVE-ON-ORDER COMPLETION
+   After order is placed, automatically saves
+   the entered address to localStorage / Firebase.
+   Patch: wrap the existing placeOrder / submitOrder.
+   ────────────────────────────────────────────── */
+(function patchOrderAddressSave() {
+  /**
+   * Call this after successful order placement.
+   * Reads from checkout form and saves address.
+   */
+  window.bzSaveAddressAfterOrder = function(uid) {
+    // Read from form
+    const fields = {
+      name:    document.getElementById('fullName')?.value || document.getElementById('userName')?.value || document.getElementById('name')?.value || '',
+      mobile:  document.getElementById('mobileNumber')?.value || document.getElementById('mobile')?.value || document.getElementById('phone')?.value || '',
+      street:  document.getElementById('streetAddress')?.value || document.getElementById('address')?.value || document.getElementById('street')?.value || '',
+      city:    document.getElementById('cityName')?.value || document.getElementById('city')?.value || '',
+      state:   document.getElementById('stateName')?.value || document.getElementById('state')?.value || '',
+      pincode: document.getElementById('pincode')?.value || document.getElementById('postalCode')?.value || '',
+      type:    'home',
+      isDefault: true,
+      updatedAt: Date.now(),
+    };
+
+    // Validate — at least name + street
+    if (!fields.name || !fields.street) return;
+
+    // Save to Firebase if user is logged in
+    const firebase = window.firebase;
+    if (firebase && uid) {
+      // Check for duplicates
+      firebase.database()
+        .ref('addresses')
+        .orderByChild('userId')
+        .equalTo(uid)
+        .get()
+        .then(snap => {
+          let isDuplicate = false;
+          snap.forEach(child => {
+            const a = child.val();
+            if (a.street === fields.street && a.pincode === fields.pincode) {
+              isDuplicate = true;
+              // Make this the default
+              firebase.database().ref('addresses/' + child.key).update({ isDefault: true });
+            } else {
+              firebase.database().ref('addresses/' + child.key).update({ isDefault: false });
+            }
+          });
+          if (!isDuplicate) {
+            fields.userId = uid;
+            firebase.database().ref('addresses').push(fields).then(() => {
+              localStorage.setItem('bz_address_updated', Date.now().toString());
+            });
+          }
+        })
+        .catch(() => {
+          // Fallback: save to localStorage
+          const saved = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+          const isDup = saved.some(a => a.street === fields.street && a.pincode === fields.pincode);
+          if (!isDup) {
+            saved.unshift(fields);
+            localStorage.setItem('bz_addresses', JSON.stringify(saved.slice(0, 10)));
+            localStorage.setItem('bz_address_updated', Date.now().toString());
+          }
+        });
+    } else {
+      // Guest: save to localStorage only
+      const saved = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+      const isDup = saved.some(a => a.street === fields.street && a.pincode === fields.pincode);
+      if (!isDup) {
+        saved.unshift(fields);
+        localStorage.setItem('bz_addresses', JSON.stringify(saved.slice(0, 10)));
+        localStorage.setItem('bz_address_updated', Date.now().toString());
+      }
+    }
+  };
+
+  // Observe placeOrder function to inject address save
+  // Try to wrap common function names
+  const fnNames = ['placeOrder', 'submitOrder', 'handleOrderSubmit', 'confirmOrder'];
+  fnNames.forEach(fnName => {
+    if (typeof window[fnName] === 'function') {
+      const orig = window[fnName];
+      window[fnName] = function(...args) {
+        const result = orig.apply(this, args);
+        // Save address after order
+        const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
+        if (result && typeof result.then === 'function') {
+          result.then(() => bzSaveAddressAfterOrder(uid)).catch(() => {});
+        } else {
+          setTimeout(() => bzSaveAddressAfterOrder(uid), 500);
+        }
+        return result;
+      };
+    }
+  });
+})();
+
+
+/* ──────────────────────────────────────────────
+   7. IMPROVED SEARCH SUGGESTIONS WITH CATEGORY
+   Patches showSearchSuggestions to include
+   category info in auto-complete dropdown.
+   ────────────────────────────────────────────── */
+(function patchSearchSuggestions() {
+  const _orig = window.showSearchSuggestions;
+  if (typeof _orig !== 'function') return;
+
+  window.showSearchSuggestions = function(query) {
+    // Call original first to render the base UI
+    _orig.call(this, query);
+
+    // Find and enhance all suggestion items to show category
+    const container = document.getElementById('searchSuggestions');
+    if (!container) return;
+
+    // Enhance existing suggestion items
+    container.querySelectorAll('.search-suggestion-category').forEach(el => {
+      if (el.textContent && !el.dataset.enhanced) {
+        el.dataset.enhanced = '1';
+        el.style.cssText = `
+          font-size:11px;font-weight:600;
+          color:#2563eb;background:#eff6ff;
+          padding:1px 7px;border-radius:20px;
+          display:inline-block;margin-bottom:2px;
+        `;
+        // Add icon if not present
+        if (!el.textContent.startsWith('🏷')) {
+          el.textContent = '🏷️ ' + el.textContent;
+        }
+      }
+    });
+  };
+})();
+
+
+/* ──────────────────────────────────────────────
+   8. LANGUAGE STANDARDIZATION
+   Remove any remaining Hindi/mixed text from DOM.
+   ────────────────────────────────────────────── */
+(function fixLanguage() {
+  const replacements = [
+    // [selector or regex, replacement]
+    { sel: '#twoFactorStatusText', text: 'Adds an extra layer of security to your account' },
+    { sel: '[title="Admin se enable hoga"]', attr: 'title', text: 'Will be enabled by admin' },
+  ];
+
+  function applyReplacements() {
+    replacements.forEach(r => {
+      try {
+        const el = document.querySelector(r.sel);
+        if (!el) return;
+        if (r.attr) el.setAttribute(r.attr, r.text);
+        else el.textContent = r.text;
+      } catch(e) {}
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyReplacements);
+  } else {
+    applyReplacements();
+  }
+})();
+
+// End of main-patch.js

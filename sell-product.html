@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sell a Product - Buyzo Cart</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Site Config & Security (same as index.html) -->
+  <script src="config.js"></script>
+  <script src="security.js"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+  <style>
+    /* ── Exact same CSS variables as account.html / index.html ── */
+    :root {
+      --primary:#2563eb; --primary-dark:#1d4ed8; --primary-light:#3b82f6;
+      --bg:#f8fafc; --card-bg:#ffffff; --text:#0f172a; --text-secondary:#64748b;
+      --border:#e2e8f0; --bg-secondary:#f1f5f9;
+      --success:#22c55e; --error:#ef4444; --warning:#f59e0b;
+      --shadow:0 1px 3px rgba(0,0,0,.08); --shadow-md:0 4px 16px rgba(0,0,0,.1);
+      --radius:12px; --radius-sm:8px; --transition:all .2s ease;
+    }
+    [data-theme="dark"]{
+      --bg:#0f172a; --card-bg:#1e293b; --text:#f1f5f9;
+      --text-secondary:#94a3b8; --border:#334155; --bg-secondary:#0f172a;
+      --shadow:0 1px 3px rgba(0,0,0,.3); --shadow-md:0 4px 16px rgba(0,0,0,.4);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
+      line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+    a{color:inherit;text-decoration:none}
+
+    /* Loading */
+    #loadingScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;
+      justify-content:center;flex-direction:column;z-index:9999;gap:14px}
+    .spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--primary);
+      border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #loadingScreen p{color:var(--text-secondary);font-size:14px;font-weight:500}
+
+    /* ── Header — identical to account.html ── */
+    .acc-header{background:var(--card-bg);border-bottom:1px solid var(--border);position:sticky;
+      top:0;z-index:50;padding:.75rem 1.5rem;display:flex;align-items:center;
+      justify-content:space-between;box-shadow:var(--shadow)}
+    .acc-brand{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.2rem;cursor:pointer}
+    .acc-brand-chip{background:var(--primary);color:#fff;padding:.2rem .6rem;border-radius:6px;font-size:.9rem}
+    .header-actions{display:flex;align-items:center;gap:.75rem}
+    .btn-back{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;
+      border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;
+      color:var(--text);cursor:pointer;font-size:.85rem;font-family:inherit;
+      transition:var(--transition);font-weight:500}
+    .btn-back:hover{background:var(--bg-secondary);border-color:var(--primary);color:var(--primary)}
+
+    /* ── Main container ── */
+    .main{max-width:860px;margin:2rem auto;padding:0 1.25rem 5rem}
+
+    /* ── Card — same as account.html ── */
+    .card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.5rem;transition:var(--transition)}
+    .card:hover{box-shadow:var(--shadow-md)}
+    .card-title{font-size:1rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem}
+
+    /* ── Forms — same as account.html ── */
+    .form-group{margin-bottom:1.25rem}
+    .form-label{display:block;margin-bottom:.45rem;font-size:.875rem;font-weight:500;color:var(--text-secondary)}
+    .req{color:var(--error)}
+    .form-control{width:100%;padding:.625rem .875rem;border:1px solid var(--border);
+      border-radius:var(--radius-sm);background:var(--bg);color:var(--text);
+      font-size:.875rem;font-family:inherit;transition:var(--transition)}
+    .form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    textarea.form-control{resize:vertical}
+    .form-hint{font-size:.75rem;color:var(--text-secondary);margin-top:.3rem}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:540px){.form-row{grid-template-columns:1fr}}
+
+    /* ── Buttons — same as account.html ── */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+      padding:.625rem 1.25rem;border-radius:var(--radius-sm);font-weight:500;font-size:.875rem;
+      border:none;cursor:pointer;background:var(--primary);color:#fff;font-family:inherit;
+      transition:var(--transition)}
+    .btn:hover{background:var(--primary-dark);transform:translateY(-1px)}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .btn-outline{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;
+      border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;
+      color:var(--text);cursor:pointer;font-size:.875rem;font-family:inherit;
+      transition:var(--transition);font-weight:500}
+    .btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+    .btn-full{width:100%;padding:.875rem;font-size:1rem}
+
+    /* ── Hero Banner ── */
+    .sell-hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;
+      border-radius:var(--radius);padding:2rem 1.75rem;margin-bottom:1.5rem;
+      display:flex;align-items:center;gap:1.25rem}
+    .sell-hero-icon{width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.2);
+      display:flex;align-items:center;justify-content:center;font-size:1.9rem;flex-shrink:0;
+      border:2px solid rgba(255,255,255,.35)}
+    .sell-hero h1{font-size:1.45rem;font-weight:700;margin-bottom:.25rem}
+    .sell-hero p{opacity:.9;font-size:.875rem}
+
+    /* ── Tips ── */
+    .tips{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);
+      padding:1rem 1.25rem;margin-bottom:1.5rem}
+    [data-theme="dark"] .tips{background:#1e3a5f;border-color:#1d4ed8}
+    .tips h4{font-size:.875rem;font-weight:600;color:var(--primary);margin-bottom:.4rem}
+    .tips ul{padding-left:1.2rem;font-size:.8rem;color:var(--text-secondary)}
+    .tips li{margin-bottom:.2rem}
+
+    /* ── Category Grid ── */
+    .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:.6rem;margin-top:.4rem}
+    .cat-option{border:2px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .4rem;
+      text-align:center;cursor:pointer;font-size:.78rem;font-weight:500;transition:var(--transition);
+      background:var(--bg);color:var(--text)}
+    .cat-option:hover{border-color:var(--primary);background:var(--bg-secondary)}
+    .cat-option.selected{border-color:var(--primary);background:#eff6ff;color:var(--primary)}
+    [data-theme="dark"] .cat-option.selected{background:#1e3a5f}
+    .cat-emoji{font-size:1.25rem;display:block;margin-bottom:.2rem}
+
+    /* ── Condition Buttons ── */
+    .cond-opts{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem}
+    .cond-btn{padding:.38rem .9rem;border:2px solid var(--border);border-radius:20px;
+      background:var(--bg);color:var(--text);cursor:pointer;font-size:.8rem;
+      font-weight:500;transition:var(--transition);font-family:inherit}
+    .cond-btn:hover{border-color:var(--primary)}
+    .cond-btn.selected{border-color:var(--primary);background:#eff6ff;color:var(--primary)}
+    [data-theme="dark"] .cond-btn.selected{background:#1e3a5f}
+
+    /* ── Image Upload ── */
+    .upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:2rem;
+      text-align:center;cursor:pointer;transition:var(--transition);background:var(--bg);position:relative}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--primary);background:var(--bg-secondary)}
+    .upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+    .upload-icon{font-size:2rem;margin-bottom:.5rem}
+    .upload-zone h3{font-size:.9rem;font-weight:600;margin-bottom:.2rem}
+    .upload-zone p{font-size:.8rem;color:var(--text-secondary)}
+    .img-previews{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:.7rem;margin-top:1rem}
+    .preview-thumb{position:relative;border-radius:var(--radius-sm);overflow:hidden;
+      aspect-ratio:1;border:1px solid var(--border)}
+    .preview-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .remove-img{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;
+      border:none;border-radius:50%;width:21px;height:21px;font-size:13px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center}
+    .cover-badge{position:absolute;bottom:3px;left:3px;background:var(--primary);color:#fff;
+      font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px}
+    .upload-progress{margin-top:.7rem;background:var(--border);border-radius:10px;
+      height:6px;overflow:hidden;display:none}
+    .upload-progress-bar{height:100%;background:var(--primary);border-radius:10px;
+      width:0%;transition:width .3s}
+
+    /* ── Tag Input ── */
+    .tags-wrap{display:flex;flex-wrap:wrap;gap:.4rem;border:1px solid var(--border);
+      border-radius:var(--radius-sm);padding:.4rem .5rem;background:var(--bg);
+      min-height:44px;align-items:center;cursor:text}
+    .tags-wrap:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .tag-chip{background:var(--bg-secondary);color:var(--text);padding:.2rem .55rem;
+      border-radius:20px;font-size:.78rem;font-weight:500;display:flex;align-items:center;gap:.3rem;
+      border:1px solid var(--border)}
+    .tag-remove{cursor:pointer;font-size:.9rem;color:var(--text-secondary);line-height:1}
+    .tag-remove:hover{color:var(--error)}
+    .tag-input-free{border:none;outline:none;background:transparent;font-size:.875rem;
+      font-family:inherit;color:var(--text);flex:1;min-width:80px}
+
+    /* ── Auth Gate / Empty State — same as account.html ── */
+    .empty-state{text-align:center;padding:3rem 1rem;background:var(--card-bg);
+      border:1px solid var(--border);border-radius:var(--radius)}
+    .empty-icon{font-size:3rem;margin-bottom:.75rem}
+    .empty-title{font-size:1.1rem;font-weight:600;margin-bottom:.5rem}
+    .empty-desc{color:var(--text-secondary);font-size:.875rem;margin-bottom:1.25rem}
+
+    /* ── Success Screen ── */
+    .success-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+      padding:2.5rem 2rem;text-align:center;box-shadow:var(--shadow-md)}
+    .success-icon-big{font-size:4rem;margin-bottom:1rem}
+    .success-card h2{font-size:1.5rem;font-weight:700;margin-bottom:.5rem}
+    .success-card p{color:var(--text-secondary);margin-bottom:1.5rem}
+    .success-preview{background:var(--bg-secondary);border:1px solid var(--border);
+      border-radius:var(--radius);overflow:hidden;max-width:200px;margin:1rem auto}
+    .success-preview img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+    .success-preview-body{padding:.7rem}
+    .success-preview-name{font-weight:600;font-size:.875rem;margin-bottom:.2rem;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .success-preview-price{color:var(--primary);font-weight:700;font-size:.95rem}
+    .success-preview-cat{font-size:.75rem;color:var(--text-secondary);margin-top:.15rem}
+    .success-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.25rem}
+
+    /* ── Toast — same as account.html ── */
+    #spToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:#1e293b;color:#fff;padding:.75rem 1.5rem;border-radius:50px;
+      font-size:.875rem;font-weight:500;z-index:9999;opacity:0;transition:all .3s;
+      pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+    #spToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    #spToast.success{background:#16a34a}
+    #spToast.error{background:#dc2626}
+
+    @media(max-width:640px){
+      .acc-header{padding:.65rem 1rem}
+      .main{padding:0 .75rem 5rem;margin-top:1.25rem}
+      .sell-hero{padding:1.25rem;gap:1rem}
+      .sell-hero h1{font-size:1.2rem}
+      .sell-hero-icon{width:52px;height:52px;font-size:1.5rem}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loadingScreen">
+  <div class="spinner"></div>
+  <p>Loading...</p>
+</div>
+
+<!-- Header -->
+<header class="acc-header">
+  <div class="acc-brand" onclick="window.location.href='/'">
+    <span class="acc-brand-chip">BUYZO</span>
+    <span>Cart</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn-back" onclick="window.history.back()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back
+    </button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Not Logged In -->
+  <div id="authGate" style="display:none">
+    <div class="empty-state">
+      <div class="empty-icon">🔐</div>
+      <div class="empty-title">Login Required</div>
+      <div class="empty-desc">You need to be logged in to list a product for sale on Buyzo Cart.</div>
+      <button class="btn" onclick="window.location.href='/'">Go to Homepage &amp; Login</button>
+    </div>
+  </div>
+
+  <!-- Success Screen -->
+  <div id="successScreen" style="display:none">
+    <div class="success-card">
+      <div class="success-icon-big">🎉</div>
+      <h2>Product Listed!</h2>
+      <p>Your product is now live on Buyzo Cart. Buyers can discover it in search and categories.</p>
+      <div class="success-preview" id="successPreview" style="display:none">
+        <img id="successImg" src="" alt="">
+        <div class="success-preview-body">
+          <div class="success-preview-name" id="successName"></div>
+          <div class="success-preview-price" id="successPrice"></div>
+          <div class="success-preview-cat" id="successCat"></div>
+        </div>
+      </div>
+      <div class="success-actions">
+        <button class="btn" onclick="window.location.href='/'">View on Store</button>
+        <button class="btn-outline" onclick="resetForm()">List Another</button>
+        <button class="btn-outline" onclick="window.location.href='account.html'">My Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sell Form -->
+  <div id="sellForm" style="display:none">
+
+    <!-- Banner -->
+    <div class="sell-hero">
+      <div class="sell-hero-icon">🏪</div>
+      <div>
+        <h1>Sell Your Product</h1>
+        <p>List in minutes — reach thousands of buyers on Buyzo Cart.</p>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="tips">
+      <h4>💡 Tips for a great listing</h4>
+      <ul>
+        <li>Use a clear, specific title — include brand, model, size or color</li>
+        <li>Upload crisp photos from multiple angles (first photo = cover)</li>
+        <li>Be honest about condition — builds buyer trust</li>
+        <li>Set a competitive price — check similar listings first</li>
+      </ul>
+    </div>
+
+    <!-- ① Product Info -->
+    <div class="card">
+      <div class="card-title">📦 Product Information</div>
+
+      <div class="form-group">
+        <label class="form-label">Product Title <span class="req">*</span></label>
+        <input type="text" class="form-control" id="spTitle" maxlength="120"
+          placeholder="e.g., Apple iPhone 14 Pro 256GB Deep Purple"
+          oninput="document.getElementById('spTitleCount').textContent=this.value.length">
+        <div class="form-hint"><span id="spTitleCount">0</span>/120 characters</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description <span class="req">*</span></label>
+        <textarea class="form-control" id="spDesc" rows="5" maxlength="2000"
+          placeholder="Describe features, specifications, what's included, known defects..."
+          oninput="document.getElementById('spDescCount').textContent=this.value.length"></textarea>
+        <div class="form-hint"><span id="spDescCount">0</span>/2000 characters</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Selling Price (₹) <span class="req">*</span></label>
+          <input type="number" class="form-control" id="spPrice" placeholder="Enter price" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Original / MRP (₹)</label>
+          <input type="number" class="form-control" id="spMrp" placeholder="Optional — shows discount %">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Condition <span class="req">*</span></label>
+        <div class="cond-opts">
+          <button type="button" class="cond-btn selected" data-val="new">Brand New</button>
+          <button type="button" class="cond-btn" data-val="like-new">Like New</button>
+          <button type="button" class="cond-btn" data-val="good">Good</button>
+          <button type="button" class="cond-btn" data-val="fair">Fair</button>
+          <button type="button" class="cond-btn" data-val="refurbished">Refurbished</button>
+        </div>
+        <input type="hidden" id="spCondition" value="new">
+      </div>
+    </div>
+
+    <!-- ② Category -->
+    <div class="card">
+      <div class="card-title">🏷️ Category <span style="color:var(--error);font-size:.82rem">*</span></div>
+      <div class="cat-grid" id="spCatGrid">
+        <div class="cat-option selected" data-cat="electronics"><span class="cat-emoji">📱</span>Electronics</div>
+        <div class="cat-option" data-cat="clothing"><span class="cat-emoji">👕</span>Clothing</div>
+        <div class="cat-option" data-cat="home"><span class="cat-emoji">🏠</span>Home</div>
+        <div class="cat-option" data-cat="sports"><span class="cat-emoji">⚽</span>Sports</div>
+        <div class="cat-option" data-cat="books"><span class="cat-emoji">📚</span>Books</div>
+        <div class="cat-option" data-cat="beauty"><span class="cat-emoji">💄</span>Beauty</div>
+        <div class="cat-option" data-cat="toys"><span class="cat-emoji">🧸</span>Toys</div>
+        <div class="cat-option" data-cat="other"><span class="cat-emoji">📦</span>Other</div>
+      </div>
+      <input type="hidden" id="spCategory" value="electronics">
+      <div class="form-group" style="margin-top:1rem">
+        <label class="form-label">Sub-category / Type</label>
+        <input type="text" class="form-control" id="spSubcat"
+          placeholder="e.g., Smartphones, Running Shoes, Fiction Books">
+      </div>
+    </div>
+
+    <!-- ③ Photos -->
+    <div class="card">
+      <div class="card-title">📸 Product Photos <span style="color:var(--error);font-size:.82rem">*</span></div>
+      <div class="upload-zone" id="spUploadZone">
+        <input type="file" id="spFileInput" accept="image/*" multiple>
+        <div class="upload-icon">📷</div>
+        <h3>Click to select or drag &amp; drop photos</h3>
+        <p>JPG, PNG, WebP · Max 5 MB per photo · Up to 5 photos</p>
+        <p style="font-size:.75rem;margin-top:.25rem;color:var(--text-secondary)">First photo becomes the cover image</p>
+      </div>
+      <div class="upload-progress" id="spProgress"><div class="upload-progress-bar" id="spProgressBar"></div></div>
+      <div class="img-previews" id="spPreviews"></div>
+    </div>
+
+    <!-- ④ More Details -->
+    <div class="card">
+      <div class="card-title">✏️ Additional Details</div>
+
+      <div class="form-group">
+        <label class="form-label">Tags / Keywords</label>
+        <div class="tags-wrap" id="spTagsWrap" onclick="document.getElementById('spTagInput').focus()">
+          <input type="text" id="spTagInput" class="tag-input-free" placeholder="Type a keyword, press Enter...">
+        </div>
+        <div class="form-hint">Help buyers find your product — e.g., "wireless", "gaming", "kids", "gift"</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Brand / Manufacturer</label>
+          <input type="text" class="form-control" id="spBrand" placeholder="e.g., Samsung, Nike, IKEA">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantity in Stock</label>
+          <input type="number" class="form-control" id="spStock" value="1" min="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button class="btn btn-full" id="spSubmitBtn" onclick="submitProduct()">
+      <span id="spBtnText">🚀 List My Product</span>
+    </button>
+
+  </div><!-- /#sellForm -->
+</main>
+
+<div id="spToast"></div>
+
+<script>
+  // ── Firebase Init (config.js first, fallback hardcoded) ────────────────
+  const _FC = (window.BZ_CONFIG && window.BZ_CONFIG.firebase) ? window.BZ_CONFIG.firebase : {
+    apiKey:"AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
+    authDomain:"buyzocart.firebaseapp.com",
+    databaseURL:"https://buyzocart-default-rtdb.firebaseio.com",
+    projectId:"buyzocart",
+    storageBucket:"buyzocart.firebasestorage.app",
+    messagingSenderId:"640560737762",
+    appId:"1:640560737762:web:7fe368df6486d6da759dbb"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(_FC);
+  const db = firebase.database(), storage = firebase.storage(), auth = firebase.auth();
+
+  // ── State ──
+  let currentUser = null, selectedImages = [], selectedTags = [];
+  let selectedCond = 'new', selectedCat = 'electronics';
+
+  // ── Auth Check ──
+  auth.onAuthStateChanged(user => {
+    document.getElementById('loadingScreen').style.display = 'none';
+    currentUser = user;
+    if (!user) {
+      document.getElementById('authGate').style.display = 'block';
+    } else {
+      document.getElementById('sellForm').style.display = 'block';
+      loadCategoriesFromFirebase();
+    }
+  });
+
+  // ── Load real categories from Firebase (overwrite defaults) ──
+  function loadCategoriesFromFirebase() {
+    db.ref('categories').once('value').then(snap => {
+      if (!snap.exists()) return;
+      const cats = [];
+      snap.forEach(c => { if ((c.val().status || 'active') === 'active') cats.push({ id: c.key, ...c.val() }); });
+      if (!cats.length) return;
+      const emojiMap = { electronics:'📱',clothing:'👕',fashion:'👗',home:'🏠',sports:'⚽',
+        books:'📚',beauty:'💄',toys:'🧸',food:'🍔',health:'💊',automotive:'🚗',
+        music:'🎵',art:'🎨',jewelry:'💍',other:'📦' };
+      const grid = document.getElementById('spCatGrid');
+      grid.innerHTML = '';
+      cats.forEach((cat, i) => {
+        const name = cat.name || cat.id || 'Category';
+        const emoji = emojiMap[name.toLowerCase()] || emojiMap[(cat.id||'').toLowerCase()] || '📦';
+        const div = document.createElement('div');
+        div.className = 'cat-option' + (i === 0 ? ' selected' : '');
+        div.dataset.cat = cat.id;
+        div.innerHTML = `<span class="cat-emoji">${emoji}</span>${name}`;
+        div.addEventListener('click', () => selectCat(cat.id, div));
+        grid.appendChild(div);
+      });
+      selectedCat = cats[0].id;
+      document.getElementById('spCategory').value = selectedCat;
+    }).catch(() => {});
+  }
+
+  // ── Category Select ──
+  document.getElementById('spCatGrid').addEventListener('click', e => {
+    const opt = e.target.closest('.cat-option');
+    if (opt) selectCat(opt.dataset.cat, opt);
+  });
+  function selectCat(id, el) {
+    document.querySelectorAll('.cat-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCat = id;
+    document.getElementById('spCategory').value = id;
+  }
+
+  // ── Condition ──
+  document.querySelectorAll('.cond-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cond-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedCond = btn.dataset.val;
+      document.getElementById('spCondition').value = selectedCond;
+    });
+  });
+
+  // ── Image Upload ──
+  const zone = document.getElementById('spUploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); handleFiles([...e.dataTransfer.files].filter(f => f.type.startsWith('image/'))); });
+  document.getElementById('spFileInput').addEventListener('change', function() { handleFiles([...this.files]); this.value = ''; });
+
+  function handleFiles(files) {
+    const rem = 5 - selectedImages.length;
+    if (rem <= 0) { toast('Max 5 photos allowed', 'error'); return; }
+    files.slice(0, rem).forEach(file => {
+      if (file.size > 5 * 1024 * 1024) { toast(file.name + ' is too large (max 5MB)', 'error'); return; }
+      const id = 'i' + Date.now() + Math.random().toString(36).slice(2);
+      const r = new FileReader();
+      r.onload = e => { selectedImages.push({ file, dataUrl: e.target.result, id }); renderPreviews(); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  function renderPreviews() {
+    const wrap = document.getElementById('spPreviews');
+    wrap.innerHTML = '';
+    selectedImages.forEach((img, i) => {
+      const div = document.createElement('div');
+      div.className = 'preview-thumb';
+      div.innerHTML = `<img src="${img.dataUrl}" alt="">
+        ${i === 0 ? '<span class="cover-badge">COVER</span>' : ''}
+        <button class="remove-img" onclick="removeImg('${img.id}')">×</button>`;
+      wrap.appendChild(div);
+    });
+  }
+
+  function removeImg(id) { selectedImages = selectedImages.filter(i => i.id !== id); renderPreviews(); }
+
+  // ── Tag Input ──
+  const tagIn = document.getElementById('spTagInput');
+  tagIn.addEventListener('keydown', function(e) {
+    if ((e.key === 'Enter' || e.key === ',') && this.value.trim()) {
+      e.preventDefault(); addTag(this.value.trim().replace(/,/g,'')); this.value = '';
+    } else if (e.key === 'Backspace' && !this.value && selectedTags.length) {
+      removeTag(selectedTags[selectedTags.length - 1]);
+    }
+  });
+  function addTag(t) { if (!t || selectedTags.includes(t) || selectedTags.length >= 10) return; selectedTags.push(t); renderTags(); }
+  function removeTag(t) { selectedTags = selectedTags.filter(x => x !== t); renderTags(); }
+  function renderTags() {
+    const wrap = document.getElementById('spTagsWrap');
+    wrap.querySelectorAll('.tag-chip').forEach(c => c.remove());
+    selectedTags.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'tag-chip';
+      chip.innerHTML = `${t} <span class="tag-remove" onclick="removeTag('${t}')">×</span>`;
+      wrap.insertBefore(chip, tagIn);
+    });
+  }
+
+  // ── Upload to Firebase Storage ──
+  async function uploadImages(productId) {
+    if (!selectedImages.length) return [];
+    const urls = [], bar = document.getElementById('spProgressBar'), prog = document.getElementById('spProgress');
+    prog.style.display = 'block';
+    for (let i = 0; i < selectedImages.length; i++) {
+      const img = selectedImages[i];
+      const ext = img.file.name.split('.').pop() || 'jpg';
+      bar.style.width = Math.round(((i + 0.5) / selectedImages.length) * 100) + '%';
+      try {
+        const ref = storage.ref(`products/${productId}/img_${i}.${ext}`);
+        await ref.put(img.file);
+        urls.push(await ref.getDownloadURL());
+      } catch { urls.push(img.dataUrl); } // fallback base64
+      bar.style.width = Math.round(((i + 1) / selectedImages.length) * 100) + '%';
+    }
+    setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 600);
+    return urls;
+  }
+
+  // ── Validation ──
+  function validate() {
+    const t = document.getElementById('spTitle').value.trim();
+    const d = document.getElementById('spDesc').value.trim();
+    const p = parseFloat(document.getElementById('spPrice').value);
+    if (t.length < 3)     { toast('Enter a valid product title (min 3 chars)', 'error'); return false; }
+    if (d.length < 10)    { toast('Write a description (min 10 chars)', 'error'); return false; }
+    if (!p || p <= 0)     { toast('Enter a valid selling price', 'error'); return false; }
+    if (!selectedCat)     { toast('Select a category', 'error'); return false; }
+    if (!selectedImages.length) { toast('Add at least one product photo', 'error'); return false; }
+    return true;
+  }
+
+  // ── Submit ──
+  async function submitProduct() {
+    if (!currentUser) { toast('Please log in first', 'error'); return; }
+    if (!validate()) return;
+    const btn = document.getElementById('spSubmitBtn'), txt = document.getElementById('spBtnText');
+    btn.disabled = true;
+    txt.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;animation:spin .8s linear infinite;"></div>Uploading photos...';
+    try {
+      const productId = 'prod_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      const imageUrls = await uploadImages(productId);
+      txt.textContent = 'Saving product...';
+      const data = {
+        id: productId,
+        name:          document.getElementById('spTitle').value.trim(),
+        title:         document.getElementById('spTitle').value.trim(),
+        description:   document.getElementById('spDesc').value.trim(),
+        desc:          document.getElementById('spDesc').value.trim().slice(0, 120),
+        price:         parseFloat(document.getElementById('spPrice').value),
+        originalPrice: parseFloat(document.getElementById('spMrp').value) || null,
+        category:      selectedCat,
+        subcategory:   document.getElementById('spSubcat').value.trim() || null,
+        condition:     selectedCond,
+        brand:         document.getElementById('spBrand').value.trim() || null,
+        stock:         parseInt(document.getElementById('spStock').value) || 1,
+        tags:          selectedTags,
+        images:        imageUrls,
+        image:         imageUrls[0] || null,
+        status:        'active',           // immediately live
+        source:        'user_listing',     // admin can filter by this
+        sellerId:      currentUser.uid,
+        sellerName:    currentUser.displayName || 'Seller',
+        sellerEmail:   currentUser.email || null,
+        createdAt:     Date.now(),
+        updatedAt:     Date.now(),
+        reviewCount:   0,
+        views:         0,
+        trending:      false
+      };
+      // Save to products/ (same path main.js reads from → instantly visible on homepage)
+      await db.ref('products/' + productId).set(data);
+      // Save to userListings/ for account page "My Listings"
+      await db.ref('userListings/' + currentUser.uid + '/' + productId).set({
+        productId, title: data.title, price: data.price, image: data.image,
+        category: data.category, status: 'active', createdAt: Date.now()
+      });
+      showSuccess(data);
+    } catch (err) {
+      toast('Failed: ' + (err.message || 'Unknown error'), 'error');
+      btn.disabled = false;
+      txt.textContent = '🚀 List My Product';
+    }
+  }
+
+  function showSuccess(product) {
+    document.getElementById('sellForm').style.display = 'none';
+    const ss = document.getElementById('successScreen');
+    ss.style.display = 'block';
+    if (product.image) {
+      document.getElementById('successPreview').style.display = 'block';
+      document.getElementById('successImg').src = product.image;
+      document.getElementById('successName').textContent = product.name;
+      document.getElementById('successPrice').textContent = '₹' + product.price.toLocaleString('en-IN');
+      document.getElementById('successCat').textContent = product.category;
+    }
+    window.scrollTo(0, 0);
+  }
+
+  function resetForm() {
+    ['spTitle','spDesc','spPrice','spMrp','spSubcat','spBrand'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('spStock').value = '1';
+    document.getElementById('spTitleCount').textContent = '0';
+    document.getElementById('spDescCount').textContent = '0';
+    document.getElementById('spPreviews').innerHTML = '';
+    document.getElementById('spTagsWrap').querySelectorAll('.tag-chip').forEach(c => c.remove());
+    selectedImages = []; selectedTags = [];
+    document.querySelectorAll('.cond-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector('.cond-btn[data-val="new"]').classList.add('selected');
+    selectedCond = 'new';
+    document.getElementById('spSubmitBtn').disabled = false;
+    document.getElementById('spBtnText').textContent = '🚀 List My Product';
+    document.getElementById('successScreen').style.display = 'none';
+    document.getElementById('sellForm').style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+
+  // ── Toast ──
+  function toast(msg, type = 'success') {
+    const el = document.getElementById('spToast');
+    el.textContent = msg; el.className = type; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  // ── Theme sync with rest of site ──
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
+</script>
+</body>
+</html>

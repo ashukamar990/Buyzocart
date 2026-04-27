@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="config.js"></script>
   <style>
     :root {
       --primary: #2563eb;
@@ -134,12 +133,6 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
-    }
-    .address-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.25rem;
-      margin-bottom: 1.5rem;
     }
     .form-group { margin-bottom: 1.25rem; }
     .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); }
@@ -399,11 +392,19 @@
           </div>
           <span class="menu-label">Settings</span>
         </div>
-        <div class="menu-item" onclick="accOpenSellProduct()" id="sellProductMenuItem">
-          <div class="menu-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        <!-- Sell Product shortcut -->
+        <div class="menu-item" onclick="window.location.href='sell-product.html'" style="border-color:var(--primary)">
+          <div class="menu-icon" style="background:linear-gradient(135deg,#2563eb,#7c3aed)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </div>
-          <span class="menu-label">Sell Product</span>
+          <span class="menu-label" style="color:var(--primary)">Sell Product</span>
+        </div>
+        <!-- My Listings shortcut -->
+        <div class="menu-item" onclick="accShowSubPage('myListingsPage')">
+          <div class="menu-icon" style="background:#16a34a">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <span class="menu-label">My Listings</span>
         </div>
       </div>
       <div class="grid">
@@ -432,9 +433,9 @@
           <div class="settings-item">
             <div class="settings-info">
               <h4>Two-Factor Authentication &nbsp;<span id="twoFactorComingSoonBadge" style="background:#f59e0b;color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle">COMING SOON</span></h4>
-              <p id="twoFactorStatusText">Extra security — Will be enabled by Admin</p>
+              <p id="twoFactorStatusText">Adds an extra layer of security to your account</p>
             </div>
-            <label class="toggle" title="Will be enabled by Admin">
+            <label class="toggle" title="Will be enabled by admin">
               <input type="checkbox" id="twoFactorToggle" disabled style="pointer-events:none">
               <span class="toggle-slider" id="twoFactorSlider" style="opacity:0.4"></span>
             </label>
@@ -524,7 +525,7 @@
           Add New Address
         </button>
       </div>
-      <div id="savedAddresses" class="address-grid"></div>
+      <div id="savedAddresses"></div>
       <div class="card" id="newAddressForm" style="display:none">
         <div class="card-header"><h3 class="card-title" id="addressFormTitle">Add New Address</h3></div>
         <div class="form-group"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="addressName" placeholder="Enter full name"></div>
@@ -540,6 +541,21 @@
         </div>
       </div>
     </section>
+    <section class="page" id="myListingsPage">
+      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back to Account
+      </button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem">
+        <h2>My Product Listings</h2>
+        <a href="sell-product.html" class="btn" style="display:inline-flex;align-items:center;gap:0.5rem;text-decoration:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          List New Product
+        </a>
+      </div>
+      <div id="myListingsContainer"></div>
+    </section>
+
     <section class="page" id="wishlistPage">
       <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -556,101 +572,8 @@
       <h2 style="margin-bottom:1.5rem">My Orders</h2>
       <div id="ordersList"></div>
     </section>
-
-    <!-- Sell Product Page -->
-    <section class="page" id="sellProductPage">
-      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Back to Account
-      </button>
-      <div id="sellProductContent"></div>
-    </section>
-
-    <!-- Seller Dashboard Page -->
-    <section class="page" id="sellerDashboardPage">
-      <button class="btn-outline btn-sm" onclick="accGoBack()" style="margin-bottom:1.5rem">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Back to Account
-      </button>
-      <h2 style="margin-bottom:0.5rem">Seller Dashboard</h2>
-      <p style="color:var(--text-secondary);margin-bottom:1.5rem;font-size:0.875rem">Manage your products, orders and track your earnings</p>
-      
-      <!-- Seller Stats -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem;">
-        <div class="card" style="text-align:center;padding:1.25rem 1rem;">
-          <div style="font-size:1.8rem;font-weight:800;color:var(--primary)" id="sellerTotalProducts">0</div>
-          <div style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">My Products</div>
-        </div>
-        <div class="card" style="text-align:center;padding:1.25rem 1rem;">
-          <div style="font-size:1.8rem;font-weight:800;color:#16a34a" id="sellerTotalOrders">0</div>
-          <div style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">Orders</div>
-        </div>
-        <div class="card" style="text-align:center;padding:1.25rem 1rem;">
-          <div style="font-size:1.8rem;font-weight:800;color:#f59e0b" id="sellerPendingOrders">0</div>
-          <div style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">Pending</div>
-        </div>
-        <div class="card" style="text-align:center;padding:1.25rem 1rem;">
-          <div style="font-size:1.8rem;font-weight:800;color:#8b5cf6" id="sellerEarnings">₹0</div>
-          <div style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">Earnings</div>
-        </div>
-      </div>
-
-      <!-- Seller Tabs -->
-      <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:1.5rem;gap:0;overflow-x:auto;">
-        <div style="padding:10px 18px;cursor:pointer;border-bottom:2px solid var(--primary);margin-bottom:-2px;color:var(--primary);font-weight:600;font-size:13px;white-space:nowrap;" id="sellerTabProducts" onclick="switchSellerTab('products')">My Products</div>
-        <div style="padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text-secondary);font-size:13px;white-space:nowrap;" id="sellerTabOrders" onclick="switchSellerTab('orders')">Orders</div>
-      </div>
-
-      <div id="sellerProductsTab">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-          <h3 style="font-size:1rem;font-weight:600;">My Products</h3>
-          <button class="btn btn-sm" onclick="accShowSellerAddProduct()">+ Add Product</button>
-        </div>
-        <div id="sellerProductsList"></div>
-      </div>
-      <div id="sellerOrdersTab" style="display:none;">
-        <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem;">Orders for My Products</h3>
-        <div id="sellerOrdersList"></div>
-      </div>
-    </section>
   </main>
   <div class="toast" id="accToast"></div>
-  <div class="modal" id="sellerAddProductModal">
-    <div class="modal-content" style="max-width:600px;">
-      <div class="modal-header">
-        <h3 class="modal-title" id="sellerProductModalTitle">Add New Product</h3>
-        <button class="modal-close" onclick="accCloseModal('sellerAddProductModal')">×</button>
-      </div>
-      <div style="max-height:70vh;overflow-y:auto;padding-right:5px;">
-        <input type="hidden" id="sellerEditProductId">
-        <div class="form-group"><label class="form-label">Product Name *</label><input type="text" class="form-control" id="sellerProductName" placeholder="e.g. Trendy Cotton T-Shirt"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-          <div class="form-group"><label class="form-label">Price (₹) *</label><input type="number" class="form-control" id="sellerProductPrice" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Stock Qty *</label><input type="number" class="form-control" id="sellerProductStock" placeholder="0"></div>
-        </div>
-        <div class="form-group"><label class="form-label">Category *</label>
-          <select class="form-control" id="sellerProductCategory">
-            <option value="">Select Category</option>
-            <option>Electronics</option><option>Fashion & Clothing</option><option>Home & Living</option>
-            <option>Books & Stationery</option><option>Sports & Fitness</option><option>Beauty & Personal Care</option>
-            <option>Toys & Games</option><option>Food & Beverages</option><option>Other</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">Short Description *</label><input type="text" class="form-control" id="sellerProductDesc" placeholder="Briefly describe your product"></div>
-        <div class="form-group"><label class="form-label">Full Details</label><textarea class="form-control" id="sellerProductFullDesc" rows="3" placeholder="Detailed product specifications..."></textarea></div>
-        <div class="form-group">
-          <label class="form-label">Product Images *</label>
-          <input type="file" class="form-control" id="sellerProductImages" multiple accept="image/*">
-          <div id="sellerImagePreviews" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-outline" onclick="accCloseModal('sellerAddProductModal')">Cancel</button>
-        <button class="btn" id="sellerSaveProductBtn">Save Product</button>
-      </div>
-    </div>
-  </div>
-
   <div class="modal" id="changePasswordModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -722,11 +645,6 @@
           if (typeof acc2FACheckAdminStatus === 'function')
             setTimeout(() => acc2FACheckAdminStatus(user.uid), 600);
         } else if (n < 40) setTimeout(() => waitReady(n+1), 50);
-        // Check hash for direct navigation
-        const hash = window.location.hash;
-        if (hash === '#sell') {
-          setTimeout(accOpenSellProduct, 500);
-        }
       })(0);
     });
     (function() {
@@ -895,22 +813,6 @@
           if (data.settings) accLoadSettings(data.settings);
         }
       }).catch(() => {});
-      
-      // Check if user is an approved seller
-      fb.get(fb.ref(fb.db, 'sellerRequests/' + user.uid)).then(snap => {
-        if (snap.exists()) {
-          const sellerData = snap.val();
-          const menuItem = document.getElementById('sellProductMenuItem');
-          if (sellerData.status === 'approved' && menuItem) {
-            // Update sell product menu item label to show "My Shop"
-            const label = menuItem.querySelector('.menu-label');
-            if (label) label.textContent = 'My Shop';
-            // Add green badge
-            const icon = menuItem.querySelector('.menu-icon');
-            if (icon) icon.style.background = 'linear-gradient(135deg,#16a34a,#059669)';
-          }
-        }
-      }).catch(() => {});
     }
     function accSaveProfile() {
       const fb = window._accFb;
@@ -997,46 +899,32 @@
     function accSaveAddress() {
       const fb = window._accFb;
       const user = window._accCurrentUser;
-      if (!fb || !user) { accShowToast('Please login again', 'error'); return; }
+      if (!fb || !user) return;
       const address = {
-        name: document.getElementById('addressName')?.value?.trim() || '',
-        mobile: document.getElementById('addressMobile')?.value?.trim() || '',
-        pincode: document.getElementById('addressPincode')?.value?.trim() || '',
-        city: document.getElementById('addressCity')?.value?.trim() || '',
-        state: document.getElementById('addressState')?.value?.trim() || '',
-        street: document.getElementById('addressStreet')?.value?.trim() || '',
+        name: document.getElementById('addressName')?.value || '',
+        mobile: document.getElementById('addressMobile')?.value || '',
+        pincode: document.getElementById('addressPincode')?.value || '',
+        city: document.getElementById('addressCity')?.value || '',
+        state: document.getElementById('addressState')?.value || '',
+        street: document.getElementById('addressStreet')?.value || '',
         type: document.getElementById('addressType')?.value || 'home',
         userId: user.uid,
         updatedAt: Date.now()
       };
-      if (!address.name) { accShowToast('Please enter full name', 'error'); return; }
-      if (!address.mobile || address.mobile.length < 10) { accShowToast('Please enter valid mobile number', 'error'); return; }
-      if (!address.pincode) { accShowToast('Please enter pincode', 'error'); return; }
-      if (!address.city) { accShowToast('Please enter city', 'error'); return; }
-      if (!address.state) { accShowToast('Please enter state', 'error'); return; }
-      if (!address.street) { accShowToast('Please enter address', 'error'); return; }
-
-      const saveBtn = document.getElementById('saveAddress');
-      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
-
+      if (!address.name || !address.mobile || !address.pincode || !address.city || !address.state || !address.street) {
+        accShowToast('Please fill all required fields', 'error'); return;
+      }
       const promise = _accEditingAddressId
         ? fb.update(fb.ref(fb.db, 'addresses/' + _accEditingAddressId), address)
-        : fb.push(fb.ref(fb.db, 'addresses'), { ...address, createdAt: Date.now() });
-
+        : fb.push(fb.ref(fb.db, 'addresses'), address);
       promise
         .then(() => {
-          accShowToast('Address ' + (_accEditingAddressId ? 'updated' : 'saved') + ' successfully! ✅', 'success');
+          accShowToast('Address ' + (_accEditingAddressId ? 'updated' : 'added') + ' successfully', 'success');
           accHideAddressForm();
-          accLoadAddresses(user);
+          accLoadAddresses();
           localStorage.setItem('bz_address_updated', Date.now().toString());
         })
-        .catch(err => {
-          console.error('Address save error:', err);
-          accShowToast('Failed to save address: ' + (err.message || 'Please try again'), 'error');
-        })
-        .finally(() => {
-          if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Address'; }
-        });
+        .catch(() => accShowToast('Failed to save address', 'error'));
     }
     function accLoadAddresses(userArg) {
       const fb = window._accFb;
@@ -1051,38 +939,22 @@
             container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
             return;
           }
-          const addresses = [];
           snap.forEach(child => {
-            addresses.push({ id: child.key, ...child.val() });
-          });
-
-          // Sort default first, then by date
-          addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
-
-          addresses.forEach(a => {
+            const a = { id: child.key, ...child.val() };
             const card = document.createElement('div');
             card.className = 'address-card' + (a.isDefault ? ' default' : '');
-            card.style.height = '100%';
-            card.style.display = 'flex';
-            card.style.flexDirection = 'column';
             card.innerHTML = `
               <div class="address-card-header">
                 <span class="address-type-badge">${a.type || 'home'}</span>
                 ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
               </div>
-              <div style="font-weight:700;margin-bottom:0.4rem;font-size:0.95rem;">${a.name}</div>
-              <div style="color:var(--text-secondary);font-size:0.85rem;line-height:1.4;flex:1;">
-                ${a.street}<br>
-                ${a.city}, ${a.state} - ${a.pincode}
-              </div>
-              <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.6rem;font-weight:500;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                ${a.mobile}
-              </div>
-              <div class="address-actions" style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);">
-                <button class="btn-outline btn-sm" onclick="accEditAddress('${a.id}')" style="padding:4px 10px;">Edit</button>
-                <button class="btn-outline btn-sm" onclick="accDeleteAddress('${a.id}')" style="padding:4px 10px;color:var(--error);border-color:rgba(239,68,68,0.2);">Delete</button>
-                ${!a.isDefault ? `<button class="btn-outline btn-sm" onclick="accSetDefaultAddress('${a.id}')" style="padding:4px 10px;margin-left:auto;">Set Default</button>` : ''}
+              <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
+              <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
+              <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
+              <div class="address-actions">
+                <button class="btn-outline btn-sm" onclick="accEditAddress('${a.id}')">Edit</button>
+                <button class="btn-outline btn-sm" onclick="accDeleteAddress('${a.id}')">Delete</button>
+                ${!a.isDefault ? `<button class="btn-outline btn-sm" onclick="accSetDefaultAddress('${a.id}')">Set Default</button>` : ''}
               </div>`;
             container.appendChild(card);
           });
@@ -1307,429 +1179,71 @@
         }
       }
     });
-    // ===== SELL PRODUCT FEATURE =====
-    function accOpenSellProduct() {
-      const user = window._accCurrentUser;
-      if (!user) return;
+
+    /* ── My Listings (products listed by this user) ── */
+    function accLoadMyListings(userArg) {
       const fb = window._accFb;
-      
-      // Check seller status
-      fb.get(fb.ref(fb.db, 'sellerRequests/' + user.uid)).then(snap => {
-        if (snap.exists()) {
-          const sellerData = snap.val();
-          if (sellerData.status === 'approved') {
-            // Show seller dashboard
-            accLoadSellerDashboard();
-            accShowSubPage('sellerDashboardPage');
-          } else if (sellerData.status === 'pending') {
-            accShowSubPage('sellProductPage');
-            accRenderSellProductContent('pending', sellerData);
-          } else if (sellerData.status === 'rejected') {
-            accShowSubPage('sellProductPage');
-            accRenderSellProductContent('rejected', sellerData);
-          } else {
-            accShowSubPage('sellProductPage');
-            accRenderSellProductContent('apply');
-          }
-        } else {
-          accShowSubPage('sellProductPage');
-          accRenderSellProductContent('roadmap');
+      const user = userArg || window._accCurrentUser;
+      const container = document.getElementById('myListingsContainer');
+      if (!fb || !user || !container) return;
+      container.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
+      fb.get(fb.ref(fb.db, 'userListings/' + user.uid)).then(function(snap) {
+        container.innerHTML = '';
+        if (!snap.exists()) {
+          container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏪</div><div class="empty-state-title">No listings yet</div><div class="empty-state-description">Start selling by listing your first product</div><a href="sell-product.html" class="btn" style="margin-top:1rem;text-decoration:none">List a Product</a></div>';
+          return;
         }
-      }).catch(() => {
-        accShowSubPage('sellProductPage');
-        accRenderSellProductContent('roadmap');
-      });
-    }
-
-    function accRenderSellProductContent(view, data) {
-      const container = document.getElementById('sellProductContent');
-      if (!container) return;
-
-      if (view === 'roadmap') {
-        container.innerHTML = `
-          <div style="text-align:center;margin-bottom:2rem;">
-            <div style="font-size:3rem;margin-bottom:0.75rem;">🏪</div>
-            <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:0.5rem;">Start Selling on Buyzo Cart</h2>
-            <p style="color:var(--text-secondary);max-width:500px;margin:0 auto;">Reach thousands of customers. List your products and grow your business with us.</p>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;">
-            ${[
-              ['1','📝','Apply to Sell','Fill your seller information and submit your application.'],
-              ['2','⏳','Wait for Approval','Our team reviews your application within 2-3 business days.'],
-              ['3','🎯','Get Your Dashboard','Once approved, you get your own seller dashboard.'],
-              ['4','📦','List Products','Add your products with images, prices and descriptions.'],
-              ['5','💰','Start Earning','When customers order, you get notified and paid.']
-            ].map(([num,icon,title,desc]) => `
-              <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-                <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 0.75rem;">${num}</div>
-                <div style="font-size:1.5rem;margin-bottom:0.5rem;">${icon}</div>
-                <div style="font-weight:700;margin-bottom:0.35rem;font-size:0.95rem;">${title}</div>
-                <div style="font-size:0.8rem;color:var(--text-secondary);">${desc}</div>
-              </div>`).join('')}
-          </div>
-          <div class="card" style="text-align:center;padding:2rem;">
-            <h3 style="margin-bottom:0.5rem;">Ready to Start?</h3>
-            <p style="color:var(--text-secondary);margin-bottom:1.25rem;font-size:0.875rem;">Apply now and join our growing seller community</p>
-            <button class="btn" onclick="accRenderSellProductContent('apply')">Apply to Sell →</button>
-          </div>`;
-
-      } else if (view === 'apply') {
-        container.innerHTML = `
-          <div style="max-width:600px;margin:0 auto;">
-            <h2 style="margin-bottom:0.5rem;">Seller Application</h2>
-            <p style="color:var(--text-secondary);margin-bottom:1.5rem;font-size:0.875rem;">Fill in your details to become a seller on Buyzo Cart</p>
-            <div class="card">
-              <h3 class="card-title" style="margin-bottom:1.25rem;">Personal Information</h3>
-              <div class="form-group"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="sellerName" placeholder="Your legal name"></div>
-              <div class="form-group"><label class="form-label">Phone Number *</label><input type="tel" class="form-control" id="sellerPhone" placeholder="10-digit mobile number"></div>
-              <div class="form-group"><label class="form-label">Business Name *</label><input type="text" class="form-control" id="sellerBusinessName" placeholder="Your shop/business name"></div>
-              <div class="form-group"><label class="form-label">GST Number (if applicable)</label><input type="text" class="form-control" id="sellerGST" placeholder="e.g. 29ABCDE1234F1Z5" style="text-transform:uppercase;"></div>
-              <div class="form-group"><label class="form-label">Product Category *</label>
-                <select class="form-control" id="sellerCategory">
-                  <option value="">Select category</option>
-                  <option>Electronics</option><option>Fashion & Clothing</option><option>Home & Living</option>
-                  <option>Books & Stationery</option><option>Sports & Fitness</option><option>Beauty & Personal Care</option>
-                  <option>Toys & Games</option><option>Food & Beverages</option><option>Other</option>
-                </select>
+        const listings = [];
+        snap.forEach(function(child) { listings.push({ id: child.key, ...child.val() }); });
+        listings.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+        listings.forEach(function(listing) {
+          const date = listing.createdAt ? new Date(listing.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '';
+          const card = document.createElement('div');
+          card.className = 'order-card';
+          card.innerHTML = `
+            <div class="order-header">
+              <div>
+                <div class="order-id" style="font-size:0.9rem">${listing.title || 'Product'}</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary)">${date}</div>
               </div>
-              <div class="form-group"><label class="form-label">About Your Business</label><textarea class="form-control" id="sellerDescription" rows="3" placeholder="Describe what you sell, your experience, etc."></textarea></div>
+              <span class="order-status ${listing.status === 'active' ? 'confirmed' : 'cancelled'}" style="font-size:0.75rem">
+                ${(listing.status || 'active').charAt(0).toUpperCase() + (listing.status || 'active').slice(1)}
+              </span>
             </div>
-            <div class="card" style="margin-top:1rem;">
-              <h3 class="card-title" style="margin-bottom:1.25rem;">Bank Details (for payments)</h3>
-              <div class="form-group"><label class="form-label">Bank Name *</label><input type="text" class="form-control" id="sellerBankName" placeholder="e.g. State Bank of India"></div>
-              <div class="form-group"><label class="form-label">Account Number *</label><input type="text" class="form-control" id="sellerAccountNumber" placeholder="Your account number"></div>
-              <div class="form-group"><label class="form-label">IFSC Code *</label><input type="text" class="form-control" id="sellerIFSC" placeholder="e.g. SBIN0001234" style="text-transform:uppercase;"></div>
-            </div>
-            <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin:1rem 0;font-size:0.8rem;color:#92400e;">
-              <strong>📋 Note:</strong> Your application will be reviewed within 2-3 business days. You will be notified once approved.
-            </div>
-            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-              <button class="btn" id="sellerSubmitBtn" onclick="accSubmitSellerApplication()">Submit Application</button>
-              <button class="btn-outline" onclick="accRenderSellProductContent('roadmap')">Back to Overview</button>
-            </div>
-          </div>`;
-
-      } else if (view === 'pending') {
-        const appliedDate = data?.appliedAt ? new Date(data.appliedAt).toLocaleDateString('en-IN') : 'N/A';
-        const approvalDays = data?.approvalDays || 3;
-        container.innerHTML = `
-          <div style="text-align:center;max-width:500px;margin:0 auto;">
-            <div style="font-size:4rem;margin-bottom:1rem;">⏳</div>
-            <h2 style="margin-bottom:0.5rem;">Application Under Review</h2>
-            <p style="color:var(--text-secondary);margin-bottom:1.5rem;">Your seller application is being reviewed by our team. This typically takes <strong>${approvalDays} business days</strong>.</p>
-            <div class="card">
-              <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
-                  <span style="color:var(--text-secondary);">Applied on</span><span style="font-weight:600;">${appliedDate}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
-                  <span style="color:var(--text-secondary);">Business Name</span><span style="font-weight:600;">${data?.businessName||'N/A'}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;">
-                  <span style="color:var(--text-secondary);">Status</span><span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:20px;font-weight:700;font-size:0.8rem;">⏳ Pending</span>
-                </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;flex-wrap:wrap;gap:0.5rem">
+              <div style="font-weight:700;color:var(--primary);font-size:1rem">₹${(listing.price || 0).toLocaleString()}</div>
+              <div style="display:flex;gap:0.5rem">
+                <a href="sell-product.html" class="btn-outline btn-sm" style="text-decoration:none">Edit</a>
+                <button class="btn-outline btn-sm" onclick="accDeleteListing('${listing.id}','${listing.productId || listing.id}')">Remove</button>
               </div>
-            </div>
-            <p style="color:var(--text-secondary);font-size:0.8rem;margin-top:1rem;">We'll notify you once your application is reviewed. Check back here for updates.</p>
-          </div>`;
-
-      } else if (view === 'rejected') {
-        container.innerHTML = `
-          <div style="text-align:center;max-width:500px;margin:0 auto;">
-            <div style="font-size:4rem;margin-bottom:1rem;">❌</div>
-            <h2 style="margin-bottom:0.5rem;">Application Not Approved</h2>
-            <p style="color:var(--text-secondary);margin-bottom:1.5rem;">Unfortunately your seller application was not approved this time.</p>
-            ${data?.rejectionReason ? `<div style="background:#fee2e2;border:1px solid #fecaca;border-radius:10px;padding:14px;margin-bottom:1.5rem;text-align:left;"><strong>Reason:</strong> ${data.rejectionReason}</div>` : ''}
-            <button class="btn" onclick="accRenderSellProductContent('apply')">Apply Again</button>
-          </div>`;
-      }
-    }
-
-    function accSubmitSellerApplication() {
-      const user = window._accCurrentUser;
-      const fb = window._accFb;
-      if (!user || !fb) return;
-
-      const name = document.getElementById('sellerName')?.value.trim();
-      const phone = document.getElementById('sellerPhone')?.value.trim();
-      const businessName = document.getElementById('sellerBusinessName')?.value.trim();
-      const category = document.getElementById('sellerCategory')?.value;
-      const bankName = document.getElementById('sellerBankName')?.value.trim();
-      const accountNumber = document.getElementById('sellerAccountNumber')?.value.trim();
-      const ifsc = document.getElementById('sellerIFSC')?.value.trim().toUpperCase();
-
-      if (!name || !phone || !businessName || !category || !bankName || !accountNumber || !ifsc) {
-        accShowToast('Please fill all required fields', 'error'); return;
-      }
-
-      const btn = document.getElementById('sellerSubmitBtn');
-      if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
-
-      const sellerData = {
-        name, phone, businessName, category,
-        email: user.email,
-        gst: document.getElementById('sellerGST')?.value.trim().toUpperCase() || '',
-        description: document.getElementById('sellerDescription')?.value.trim() || '',
-        bankName, accountNumber, ifsc,
-        status: 'pending',
-        appliedAt: Date.now(),
-        uid: user.uid
-      };
-
-      fb.set(fb.ref(fb.db, 'sellerRequests/' + user.uid), sellerData)
-        .then(() => {
-          accShowToast('Application submitted successfully!', 'success');
-          accRenderSellProductContent('pending', sellerData);
-        })
-        .catch(err => {
-          accShowToast('Failed to submit application. Please try again.', 'error');
-          if (btn) { btn.disabled = false; btn.textContent = 'Submit Application'; }
+            </div>`;
+          container.appendChild(card);
         });
-    }
-
-    // ===== SELLER DASHBOARD =====
-    function accLoadSellerDashboard() {
-      const user = window._accCurrentUser;
-      const fb = window._accFb;
-      if (!user || !fb) return;
-
-      // Load seller's products
-      fb.get(fb.ref(fb.db, 'sellerProducts/' + user.uid)).then(snap => {
-        const products = snap.exists() ? Object.entries(snap.val()).map(([k,v]) => ({id:k,...v})) : [];
-        const el = document.getElementById('sellerTotalProducts');
-        if (el) el.textContent = products.length;
-        renderSellerProducts(products);
-      });
-
-      // Load orders for seller's products
-      fb.get(fb.query(fb.ref(fb.db, 'orders'), fb.orderByChild('sellerId'), fb.equalTo(user.uid))).then(snap => {
-        const orders = snap.exists() ? Object.entries(snap.val()).map(([k,v]) => ({id:k,...v})) : [];
-        const total = orders.length;
-        const pending = orders.filter(o => ['pending','confirmed'].includes((o.status||'').toLowerCase())).length;
-        const earnings = orders.filter(o => (o.status||'').toLowerCase() === 'delivered').reduce((s,o) => s+(parseFloat(o.totalAmount)||0), 0);
-        
-        const totalEl = document.getElementById('sellerTotalOrders');
-        const pendingEl = document.getElementById('sellerPendingOrders');
-        const earningsEl = document.getElementById('sellerEarnings');
-        if (totalEl) totalEl.textContent = total;
-        if (pendingEl) pendingEl.textContent = pending;
-        if (earningsEl) earningsEl.textContent = '₹' + earnings.toLocaleString();
-
-        renderSellerOrders(orders);
-      }).catch(() => {});
-    }
-
-    function renderSellerProducts(products) {
-      const el = document.getElementById('sellerProductsList');
-      if (!el) return;
-      if (!products.length) {
-        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No products yet</div><div class="empty-state-description">Add your first product to start selling</div></div>';
-        return;
-      }
-      el.innerHTML = products.map(p => `
-        <div style="display:flex;gap:1rem;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:0.75rem;align-items:center;">
-          <img src="${(p.images||[])[0]||'https://via.placeholder.com/60'}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.src='https://via.placeholder.com/60'">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.2rem;">${p.title||'Product'}</div>
-            <div style="font-size:0.8rem;color:var(--text-secondary);">${p.category||''} • Stock: ${p.stock||0}</div>
-            <div style="font-weight:700;color:var(--primary);font-size:0.9rem;">₹${p.price||0}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <button class="btn-outline btn-sm" onclick="accEditSellerProduct('${p.id}')">Edit</button>
-            <button class="btn-outline btn-sm" style="color:#dc2626;border-color:#fca5a5;" onclick="accDeleteSellerProduct('${p.id}')">Delete</button>
-          </div>
-        </div>`).join('');
-    }
-
-    function renderSellerOrders(orders) {
-      const el = document.getElementById('sellerOrdersList');
-      if (!el) return;
-      if (!orders.length) {
-        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Orders for your products will appear here</div></div>';
-        return;
-      }
-      orders.sort((a,b) => (b.orderDate||0)-(a.orderDate||0));
-      el.innerHTML = orders.map(o => {
-        const s = (o.status||'pending').toLowerCase();
-        const statusMap = {pending:'#fef3c7:#d97706',confirmed:'#dcfce7:#16a34a',shipped:'#dbeafe:#1d4ed8',delivered:'#dcfce7:#15803d',cancelled:'#fee2e2:#dc2626'};
-        const [bg,color] = (statusMap[s]||'#f3f4f6:#374151').split(':');
-        return `<div class="order-card">
-          <div class="order-header">
-            <div><div class="order-id">${o.orderId||('#'+String(o.id).slice(-8))}</div><div style="font-size:0.75rem;color:var(--text-secondary)">${o.orderDate?new Date(o.orderDate).toLocaleDateString('en-IN'):''}</div></div>
-            <span style="background:${bg};color:${color};padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;">${s.charAt(0).toUpperCase()+s.slice(1)}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-            <img src="${o.productImage||'https://via.placeholder.com/56'}" class="order-item-image" onerror="this.src='https://via.placeholder.com/56'">
-            <div><div style="font-weight:500">${o.productName||'Product'}</div><div style="font-size:0.8rem;color:var(--text-secondary)">Qty: ${o.quantity||1} | Customer: ${o.userInfo?.fullName||o.username||'N/A'}</div></div>
-          </div>
-          <div style="font-weight:600;border-top:1px solid var(--border);padding-top:0.75rem">Amount: ₹${o.totalAmount||0}</div>
-        </div>`;
-      }).join('');
-    }
-
-    function switchSellerTab(tab) {
-      document.getElementById('sellerProductsTab').style.display = tab === 'products' ? 'block' : 'none';
-      document.getElementById('sellerOrdersTab').style.display = tab === 'orders' ? 'block' : 'none';
-      ['sellerTabProducts','sellerTabOrders'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          const isActive = id === 'sellerTab' + tab.charAt(0).toUpperCase() + tab.slice(1);
-          el.style.borderBottomColor = isActive ? 'var(--primary)' : 'transparent';
-          el.style.color = isActive ? 'var(--primary)' : 'var(--text-secondary)';
-          el.style.fontWeight = isActive ? '600' : '400';
-        }
+      }).catch(function() {
+        container.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:2rem">Could not load listings.</p>';
       });
     }
 
-    let _sellerUploadedImages = [];
-
-    function accShowSellerAddProduct() {
-      document.getElementById('sellerEditProductId').value = '';
-      document.getElementById('sellerProductModalTitle').textContent = 'Add New Product';
-      document.getElementById('sellerProductName').value = '';
-      document.getElementById('sellerProductPrice').value = '';
-      document.getElementById('sellerProductStock').value = '';
-      document.getElementById('sellerProductCategory').value = '';
-      document.getElementById('sellerProductDesc').value = '';
-      document.getElementById('sellerProductFullDesc').value = '';
-      document.getElementById('sellerImagePreviews').innerHTML = '';
-      _sellerUploadedImages = [];
-      accOpenModal('sellerAddProductModal');
-    }
-
-    let _sellerImageFiles = [];
-
-    document.getElementById('sellerProductImages')?.addEventListener('change', function(e) {
-      const files = Array.from(e.target.files);
-      const preview = document.getElementById('sellerImagePreviews');
-      preview.innerHTML = '';
-      _sellerImageFiles = files;
-
-      for (const file of files) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const img = document.createElement('img');
-          img.src = event.target.result;
-          img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
-          preview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    document.getElementById('sellerSaveProductBtn')?.addEventListener('click', async function() {
-      const user = window._accCurrentUser;
+    window.accDeleteListing = function(listingId, productId) {
       const fb = window._accFb;
-      if (!user || !fb) return;
-
-      const editId = document.getElementById('sellerEditProductId').value;
-      const name = document.getElementById('sellerProductName').value.trim();
-      const price = parseFloat(document.getElementById('sellerProductPrice').value);
-      const stock = parseInt(document.getElementById('sellerProductStock').value);
-      const category = document.getElementById('sellerProductCategory').value;
-      const desc = document.getElementById('sellerProductDesc').value.trim();
-      const fullDesc = document.getElementById('sellerProductFullDesc').value.trim();
-
-      if (!name || isNaN(price) || isNaN(stock) || !category || !desc || (!editId && _sellerImageFiles.length === 0)) {
-        accShowToast('Please fill all required fields and add images', 'error'); return;
-      }
-
-      this.disabled = true;
-      const originalBtnText = this.textContent;
-      this.textContent = 'Uploading images...';
-
-      try {
-        const imgbbKey = window.BZ_CONFIG?.imgbb?.apiKey;
-        const uploadedUrls = editId ? [..._sellerUploadedImages] : [];
-
-        if (_sellerImageFiles.length > 0) {
-          for (const file of _sellerImageFiles) {
-            const formData = new FormData();
-            formData.append('image', file);
-            const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
-              method: 'POST',
-              body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-              uploadedUrls.push(data.data.url);
-            }
-          }
-        }
-
-        this.textContent = 'Saving product...';
-        const productId = editId || ('p_' + Date.now());
-        const productData = {
-          id: productId,
-          title: name,
-          price: price,
-          stock: stock,
-          category: category,
-          desc: desc,
-          fullDesc: fullDesc,
-          images: uploadedUrls,
-          sellerId: user.uid,
-          status: 'active',
-          updatedAt: Date.now()
-        };
-        if (!editId) productData.createdAt = Date.now();
-
-        await fb.set(fb.ref(fb.db, 'products/' + productId), productData);
-        await fb.set(fb.ref(fb.db, 'sellerProducts/' + user.uid + '/' + productId), productData);
-
-        accShowToast('Product saved successfully!', 'success');
-        accCloseModal('sellerAddProductModal');
-        accLoadSellerDashboard();
-      } catch (err) {
-        accShowToast('Error saving product', 'error');
-      } finally {
-        this.disabled = false;
-        this.textContent = originalBtnText;
-        _sellerImageFiles = [];
-      }
-    });
-
-    window.accEditSellerProduct = function(id) {
       const user = window._accCurrentUser;
-      const fb = window._accFb;
-      if (!user || !fb) return;
-
-      fb.get(fb.ref(fb.db, 'sellerProducts/' + user.uid + '/' + id)).then(snap => {
-        if (!snap.exists()) return;
-        const p = snap.val();
-        document.getElementById('sellerEditProductId').value = id;
-        document.getElementById('sellerProductModalTitle').textContent = 'Edit Product';
-        document.getElementById('sellerProductName').value = p.title || '';
-        document.getElementById('sellerProductPrice').value = p.price || '';
-        document.getElementById('sellerProductStock').value = p.stock || '';
-        document.getElementById('sellerProductCategory').value = p.category || '';
-        document.getElementById('sellerProductDesc').value = p.desc || '';
-        document.getElementById('sellerProductFullDesc').value = p.fullDesc || '';
-
-        const preview = document.getElementById('sellerImagePreviews');
-        preview.innerHTML = '';
-        _sellerUploadedImages = p.images || [];
-        _sellerUploadedImages.forEach(src => {
-          const img = document.createElement('img');
-          img.src = src;
-          img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
-          preview.appendChild(img);
-        });
-
-        accOpenModal('sellerAddProductModal');
-      });
-    };
-    window.accDeleteSellerProduct = function(id) {
-      const user = window._accCurrentUser;
-      const fb = window._accFb;
-      if (!user || !fb) return;
-      accShowAlert('Delete Product', 'Are you sure you want to delete this product?', () => {
-        fb.remove(fb.ref(fb.db, 'sellerProducts/' + user.uid + '/' + id))
-          .then(() => { accShowToast('Product deleted', 'success'); accLoadSellerDashboard(); })
-          .catch(() => accShowToast('Failed to delete', 'error'));
+      if (!fb || !user) return;
+      accShowAlert('Remove Listing', 'Are you sure you want to remove this product listing?', function() {
+        const updates = {};
+        if (productId) updates['products/' + productId + '/status'] = 'inactive';
+        updates['userListings/' + user.uid + '/' + listingId + '/status'] = 'inactive';
+        fb.update(fb.ref(fb.db), updates)
+          .then(function() { accShowToast('Listing removed', 'success'); accLoadMyListings(); })
+          .catch(function() { accShowToast('Failed to remove listing', 'error'); });
       });
     };
 
+    // Override accShowSubPage to load listings when navigating there
+    const _origAccShowSubPage = accShowSubPage;
+    accShowSubPage = function(pageId) {
+      _origAccShowSubPage(pageId);
+      if (pageId === 'myListingsPage') accLoadMyListings();
+    };
   </script>
 </body>
 </html>
