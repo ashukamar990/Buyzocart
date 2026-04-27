@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2026-04-27 - Professional Confirmation Modal Pattern
+**Learning:** Using native browser `confirm()` dialogs creates a disjointed user experience and lacks proper state management (like loading indicators) for asynchronous operations. The project's `#alertModal` provides a consistent UI but requires careful management of button states (`disabled`, loading spinners) and error handling (`finally` block) to prevent double-submissions and UI "stuck" states.
+**Action:** Always prefer the custom `#alertModal` for destructive actions, and ensure asynchronous confirmation logic is wrapped in `try...finally` to reset button states and close the modal regardless of the operation's outcome.
