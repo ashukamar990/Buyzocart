@@ -2088,8 +2088,12 @@
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
-        if (index < rating) star.classList.add('active');
+        const isActive = index < rating;
+        if (isActive) star.classList.add('active');
         else star.classList.remove('active');
+        if (star.tagName === 'BUTTON') {
+          star.setAttribute('aria-pressed', isActive);
+        }
       });
     }
 
@@ -2185,15 +2189,26 @@
 
     async function deleteReview(reviewId) {
       if (!currentUser) return;
-      if (!confirm('Are you sure you want to delete this review?')) return;
-      try {
-        await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
-        showToast('Review deleted successfully', 'success');
-        if (currentProduct) loadProductReviews(currentProduct.id);
-      } catch (error) {
-        console.error('Error deleting review:', error);
-        showToast('Failed to delete review', 'error');
-      }
+      const confirmBtn = document.getElementById('alertConfirmBtn');
+      document.getElementById('alertTitle').textContent = 'Delete Review';
+      document.getElementById('alertMessage').textContent = 'Are you sure you want to delete this review?';
+      document.getElementById('alertModal').classList.add('active');
+      confirmBtn.onclick = async function() {
+        try {
+          confirmBtn.disabled = true;
+          confirmBtn.innerHTML = '<div class="loading-spinner"></div> Deleting...';
+          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'reviews/' + reviewId));
+          showToast('Review deleted successfully', 'success');
+          if (currentProduct) loadProductReviews(currentProduct.id);
+        } catch (error) {
+          console.error('Error deleting review:', error);
+          showToast('Failed to delete review', 'error');
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Yes';
+          document.getElementById('alertModal').classList.remove('active');
+        }
+      };
     }
 
     async function checkUserCanReview(productId) {
