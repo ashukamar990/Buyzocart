@@ -5178,83 +5178,10 @@
 
 
 /* ──────────────────────────────────────────────
-   4. "SELL PRODUCT" MENU LINK INJECTION
-   Adds "Sell Product" to the mobile/desktop nav.
+   4. SELL PRODUCT LINK — REMOVED
+   Nav injection disabled. Sell Product link is
+   handled directly in index.html bottom nav.
    ────────────────────────────────────────────── */
-(function injectSellLink() {
-  function doInject() {
-    const sellUrl = 'sell-product.html';
-
-    // ── Desktop / sidebar nav ──
-    const navSelectors = [
-      '#mobileMenu ul',
-      '#sideMenu ul',
-      '.nav-links',
-      '.bottom-nav',
-      '#navLinks',
-    ];
-
-    navSelectors.forEach(sel => {
-      const nav = document.querySelector(sel);
-      if (!nav || nav.querySelector('[data-sell-link]')) return;
-
-      const li = document.createElement('li');
-      li.setAttribute('data-sell-link', '1');
-      li.innerHTML = `
-        <a href="${sellUrl}" style="
-          display:flex;align-items:center;gap:10px;
-          padding:12px 20px;color:inherit;text-decoration:none;
-          font-weight:500;font-size:0.9rem;transition:all 0.2s;
-        ">
-          <span style="font-size:1.1rem;">🏪</span>
-          Sell Product
-        </a>
-      `;
-      nav.appendChild(li);
-    });
-
-    // ── Bottom nav bar (mobile) ──
-    const bottomNav = document.querySelector('.bottom-nav');
-    if (bottomNav && !bottomNav.querySelector('[data-sell-link]')) {
-      const item = document.createElement('div');
-      item.className = 'bottom-nav-item';
-      item.setAttribute('data-sell-link', '1');
-      item.style.cssText = 'cursor:pointer;';
-      item.innerHTML = `
-        <div style="font-size:1.3rem;">🏪</div>
-        <div style="font-size:10px;font-weight:500;">Sell</div>
-      `;
-      item.addEventListener('click', () => { window.location.href = sellUrl; });
-      bottomNav.appendChild(item);
-    }
-
-    // ── Header user area ──
-    const headerRight = document.querySelector('.header-right, .nav-actions, #headerActions');
-    if (headerRight && !headerRight.querySelector('[data-sell-link]')) {
-      const btn = document.createElement('a');
-      btn.href = sellUrl;
-      btn.setAttribute('data-sell-link', '1');
-      btn.style.cssText = `
-        display:inline-flex;align-items:center;gap:6px;
-        padding:7px 14px;background:#2563eb;color:#fff;
-        border-radius:8px;font-size:13px;font-weight:600;
-        text-decoration:none;transition:all 0.2s;
-      `;
-      btn.innerHTML = '🏪 Sell';
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#1d4ed8'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#2563eb'; });
-      headerRight.prepend(btn);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', doInject);
-  } else {
-    doInject();
-    // Also retry after a bit to catch dynamically rendered menus
-    setTimeout(doInject, 800);
-  }
-})();
 
 
 /* ──────────────────────────────────────────────
