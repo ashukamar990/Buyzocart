@@ -5178,10 +5178,78 @@
 
 
 /* ──────────────────────────────────────────────
-   4. SELL PRODUCT LINK — REMOVED
-   Nav injection disabled. Sell Product link is
-   handled directly in index.html bottom nav.
+   4. SELL PRODUCT — CLICK FIX + BOTTOM NAV REMOVE
+   Fixes sidebar menu click not working.
+   Also removes any injected bottom-nav Sell item.
    ────────────────────────────────────────────── */
+(function fixSellProductNav() {
+  function applyFix() {
+
+    // ── 1. REMOVE bottom nav injected Sell item ──────────────────
+    // Remove any previously injected sell items from bottom nav
+    document.querySelectorAll('[data-sell-link]').forEach(el => el.remove());
+
+    // Also find and remove any bottom-nav-item that says "Sell"
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
+      const txt = item.textContent || '';
+      if (txt.toLowerCase().includes('sell')) item.remove();
+    });
+
+    // ── 2. FIX sidebar/hamburger menu Sell Product click ─────────
+    // Find ALL elements in the page that mention "Sell Product"
+    // and make sure clicking them navigates correctly
+    const allLinks = document.querySelectorAll('a, li, div, button, span');
+    allLinks.forEach(el => {
+      const txt = (el.textContent || '').trim().toLowerCase();
+      // Only target exact "sell product" text nodes in nav/menu areas
+      if (txt === 'sell product' || txt === '🏪 sell product' || txt === 'sell') {
+        // Check it's inside a nav/menu container
+        const inMenu = el.closest('#mobileMenu, #sideMenu, .sidebar-menu, .mobile-menu, nav, .menu-list, [class*="menu"], [class*="sidebar"]');
+        if (!inMenu) return;
+
+        // Remove any existing broken handlers by cloning
+        const fresh = el.cloneNode(true);
+        el.parentNode.replaceChild(fresh, el);
+
+        // If it's an <a> tag, fix the href
+        if (fresh.tagName === 'A') {
+          fresh.href = 'sell-product.html';
+          fresh.removeAttribute('onclick');
+          fresh.addEventListener('click', function(e) {
+            e.stopPropagation();
+            // Close sidebar first if open
+            document.querySelector('.sidebar.active, #sideMenu.active, #mobileMenu.active, .mobile-menu.active, [class*="sidebar"].active')?.classList.remove('active');
+            document.querySelector('.sidebar-overlay.active, .overlay.active')?.classList.remove('active');
+            setTimeout(() => { window.location.href = 'sell-product.html'; }, 80);
+          });
+        } else {
+          // For li/div/button — override onclick
+          fresh.style.cursor = 'pointer';
+          fresh.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            document.querySelector('.sidebar.active, #sideMenu.active, #mobileMenu.active, .mobile-menu.active, [class*="sidebar"].active')?.classList.remove('active');
+            document.querySelector('.sidebar-overlay.active, .overlay.active')?.classList.remove('active');
+            setTimeout(() => { window.location.href = 'sell-product.html'; }, 80);
+          });
+        }
+      }
+    });
+  }
+
+  // Run on DOM ready and after a small delay (for dynamically rendered menus)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      applyFix();
+      setTimeout(applyFix, 800);
+      setTimeout(applyFix, 2000);
+    });
+  } else {
+    applyFix();
+    setTimeout(applyFix, 800);
+    setTimeout(applyFix, 2000);
+  }
+})();
 
 
 /* ──────────────────────────────────────────────
