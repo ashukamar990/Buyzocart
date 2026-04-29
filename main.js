@@ -927,8 +927,8 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          <div class="product-card-rating">
-            <div class="product-card-stars">${generateStarRating(rating)}</div>
+          <div class="product-card-rating" role="img" aria-label="Rated ${rating.toFixed(1)} out of 5 stars">
+            <div class="product-card-stars" aria-hidden="true">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
           </div>
           <div class="product-card-price">
@@ -2088,8 +2088,13 @@
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
-        if (index < rating) star.classList.add('active');
-        else star.classList.remove('active');
+        if (index < rating) {
+          star.classList.add('active');
+          star.setAttribute('aria-pressed', 'true');
+        } else {
+          star.classList.remove('active');
+          star.setAttribute('aria-pressed', 'false');
+        }
       });
     }
 

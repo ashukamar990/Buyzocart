@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2026-04-29 - Semantic Accessibility for Interactive Controls
+**Learning:** Generic elements like `div` and `span` used for interactive controls (menu toggles, rating stars) are invisible to keyboard users and screen readers. Converting them to semantic `<button>` elements provides native accessibility but introduces browser-default styling that can cause visual regressions.
+**Action:** Use semantic `<button>` elements for all interactive controls and always include a CSS reset (background: none, border: none, etc.) to maintain the intended UI design while ensuring full accessibility.
