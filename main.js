@@ -402,10 +402,12 @@
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
+
+      const ratingMap = getRatingMap(reviews);
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
+        const rA = ratingMap[a.product.id] || 0;
+        const rB = ratingMap[b.product.id] || 0;
         return rB - rA;
       });
       return scored.map(s => s.product);
@@ -894,6 +896,27 @@
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
+    }
+
+    /**
+     * Pre-calculates average ratings for all products in $O(R)$ time.
+     * @param {Array} reviewsList - List of reviews to process.
+     * @returns {Object} Map of productId to average rating.
+     */
+    function getRatingMap(reviewsList) {
+      const ratingSumMap = {};
+      const ratingCountMap = {};
+      reviewsList.forEach(r => {
+        const pid = r.productId;
+        if (!pid) return;
+        ratingSumMap[pid] = (ratingSumMap[pid] || 0) + (r.rating || 0);
+        ratingCountMap[pid] = (ratingCountMap[pid] || 0) + 1;
+      });
+      const finalMap = {};
+      for (const pid in ratingSumMap) {
+        finalMap[pid] = ratingSumMap[pid] / ratingCountMap[pid];
+      }
+      return finalMap;
     }
 
     function createProductCard(product) {
@@ -2793,14 +2816,7 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
