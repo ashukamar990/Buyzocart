@@ -246,12 +246,14 @@
     [data-theme="dark"] .danger-zone { border-color: #7f1d1d; }
 
     /* Address Card */
+    #savedAddresses { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .address-card {
       background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;
+      border-radius: var(--radius); padding: 1rem;
       position: relative; transition: var(--transition);
+      display: flex; flex-direction: column; justify-content: space-between;
     }
-    .address-card.default { border-color: var(--primary); }
+    .address-card.default { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
     .address-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
     .address-type-badge {
       background: var(--bg-secondary); color: var(--text-secondary);
@@ -675,6 +677,48 @@
     window._accDb = db;
     window._accAuth = auth;
 
+    // ========== ADDRESS UTILITIES (LocalStorage) ==========
+    const getSavedAddresses = () => {
+      try {
+        return JSON.parse(localStorage.getItem('bz_addresses')) || [];
+      } catch (e) { return []; }
+    };
+
+    const saveAddressToLocal = (address) => {
+      const addresses = getSavedAddresses();
+      if (address.isDefault) addresses.forEach(a => a.isDefault = false);
+      addresses.unshift({ ...address, id: address.id || Date.now().toString() });
+      localStorage.setItem('bz_addresses', JSON.stringify(addresses.slice(0, 10)));
+    };
+
+    const updateAddressInLocal = (id, updatedData) => {
+      let addresses = getSavedAddresses();
+      if (updatedData.isDefault) addresses.forEach(a => a.isDefault = false);
+      addresses = addresses.map(a => a.id === id ? { ...a, ...updatedData } : a);
+      localStorage.setItem('bz_addresses', JSON.stringify(addresses));
+    };
+
+    const removeAddressFromLocal = (id) => {
+      const addresses = getSavedAddresses().filter(a => a.id !== id);
+      localStorage.setItem('bz_addresses', JSON.stringify(addresses));
+    };
+
+    const isDuplicateAddress = (newAddr, existingAddresses) => {
+      return existingAddresses.some(addr =>
+        addr.name?.trim().toLowerCase() === newAddr.name?.trim().toLowerCase() &&
+        addr.mobile?.trim() === newAddr.mobile?.trim() &&
+        addr.pincode?.trim() === newAddr.pincode?.trim() &&
+        addr.street?.trim().toLowerCase() === newAddr.street?.trim().toLowerCase()
+      );
+    };
+
+    const escapeHTML = (str) => {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    };
+
     // ========== DARK MODE ==========
     (function() {
       const saved = localStorage.getItem('theme') || 'light';
@@ -789,12 +833,20 @@
 
     // ========== REAL-TIME LISTENERS ==========
     function setupRealTimeListeners(user) {
-      // Real-time address updates
+      // Storage listener for cross-tab address sync
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'bz_addresses') {
+          const container = document.getElementById('savedAddresses');
+          if (container && document.getElementById('addressPage').classList.contains('active')) {
+            renderAddressList(null, container);
+          }
+        }
+      });
+
+      // Real-time address updates (legacy Firebase support)
       const addrRef = query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid));
       onValue(addrRef, (snap) => {
-        const container = document.getElementById('savedAddresses');
-        if (!container || !document.getElementById('addressPage').classList.contains('active')) return;
-        renderAddressList(snap, container);
+        // We prioritize localStorage now, but can merge if needed
       });
 
       // Real-time wishlist updates
@@ -866,22 +918,26 @@
     // ========== ADDRESS RENDERING ==========
     function renderAddressList(snap, container) {
       container.innerHTML = '';
-      if (!snap.exists()) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
+      const addresses = getSavedAddresses();
+
+      if (addresses.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
         return;
       }
-      snap.forEach(child => {
-        const a = { id: child.key, ...child.val() };
+
+      addresses.forEach(a => {
         const card = document.createElement('div');
         card.className = 'address-card' + (a.isDefault ? ' default' : '');
         card.innerHTML = `
-          <div class="address-card-header">
-            <span class="address-type-badge">${a.type || 'home'}</span>
-            ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
+          <div>
+            <div class="address-card-header">
+              <span class="address-type-badge">${escapeHTML(a.type || 'home')}</span>
+              ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
+            </div>
+            <div style="font-weight:600;margin-bottom:0.25rem">${escapeHTML(a.name)}</div>
+            <div style="color:var(--text-secondary);font-size:0.875rem">${escapeHTML(a.street)}, ${escapeHTML(a.city)}, ${escapeHTML(a.state)} - ${escapeHTML(a.pincode)}</div>
+            <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${escapeHTML(a.mobile)}</div>
           </div>
-          <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
-          <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
-          <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
           <div class="address-actions">
             <button class="btn-outline btn-sm edit-addr" data-id="${a.id}">Edit</button>
             <button class="btn-outline btn-sm delete-addr" data-id="${a.id}">Delete</button>
@@ -956,13 +1012,7 @@
     async function loadAddresses(user) {
       const container = document.getElementById('savedAddresses');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;"></div></div>';
-      try {
-        const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
-        renderAddressList(snap, container);
-      } catch (e) {
-        container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Could not load addresses.</p>';
-      }
+      renderAddressList(null, container);
     }
 
     // ========== LOAD WISHLIST (Initial) ==========
@@ -1137,7 +1187,6 @@
           state: document.getElementById('addressState')?.value?.trim() || '',
           street: document.getElementById('addressStreet')?.value?.trim() || '',
           type: document.getElementById('addressType')?.value || 'home',
-          userId: user.uid,
           updatedAt: Date.now()
         };
         if (!addr.name || !addr.mobile || !addr.pincode || !addr.city || !addr.state || !addr.street) {
@@ -1148,13 +1197,21 @@
         btn.disabled = true; btn.textContent = 'Saving...';
         try {
           if (_editingAddressId) {
-            await update(ref(db, 'addresses/' + _editingAddressId), addr);
+            updateAddressInLocal(_editingAddressId, addr);
           } else {
-            addr.createdAt = Date.now();
-            await push(ref(db, 'addresses'), addr);
+            if (isDuplicateAddress(addr, getSavedAddresses())) {
+              accShowToast('This address already exists', 'error');
+              return;
+            }
+            addr.id = Date.now().toString();
+            saveAddressToLocal(addr);
           }
+          // Also sync to Firebase for backup if online
+          try { await set(ref(db, `users/${user.uid}/addresses/${_editingAddressId || addr.id}`), addr); } catch(fbe){}
+
           accShowToast('Address saved! ✅', 'success');
           accHideAddressForm();
+          renderAddressList(null, document.getElementById('savedAddresses'));
         } catch (err) {
           accShowToast('Failed to save', 'error');
         } finally {
@@ -1201,41 +1258,27 @@
       // Edit Address (delegated)
       if (e.target.classList.contains('edit-addr')) {
         const id = e.target.getAttribute('data-id');
-        try {
-          const snap = await get(ref(db, 'addresses/' + id));
-          if (snap.exists()) {
-            accShowAddressForm({ id, ...snap.val() });
-          }
-        } catch (err) {}
+        const addr = getSavedAddresses().find(a => a.id === id);
+        if (addr) accShowAddressForm(addr);
       }
 
       // Delete Address (delegated)
       if (e.target.classList.contains('delete-addr')) {
         const id = e.target.getAttribute('data-id');
         accShowAlert('Delete Address', 'Are you sure?', async () => {
-          try {
-            await remove(ref(db, 'addresses/' + id));
-            accShowToast('Deleted', 'success');
-          } catch (err) {
-            accShowToast('Failed', 'error');
-          }
+          removeAddressFromLocal(id);
+          try { await remove(ref(db, `users/${window._accCurrentUser.uid}/addresses/${id}`)); } catch(e){}
+          accShowToast('Deleted', 'success');
+          renderAddressList(null, document.getElementById('savedAddresses'));
         });
       }
 
       // Set Default Address (delegated)
       if (e.target.classList.contains('default-addr')) {
         const id = e.target.getAttribute('data-id');
-        const user = window._accCurrentUser;
-        if (!user) return;
-        try {
-          const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
-          const updates = {};
-          snap.forEach(child => { updates['addresses/' + child.key + '/isDefault'] = (child.key === id); });
-          await update(ref(db), updates);
-          accShowToast('Default set!', 'success');
-        } catch (err) {
-          accShowToast('Failed', 'error');
-        }
+        updateAddressInLocal(id, { isDefault: true });
+        accShowToast('Default set!', 'success');
+        renderAddressList(null, document.getElementById('savedAddresses'));
       }
 
       // Remove from Wishlist (delegated)
