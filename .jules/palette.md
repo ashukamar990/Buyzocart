@@ -10,3 +10,7 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
+## 2024-05-24 - Semantic Buttons for Interactive Elements
+**Learning:** Using generic tags like `<span>` for interactive elements (e.g., rating stars) breaks keyboard accessibility and screen reader support. Simply adding click listeners in JS is insufficient for a truly accessible experience.
+**Action:** Always use semantic `<button type="button">` for interactive controls that don't navigate, and ensure they include descriptive `aria-label` attributes and visible focus states (e.g., via `:focus-visible` and `box-shadow`).

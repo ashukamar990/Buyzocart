@@ -2088,8 +2088,13 @@
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
-        if (index < rating) star.classList.add('active');
-        else star.classList.remove('active');
+        if (index < rating) {
+          star.classList.add('active');
+          star.setAttribute('aria-pressed', 'true');
+        } else {
+          star.classList.remove('active');
+          star.setAttribute('aria-pressed', 'false');
+        }
       });
     }
 
