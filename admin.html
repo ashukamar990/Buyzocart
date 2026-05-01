@@ -3353,6 +3353,13 @@
     }
 
     // ===== TOAST NOTIFICATION =====
+    const escapeHTML = (str) => {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    };
+
     function showToast(msg, type = 'info') {
       const toast = document.getElementById('adminToast');
       if (!toast) return;
@@ -4705,11 +4712,11 @@
           const name = order.userInfo?.fullName || order.username || 'N/A';
           const date = order.orderDate ? new Date(order.orderDate).toLocaleDateString('en-IN') : 'N/A';
           return `<tr>
-            <td style="font-weight:600;">${order.orderId || '#' + order.id.slice(-6)}</td>
-            <td>${name}<br><small style="color:#64748b;">${order.userEmail || ''}</small></td>
-            <td>${order.productName || 'N/A'}</td>
+            <td style="font-weight:600;">${escapeHTML(order.orderId || '#' + order.id.slice(-6))}</td>
+            <td>${escapeHTML(name)}<br><small style="color:#64748b;">${escapeHTML(order.userEmail || '')}</small></td>
+            <td>${escapeHTML(order.productName || 'N/A')}</td>
             <td style="font-weight:600;">₹${(order.totalAmount || 0).toLocaleString()}</td>
-            <td><span style="background:${statusColor[s]||'#94a3b8'}20;color:${statusColor[s]||'#94a3b8'};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">${order.status || 'Confirmed'}</span></td>
+            <td><span style="background:${statusColor[s]||'#94a3b8'}20;color:${statusColor[s]||'#94a3b8'};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">${escapeHTML(order.status || 'Confirmed')}</span></td>
             <td>${date}</td>
           </tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">No orders yet</td></tr>';
@@ -4882,9 +4889,9 @@
           const date = order.orderDate ? new Date(order.orderDate).toLocaleDateString('en-IN') : 'N/A';
           return `<tr>
             <td><input type="checkbox" value="${order.id}"></td>
-            <td style="font-weight:600;">${order.orderId || '#' + order.id.slice(-6)}</td>
-            <td>${name}<br><small style="color:#64748b;">${mobile}</small></td>
-            <td>${order.productName || 'N/A'}<br><small>Qty: ${order.quantity||1} | Size: ${order.size||'N/A'}</small></td>
+            <td style="font-weight:600;">${escapeHTML(order.orderId || '#' + order.id.slice(-6))}</td>
+            <td>${escapeHTML(name)}<br><small style="color:#64748b;">${escapeHTML(mobile)}</small></td>
+            <td>${escapeHTML(order.productName || 'N/A')}<br><small>Qty: ${order.quantity||1} | Size: ${escapeHTML(order.size||'N/A')}</small></td>
             <td style="font-weight:600;">₹${(order.totalAmount || 0).toLocaleString()}</td>
             <td>
               <select onchange="updateOrderStatus('${order.id}', this.value)" class="form-control" style="width:auto;min-width:130px;">
