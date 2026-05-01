@@ -650,9 +650,9 @@
 
   <!-- ========== FIREBASE SDK & APP LOGIC ========== -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, query, orderByChild, equalTo, push, onValue } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-    import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getDatabase, ref, set, get, update, remove, query, orderByChild, equalTo, push, onValue } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
     // ========== FIREBASE CONFIG ==========
     const firebaseConfig = {
@@ -716,12 +716,13 @@
           loadAddresses(user),
           loadWishlist(user),
           loadOrders(user),
-          loadCurrency(),
+          loadAdminSettings(),          // ← admin settings + currency
           loadNotificationSettings(user)
         ]);
 
         // Real-time listeners for instant updates
         setupRealTimeListeners(user);
+        setupAdminNotificationBanner();  // ← admin notifications
 
         // Check seller status
         checkSellerStatus(user);
@@ -772,16 +773,141 @@
       }
     }
 
-    // ========== LOAD CURRENCY ==========
-    async function loadCurrency() {
+    // ========== ADMIN SETTINGS SYNC ==========
+    // Reads adminSettings from Firebase and applies to account page
+    async function loadAdminSettings() {
       try {
         const snap = await get(ref(db, 'adminSettings'));
-        if (snap.exists()) {
-          const s = snap.val();
-          const display = document.getElementById('currencyDisplay');
-          if (display) display.textContent = (s.currencySymbol || '₹') + ' ' + (s.currencyCode || 'INR');
+        if (!snap.exists()) return;
+        const s = snap.val();
+
+        // Store name in header if exists
+        if (s.storeName) {
+          const logoEl = document.querySelector('.acc-brand span:last-child');
+          if (logoEl) logoEl.textContent = s.storeName;
+          document.title = 'My Account - ' + s.storeName;
         }
+
+        // Currency display
+        const display = document.getElementById('currencyDisplay');
+        if (display) display.textContent = (s.currencySymbol || '₹') + ' ' + (s.currencyCode || 'INR');
+
+        // Show admin notification banner if exists
+        const notifSnap = await get(query(ref(db, 'adminNotifications'), orderByChild('timestamp'), equalTo(null)));
       } catch (e) {}
+    }
+
+    // ========== ADMIN NOTIFICATION BANNER ==========
+    // Shows real-time notification from admin panel on this page
+    function setupAdminNotificationBanner() {
+      // Create banner element
+      const banner = document.createElement('div');
+      banner.id = 'adminNotifBanner';
+      banner.style.cssText = `
+        position:fixed;top:0;left:0;right:0;z-index:99999;
+        transform:translateY(-100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+        pointer-events:none;
+      `;
+      banner.innerHTML = `
+        <div id="adminNotifBar" style="display:flex;align-items:center;justify-content:space-between;
+          padding:10px 20px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;gap:12px;
+          min-height:46px;background:#1d4ed8;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.2);">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;overflow:hidden;">
+            <span id="adminNotifBadge" style="background:rgba(255,255,255,.2);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;text-transform:uppercase;">Notice</span>
+            <span id="adminNotifTitle" style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+            <span id="adminNotifMsg" style="opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;"></span>
+          </div>
+          <button id="adminNotifClose" style="flex-shrink:0;background:rgba(255,255,255,.2);border:none;color:#fff;
+            width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:15px;pointer-events:all;">×</button>
+        </div>`;
+      document.body.prepend(banner);
+
+      let lastShownId = localStorage.getItem('bz_last_notif_id_acc') || null;
+      let dismissTimer = null;
+
+      document.getElementById('adminNotifClose').addEventListener('click', () => {
+        banner.style.transform = 'translateY(-100%)';
+        banner.style.pointerEvents = 'none';
+        clearTimeout(dismissTimer);
+      });
+
+      // Color map for notification types
+      const colorMap = {
+        offer: 'linear-gradient(90deg,#7c3aed,#db2777)',
+        order: '#16a34a', warning: '#d97706',
+        system: '#0f172a', info: '#1d4ed8'
+      };
+
+      // Listen for new notifications in real time
+      const notifRef = query(ref(db, 'adminNotifications'), orderByChild('timestamp'));
+      onValue(notifRef, (snap) => {
+        if (!snap.exists()) return;
+        let newest = null;
+        snap.forEach(child => {
+          const n = child.val();
+          if (!newest || (n.timestamp || 0) > (newest.timestamp || 0)) {
+            newest = { id: child.key, ...n };
+          }
+        });
+        if (!newest || newest.id === lastShownId) return;
+        lastShownId = newest.id;
+        localStorage.setItem('bz_last_notif_id_acc', newest.id);
+
+        // Apply color
+        document.getElementById('adminNotifBar').style.background = colorMap[newest.type] || colorMap.info;
+        document.getElementById('adminNotifBadge').textContent = newest.badge || newest.type || 'Notice';
+        document.getElementById('adminNotifTitle').textContent = newest.title || '';
+        document.getElementById('adminNotifMsg').textContent = newest.message || '';
+
+        // Show banner
+        banner.style.pointerEvents = 'all';
+        banner.style.transform = 'translateY(0)';
+        clearTimeout(dismissTimer);
+        dismissTimer = setTimeout(() => {
+          banner.style.transform = 'translateY(-100%)';
+          banner.style.pointerEvents = 'none';
+        }, 8000);
+      });
+    }
+
+    // ========== LOAD ORDERS ==========
+    async function loadOrders(user) {
+      try {
+        const snap = await get(query(ref(db, 'orders'), orderByChild('userId'), equalTo(user.uid)));
+        const container = document.getElementById('ordersList');
+        if (!container) return;
+        if (!snap.exists()) {
+          container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No orders yet</div><div class="empty-state-description">Your orders will appear here</div></div>';
+          return;
+        }
+        const orders = [];
+        snap.forEach(c => orders.push({ id: c.key, ...c.val() }));
+        orders.sort((a, b) => (b.orderDate || 0) - (a.orderDate || 0));
+        const statusColor = { confirmed: '#2563eb', shipped: '#f59e0b', delivered: '#22c55e', cancelled: '#ef4444', pending: '#94a3b8' };
+        container.innerHTML = orders.map(o => {
+          const s = (o.status || 'confirmed').toLowerCase();
+          const color = statusColor[s] || '#94a3b8';
+          const date = o.orderDate ? new Date(o.orderDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+          return `<div class="order-card" style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+              <div>
+                <div style="font-weight:700;font-size:.875rem;">${o.orderId || '#' + (o.id || '').slice(-8).toUpperCase()}</div>
+                <div style="color:var(--text-secondary);font-size:.8rem;">${date}</div>
+              </div>
+              <span style="background:${color}20;color:${color};padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;">${o.status || 'Confirmed'}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              ${o.productImage ? `<img src="${o.productImage}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border);" onerror="this.style.display='none'">` : ''}
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:.9rem;">${o.productName || 'Product'}</div>
+                <div style="color:var(--primary);font-weight:700;font-size:1rem;">₹${(parseFloat(o.totalAmount) || 0).toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        console.error('Orders load error:', e);
+      }
     }
 
     // ========== NOTIFICATION SETTINGS ==========
