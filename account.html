@@ -675,6 +675,15 @@
     window._accDb = db;
     window._accAuth = auth;
 
+    // ========== SAFETY TIMEOUT - Auto hide loading screen after 6 seconds ==========
+    setTimeout(() => {
+      const ls = document.getElementById('loadingScreen');
+      if (ls && ls.style.display !== 'none') {
+        console.warn('⚠️ Loading screen auto-hidden after 6s timeout');
+        ls.style.display = 'none';
+      }
+    }, 6000);
+
     // ========== DARK MODE ==========
     (function() {
       const saved = localStorage.getItem('theme') || 'light';
@@ -686,8 +695,10 @@
     // ========== AUTH STATE LISTENER ==========
     onAuthStateChanged(auth, async (user) => {
       document.getElementById('loadingScreen').style.display = 'none';
+      console.log('🔔 Auth state changed. User:', user ? user.email : 'null');
 
       if (!user) {
+        console.log('❌ No user, redirecting to home...');
         window.location.href = '/';
         return;
       }
@@ -715,7 +726,7 @@
         // Check seller status
         checkSellerStatus(user);
       } catch (error) {
-        console.error('Data load error:', error);
+        console.error('❌ Data load error:', error);
       }
     });
 
@@ -1028,7 +1039,7 @@
       // Save Profile
       if (e.target.id === 'saveProfile') {
         const user = window._accCurrentUser;
-        if (!user) return;
+        if (!user) { accShowToast('Please login first', 'error'); return; }
         const name = document.getElementById('profileName')?.value?.trim();
         const phone = document.getElementById('profilePhone')?.value?.trim();
         if (!name) { accShowToast('Enter your name', 'error'); return; }
@@ -1128,7 +1139,7 @@
       // Save Address
       if (e.target.id === 'saveAddress') {
         const user = window._accCurrentUser;
-        if (!user) return;
+        if (!user) { accShowToast('Please login first', 'error'); return; }
         const addr = {
           name: document.getElementById('addressName')?.value?.trim() || '',
           mobile: document.getElementById('addressMobile')?.value?.trim() || '',
@@ -1175,7 +1186,7 @@
       // Save Settings
       if (e.target.id === 'saveSettings') {
         const user = window._accCurrentUser;
-        if (!user) return;
+        if (!user) { accShowToast('Please login first', 'error'); return; }
         const fields = ['emailNotifications','smsNotifications','pushNotifications','personalizedRecs','dataSharing'];
         const settings = {};
         fields.forEach(f => {
@@ -1226,7 +1237,7 @@
       if (e.target.classList.contains('default-addr')) {
         const id = e.target.getAttribute('data-id');
         const user = window._accCurrentUser;
-        if (!user) return;
+        if (!user) { accShowToast('Please login first', 'error'); return; }
         try {
           const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
           const updates = {};
@@ -1242,7 +1253,7 @@
       if (e.target.classList.contains('remove-wish')) {
         const pid = e.target.getAttribute('data-id');
         const user = window._accCurrentUser;
-        if (!user) return;
+        if (!user) { accShowToast('Please login first', 'error'); return; }
         try {
           await remove(ref(db, 'wishlist/' + user.uid + '/' + pid));
           accShowToast('Removed from wishlist', 'success');
@@ -1251,7 +1262,8 @@
         }
       }
 
-      // View Product from Wishlist      if (e.target.classList.contains('view-prod')) {
+      // View Product from Wishlist
+      if (e.target.classList.contains('view-prod')) {
         window.location.href = '/';
       }
     });
