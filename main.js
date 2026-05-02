@@ -343,25 +343,267 @@
       document.body.style.overflow = '';
     }
 
+
+    // ===== ORDER TRACK ANIMATION PAGE =====
+    var _otCurrentStep = 0;
+
+    window.openOrderTrackPage = function() {
+      if (!currentUser) { showAuthModal(); return; }
+      showPage('orderTrackPage');
+      setTimeout(function() { otSetStep(0); }, 100);
+    };
+
+    window.otSetStep = function(step) {
+      _otCurrentStep = step;
+
+      // Update dots
+      for (var i = 0; i < 4; i++) {
+        var dot   = document.getElementById('otDot' + i);
+        var label = dot && dot.parentElement.querySelector('.ot-step-label');
+        if (!dot) continue;
+        dot.classList.remove('active','done');
+        if (label) label.classList.remove('active','done');
+        if (i < step)       { dot.classList.add('done');   if(label) label.classList.add('done'); }
+        else if (i === step) { dot.classList.add('active'); if(label) label.classList.add('active'); }
+      }
+
+      // Progress line
+      var line = document.getElementById('otProgressLine');
+      if (line) line.style.width = (step / 3 * 100) + '%';
+
+      // Status card text
+      var titles = ['Order Placed!', 'Order Confirmed!', 'Out for Delivery!', 'Delivered!'];
+      var descs  = [
+        'Your order has been received. We are preparing it for processing.',
+        'Great news! Your order has been confirmed by Buyzo Cart and is being packed.',
+        'Your order is on the way! Our delivery partner is bringing it to your doorstep.',
+        'Your order has been successfully delivered. Enjoy your purchase!'
+      ];
+      var titleEl = document.getElementById('otStatusTitle');
+      var descEl  = document.getElementById('otStatusDesc');
+      if (titleEl) titleEl.textContent = titles[step] || '';
+      if (descEl)  descEl.textContent  = descs[step]  || '';
+
+      // Render animation
+      otRenderAnim(step);
+    };
+
+    function otRenderAnim(step) {
+      var stage = document.getElementById('otAnimStage');
+      if (!stage) return;
+      var W = stage.offsetWidth || 340, H = 260;
+
+      var svgs = [
+        // STEP 0: ORDER PLACED — paper flying into building
+        `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${H}px;">
+          <!-- Sky -->
+          <rect width="${W}" height="${H}" fill="url(#skyGrad0)" rx="20"/>
+          <defs>
+            <linearGradient id="skyGrad0" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#dbeafe"/>
+              <stop offset="100%" stop-color="#ede9fe"/>
+            </linearGradient>
+          </defs>
+          <!-- Ground -->
+          <rect x="0" y="${H*0.72}" width="${W}" height="${H*0.28}" fill="#bbf7d0" rx="0"/>
+
+          <!-- Building (Buyzo Cart) -->
+          <rect x="${W*0.58}" y="${H*0.22}" width="${W*0.32}" height="${H*0.5}" fill="#2563eb" rx="6"/>
+          <rect x="${W*0.61}" y="${H*0.26}" width="${W*0.08}" height="${H*0.08}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.73}" y="${H*0.26}" width="${W*0.08}" height="${H*0.08}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.61}" y="${H*0.38}" width="${W*0.08}" height="${H*0.08}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.73}" y="${H*0.38}" width="${W*0.08}" height="${H*0.08}" fill="#bfdbfe" rx="3"/>
+          <!-- Door -->
+          <rect x="${W*0.67}" y="${H*0.55}" width="${W*0.08}" height="${H*0.17}" fill="#1d4ed8" rx="3"/>
+          <!-- Sign -->
+          <rect x="${W*0.60}" y="${H*0.16}" width="${W*0.32}" height="${H*0.07}" fill="#1e40af" rx="4"/>
+          <text x="${W*0.76}" y="${H*0.215}" font-family="Arial" font-weight="bold" font-size="10" fill="white" text-anchor="middle">BUYZO CART</text>
+
+          <!-- Animated paper/document flying in -->
+          <g id="paperAnim" style="animation:paperFly 2s ease-in-out infinite;">
+            <rect x="${W*0.08}" y="${H*0.25}" width="44" height="56" fill="white" rx="4" stroke="#2563eb" stroke-width="2"/>
+            <line x1="${W*0.08+8}" y1="${H*0.25+14}" x2="${W*0.08+36}" y2="${H*0.25+14}" stroke="#2563eb" stroke-width="2" opacity="0.5"/>
+            <line x1="${W*0.08+8}" y1="${H*0.25+22}" x2="${W*0.08+36}" y2="${H*0.25+22}" stroke="#64748b" stroke-width="1.5" opacity="0.4"/>
+            <line x1="${W*0.08+8}" y1="${H*0.25+30}" x2="${W*0.08+30}" y2="${H*0.25+30}" stroke="#64748b" stroke-width="1.5" opacity="0.4"/>
+            <text x="${W*0.08+22}" y="${H*0.25+47}" font-family="Arial" font-weight="bold" font-size="8" fill="#2563eb" text-anchor="middle">ORDER</text>
+          </g>
+          <style>
+            @keyframes paperFly {
+              0%   { transform: translate(0,0) rotate(-5deg); }
+              50%  { transform: translate(${W*0.25}px, -20px) rotate(5deg); }
+              100% { transform: translate(${W*0.45}px, 10px) rotate(0deg) scale(0.4); opacity:0; }
+            }
+          </style>
+
+          <!-- Stars -->
+          <text x="${W*0.3}" y="${H*0.15}" font-size="16" style="animation:twinkle 1.2s infinite alternate;">⭐</text>
+          <text x="${W*0.45}" y="${H*0.1}" font-size="12" style="animation:twinkle 1.6s infinite alternate;">✨</text>
+          <style>@keyframes twinkle{from{opacity:0.3;transform:scale(0.8)}to{opacity:1;transform:scale(1.2)}}</style>
+        </svg>`,
+
+        // STEP 1: CONFIRMED — checkmark burst at Buyzo Cart building
+        `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${H}px;">
+          <rect width="${W}" height="${H}" fill="url(#skyGrad1)" rx="20"/>
+          <defs>
+            <linearGradient id="skyGrad1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#dcfce7"/>
+              <stop offset="100%" stop-color="#d1fae5"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="${H*0.72}" width="${W}" height="${H*0.28}" fill="#86efac" rx="0"/>
+
+          <!-- Building -->
+          <rect x="${W*0.3}" y="${H*0.2}" width="${W*0.4}" height="${H*0.52}" fill="#2563eb" rx="6"/>
+          <rect x="${W*0.34}" y="${H*0.25}" width="${W*0.1}" height="${H*0.1}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.56}" y="${H*0.25}" width="${W*0.1}" height="${H*0.1}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.34}" y="${H*0.4}" width="${W*0.1}" height="${H*0.1}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.56}" y="${H*0.4}" width="${W*0.1}" height="${H*0.1}" fill="#bfdbfe" rx="3"/>
+          <rect x="${W*0.44}" y="${H*0.55}" width="${W*0.12}" height="${H*0.17}" fill="#1d4ed8" rx="3"/>
+          <rect x="${W*0.28}" y="${H*0.13}" width="${W*0.44}" height="${H*0.08}" fill="#1e40af" rx="4"/>
+          <text x="${W*0.5}" y="${H*0.19}" font-family="Arial" font-weight="bold" font-size="11" fill="white" text-anchor="middle">BUYZO CART</text>
+
+          <!-- Big animated checkmark -->
+          <g style="animation:popIn 0.6s ease-out forwards,float 2s ease-in-out 0.6s infinite;">
+            <circle cx="${W*0.5}" cy="${H*0.35}" r="28" fill="#22c55e" opacity="0.15"/>
+            <circle cx="${W*0.5}" cy="${H*0.35}" r="22" fill="#22c55e"/>
+            <polyline points="${W*0.5-10},${H*0.35} ${W*0.5-3},${H*0.35+8} ${W*0.5+12},${H*0.35-10}" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </g>
+          <!-- Confetti -->
+          <circle cx="${W*0.2}" cy="${H*0.3}" r="5" fill="#f59e0b" style="animation:confetti 1.5s ease-in-out infinite;"/>
+          <circle cx="${W*0.8}" cy="${H*0.25}" r="4" fill="#ef4444" style="animation:confetti 1.8s ease-in-out infinite 0.3s;"/>
+          <circle cx="${W*0.15}" cy="${H*0.5}" r="4" fill="#8b5cf6" style="animation:confetti 2s ease-in-out infinite 0.6s;"/>
+          <circle cx="${W*0.85}" cy="${H*0.5}" r="5" fill="#06b6d4" style="animation:confetti 1.4s ease-in-out infinite 0.2s;"/>
+          <style>
+            @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+            @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+            @keyframes confetti{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-15px) rotate(180deg)}}
+          </style>
+        </svg>`,
+
+        // STEP 2: SHIPPED — delivery boy on scooter/truck with BUYZO CART shirt
+        `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${H}px;">
+          <rect width="${W}" height="${H}" fill="url(#skyGrad2)" rx="20"/>
+          <defs>
+            <linearGradient id="skyGrad2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fef3c7"/>
+              <stop offset="100%" stop-color="#fde68a"/>
+            </linearGradient>
+          </defs>
+          <!-- Road -->
+          <rect x="0" y="${H*0.7}" width="${W}" height="${H*0.3}" fill="#475569" rx="0"/>
+          <rect x="0" y="${H*0.72}" width="${W}" height="${H*0.04}" fill="#64748b"/>
+          <!-- Road dashes -->
+          <rect x="${W*0.1}" y="${H*0.73}" width="${W*0.12}" height="6" fill="#fbbf24" rx="3"/>
+          <rect x="${W*0.35}" y="${H*0.73}" width="${W*0.12}" height="6" fill="#fbbf24" rx="3"/>
+          <rect x="${W*0.6}" y="${H*0.73}" width="${W*0.12}" height="6" fill="#fbbf24" rx="3"/>
+          <rect x="${W*0.85}" y="${H*0.73}" width="${W*0.12}" height="6" fill="#fbbf24" rx="3"/>
+
+          <!-- Animated truck moving -->
+          <g style="animation:truckMove 3s ease-in-out infinite;">
+            <!-- Truck body -->
+            <rect x="${W*0.05}" y="${H*0.48}" width="${W*0.45}" height="${H*0.22}" fill="#2563eb" rx="8"/>
+            <!-- Truck cab -->
+            <rect x="${W*0.37}" y="${H*0.42}" width="${W*0.18}" height="${H*0.28}" fill="#1d4ed8" rx="6 6 0 0"/>
+            <!-- Windows -->
+            <rect x="${W*0.39}" y="${H*0.44}" width="${W*0.13}" height="${H*0.1}" fill="#bfdbfe" rx="3"/>
+            <!-- Wheels -->
+            <circle cx="${W*0.15}" cy="${H*0.72}" r="14" fill="#1e293b"/>
+            <circle cx="${W*0.15}" cy="${H*0.72}" r="7" fill="#94a3b8"/>
+            <circle cx="${W*0.38}" cy="${H*0.72}" r="14" fill="#1e293b"/>
+            <circle cx="${W*0.38}" cy="${H*0.72}" r="7" fill="#94a3b8"/>
+            <!-- BUYZO CART on truck -->
+            <text x="${W*0.22}" y="${H*0.615}" font-family="Arial" font-weight="bold" font-size="11" fill="white" text-anchor="middle">BUYZO CART</text>
+            <!-- Box on truck -->
+            <rect x="${W*0.08}" y="${H*0.5}" width="38" height="36" fill="#fbbf24" rx="4"/>
+            <line x1="${W*0.08+19}" y1="${H*0.5}" x2="${W*0.08+19}" y2="${H*0.5+36}" stroke="#f59e0b" stroke-width="2"/>
+            <line x1="${W*0.08}" y1="${H*0.5+18}" x2="${W*0.08+38}" y2="${H*0.5+18}" stroke="#f59e0b" stroke-width="2"/>
+            <!-- Delivery person head -->
+            <circle cx="${W*0.51}" cy="${H*0.4}" r="14" fill="#fbbf24"/>
+            <!-- Helmet -->
+            <ellipse cx="${W*0.51}" cy="${H*0.37}" rx="15" ry="10" fill="#2563eb"/>
+            <text x="${W*0.51}" y="${H*0.39}" font-family="Arial" font-weight="bold" font-size="7" fill="white" text-anchor="middle">BZ</text>
+            <!-- Body/shirt -->
+            <rect x="${W*0.445}" y="${H*0.51}" width="${W*0.12}" height="${H*0.15}" fill="#2563eb" rx="4"/>
+            <text x="${W*0.51}" y="${H*0.575}" font-family="Arial" font-weight="bold" font-size="6" fill="white" text-anchor="middle">BUYZO</text>
+          </g>
+          <!-- Speed lines -->
+          <g style="animation:speedLine 0.6s linear infinite;">
+            <line x1="${W*0.62}" y1="${H*0.52}" x2="${W*0.78}" y2="${H*0.52}" stroke="#e2e8f0" stroke-width="2" opacity="0.6"/>
+            <line x1="${W*0.65}" y1="${H*0.57}" x2="${W*0.85}" y2="${H*0.57}" stroke="#e2e8f0" stroke-width="2" opacity="0.4"/>
+            <line x1="${W*0.60}" y1="${H*0.62}" x2="${W*0.72}" y2="${H*0.62}" stroke="#e2e8f0" stroke-width="1.5" opacity="0.3"/>
+          </g>
+          <style>
+            @keyframes truckMove{0%,100%{transform:translateX(0)}50%{transform:translateX(8px)}}
+            @keyframes speedLine{0%{opacity:0.8;transform:translateX(0)}100%{opacity:0;transform:translateX(-20px)}}
+          </style>
+        </svg>`,
+
+        // STEP 3: DELIVERED — truck at doorstep, "Delivery Completed"
+        `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${H}px;">
+          <rect width="${W}" height="${H}" fill="url(#skyGrad3)" rx="20"/>
+          <defs>
+            <linearGradient id="skyGrad3" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f0fdf4"/>
+              <stop offset="100%" stop-color="#dcfce7"/>
+            </linearGradient>
+          </defs>
+          <!-- Road -->
+          <rect x="0" y="${H*0.72}" width="${W}" height="${H*0.28}" fill="#475569"/>
+          <rect x="0" y="${H*0.72}" width="${W}" height="${H*0.04}" fill="#64748b"/>
+
+          <!-- House -->
+          <polygon points="${W*0.55},${H*0.15} ${W*0.35},${H*0.35} ${W*0.75},${H*0.35}" fill="#ef4444"/>
+          <rect x="${W*0.38}" y="${H*0.35}" width="${W*0.34}" height="${H*0.37}" fill="#fef9c3" rx="0 0 4px 4px"/>
+          <rect x="${W*0.49}" y="${H*0.52}" width="${W*0.12}" height="${H*0.2}" fill="#a16207" rx="3 3 0 0"/>
+          <rect x="${W*0.42}" y="${H*0.39}" width="${W*0.08}" height="${H*0.1}" fill="#bae6fd" rx="3"/>
+          <rect x="${W*0.6}" y="${H*0.39}" width="${W*0.08}" height="${H*0.1}" fill="#bae6fd" rx="3"/>
+
+          <!-- Truck parked -->
+          <rect x="${W*0.02}" y="${H*0.52}" width="${W*0.32}" height="${H*0.2}" fill="#2563eb" rx="6"/>
+          <rect x="${W*0.22}" y="${H*0.47}" width="${W*0.13}" height="${H*0.25}" fill="#1d4ed8" rx="5 5 0 0"/>
+          <rect x="${W*0.24}" y="${H*0.49}" width="${W*0.09}" height="${H*0.09}" fill="#bfdbfe" rx="2"/>
+          <circle cx="${W*0.1}" cy="${H*0.73}" r="12" fill="#1e293b"/>
+          <circle cx="${W*0.1}" cy="${H*0.73}" r="6" fill="#94a3b8"/>
+          <circle cx="${W*0.27}" cy="${H*0.73}" r="12" fill="#1e293b"/>
+          <circle cx="${W*0.27}" cy="${H*0.73}" r="6" fill="#94a3b8"/>
+          <text x="${W*0.16}" y="${H*0.635}" font-family="Arial" font-weight="bold" font-size="9" fill="white" text-anchor="middle">BUYZO CART</text>
+
+          <!-- Package at door -->
+          <rect x="${W*0.46}" y="${H*0.6}" width="30" height="26" fill="#fbbf24" rx="3"/>
+          <line x1="${W*0.46+15}" y1="${H*0.6}" x2="${W*0.46+15}" y2="${H*0.6+26}" stroke="#f59e0b" stroke-width="2"/>
+          <line x1="${W*0.46}" y1="${H*0.6+13}" x2="${W*0.46+30}" y2="${H*0.6+13}" stroke="#f59e0b" stroke-width="2"/>
+
+          <!-- Delivery Completed banner -->
+          <rect x="${W*0.08}" y="${H*0.12}" width="${W*0.84}" height="${H*0.13}" fill="#22c55e" rx="10"/>
+          <text x="${W*0.5}" y="${H*0.205}" font-family="Arial" font-weight="bold" font-size="13" fill="white" text-anchor="middle">✓ Delivery Completed!</text>
+
+          <!-- Stars/celebration -->
+          <text x="${W*0.12}" y="${H*0.45}" font-size="18" style="animation:bounce 1s ease-in-out infinite;">🎉</text>
+          <text x="${W*0.82}" y="${H*0.45}" font-size="18" style="animation:bounce 1s ease-in-out infinite 0.5s;">⭐</text>
+          <style>@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}</style>
+        </svg>`
+      ];
+
+      stage.innerHTML = svgs[step] || svgs[0];
+    }
+    // ===== END ORDER TRACK PAGE =====
+
     function showCategories() {
       openCategoryShapePage();
     }
 
     /* ===== CATEGORY SHAPE PAGE LOGIC ===== */
+    var _bzShape = 'circle';
 
     function openCategoryShapePage() {
       showPage('categoryPage');
       setTimeout(function() { bzRenderOrbit(); }, 150);
     }
 
-    // ── Auto-sizing circle orbit ──────────────────────────────────
-    // Each item is ~76px wide. We compute the radius so items don't overlap.
-    // If radius would exceed the screen, we fall back to a horizontal scroll line.
     function bzCalcLayout(n, screenW) {
-      var ITEM_ARC = 82;           // arc-length per item (px) — controls spacing
-      var PAD      = 48;           // stage padding each side
-      var maxR     = (screenW / 2) - PAD;   // max radius that fits on screen
-      var neededR  = Math.ceil((n * ITEM_ARC) / (2 * Math.PI));
+      var ITEM_ARC = 82, PAD = 48;
+      var maxR = (screenW / 2) - PAD;
+      var neededR = Math.ceil((n * ITEM_ARC) / (2 * Math.PI));
       if (neededR <= maxR) {
         return { mode: 'circle', radius: Math.max(neededR, 90), stageSize: neededR * 2 + PAD * 2 };
       }
@@ -371,118 +613,65 @@
     function bzRenderOrbit() {
       var ring  = document.getElementById('bzOrbitRing');
       var stage = document.getElementById('bzOrbitStage');
-      var wrap  = document.getElementById('bzOrbitWrap');  // optional wrapper
       if (!ring || !stage) return;
-
       ring.classList.remove('bz-spinning');
       Array.from(ring.querySelectorAll('.bz-cat-item')).forEach(function(el){ el.remove(); });
+      if (!categories || !categories.length) { setTimeout(bzRenderOrbit, 600); return; }
 
-      if (!categories || !categories.length) {
-        setTimeout(bzRenderOrbit, 600);
-        return;
-      }
-
-      var cats    = categories;
-      var n       = cats.length;
+      var cats = categories, n = cats.length;
       var screenW = Math.min(window.innerWidth, 480);
       var layout  = bzCalcLayout(n, screenW);
 
       if (layout.mode === 'circle') {
-        // ── CIRCLE MODE ────────────────────────────────────────────
         var sz = Math.min(layout.stageSize, screenW - 16);
         sz = Math.max(sz, 220);
         stage.style.width  = sz + 'px';
         stage.style.height = sz + 'px';
         ring.style.transformOrigin = (sz/2) + 'px ' + (sz/2) + 'px';
-
-        // Draw guide circle
         var svg = document.getElementById('bzGuideSvg');
         if (svg) {
           svg.setAttribute('viewBox', '0 0 ' + sz + ' ' + sz);
-          var r = layout.radius;
-          svg.innerHTML = '<circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+r+'" fill="none" stroke="rgba(37,99,235,0.10)" stroke-width="1.5" stroke-dasharray="6 4"/>';
+          svg.innerHTML = '<circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+layout.radius+'" fill="none" stroke="rgba(37,99,235,0.10)" stroke-width="1.5" stroke-dasharray="6 4"/>';
         }
-
-        var iw = 76, ih = 90, r = layout.radius, cx = sz/2, cy = sz/2;
+        var iw = 76, r = layout.radius, cx = sz/2, cy = sz/2;
         cats.forEach(function(cat, i) {
-          var a   = (2 * Math.PI * i / n) - Math.PI / 2;
-          var px  = cx + r * Math.cos(a);
-          var py  = cy + r * Math.sin(a);
+          var a = (2*Math.PI*i/n) - Math.PI/2;
+          var px = cx + r*Math.cos(a), py = cy + r*Math.sin(a);
           var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
-          var nm  = (cat.name || 'Category').slice(0, 14);
-
-          var item = document.createElement('div');
-          item.className  = 'bz-cat-item';
-          item.style.width  = iw + 'px';
-          item.style.left = (px - iw/2) + 'px';
-          item.style.top  = (py - 45) + 'px';
-          item.title = cat.name || '';
-          item.innerHTML = '<div class="bz-cat-thumb" style="background-image:url(\'' + img + '\')"></div><span class="bz-cat-label">' + nm + '</span>';
-          item.addEventListener('click', function(){ filterByCategory(cat.id); });
-          ring.appendChild(item);
-        });
-
-        // Outer container: normal centered
-        var outerDiv = stage.parentElement;
-        if (outerDiv) {
-          outerDiv.style.overflowX  = '';
-          outerDiv.style.flexWrap   = '';
-          outerDiv.style.minHeight  = sz + 'px';
-        }
-
-        setTimeout(function() {
-          var r2 = document.getElementById('bzOrbitRing');
-          if (r2) r2.classList.add('bz-spinning');
-        }, 600);
-
-      } else {
-        // ── LINE MODE (too many categories for circle on screen) ──
-        stage.style.width  = 'auto';
-        stage.style.height = '110px';
-        ring.style.transformOrigin = '0 0';
-
-        var svg = document.getElementById('bzGuideSvg');
-        if (svg) svg.innerHTML = '';
-
-        var iw = 80, x = 8;
-        cats.forEach(function(cat) {
-          var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
-          var nm  = (cat.name || 'Category').slice(0, 14);
+          var nm  = (cat.name||'Category').slice(0,14);
           var item = document.createElement('div');
           item.className = 'bz-cat-item';
-          item.style.position = 'relative';
-          item.style.left = '0';
-          item.style.top  = '0';
-          item.style.width  = iw + 'px';
-          item.style.display = 'inline-flex';
-          item.style.flexDirection = 'column';
-          item.style.alignItems = 'center';
-          item.style.flexShrink = '0';
+          item.style.width = iw + 'px';
+          item.style.left  = (px - iw/2) + 'px';
+          item.style.top   = (py - 45)   + 'px';
           item.title = cat.name || '';
           item.innerHTML = '<div class="bz-cat-thumb" style="background-image:url(\'' + img + '\')"></div><span class="bz-cat-label">' + nm + '</span>';
           item.addEventListener('click', function(){ filterByCategory(cat.id); });
           ring.appendChild(item);
         });
-
-        // Make container scrollable horizontally
-        ring.style.position = 'relative';
-        ring.style.display  = 'flex';
-        ring.style.flexDirection = 'row';
-        ring.style.gap = '8px';
-        ring.style.padding = '8px';
-        ring.style.animation = 'none';
-        ring.style.transform = 'none';
-
         var outerDiv = stage.parentElement;
-        if (outerDiv) {
-          outerDiv.style.overflowX = 'auto';
-          outerDiv.style.minHeight = '120px';
-          outerDiv.style.justifyContent = 'flex-start';
-          outerDiv.style.webkitOverflowScrolling = 'touch';
-        }
+        if (outerDiv) { outerDiv.style.overflowX = ''; outerDiv.style.minHeight = sz + 'px'; }
+        setTimeout(function(){ var r2=document.getElementById('bzOrbitRing'); if(r2) r2.classList.add('bz-spinning'); }, 600);
+      } else {
+        stage.style.width = 'auto'; stage.style.height = '110px';
+        ring.style.transformOrigin = '0 0';
+        var svg = document.getElementById('bzGuideSvg');
+        if (svg) svg.innerHTML = '';
+        cats.forEach(function(cat) {
+          var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
+          var nm  = (cat.name||'Category').slice(0,14);
+          var item = document.createElement('div');
+          item.className = 'bz-cat-item';
+          item.style.cssText = 'position:relative;left:0;top:0;width:80px;display:inline-flex;flex-direction:column;align-items:center;flex-shrink:0;';
+          item.title = cat.name || '';
+          item.innerHTML = '<div class="bz-cat-thumb" style="background-image:url(\'' + img + '\')"></div><span class="bz-cat-label">' + nm + '</span>';
+          item.addEventListener('click', function(){ filterByCategory(cat.id); });
+          ring.appendChild(item);
+        });
+        ring.style.cssText = 'position:relative;display:flex;flex-direction:row;gap:8px;padding:8px;animation:none;transform:none;';
+        var outerDiv = stage.parentElement;
+        if (outerDiv) { outerDiv.style.overflowX='auto'; outerDiv.style.minHeight='120px'; outerDiv.style.justifyContent='flex-start'; }
       }
-
-      // Render search/category tags below
       bzRenderCatTags(cats);
     }
 
@@ -490,24 +679,17 @@
       var container = document.getElementById('bzCatTags');
       if (!container) return;
       container.innerHTML = '';
-
-      // Use searchTags if available, else use category names
       var tags = (typeof searchTags !== 'undefined' && searchTags.length)
-        ? searchTags
-        : cats.map(function(c){ return c.name || ''; }).filter(Boolean);
-
+        ? searchTags : cats.map(function(c){ return c.name||''; }).filter(Boolean);
       tags.forEach(function(tag) {
         var chip = document.createElement('button');
         chip.textContent = tag;
         chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
         chip.addEventListener('mouseenter', function(){ this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function(){ this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
-        chip.addEventListener('click', function() {
-          if (typeof filterProductsByTag === 'function') filterProductsByTag(tag);
-          else if (typeof filterByCategory === 'function') {
-            var cat = (typeof categories !== 'undefined') && categories.find(function(c){ return c.name === tag; });
-            if (cat) filterByCategory(cat.id);
-          }
+        chip.addEventListener('click', function(){
+          var cat = categories && categories.find(function(c){ return c.name===tag; });
+          if (cat) filterByCategory(cat.id);
         });
         container.appendChild(chip);
       });
@@ -2637,12 +2819,11 @@
     }
 
     // ===== ORDER STATUS CONFIG =====
-    const ORDER_STATUS_FLOW = ['placed', 'confirmed', 'shipped', 'out_for_delivery', 'delivered'];
+    const ORDER_STATUS_FLOW = ['placed', 'confirmed', 'shipped', 'delivered'];
     const ORDER_STATUS_LABELS = {
       placed:           '📦 Placed',
       confirmed:        '✅ Confirmed',
       shipped:          '🚚 Shipped',
-      out_for_delivery: '🛵 Out for Delivery',
       delivered:        '✓ Delivered',
       cancelled:        '✗ Cancelled'
     };
@@ -2677,7 +2858,6 @@
           { key: 'placed',           label: 'Placed',          icon: '📦' },
           { key: 'confirmed',        label: 'Confirmed',        icon: '✅' },
           { key: 'shipped',          label: 'Shipped',          icon: '🚚' },
-          { key: 'out_for_delivery', label: 'Out for Delivery', icon: '🛵' },
           { key: 'delivered',        label: 'Delivered',        icon: '✓'  }
         ];
         const currentIdx = ORDER_STATUS_FLOW.indexOf(rawStatus);
@@ -2729,7 +2909,7 @@
           <div class="order-actions">
             <button class="order-action-btn view-product" onclick="event.stopPropagation();viewProductFromOrder('${order.productId}')">View Product</button>
             ${canCancel ? `<button class="order-action-btn cancel" onclick="event.stopPropagation();cancelOrder('${order.id}')">Cancel Order</button>` : ''}
-            ${!canCancel && !isCancelled && rawStatus !== 'delivered' ? `<span style="font-size:12px;color:var(--muted);padding:6px 0;">Cannot cancel — order is ${statusLabel}</span>` : ''}
+            ${!canCancel && !isCancelled && rawStatus !== 'delivered' ? `<span style="font-size:12px;color:var(--muted);padding:6px 0;">Order cannot be cancelled — ${statusLabel}</span>` : ''}
             ${showReturnReplace ? `<button class="order-action-btn return" onclick="event.stopPropagation();showReturnReplaceModal('${order.id}')">Return / Refund</button>` : ''}
           </div>
         `;
@@ -2765,7 +2945,7 @@
         if (snap.exists()) {
           const currentStatus = (snap.val().status || '').toLowerCase();
           if (!USER_CANCELLABLE.includes(currentStatus)) {
-            showToast('❌ Cannot cancel — order is already ' + (ORDER_STATUS_LABELS[currentStatus] || currentStatus), 'error');
+            showToast('❌ Order cannot be cancelled — already ' + (ORDER_STATUS_LABELS[currentStatus] || currentStatus), 'error');
             return;
           }
         }
@@ -3072,7 +3252,7 @@
       const sorted = [...productsToRender].sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        container.innerHTML = '<div class="card-panel center" style="padding:32px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="font-size:40px;opacity:0.3;">🛍️</span><p style="color:var(--muted);margin:0;font-size:0.9rem;">Abhi koi products available nahi hain</p></div></div>';
+        container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><div style="font-size:52px;margin-bottom:4px;">🛍️</div><h3 style="margin:0;font-size:1.05rem;font-weight:800;color:var(--text);">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         return;
       }
       const fragment = document.createDocumentFragment();
