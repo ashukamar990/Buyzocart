@@ -417,9 +417,8 @@
           item.style.left = (px - iw/2) + 'px';
           item.style.top  = (py - 45) + 'px';
           item.title = cat.name || '';
-          item.innerHTML =
-            '<div class="bz-cat-thumb" style="background-image:url(' + JSON.stringify(img) + ')"></div>' +
-            '<span class="bz-cat-label">' + nm + '</span>';
+          item.innerHTML = '<div class="bz-cat-thumb"></div><span class="bz-cat-label">' + nm + '</span>';
+          if (img) item.querySelector('.bz-cat-thumb').style.backgroundImage = 'url(' + img + ')';
           item.addEventListener('click', function(){ filterByCategory(cat.id); });
           ring.appendChild(item);
         });
@@ -461,9 +460,8 @@
           item.style.alignItems = 'center';
           item.style.flexShrink = '0';
           item.title = cat.name || '';
-          item.innerHTML =
-            '<div class="bz-cat-thumb" style="background-image:url(' + JSON.stringify(img) + ')"></div>' +
-            '<span class="bz-cat-label">' + nm + '</span>';
+          item.innerHTML = '<div class="bz-cat-thumb"></div><span class="bz-cat-label">' + nm + '</span>';
+          if (img) item.querySelector('.bz-cat-thumb').style.backgroundImage = 'url(' + img + ')';
           item.addEventListener('click', function(){ filterByCategory(cat.id); });
           ring.appendChild(item);
         });
