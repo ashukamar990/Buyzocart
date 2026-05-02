@@ -63,7 +63,6 @@
       currencySymbol: '₹'
     };
     let savedAddresses = [];
-    let _editingAddressId = null;
     let recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
     let popularSearches = [];
     let searchTags = [];
@@ -219,35 +218,6 @@
         timeout = setTimeout(() => func.apply(this, args), wait);
       };
     }
-
-    const escapeHTML = (str) => {
-      if (!str) return '';
-      return String(str).replace(/[&<>"']/g, m => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      })[m]);
-    };
-
-    const getSavedAddresses = () => {
-      try {
-        return JSON.parse(localStorage.getItem('bz_addresses')) || [];
-      } catch (e) { return []; }
-    };
-
-    const isDuplicateAddress = (newAddr, existingAddresses) => {
-      return existingAddresses.some(addr =>
-        addr.name?.trim().toLowerCase() === newAddr.name?.trim().toLowerCase() &&
-        addr.mobile?.trim() === newAddr.mobile?.trim() &&
-        addr.pincode?.trim() === newAddr.pincode?.trim() &&
-        addr.street?.trim().toLowerCase() === newAddr.street?.trim().toLowerCase()
-      );
-    };
-
-    const saveAddressToLocal = (address) => {
-      const addresses = getSavedAddresses();
-      if (address.isDefault) addresses.forEach(a => a.isDefault = false);
-      addresses.unshift({ ...address, id: address.id || Date.now().toString() });
-      localStorage.setItem('bz_addresses', JSON.stringify(addresses.slice(0, 10)));
-    };
 
     function parsePrice(p) {
       if (typeof p === "number") return p;
@@ -2037,43 +2007,40 @@
           gatewayCharge: gatewayCharge,
           totalAmount: total,
           paymentMethod: paymentMethod,
-          status: 'confirmed',
+          status: 'placed',
           orderDate: Date.now(),
           userInfo: userInfo,
+          address: {
+            name: userInfo.fullName || '',
+            mobile: userInfo.mobile || '',
+            street: userInfo.house || userInfo.address || '',
+            city: userInfo.city || '',
+            state: userInfo.state || '',
+            pincode: userInfo.pincode || ''
+          },
+          items: [{
+            name: (currentProduct.name || currentProduct.title || 'Product'),
+            image: getProductImage(currentProduct),
+            price: productPrice,
+            quantity: quantity,
+            size: size,
+            productId: currentProduct.id
+          }],
+          assignedDeliveryBoyId: null,
+          cancelledBy: null,
+          cancelReason: null,
           deliveredDate: null,
           cancelledDate: null,
           tracking: {
-            confirmed: Date.now(),
+            placed: Date.now(),
+            confirmed: null,
             shipped: null,
+            out_for_delivery: null,
             delivered: null
           }
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), true);
-
-        // Save/Update address as default after successful order
-        const orderAddr = {
-          name: userInfo.fullName,
-          mobile: userInfo.mobile,
-          pincode: userInfo.pincode,
-          city: userInfo.city,
-          state: userInfo.state,
-          street: userInfo.house,
-          type: document.getElementById('addressType')?.value || 'home',
-          isDefault: true,
-          updatedAt: Date.now()
-        };
-        const currentAddrs = getSavedAddresses();
-        const existing = currentAddrs.find(a =>
-          a.street === orderAddr.street && a.pincode === orderAddr.pincode
-        );
-        if (existing) {
-          const updated = currentAddrs.map(a => ({ ...a, isDefault: a.id === existing.id }));
-          localStorage.setItem('bz_addresses', JSON.stringify(updated));
-        } else {
-          saveAddressToLocal(orderAddr);
-        }
-
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
@@ -2418,7 +2385,40 @@
       showToast('Link copied to clipboard', 'success');
     }
 
-    async function showMyOrders() {
+    // ===== REAL-TIME ORDERS LISTENER =====
+    let _ordersListenerUnsubscribe = null;
+    function setupOrdersRealtimeListener(user) {
+      if (!user || !window.firebase || !window.firebase.onValue) return;
+      // Clean up previous listener if any
+      if (_ordersListenerUnsubscribe) { try { _ordersListenerUnsubscribe(); } catch(e){} }
+      try {
+        const ordersRef = window.firebase.query(
+          window.firebase.ref(window.firebase.database, 'orders'),
+          window.firebase.orderByChild('userId'),
+          window.firebase.equalTo(user.uid)
+        );
+        _ordersListenerUnsubscribe = window.firebase.onValue(ordersRef, (snap) => {
+          if (!document.getElementById('myOrdersPage')?.classList.contains('active')) return;
+          const container = document.getElementById('ordersList');
+          const empty = document.getElementById('orders-empty');
+          if (!container) return;
+          const orders = [];
+          if (snap.exists()) {
+            snap.forEach(child => orders.push({ id: child.key, ...child.val() }));
+          }
+          if (!orders.length) {
+            container.innerHTML = '';
+            if (empty) empty.style.display = 'block';
+            return;
+          }
+          orders.sort((a, b) => (b.orderDate || 0) - (a.orderDate || 0));
+          if (empty) empty.style.display = 'none';
+          renderOrders(orders);
+        });
+      } catch(e) { console.warn('Real-time orders listener error:', e); }
+    }
+
+        async function showMyOrders() {
       if (!currentUser) return;
       const ordersList = document.getElementById('ordersList');
       const empty = document.getElementById('orders-empty');
@@ -2466,6 +2466,19 @@
       }
     }
 
+    // ===== ORDER STATUS CONFIG =====
+    const ORDER_STATUS_FLOW = ['placed', 'confirmed', 'shipped', 'out_for_delivery', 'delivered'];
+    const ORDER_STATUS_LABELS = {
+      placed:           '📦 Placed',
+      confirmed:        '✅ Confirmed',
+      shipped:          '🚚 Shipped',
+      out_for_delivery: '🛵 Out for Delivery',
+      delivered:        '✓ Delivered',
+      cancelled:        '✗ Cancelled'
+    };
+    // User can cancel ONLY at these statuses
+    const USER_CANCELLABLE = ['placed', 'confirmed'];
+
     function renderOrders(orders) {
       const container = document.getElementById('ordersList');
       if (!container) return;
@@ -2474,9 +2487,9 @@
         if (!order) return;
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
-        const rawStatus = order.status || 'confirmed';
+        const rawStatus = (order.status || 'placed').toLowerCase();
         const statusClass = `status-${rawStatus}`;
-        const statusText = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+        const statusLabel = ORDER_STATUS_LABELS[rawStatus] || (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1));
         const orderDate = new Date(order.orderDate || Date.now());
         const deliveredDate = order.deliveredDate ? new Date(order.deliveredDate) : null;
         let showReturnReplace = false;
@@ -2486,20 +2499,35 @@
         }
         const liveProduct = products.find(p => p.id === order.productId);
         const imgUrl = (liveProduct ? getProductImage(liveProduct) : null) || order.productImage || 'https://via.placeholder.com/80x80/f3f4f6/64748b?text=No+Image';
-
-        const steps = [
-          { key: 'confirmed', label: 'Confirmed', icon: '✅' },
-          { key: 'shipped',   label: 'Shipped',   icon: '🚚' },
-          { key: 'delivered', label: 'Delivered',  icon: '📦' }
-        ];
-        const statusOrder = ['confirmed','shipped','delivered'];
-        const currentIdx = statusOrder.indexOf(rawStatus);
+        const canCancel = USER_CANCELLABLE.includes(rawStatus);
         const isCancelled = rawStatus === 'cancelled' || rawStatus === 'return-requested' || rawStatus === 'replace-requested';
+
+        // Tracking steps — 5 step flow
+        const steps = [
+          { key: 'placed',           label: 'Placed',          icon: '📦' },
+          { key: 'confirmed',        label: 'Confirmed',        icon: '✅' },
+          { key: 'shipped',          label: 'Shipped',          icon: '🚚' },
+          { key: 'out_for_delivery', label: 'Out for Delivery', icon: '🛵' },
+          { key: 'delivered',        label: 'Delivered',        icon: '✓'  }
+        ];
+        const currentIdx = ORDER_STATUS_FLOW.indexOf(rawStatus);
+
+        // Cancel info block
+        let cancelInfoHtml = '';
+        if (isCancelled && (order.cancelledBy || order.cancelReason)) {
+          const byMap = { user: 'You', admin: 'Admin', delivery: 'Delivery Partner' };
+          const by = byMap[order.cancelledBy] || order.cancelledBy || '';
+          cancelInfoHtml = `<div style="margin:8px 0;padding:8px 12px;background:#fef2f2;border-radius:8px;color:#dc2626;font-size:13px;border-left:3px solid #ef4444;">
+            ${by ? `<strong>Cancelled by ${by}</strong>` : ''}
+            ${order.cancelReason ? ` &bull; ${order.cancelReason}` : order.cancellationReason ? ` &bull; ${order.cancellationReason}` : ''}
+          </div>`;
+        }
 
         const trackingHtml = isCancelled ? `
           <div style="margin:10px 0 4px;padding:8px 12px;background:#fef2f2;border-radius:8px;color:#ef4444;font-size:13px;font-weight:600;">
-            ❌ ${statusText}
-          </div>` : `
+            ✗ Order Cancelled
+          </div>
+          ${cancelInfoHtml}` : `
           <div class="order-tracking-steps">
             ${steps.map((step, i) => {
               const done = i < currentIdx;
@@ -2507,8 +2535,8 @@
               return `<div class="track-step ${done ? 'done' : active ? 'active' : 'pending'}">
                 <div class="track-dot">${done ? '✓' : active ? step.icon : ''}</div>
                 <div class="track-label">${step.label}</div>
-              </div>`;
-            }).join('<div class="track-line"></div>')}
+              </div>` + (i < steps.length - 1 ? '<div class="track-line"></div>' : '');
+            }).join('')}
           </div>`;
 
         orderCard.innerHTML = `
@@ -2517,7 +2545,7 @@
               <div class="order-id">${order.orderId || order.id || ''}</div>
               <div class="order-date">${orderDate.toLocaleDateString('en-IN')}</div>
             </div>
-            <div class="order-status ${statusClass}">${statusText}</div>
+            <div class="order-status ${statusClass}">${statusLabel}</div>
           </div>
           <div class="order-details">
             <div class="order-product-image" style="background-image: url('${imgUrl}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color:#f8fafc;"></div>
@@ -2530,10 +2558,9 @@
           ${trackingHtml}
           <div class="order-actions">
             <button class="order-action-btn view-product" onclick="event.stopPropagation();viewProductFromOrder('${order.productId}')">View Product</button>
-            ${rawStatus === 'confirmed' || rawStatus === 'shipped' ? 
-              `<button class="order-action-btn cancel" onclick="event.stopPropagation();cancelOrder('${order.id}')">Cancel Order</button>` : ''}
-            ${showReturnReplace ? 
-              `<button class="order-action-btn return" onclick="event.stopPropagation();showReturnReplaceModal('${order.id}')">Return / Refund</button>` : ''}
+            ${canCancel ? `<button class="order-action-btn cancel" onclick="event.stopPropagation();cancelOrder('${order.id}')">Cancel Order</button>` : ''}
+            ${!canCancel && !isCancelled && rawStatus !== 'delivered' ? `<span style="font-size:12px;color:var(--muted);padding:6px 0;">Cannot cancel — order is ${statusLabel}</span>` : ''}
+            ${showReturnReplace ? `<button class="order-action-btn return" onclick="event.stopPropagation();showReturnReplaceModal('${order.id}')">Return / Refund</button>` : ''}
           </div>
         `;
         orderCard.addEventListener('click', (e) => {
@@ -2561,15 +2588,31 @@
       }
     }
 
-    function cancelOrder(orderId) {
+    async function cancelOrder(orderId) {
+      // Re-check status from Firebase before allowing cancel
+      try {
+        const snap = await window.firebase.get(window.firebase.ref(window.firebase.database, 'orders/' + orderId));
+        if (snap.exists()) {
+          const currentStatus = (snap.val().status || '').toLowerCase();
+          if (!USER_CANCELLABLE.includes(currentStatus)) {
+            showToast('❌ Cannot cancel — order is already ' + (ORDER_STATUS_LABELS[currentStatus] || currentStatus), 'error');
+            return;
+          }
+        }
+      } catch(e) { /* proceed anyway */ }
+
       document.getElementById('cancellationModal').classList.add('active');
       document.getElementById('confirmCancel').onclick = async function() {
-        const reason = document.querySelector('input[name="cancelReason"]:checked').value;
+        const checkedReason = document.querySelector('input[name="cancelReason"]:checked');
+        const reason = checkedReason ? checkedReason.value : 'Not specified';
         try {
           await window.firebase.update(window.firebase.ref(window.firebase.database, 'orders/' + orderId), {
             status: 'cancelled',
+            cancelledBy: 'user',
+            cancelReason: reason,
+            cancellationReason: reason,
             cancelledDate: Date.now(),
-            cancellationReason: reason
+            cancelledAt: Date.now()
           });
           showToast('Order cancelled successfully', 'success');
           document.getElementById('cancellationModal').classList.remove('active');
@@ -2602,8 +2645,9 @@
     function showOrderDetail(order) {
       const container = document.getElementById('orderDetailContent');
       if (!container) return;
-      const statusClass = `status-${order.status}`;
-      const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+      const rawSt = (order.status || 'placed').toLowerCase();
+      const statusClass = `status-${rawSt}`;
+      const statusText = ORDER_STATUS_LABELS[rawSt] || (rawSt.charAt(0).toUpperCase() + rawSt.slice(1));
       container.innerHTML = `
         <div class="order-detail-section">
           <div class="order-detail-label">Order ID</div>
@@ -3296,14 +3340,6 @@
     }
 
     async function loadSavedAddresses() {
-      // Source of truth is localStorage
-      renderSavedAddresses();
-
-      const savedAddressesSection = document.getElementById('savedAddressesSection');
-      if (getSavedAddresses().length > 0) {
-        if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-      }
-
       if (!currentUser) return;
       try {
         const snapshot = await window.firebase.get(
@@ -3313,21 +3349,20 @@
             window.firebase.equalTo(currentUser.uid)
           )
         );
-        if (snapshot.exists()) {
-          const fbAddrs = [];
-          snapshot.forEach(child => fbAddrs.push({ id: child.key, ...child.val() }));
-
-          const localAddrs = getSavedAddresses();
-          let merged = [...localAddrs];
-          fbAddrs.forEach(fa => {
-            if (!merged.some(la => la.street === fa.street && la.pincode === fa.pincode)) {
-              merged.push(fa);
-            }
-          });
-          localStorage.setItem('bz_addresses', JSON.stringify(merged.slice(0, 10)));
+        const addressesList = document.getElementById('savedAddressesList');
+        const savedAddressesSection = document.getElementById('savedAddressesSection');
+        if (!snapshot.exists()) {
+          savedAddressesSection.style.display = 'none';
+          savedAddresses = [];
+          return;
+        }
+        const addressesObj = snapshot.val();
+        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
+        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+        if (addresses.length > 0) {
+          savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-          if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-          const defaultAddr = getSavedAddresses()[0];
+          const defaultAddr = savedAddresses[0];
           if (defaultAddr) {
             fillAddressForm(defaultAddr);
             userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
@@ -3345,72 +3380,50 @@
       const addressesList = document.getElementById('savedAddressesList');
       if (!addressesList) return;
       addressesList.innerHTML = '';
-
-      const addresses = getSavedAddresses();
-      if (addresses.length === 0) {
-        addressesList.innerHTML = '<p style="text-align:center;color:var(--muted);padding:10px;">No saved addresses yet.</p>';
-        return;
-      }
-
-      addresses.forEach(address => {
+      savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
         addressCard.className = 'saved-address-card';
-        const addressType = address.type || 'home';
-        const isDefaultLabel = address.isDefault ? '• Default' : '';
-
+        const addressType = address.type || 'Other';
+        const isDefault = address.isDefault ? '• Default' : '';
         addressCard.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
             <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
-              <div style="font-weight:600">${escapeHTML(address.name)}</div>
-              <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:2px;">
-                ${escapeHTML(address.street)}, ${escapeHTML(address.city)}, ${escapeHTML(address.state)} - ${escapeHTML(address.pincode)}
-              </div>
-              <div style="font-size:0.85rem;color:var(--text-secondary);">📞 ${escapeHTML(address.mobile)}</div>
-              <div style="font-size:11px;color:var(--primary);margin-top:4px;font-weight:600;text-transform:uppercase;">
-                ${escapeHTML(addressType)} ${isDefaultLabel}
-              </div>
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
             </div>
           </div>
-          <div class="address-actions" style="margin-top:10px;display:flex;gap:8px;">
-            <button class="btn secondary edit-address" data-id="${address.id}" style="padding:4px 8px;font-size:12px;">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}" style="padding:4px 8px;font-size:12px;">Delete</button>
+          <div class="address-actions">
+            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
           </div>
         `;
-
         const radio = addressCard.querySelector('input[type="radio"]');
-        const selectAddr = () => {
-          radio.checked = true;
+        radio.addEventListener('click', function(e) {
+          e.stopPropagation();
           fillAddressForm(address);
-          userInfo = {
-            fullName: address.name,
-            mobile: address.mobile,
-            pincode: address.pincode,
-            city: address.city,
-            state: address.state,
-            house: address.street
-          };
-          // Highlight selected card logic if needed
-        };
-
-        addressCard.addEventListener('click', (e) => {
-          if (!e.target.classList.contains('btn')) selectAddr();
+          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
         });
-
-        addressCard.querySelector('.edit-address').onclick = (e) => {
+        addressCard.addEventListener('click', function(e) {
+          if (e.target.type !== 'radio') {
+            radio.checked = true;
+            fillAddressForm(address);
+            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+          }
+        });
+        const editBtn = addressCard.querySelector('.edit-address');
+        editBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           editAddress(address);
-        };
-
-        addressCard.querySelector('.delete-address').onclick = (e) => {
+        });
+        const deleteBtn = addressCard.querySelector('.delete-address');
+        deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          if(confirm('Delete this address?')) {
-            const newList = getSavedAddresses().filter(a => a.id !== address.id);
-            localStorage.setItem('bz_addresses', JSON.stringify(newList));
-            renderSavedAddresses();
-          }
-        };
-
+          deleteAddressConfirmation(address);
+        });
         addressesList.appendChild(addressCard);
       });
     }
@@ -3426,12 +3439,12 @@
     }
 
     async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType').value;
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
@@ -3446,31 +3459,19 @@
         state: state,
         street: house,
         type: addressType,
-        userId: currentUser ? currentUser.uid : 'guest',
-        isDefault: getSavedAddresses().length === 0,
-        updatedAt: Date.now()
+        userId: currentUser.uid,
+        isDefault: savedAddresses.length === 0,
+        createdAt: Date.now()
       };
       try {
-        const addressId = _editingAddressId || 'address_' + Date.now();
-        if (_editingAddressId) {
-          const list = getSavedAddresses().map(a => a.id === _editingAddressId ? { ...addressData, id: _editingAddressId } : a);
-          localStorage.setItem('bz_addresses', JSON.stringify(list));
-        } else {
-          if (isDuplicateAddress(addressData, getSavedAddresses())) {
-            showToast('Address already exists', 'error');
-            return;
-          }
-          saveAddressToLocal(addressData);
-        }
-
-        // Sync to Firebase if possible
-        if (currentUser) {
-          try { await window.firebase.set(window.firebase.ref(window.firebase.database, `users/${currentUser.uid}/addresses/${addressId}`), addressData); } catch(e){}
-        }
-
+        const addressId = 'address_' + Date.now();
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        savedAddresses.push({ id: addressId, ...addressData });
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
         showToast('Address saved successfully', 'success');
-        renderSavedAddresses();
-        _editingAddressId = null;
+        await loadSavedAddresses();
+        document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -3478,7 +3479,6 @@
     }
 
     function showNewAddressForm() {
-      _editingAddressId = null;
       document.getElementById('savedAddressesSection').style.display = 'block';
       document.getElementById('newAddressForm').style.display = 'block';
       document.getElementById('fullname').value = '';
@@ -3495,39 +3495,54 @@
 
     function editAddress(address) {
       fillAddressForm(address);
-      _editingAddressId = address.id;
-      if (document.getElementById('savedAddressesSection')) document.getElementById('savedAddressesSection').style.display = 'none';
-      if (document.getElementById('newAddressForm')) document.getElementById('newAddressForm').style.display = 'block';
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
       const saveBtn = document.getElementById('saveUserInfo');
-      if (saveBtn) {
-        saveBtn.textContent = 'Update Address';
-        saveBtn.onclick = saveUserInfoAndAddress;
-      }
+      saveBtn.textContent = 'Update Address';
+      saveBtn.onclick = async function() {
+        const fullname = document.getElementById('fullname').value;
+        const mobile = document.getElementById('mobile').value;
+        const pincode = document.getElementById('pincode').value;
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const house = document.getElementById('house').value;
+        const addressType = document.getElementById('addressType').value;
+        const addressData = {
+          name: fullname,
+          mobile: mobile,
+          pincode: pincode,
+          city: city,
+          state: state,
+          street: house,
+          type: addressType,
+          userId: currentUser.uid,
+          isDefault: address.isDefault
+        };
+        try {
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
+          showToast('Address updated successfully', 'success');
+          document.getElementById('savedAddressesSection').style.display = 'block';
+          document.getElementById('newAddressForm').style.display = 'block';
+          await loadSavedAddresses();
+        } catch (error) {
+          console.error('Error updating address:', error);
+          showToast('Failed to update address', 'error');
+        }
+      };
     }
 
     function deleteAddressConfirmation(address) {
       document.getElementById('alertTitle').textContent = 'Delete Address';
-      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${escapeHTML(address.name)}?`;
+      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
       document.getElementById('alertModal').classList.add('active');
       document.getElementById('alertConfirmBtn').onclick = async function() {
         try {
-          // Remove from local
-          const newList = getSavedAddresses().filter(a => a.id !== address.id);
-          localStorage.setItem('bz_addresses', JSON.stringify(newList));
-
-          // Remove from Firebase if possible
-          if (currentUser) {
-            try { await window.firebase.remove(window.firebase.ref(window.firebase.database, `users/${currentUser.uid}/addresses/${address.id}`)); } catch(e){}
-            // Legacy path remove
-            try { await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id)); } catch(e){}
-          }
-
+          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
           showToast('Address deleted successfully', 'success');
           document.getElementById('alertModal').classList.remove('active');
-          renderSavedAddresses();
-          if (document.getElementById('savedAddressesSection')) {
-            document.getElementById('savedAddressesSection').style.display = getSavedAddresses().length ? 'block' : 'none';
-          }
+          await loadSavedAddresses();
+          document.getElementById('savedAddressesSection').style.display = savedAddresses.length ? 'block' : 'none';
+          document.getElementById('newAddressForm').style.display = 'block';
         } catch (error) {
           console.error('Error deleting address:', error);
           showToast('Failed to delete address', 'error');
@@ -4279,6 +4294,8 @@
             document.getElementById('authModal')?.classList.remove('active');
 
             setupAccountRealtimeSync(user.uid);
+            // Real-time orders listener for myOrdersPage
+            setupOrdersRealtimeListener(user);
 
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
@@ -5500,8 +5517,7 @@
 
   // Observe placeOrder function to inject address save
   // Try to wrap common function names
-  // Removed confirmOrder as it now handles saving directly
-  const fnNames = ['placeOrder', 'submitOrder', 'handleOrderSubmit'];
+  const fnNames = ['placeOrder', 'submitOrder', 'handleOrderSubmit', 'confirmOrder'];
   fnNames.forEach(fnName => {
     if (typeof window[fnName] === 'function') {
       const orig = window[fnName];
