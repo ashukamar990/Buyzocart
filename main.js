@@ -352,11 +352,7 @@
 
     function openCategoryShapePage() {
       showPage('categoryPage');
-      setTimeout(function() {
-        if (typeof bzRenderOrbit === 'function') {
-          bzRenderOrbit();
-        }
-      }, 300);
+      setTimeout(function() { bzRenderOrbit(); }, 150);
     }
 
     function bzSetShape(shape) {
@@ -836,11 +832,7 @@
           renderRecentlyViewedPage();
           break;
         case 'categoryPage':
-          setTimeout(function() { 
-            if (typeof bzRenderOrbit === 'function') {
-              bzRenderOrbit(); 
-            }
-          }, 300);
+          setTimeout(function() { bzRenderOrbit(); }, 100);
           break;
       }
     }
