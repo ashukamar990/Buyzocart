@@ -98,35 +98,6 @@
     #backToTop{position:fixed;bottom:86px;right:16px;width:40px;height:40px;border-radius:50%;background:#2563eb;color:#fff;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:200;box-shadow:0 4px 14px rgba(37,99,235,.4);transition:opacity .3s,transform .3s;font-size:18px}
     #backToTop.show{display:flex}
     #backToTop:hover{transform:translateY(-2px)}
-
-    /* ===== ORDER STATUS BADGES — Full 5-Step Flow ===== */
-    .order-status { display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700; }
-    .status-placed           { background:#fef9c3; color:#854d0e; }
-    .status-confirmed        { background:#e0f2fe; color:#0369a1; }
-    .status-shipped          { background:#dbeafe; color:#1d4ed8; }
-    .status-out_for_delivery { background:#ffedd5; color:#c2410c; }
-    .status-delivered        { background:#dcfce7; color:#15803d; }
-    .status-cancelled        { background:#fee2e2; color:#dc2626; }
-    .status-return-requested { background:#f3e8ff; color:#7c3aed; }
-    .status-replace-requested{ background:#f3e8ff; color:#7c3aed; }
-
-    /* ===== ORDER TRACKING — 5-Step ===== */
-    .order-tracking-steps { display:flex; align-items:center; margin:12px 0 4px; overflow-x:auto; padding-bottom:4px; }
-    .track-step { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:60px; }
-    .track-dot {
-      width:30px; height:30px; border-radius:50%; border:2px solid #e2e8f0;
-      display:flex; align-items:center; justify-content:center; font-size:13px;
-      background:#fff; color:#64748b; font-weight:600; transition:all .3s;
-    }
-    .track-label { font-size:10px; color:#64748b; text-align:center; font-weight:500; line-height:1.3; }
-    .track-step.done  .track-dot { background:#22c55e; border-color:#22c55e; color:#fff; }
-    .track-step.active .track-dot{ background:#2563eb; border-color:#2563eb; color:#fff; }
-    .track-step.done  .track-label, .track-step.active .track-label { color:#0f172a; font-weight:600; }
-    .track-line { height:2px; flex:1; background:#e2e8f0; min-width:10px; margin-bottom:20px; }
-    .track-step.done ~ .track-line { background:#22c55e; }
-
-    /* Cannot cancel message */
-    .cannot-cancel-msg { font-size:12px; color:#94a3b8; padding:6px 0; }
     #cookieBanner{position:fixed;bottom:72px;left:0;right:0;background:#1e293b;color:#f1f5f9;padding:12px 16px;z-index:300;display:none;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px}
     #cookieBanner.show{display:flex}
     #cookieBanner button{padding:7px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600}
@@ -583,10 +554,10 @@
         </svg>
         Wishlist
       </div>
-      <div class="menu-item" onclick="showCategories(); closeMenu();">
+      <div class="menu-item" onclick="openCategoryShapePage(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          <circle cx="12" cy="12" r="3"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="20" r="2"/>
+          <circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/>
         </svg>
         Categories
       </div>
@@ -1413,6 +1384,62 @@
         </div>
       </div>
     </section>
+
+    <!-- ===================== CATEGORY SHAPE PAGE ===================== -->
+    <section class="page" id="categoryPage">
+      <div class="container" style="padding-top:20px;padding-bottom:24px;">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <button onclick="showPage('homePage')" style="background:#f1f5f9;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f172a;flex-shrink:0;" aria-label="Back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          </button>
+          <div>
+            <h2 style="font-size:20px;font-weight:800;margin:0;line-height:1.2;">Shop by Category</h2>
+            <p style="margin:0;font-size:12px;color:#64748b;font-weight:500;">Choose layout, then tap a category</p>
+          </div>
+        </div>
+
+        <!-- Shape selector -->
+        <div id="catShapeSelector" style="display:flex;gap:10px;justify-content:center;margin-bottom:28px;flex-wrap:wrap;">
+          <button class="shape-btn active" data-shape="circle" onclick="setCatShape('circle')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+            Circle
+          </button>
+          <button class="shape-btn" data-shape="triangle" onclick="setCatShape('triangle')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 21 2 21"/></svg>
+            Triangle
+          </button>
+          <button class="shape-btn" data-shape="rectangle" onclick="setCatShape('rectangle')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+            Rectangle
+          </button>
+          <button class="shape-btn" data-shape="star" onclick="setCatShape('star')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Star
+          </button>
+        </div>
+
+        <!-- Orbit stage -->
+        <div style="display:flex;justify-content:center;align-items:center;overflow:hidden;padding:8px 0;">
+          <div id="catOrbitStage">
+            <!-- Shape guide SVG -->
+            <div id="catShapeGuide">
+              <svg id="catGuideSvg" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+                <!-- shape guide drawn by JS -->
+              </svg>
+            </div>
+            <!-- Spinning ring -->
+            <div id="catOrbitRing">
+              <!-- Center dot -->
+              <div id="catCenterDot"></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="cat-hint">✨ Slowly rotating — tap any icon to browse</p>
+      </div>
+    </section>
+
   </main>
 
   <div class="bottom-nav">
@@ -1650,8 +1677,7 @@
   <div class="modal-overlay" id="cancellationModal">
     <div class="cancellation-modal">
       <h3>Cancel Order</h3>
-      <p style="color:#64748b;font-size:13px;margin-bottom:4px;">⚠️ Cancellation is only allowed for <strong>Placed</strong> or <strong>Confirmed</strong> orders. Orders that are already shipped or out for delivery cannot be cancelled.</p>
-      <p style="margin-bottom:16px;">Please select a reason for cancellation:</p>
+      <p>Please select a reason for cancellation:</p>
       
       <div class="cancellation-reason" onclick="selectCancelReason('changed-mind', this)">
         <label>
@@ -1898,6 +1924,303 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     })();
+  </script>
+
+
+  <!-- ===================== CATEGORY PAGE STYLES & LOGIC ===================== -->
+  <style>
+    .shape-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 10px 16px; border-radius: 16px; border: 2px solid #e2e8f0;
+      background: #f8fafc; color: #475569; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all .25s; min-width: 74px; outline: none;
+    }
+    .shape-btn:hover { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+    .shape-btn.active { border-color: #2563eb; background: #2563eb; color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.35); }
+    [data-theme="dark"] .shape-btn { background: #1e293b; border-color: #334155; color: #94a3b8; }
+    [data-theme="dark"] .shape-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+    #catOrbitStage {
+      position: relative;
+      width: 320px; height: 320px;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+    #catShapeGuide {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    #catGuideSvg { width: 100%; height: 100%; }
+
+    #catOrbitRing {
+      position: absolute; inset: 0;
+      transform-origin: 160px 160px;
+    }
+    #catOrbitRing.spinning {
+      animation: bzCatSpin 24s linear infinite;
+    }
+    #catOrbitRing.spinning .cat-orbit-item {
+      animation: bzCatCounterSpin 24s linear infinite;
+    }
+    @keyframes bzCatSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes bzCatCounterSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(-360deg); }
+    }
+
+    .cat-orbit-item {
+      position: absolute;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      cursor: pointer; user-select: none; will-change: left, top;
+      transition: left .7s cubic-bezier(.34,1.4,.64,1), top .7s cubic-bezier(.34,1.4,.64,1);
+      z-index: 2;
+    }
+    .cat-orbit-item:active { opacity: .7; }
+    .cat-orbit-thumb {
+      width: 54px; height: 54px; border-radius: 50%;
+      background-size: cover; background-position: center; background-repeat: no-repeat;
+      background-color: #f1f5f9;
+      border: 3px solid #2563eb;
+      box-shadow: 0 4px 14px rgba(37,99,235,.28);
+      transition: box-shadow .2s, border-color .2s, transform .2s;
+      flex-shrink: 0;
+    }
+    .cat-orbit-item:hover .cat-orbit-thumb {
+      box-shadow: 0 6px 22px rgba(124,58,237,.5);
+      border-color: #7c3aed;
+      transform: scale(1.1);
+    }
+    [data-theme="dark"] .cat-orbit-thumb { background-color: #1e293b; }
+    .cat-orbit-label {
+      font-size: 9.5px; font-weight: 700; color: #0f172a;
+      text-align: center; white-space: nowrap;
+      overflow: hidden; max-width: 76px; text-overflow: ellipsis;
+      margin-top: 5px; line-height: 1.2; display: block;
+    }
+    [data-theme="dark"] .cat-orbit-label { color: #e2e8f0; }
+
+    #catCenterDot {
+      position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 16px; height: 16px; border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      box-shadow: 0 0 0 5px rgba(37,99,235,.15), 0 0 0 10px rgba(124,58,237,.07);
+      pointer-events: none; z-index: 1;
+      transition: background .5s;
+    }
+    .cat-hint {
+      text-align: center; color: #94a3b8; font-size: 13px;
+      margin-top: 20px; font-weight: 500; letter-spacing: .01em;
+    }
+    [data-theme="dark"] .cat-hint { color: #64748b; }
+
+    @media (max-width: 360px) {
+      #catOrbitStage { width: 280px; height: 280px; }
+      #catOrbitRing  { transform-origin: 140px 140px; }
+    }
+  </style>
+
+  <script>
+  (function() {
+    var _shape = 'circle';
+
+    window.openCategoryShapePage = function() {
+      if (typeof showPage === 'function') showPage('categoryPage');
+      setTimeout(function() { renderCatOrbit(); }, 120);
+    };
+
+    window.setCatShape = function(shape) {
+      _shape = shape;
+      document.querySelectorAll('.shape-btn').forEach(function(b) { b.classList.remove('active'); });
+      var btn = document.querySelector('.shape-btn[data-shape="' + shape + '"]');
+      if (btn) btn.classList.add('active');
+      // Pause spin, move items, restart spin
+      var ring = document.getElementById('catOrbitRing');
+      if (ring) ring.classList.remove('spinning');
+      setTimeout(function() { repositionCatItems(_shape); }, 30);
+    };
+
+    function stageSize() {
+      var s = document.getElementById('catOrbitStage');
+      return (s && s.offsetWidth) || 320;
+    }
+
+    function getPositions(n, shape, sz) {
+      var cx = sz/2, cy = sz/2, pts = [];
+
+      if (shape === 'circle') {
+        var r = sz * 0.37;
+        for (var i = 0; i < n; i++) {
+          var a = (2*Math.PI*i/n) - Math.PI/2;
+          pts.push({ x: cx + r*Math.cos(a), y: cy + r*Math.sin(a) });
+        }
+
+      } else if (shape === 'triangle') {
+        var rv = sz * 0.38;
+        // equilateral triangle: top, bottom-right, bottom-left
+        var v = [
+          { x: cx,               y: cy - rv },
+          { x: cx + rv*0.866,    y: cy + rv*0.5 },
+          { x: cx - rv*0.866,    y: cy + rv*0.5 }
+        ];
+        var edge = [], perSide = Math.ceil(n/3);
+        for (var s = 0; s < 3; s++) {
+          for (var j = 0; j < perSide; j++) {
+            var t = j / perSide;
+            edge.push({
+              x: v[s].x + (v[(s+1)%3].x - v[s].x)*t,
+              y: v[s].y + (v[(s+1)%3].y - v[s].y)*t
+            });
+          }
+        }
+        for (var i = 0; i < n; i++) pts.push(edge[i % edge.length]);
+
+      } else if (shape === 'rectangle') {
+        var rw = sz*0.72, rh = sz*0.68;
+        var L = cx-rw/2, T = cy-rh/2, R = cx+rw/2, B = cy+rh/2;
+        var perim = 2*(rw+rh);
+        for (var i = 0; i < n; i++) {
+          var d = (i/n)*perim, px, py;
+          if      (d < rw)        { px=L+d;         py=T; }
+          else if (d < rw+rh)     { px=R;            py=T+(d-rw); }
+          else if (d < 2*rw+rh)   { px=R-(d-rw-rh); py=B; }
+          else                     { px=L;            py=B-(d-2*rw-rh); }
+          pts.push({ x:px, y:py });
+        }
+
+      } else { // star
+        var ro = sz*0.40, ri = sz*0.20;
+        var spikes = 5, total2 = 2*spikes;
+        var allPts = [];
+        for (var k = 0; k < total2; k++) {
+          var a2 = (Math.PI*k/spikes) - Math.PI/2;
+          var rad = (k%2===0) ? ro : ri;
+          allPts.push({ x: cx+rad*Math.cos(a2), y: cy+rad*Math.sin(a2) });
+        }
+        // distribute n items among 10 star points
+        for (var i = 0; i < n; i++) pts.push(allPts[i % allPts.length]);
+      }
+      return pts;
+    }
+
+    function drawGuide(shape, sz) {
+      var svg = document.getElementById('catGuideSvg');
+      if (!svg) return;
+      var cx = sz/2, cy = sz/2;
+      var stroke = 'rgba(37,99,235,0.10)';
+      var html = '';
+
+      if (shape === 'circle') {
+        var r = sz*0.37;
+        html = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+stroke+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
+
+      } else if (shape === 'triangle') {
+        var rv = sz*0.38;
+        var v = [
+          [cx, cy-rv],
+          [cx+rv*0.866, cy+rv*0.5],
+          [cx-rv*0.866, cy+rv*0.5]
+        ];
+        html = '<polygon points="'+v.map(function(p){return p[0]+','+p[1];}).join(' ')+'" fill="none" stroke="'+stroke+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
+
+      } else if (shape === 'rectangle') {
+        var rw=sz*0.72,rh=sz*0.68;
+        html = '<rect x="'+(cx-rw/2)+'" y="'+(cy-rh/2)+'" width="'+rw+'" height="'+rh+'" rx="4" fill="none" stroke="'+stroke+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
+
+      } else {
+        var ro=sz*0.40,ri=sz*0.20,spikes=5,pts2=[];
+        for(var k=0;k<10;k++){
+          var a=(Math.PI*k/spikes)-Math.PI/2;
+          var rad=(k%2===0)?ro:ri;
+          pts2.push((cx+rad*Math.cos(a))+','+(cy+rad*Math.sin(a)));
+        }
+        html = '<polygon points="'+pts2.join(' ')+'" fill="none" stroke="'+stroke+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
+      }
+      svg.innerHTML = html;
+    }
+
+    function repositionCatItems(shape) {
+      var sz = stageSize();
+      var items = document.querySelectorAll('.cat-orbit-item');
+      var n = items.length;
+      if (!n) return;
+      var pos = getPositions(n, shape, sz);
+      var iw = 76, ih = 90;
+      items.forEach(function(item, i) {
+        var p = pos[i] || { x: sz/2, y: sz/2 };
+        item.style.left = (p.x - iw/2) + 'px';
+        item.style.top  = (p.y - ih/2) + 'px';
+      });
+      drawGuide(shape, sz);
+      // Re-enable spin after transition
+      setTimeout(function() {
+        var ring = document.getElementById('catOrbitRing');
+        if (ring) ring.classList.add('spinning');
+      }, 750);
+    }
+
+    window.renderCatOrbit = function() {
+      var ring = document.getElementById('catOrbitRing');
+      if (!ring) return;
+      ring.classList.remove('spinning');
+
+      var sz = stageSize();
+      var iw = 76, ih = 90;
+
+      var cats = (typeof categories !== 'undefined') ? categories : [];
+      if (!cats.length) {
+        // try again in 800ms
+        setTimeout(window.renderCatOrbit, 800);
+        return;
+      }
+
+      // Remove old items (keep center dot & guide)
+      Array.from(ring.querySelectorAll('.cat-orbit-item')).forEach(function(el) { el.remove(); });
+
+      var limited = cats.slice(0, 12);
+      var pos = getPositions(limited.length, _shape, sz);
+
+      limited.forEach(function(cat, i) {
+        var p = pos[i] || { x: sz/2, y: sz/2 };
+        var img = (typeof getProductImage === 'function') ? getProductImage(cat) : '';
+        var name = (cat.name || 'Category').slice(0, 14);
+
+        var item = document.createElement('div');
+        item.className = 'cat-orbit-item';
+        item.style.width  = iw + 'px';
+        item.style.height = ih + 'px';
+        item.style.left   = (p.x - iw/2) + 'px';
+        item.style.top    = (p.y - ih/2) + 'px';
+        item.title        = cat.name || 'Category';
+
+        item.innerHTML =
+          '<div class="cat-orbit-thumb" style="background-image:url(''+img+'')"></div>' +
+          '<span class="cat-orbit-label">'+name+'</span>';
+
+        item.addEventListener('click', function() {
+          if (typeof filterByCategory === 'function') filterByCategory(cat.id);
+        });
+        ring.appendChild(item);
+      });
+
+      drawGuide(_shape, sz);
+
+      // Start spinning after a short pause
+      setTimeout(function() {
+        var r2 = document.getElementById('catOrbitRing');
+        if (r2) r2.classList.add('spinning');
+      }, 600);
+    };
+
+    // Also hook the "showCategories" global so footer links work too
+    var _origSC = window.showCategories;
+    window.showCategories = function() {
+      window.openCategoryShapePage();
+    };
+
+  })();
   </script>
 
 </body>

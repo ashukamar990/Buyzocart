@@ -344,7 +344,12 @@
     }
 
     function showCategories() {
-      filterByCategory('all');
+      // Now opens the animated shape category page
+      if (typeof openCategoryShapePage === 'function') {
+        openCategoryShapePage();
+      } else {
+        filterByCategory('all');
+      }
     }
 
     function openSearchPanel() {
@@ -668,6 +673,9 @@
           break;
         case 'recentlyViewedPage':
           renderRecentlyViewedPage();
+          break;
+        case 'categoryPage':
+          setTimeout(function() { if (typeof renderCatOrbit === 'function') renderCatOrbit(); }, 100);
           break;
       }
     }
