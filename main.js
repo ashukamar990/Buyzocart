@@ -348,164 +348,173 @@
     }
 
     /* ===== CATEGORY SHAPE PAGE LOGIC ===== */
-    var _bzShape = 'circle';
 
     function openCategoryShapePage() {
       showPage('categoryPage');
       setTimeout(function() { bzRenderOrbit(); }, 150);
     }
 
-    function bzSetShape(shape) {
-      _bzShape = shape;
-      document.querySelectorAll('.bz-shape-btn').forEach(function(b) {
-        b.classList.remove('bz-shape-active');
-      });
-      var btn = document.querySelector('.bz-shape-btn[data-shape="' + shape + '"]');
-      if (btn) btn.classList.add('bz-shape-active');
-      var ring = document.getElementById('bzOrbitRing');
-      if (ring) ring.classList.remove('bz-spinning');
-      bzRepositionItems(shape);
-    }
-
-    function bzGetPositions(n, shape, sz) {
-      var cx = sz/2, cy = sz/2, pts = [];
-      if (shape === 'circle') {
-        var r = sz * 0.37;
-        for (var i = 0; i < n; i++) {
-          var a = (2*Math.PI*i/n) - Math.PI/2;
-          pts.push({ x: cx + r*Math.cos(a), y: cy + r*Math.sin(a) });
-        }
-      } else if (shape === 'triangle') {
-        var rv = sz * 0.38;
-        var v = [
-          { x:cx, y:cy-rv },
-          { x:cx+rv*0.866, y:cy+rv*0.5 },
-          { x:cx-rv*0.866, y:cy+rv*0.5 }
-        ];
-        var edge = [], perSide = Math.ceil(n/3);
-        for (var s = 0; s < 3; s++) {
-          for (var j = 0; j < perSide; j++) {
-            var t = j / perSide;
-            edge.push({
-              x: v[s].x + (v[(s+1)%3].x - v[s].x)*t,
-              y: v[s].y + (v[(s+1)%3].y - v[s].y)*t
-            });
-          }
-        }
-        for (var i = 0; i < n; i++) pts.push(edge[i % edge.length]);
-      } else if (shape === 'rectangle') {
-        var rw=sz*0.72, rh=sz*0.68;
-        var L=cx-rw/2, T=cy-rh/2, R=cx+rw/2, B=cy+rh/2;
-        var perim = 2*(rw+rh);
-        for (var i = 0; i < n; i++) {
-          var d=(i/n)*perim, px, py;
-          if (d<rw)         { px=L+d;         py=T; }
-          else if (d<rw+rh) { px=R;            py=T+(d-rw); }
-          else if (d<2*rw+rh){ px=R-(d-rw-rh); py=B; }
-          else               { px=L;            py=B-(d-2*rw-rh); }
-          pts.push({ x:px, y:py });
-        }
-      } else { // star
-        var ro=sz*0.40, ri=sz*0.20, total2=10;
-        var starPts=[];
-        for (var k=0;k<total2;k++) {
-          var a2=(Math.PI*k/5)-Math.PI/2;
-          var rad=(k%2===0)?ro:ri;
-          starPts.push({ x:cx+rad*Math.cos(a2), y:cy+rad*Math.sin(a2) });
-        }
-        for (var i=0;i<n;i++) pts.push(starPts[i%starPts.length]);
+    // ── Auto-sizing circle orbit ──────────────────────────────────
+    // Each item is ~76px wide. We compute the radius so items don't overlap.
+    // If radius would exceed the screen, we fall back to a horizontal scroll line.
+    function bzCalcLayout(n, screenW) {
+      var ITEM_ARC = 82;           // arc-length per item (px) — controls spacing
+      var PAD      = 48;           // stage padding each side
+      var maxR     = (screenW / 2) - PAD;   // max radius that fits on screen
+      var neededR  = Math.ceil((n * ITEM_ARC) / (2 * Math.PI));
+      if (neededR <= maxR) {
+        return { mode: 'circle', radius: Math.max(neededR, 90), stageSize: neededR * 2 + PAD * 2 };
       }
-      return pts;
-    }
-
-    function bzDrawGuide(shape, sz) {
-      var svg = document.getElementById('bzGuideSvg');
-      if (!svg) return;
-      var cx=sz/2, cy=sz/2, s='rgba(37,99,235,0.10)', html='';
-      if (shape==='circle') {
-        html='<circle cx="'+cx+'" cy="'+cy+'" r="'+(sz*0.37)+'" fill="none" stroke="'+s+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
-      } else if (shape==='triangle') {
-        var rv=sz*0.38;
-        var v=[[cx,cy-rv],[cx+rv*0.866,cy+rv*0.5],[cx-rv*0.866,cy+rv*0.5]];
-        html='<polygon points="'+v.map(function(p){return p[0]+','+p[1];}).join(' ')+'" fill="none" stroke="'+s+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
-      } else if (shape==='rectangle') {
-        var rw=sz*0.72,rh=sz*0.68;
-        html='<rect x="'+(cx-rw/2)+'" y="'+(cy-rh/2)+'" width="'+rw+'" height="'+rh+'" rx="4" fill="none" stroke="'+s+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
-      } else {
-        var ro=sz*0.40,ri=sz*0.20,spts=[];
-        for(var k=0;k<10;k++){var a=(Math.PI*k/5)-Math.PI/2;var rad=(k%2===0)?ro:ri;spts.push((cx+rad*Math.cos(a))+','+(cy+rad*Math.sin(a)));}
-        html='<polygon points="'+spts.join(' ')+'" fill="none" stroke="'+s+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
-      }
-      svg.innerHTML=html;
-    }
-
-    function bzRepositionItems(shape) {
-      var sz = 320;
-      var stage = document.getElementById('bzOrbitStage');
-      if (stage) sz = stage.offsetWidth || 320;
-      var items = document.querySelectorAll('.bz-cat-item');
-      var n = items.length;
-      if (!n) return;
-      var pos = bzGetPositions(n, shape, sz);
-      var iw = 76;
-      items.forEach(function(item, i) {
-        var p = pos[i] || { x:sz/2, y:sz/2 };
-        item.style.left = (p.x - iw/2) + 'px';
-        item.style.top  = (p.y - 45) + 'px';
-      });
-      bzDrawGuide(shape, sz);
-      setTimeout(function() {
-        var ring = document.getElementById('bzOrbitRing');
-        if (ring) ring.classList.add('bz-spinning');
-      }, 720);
+      return { mode: 'line' };
     }
 
     function bzRenderOrbit() {
-      var ring = document.getElementById('bzOrbitRing');
-      if (!ring) return;
-      ring.classList.remove('bz-spinning');
-
-      var sz = 320;
+      var ring  = document.getElementById('bzOrbitRing');
       var stage = document.getElementById('bzOrbitStage');
-      if (stage) sz = stage.offsetWidth || 320;
+      var wrap  = document.getElementById('bzOrbitWrap');  // optional wrapper
+      if (!ring || !stage) return;
+
+      ring.classList.remove('bz-spinning');
+      Array.from(ring.querySelectorAll('.bz-cat-item')).forEach(function(el){ el.remove(); });
 
       if (!categories || !categories.length) {
         setTimeout(bzRenderOrbit, 600);
         return;
       }
 
-      // Clear old items
-      Array.from(ring.querySelectorAll('.bz-cat-item')).forEach(function(el){ el.remove(); });
+      var cats    = categories;
+      var n       = cats.length;
+      var screenW = Math.min(window.innerWidth, 480);
+      var layout  = bzCalcLayout(n, screenW);
 
-      var cats = categories.slice(0, 12);
-      var pos  = bzGetPositions(cats.length, _bzShape, sz);
-      var iw   = 76;
+      if (layout.mode === 'circle') {
+        // ── CIRCLE MODE ────────────────────────────────────────────
+        var sz = Math.min(layout.stageSize, screenW - 16);
+        sz = Math.max(sz, 220);
+        stage.style.width  = sz + 'px';
+        stage.style.height = sz + 'px';
+        ring.style.transformOrigin = (sz/2) + 'px ' + (sz/2) + 'px';
 
-      cats.forEach(function(cat, i) {
-        var p   = pos[i] || { x:sz/2, y:sz/2 };
-        var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
-        var name= (cat.name || 'Category').slice(0,14);
+        // Draw guide circle
+        var svg = document.getElementById('bzGuideSvg');
+        if (svg) {
+          svg.setAttribute('viewBox', '0 0 ' + sz + ' ' + sz);
+          var r = layout.radius;
+          svg.innerHTML = '<circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+r+'" fill="none" stroke="rgba(37,99,235,0.10)" stroke-width="1.5" stroke-dasharray="6 4"/>';
+        }
 
-        var item = document.createElement('div');
-        item.className  = 'bz-cat-item';
-        item.style.left = (p.x - iw/2) + 'px';
-        item.style.top  = (p.y - 45) + 'px';
-        item.title      = cat.name || 'Category';
-        item.innerHTML  =
-          "<div class=\"bz-cat-thumb\" style=\"background-image:url(" + img + ")\"></div>" +
-          '<span class="bz-cat-label">' + name + '</span>';
+        var iw = 76, ih = 90, r = layout.radius, cx = sz/2, cy = sz/2;
+        cats.forEach(function(cat, i) {
+          var a   = (2 * Math.PI * i / n) - Math.PI / 2;
+          var px  = cx + r * Math.cos(a);
+          var py  = cy + r * Math.sin(a);
+          var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
+          var nm  = (cat.name || 'Category').slice(0, 14);
 
-        item.addEventListener('click', function() {
-          filterByCategory(cat.id);
+          var item = document.createElement('div');
+          item.className  = 'bz-cat-item';
+          item.style.width  = iw + 'px';
+          item.style.left = (px - iw/2) + 'px';
+          item.style.top  = (py - 45) + 'px';
+          item.title = cat.name || '';
+          item.innerHTML =
+            '<div class="bz-cat-thumb" style="background-image:url(' + JSON.stringify(img) + ')"></div>' +
+            '<span class="bz-cat-label">' + nm + '</span>';
+          item.addEventListener('click', function(){ filterByCategory(cat.id); });
+          ring.appendChild(item);
         });
-        ring.appendChild(item);
-      });
 
-      bzDrawGuide(_bzShape, sz);
-      setTimeout(function() {
-        var r2 = document.getElementById('bzOrbitRing');
-        if (r2) r2.classList.add('bz-spinning');
-      }, 600);
+        // Outer container: normal centered
+        var outerDiv = stage.parentElement;
+        if (outerDiv) {
+          outerDiv.style.overflowX  = '';
+          outerDiv.style.flexWrap   = '';
+          outerDiv.style.minHeight  = sz + 'px';
+        }
+
+        setTimeout(function() {
+          var r2 = document.getElementById('bzOrbitRing');
+          if (r2) r2.classList.add('bz-spinning');
+        }, 600);
+
+      } else {
+        // ── LINE MODE (too many categories for circle on screen) ──
+        stage.style.width  = 'auto';
+        stage.style.height = '110px';
+        ring.style.transformOrigin = '0 0';
+
+        var svg = document.getElementById('bzGuideSvg');
+        if (svg) svg.innerHTML = '';
+
+        var iw = 80, x = 8;
+        cats.forEach(function(cat) {
+          var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
+          var nm  = (cat.name || 'Category').slice(0, 14);
+          var item = document.createElement('div');
+          item.className = 'bz-cat-item';
+          item.style.position = 'relative';
+          item.style.left = '0';
+          item.style.top  = '0';
+          item.style.width  = iw + 'px';
+          item.style.display = 'inline-flex';
+          item.style.flexDirection = 'column';
+          item.style.alignItems = 'center';
+          item.style.flexShrink = '0';
+          item.title = cat.name || '';
+          item.innerHTML =
+            '<div class="bz-cat-thumb" style="background-image:url(' + JSON.stringify(img) + ')"></div>' +
+            '<span class="bz-cat-label">' + nm + '</span>';
+          item.addEventListener('click', function(){ filterByCategory(cat.id); });
+          ring.appendChild(item);
+        });
+
+        // Make container scrollable horizontally
+        ring.style.position = 'relative';
+        ring.style.display  = 'flex';
+        ring.style.flexDirection = 'row';
+        ring.style.gap = '8px';
+        ring.style.padding = '8px';
+        ring.style.animation = 'none';
+        ring.style.transform = 'none';
+
+        var outerDiv = stage.parentElement;
+        if (outerDiv) {
+          outerDiv.style.overflowX = 'auto';
+          outerDiv.style.minHeight = '120px';
+          outerDiv.style.justifyContent = 'flex-start';
+          outerDiv.style.webkitOverflowScrolling = 'touch';
+        }
+      }
+
+      // Render search/category tags below
+      bzRenderCatTags(cats);
+    }
+
+    function bzRenderCatTags(cats) {
+      var container = document.getElementById('bzCatTags');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // Use searchTags if available, else use category names
+      var tags = (typeof searchTags !== 'undefined' && searchTags.length)
+        ? searchTags
+        : cats.map(function(c){ return c.name || ''; }).filter(Boolean);
+
+      tags.forEach(function(tag) {
+        var chip = document.createElement('button');
+        chip.textContent = tag;
+        chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
+        chip.addEventListener('mouseenter', function(){ this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
+        chip.addEventListener('mouseleave', function(){ this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
+        chip.addEventListener('click', function() {
+          if (typeof filterProductsByTag === 'function') filterProductsByTag(tag);
+          else if (typeof filterByCategory === 'function') {
+            var cat = (typeof categories !== 'undefined') && categories.find(function(c){ return c.name === tag; });
+            if (cat) filterByCategory(cat.id);
+          }
+        });
+        container.appendChild(chip);
+      });
     }
     /* ===== END CATEGORY SHAPE PAGE ===== */
 

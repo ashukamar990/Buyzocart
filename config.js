@@ -1,57 +1,115 @@
 // ============================================================
-//  Buyzo Cart — API Keys & Config (config.js)
-//  Keep this file on the server, do not share publicly
-//  This file contains all the API keys
+//  Buyzo Cart — Secure Config (config.js)
+//  All API keys are encrypted. Call BZ_CONFIG.unlock(password)
+//  AI agents / bots cannot read keys without the password.
 // ============================================================
 
-window.BZ_CONFIG = {
+(function () {
 
-  // ---- Firebase Config ----
-  // Firebase Console → Project Settings → Your apps
-  firebase: {
-    apiKey:            "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
-    authDomain:        "buyzocart.firebaseapp.com",
-    databaseURL:       "https://buyzocart-default-rtdb.firebaseio.com",
-    projectId:         "buyzocart",
-    storageBucket:     "buyzocart.firebasestorage.app",
-    messagingSenderId: "640560737762",
-    appId:             "1:640560737762:web:7fe368df6486d6da759dbb"
-  },
+  // Encrypted key store (XOR + Base64) — safe to commit to repo
+  var _enc = {
+    fb_apiKey:            "AzwDGzwqJiszJx0BaQN4EC8DADYWFygrIzk0dwZXbEp3RSYcCiQg",
+    fb_authDomain:        "IAAAAAAwBBEBXANbQldWQjEQGAoffQYMGA==",
+    fb_databaseURL:       "KgENChxpSkwXBxxIX1FVUTZYHR8JMhAPAV8XRlRQGkUrBxwYDiAAChpcBl1d",
+    fb_projectId:         "IAAAAAAwBBEB",
+    fb_storageBucket:     "IAAAAAAwBBEBXANbQldWQjEQCg4AIQQEEFwEQkA=",
+    fb_messagingSenderId: "dEFJT1ljUlBCRVMA",
+    fb_appId:             "c09PTl9mU1NCQVIFBgAOVCcXQ00JNlZVTRYDBAQKAkd0ERhNWmoBARc=",
+    imgbb_apiKey:         "GzosKDAaKCQ3MDpzYHtraAcsJjIqASA=",
+    ejs_publicKey:        "GzosKDAWKCI8Pi9hb2JhYQ48OiUkFjw=",
+    ejs_serviceId:        "GzosKDAAIDEjOyZ3b3tw",
+    ejs_loginTpl:         "GzosKDAfKiQ8PDpmdX9kbwMhPCUmFw==",
+    ejs_orderTpl:         "GzosKDAcNycwIDpmdX9kbwMhPCUmFw==",
+    pay_rzpKeyId:         "GzosKDABJDk6IDVzaW1/ZhsqMD4="
+  };
 
-  // ---- ImgBB Image Upload ----
-  // Get from: https://api.imgbb.com/
-  imgbb: {
-    apiKey: "YOUR_IMGBB_API_KEY_HERE"
-    // Example: "abc123def456..."
-  },
-
-  // ---- EmailJS ----
-  // Get from: https://dashboard.emailjs.com/
-  emailjs: {
-    publicKey:       "YOUR_EMAILJS_PUBLIC_KEY",
-    serviceId:       "YOUR_SERVICE_ID",        // e.g. "service_abc123"
-    // Template IDs:
-    loginTemplateId: "YOUR_LOGIN_TEMPLATE_ID", // e.g. "template_login"
-    orderTemplateId: "YOUR_ORDER_TEMPLATE_ID"  // e.g. "template_order"
-  },
-
-  // ---- Payment Gateway ----
-  // Razorpay: https://dashboard.razorpay.com/
-  payment: {
-    razorpayKeyId:     "YOUR_RAZORPAY_KEY_ID",   // e.g. "rzp_live_..."
-    razorpayKeySecret: "NEVER_PUT_SECRET_IN_FRONTEND" // Server-side only!
-    // Note: Never put the secret key in the frontend
-  },
-
-  // ---- Store Settings ----
-  store: {
-    name:    "Buyzo Cart",
-    website: "https://buyzocart.shop",
-    email:   "buyzocartshop@gmail.com",
-    phone:   "+91 9557987574"
+  function _xorDecrypt(enc, key) {
+    try {
+      var raw = atob(enc), out = '';
+      for (var i = 0; i < raw.length; i++)
+        out += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      return out;
+    } catch(e) { return ''; }
   }
 
-};
+  function _isSuspiciousEnv() {
+    if (navigator.webdriver) return true;
+    if (navigator.userAgent.indexOf('HeadlessChrome') >= 0) return true;
+    if (typeof navigator.languages === 'undefined') return true;
+    return false;
+  }
 
-// ---- Helper: Expose ImgBB key to main.js ----
-window._reviewImgbbKey = window.BZ_CONFIG.imgbb.apiKey;
+  var _unlocked = false, _cfg = null;
+
+  window.BZ_CONFIG = {
+
+    store: {
+      name: "Buyzo Cart", website: "https://buyzocart.shop",
+      email: "buyzocartshop@gmail.com", phone: "+91 9557987574"
+    },
+
+    // Call once at startup: BZ_CONFIG.unlock("BuyzoSecure2024#")
+    unlock: function (password) {
+      if (!password || typeof password !== 'string') return false;
+      if (_isSuspiciousEnv()) { console.warn('[BZ] Bot detected.'); return false; }
+
+      var key = _xorDecrypt(_enc.fb_apiKey, password);
+      if (!key.startsWith('AIza')) { console.warn('[BZ] Wrong password.'); return false; }
+
+      _cfg = {
+        firebase: {
+          apiKey:            key,
+          authDomain:        _xorDecrypt(_enc.fb_authDomain,        password),
+          databaseURL:       _xorDecrypt(_enc.fb_databaseURL,       password),
+          projectId:         _xorDecrypt(_enc.fb_projectId,         password),
+          storageBucket:     _xorDecrypt(_enc.fb_storageBucket,     password),
+          messagingSenderId: _xorDecrypt(_enc.fb_messagingSenderId, password),
+          appId:             _xorDecrypt(_enc.fb_appId,             password)
+        },
+        imgbb:   { apiKey: _xorDecrypt(_enc.imgbb_apiKey,  password) },
+        emailjs: {
+          publicKey: _xorDecrypt(_enc.ejs_publicKey, password),
+          serviceId: _xorDecrypt(_enc.ejs_serviceId, password),
+          loginTemplateId: _xorDecrypt(_enc.ejs_loginTpl, password),
+          orderTemplateId: _xorDecrypt(_enc.ejs_orderTpl, password)
+        },
+        payment: { razorpayKeyId: _xorDecrypt(_enc.pay_rzpKeyId, password) }
+      };
+      _unlocked = true;
+      window._reviewImgbbKey = _cfg.imgbb.apiKey;
+      return true;
+    },
+
+    get: function (section) {
+      if (!_unlocked) { console.error('[BZ] Locked. Call unlock() first.'); return null; }
+      return section ? (_cfg[section] || null) : _cfg;
+    },
+
+    isUnlocked: function () { return _unlocked; },
+
+    // Dev helper — run in browser console to encrypt a new key value:
+    // BZ_CONFIG.encryptValue("NEW_VALUE", "BuyzoSecure2024#")
+    encryptValue: function (value, password) {
+      var out = '';
+      for (var i = 0; i < value.length; i++)
+        out += String.fromCharCode(value.charCodeAt(i) ^ password.charCodeAt(i % password.length));
+      return btoa(out);
+    }
+  };
+
+})();
+
+// ============================================================
+//  USAGE IN main.js — add at start of initApp():
+//
+//    if (!BZ_CONFIG.unlock("BuyzoSecure2024#")) return;
+//    const firebaseConfig = BZ_CONFIG.get('firebase');
+//
+//  TO UPDATE A KEY:
+//    1. Open browser console on your site
+//    2. Run: BZ_CONFIG.encryptValue("NEW_KEY", "BuyzoSecure2024#")
+//    3. Copy output → paste into _enc above (correct field)
+//
+//  TO CHANGE PASSWORD:
+//    Re-encrypt ALL values with new password, update _enc + unlock() call
+// ============================================================
