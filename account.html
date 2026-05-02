@@ -469,11 +469,15 @@
             <div class="settings-info"><h4>Change Password</h4><p>Update your password regularly</p></div>
             <button class="btn-outline btn-sm" id="changePasswordBtn">Change</button>
           </div>
-          <div class="settings-item">
-            <div class="settings-info"><h4>Two-Factor Authentication</h4><p>Extra security for your account</p></div>
-            <label class="toggle">
-              <input type="checkbox" id="twoFactorToggle" disabled>
-              <span class="toggle-slider" style="opacity:0.4"></span>
+          <div class="settings-item" id="twoFactorItem">
+            <div class="settings-info">
+              <h4>Two-Factor Authentication</h4>
+              <p id="twoFactorDesc">Checking status...</p>
+              <span id="twoFactorBadge" style="display:none;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block;"></span>
+            </div>
+            <label class="toggle" id="twoFactorToggleLabel" style="pointer-events:none;opacity:0.4;">
+              <input type="checkbox" id="twoFactorToggle">
+              <span class="toggle-slider"></span>
             </label>
           </div>
           <div class="settings-item">
@@ -704,6 +708,9 @@
       }
 
       window._accCurrentUser = user;
+
+      // Load 2FA status from admin settings
+      load2FAStatus(user);
       console.log('✅ User authenticated:', user.email);
 
       // Update UI
@@ -1281,6 +1288,56 @@
         document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
       }
     });
+
+    // ========== 2FA: LOAD STATUS FROM ADMIN SETTINGS ==========
+    async function load2FAStatus(user) {
+      try {
+        const snap = await get(ref(db, 'adminSettings/features/twoFactorAuth'));
+        const adminEnabled = snap.exists() && snap.val() === true;
+        const label = document.getElementById('twoFactorToggleLabel');
+        const toggle = document.getElementById('twoFactorToggle');
+        const desc = document.getElementById('twoFactorDesc');
+        const badge = document.getElementById('twoFactorBadge');
+
+        if (!adminEnabled) {
+          // Admin has disabled 2FA feature
+          if (label) { label.style.pointerEvents = 'none'; label.style.opacity = '0.4'; }
+          if (toggle) toggle.disabled = true;
+          if (desc) desc.textContent = 'Extra security for your account';
+          if (badge) {
+            badge.textContent = '⏳ Coming Soon';
+            badge.style.cssText = 'background:#fef9c3;color:#92400e;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block;';
+          }
+        } else {
+          // Admin has enabled 2FA — let user toggle it
+          if (label) { label.style.pointerEvents = 'auto'; label.style.opacity = '1'; }
+          if (toggle) toggle.disabled = false;
+          if (desc) desc.textContent = 'Extra security for your account';
+          if (badge) {
+            badge.textContent = '✅ Available';
+            badge.style.cssText = 'background:#dcfce7;color:#15803d;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block;';
+          }
+          // Load user's current 2FA preference
+          if (user) {
+            const userSnap = await get(ref(db, 'users/' + user.uid + '/twoFactorEnabled'));
+            if (toggle) toggle.checked = userSnap.exists() && userSnap.val() === true;
+          }
+          // Save when toggled
+          if (toggle) {
+            toggle.addEventListener('change', async function() {
+              if (!window._accCurrentUser) return;
+              try {
+                await set(ref(db, 'users/' + window._accCurrentUser.uid + '/twoFactorEnabled'), toggle.checked);
+                accShowToast(toggle.checked ? '2FA Enabled ✅' : '2FA Disabled', toggle.checked ? 'success' : 'error');
+              } catch(e) { accShowToast('Failed to update 2FA', 'error'); }
+            });
+          }
+        }
+      } catch(e) {
+        const desc = document.getElementById('twoFactorDesc');
+        if (desc) desc.textContent = 'Extra security for your account';
+      }
+    }
 
     console.log('✅ Account Page Ready - All systems operational');
     console.log('📋 Features: Orders | Addresses | Wishlist | Settings | Sell Product');
