@@ -63,74 +63,6 @@
       currencySymbol: '₹'
     };
     let savedAddresses = [];
-    let currentEditingAddressId = null;
-
-    /**
-     * Utility to sanitize user input for rendering
-     */
-    function escapeHTML(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    /**
-     * Prevent duplicate addresses in the list
-     */
-    function isDuplicateAddress(addr, list) {
-      return list.some(a =>
-        String(a.name).trim().toLowerCase() === String(addr.name).trim().toLowerCase() &&
-        String(a.mobile).trim().toLowerCase() === String(addr.mobile).trim().toLowerCase() &&
-        String(a.pincode).trim().toLowerCase() === String(addr.pincode).trim().toLowerCase() &&
-        String(a.street || a.house).trim().toLowerCase() === String(addr.street || addr.house).trim().toLowerCase()
-      );
-    }
-
-    /**
-     * Centralized function to save address to localStorage and Firebase
-     */
-    function saveAddressToLocal(addressData) {
-      let saved = JSON.parse(localStorage.getItem(CACHE_KEYS.ADDRESSES) || '[]');
-      if (addressData.house && !addressData.street) addressData.street = addressData.house;
-
-      // Match by ID first, then by content
-      let idx = -1;
-      if (addressData.id) {
-        idx = saved.findIndex(a => a.id === addressData.id);
-      }
-      if (idx === -1) {
-        idx = saved.findIndex(a =>
-          String(a.name).trim().toLowerCase() === String(addressData.name).trim().toLowerCase() &&
-          String(a.mobile).trim().toLowerCase() === String(addressData.mobile).trim().toLowerCase() &&
-          String(a.pincode).trim().toLowerCase() === String(addressData.pincode).trim().toLowerCase() &&
-          String(a.street || a.house).trim().toLowerCase() === String(addressData.street || addressData.house).trim().toLowerCase()
-        );
-      }
-
-      if (idx !== -1) {
-        saved[idx] = { ...saved[idx], ...addressData, updatedAt: Date.now() };
-      } else {
-        if (!addressData.id) addressData.id = 'address_' + Date.now();
-        saved.unshift({ ...addressData, createdAt: Date.now(), updatedAt: Date.now() });
-      }
-
-      // Ensure only one default
-      if (addressData.isDefault) {
-        saved.forEach(a => { if (a.id !== (addressData.id || saved[0].id)) a.isDefault = false; });
-      }
-
-      // Limit to 10 addresses
-      saved = saved.slice(0, 10);
-      localStorage.setItem(CACHE_KEYS.ADDRESSES, JSON.stringify(saved));
-      localStorage.setItem('bz_address_updated', Date.now().toString());
-      savedAddresses = saved;
-      return addressData;
-    }
-
     let recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
     let popularSearches = [];
     let searchTags = [];
@@ -508,8 +440,7 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       const results = searchProducts(query);
-      const _scored = [...results].sort((a,b) => getProductScore(b) - getProductScore(a));
-      const topThree = _scored.slice(0, 3);
+      const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
         suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted);padding:12px;">No matching products found</div>';
@@ -713,7 +644,7 @@
           updatePaymentSummary();
           break;
         case 'userPage':
-          loadSavedAddresses();
+          if (currentUser) loadSavedAddresses();
           break;
         case 'orderPage':
           if (currentProduct) initOrderPageGallery();
@@ -782,7 +713,7 @@
         showLoginModal();
         return;
       }
-      window.location.href = 'account';
+      window.location.href = '/account';
     }
 
     function checkAuthAndShowRecentlyViewed() {
@@ -2004,24 +1935,36 @@
       const city = document.getElementById('city').value;
       const state = document.getElementById('state').value;
       const house = document.getElementById('house').value;
+      const addressType = document.getElementById('addressType')?.value || 'home';
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+
+      if (currentUser) {
+        try {
+          const alreadySaved = savedAddresses.some(a => a.mobile === mobile && a.pincode === pincode && a.street === house);
+          if (!alreadySaved) {
+            const addressId = 'address_' + Date.now();
+            const addressData = {
+              name: fullname, mobile, pincode, city, state,
+              street: house, type: addressType,
+              userId: currentUser.uid,
+              isDefault: savedAddresses.length === 0,
+              createdAt: Date.now()
+            };
+            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+            savedAddresses.push({ id: addressId, ...addressData });
+            cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+          }
+        } catch (e) {}
+      }
+
       showPage('paymentPage');
     }
 
     async function confirmOrder() {
-      // Re-capture UI for saving after order
-      const fullname = document.getElementById('fullname').value;
-      const mobile = document.getElementById('mobile').value;
-      const pincode = document.getElementById('pincode').value;
-      const city = document.getElementById('city').value;
-      const state = document.getElementById('state').value;
-      const house = document.getElementById('house').value;
-      const addressType = document.getElementById('addressType')?.value || 'home';
-
       if (!currentUser) {
         showLoginModal();
         return;
@@ -2101,48 +2044,21 @@
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), true);
-
-        // SAVE ADDRESS AFTER SUCCESSFUL ORDER
-        const addressData = {
-          name: fullname, mobile, pincode, city, state,
-          street: house, type: addressType,
-          userId: currentUser.uid,
-          isDefault: true,
-          updatedAt: Date.now()
-        };
-        const savedAddr = saveAddressToLocal(addressData);
-        if (window.firebase) {
-          // If logged in, also sync to Firebase and make this address default
-          try {
-            const addrId = addressData.id || 'address_' + Date.now();
-            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addrId), {
-              ...savedAddr, isDefault: true
-            });
-            // Update other addresses to not be default
-            const allSnap = await window.firebase.get(window.firebase.query(window.firebase.ref(window.firebase.database, 'addresses'), window.firebase.orderByChild('userId'), window.firebase.equalTo(currentUser.uid)));
-            if (allSnap.exists()) {
-              const updates = {};
-              allSnap.forEach(child => { if (child.key !== addrId) updates['addresses/' + child.key + '/isDefault'] = false; });
-              if (Object.keys(updates).length) await window.firebase.update(window.firebase.ref(window.firebase.database), updates);
-            }
-          } catch(e) {}
-        }
-
-        // Track order count per product for trending
+        // Track order count per product (for trending + scoring)
         try {
-          const _pcRef = window.firebase.ref(window.firebase.database, 'productStats/' + orderData.productId + '/orderCount');
-          const _pcSnap = await window.firebase.get(_pcRef);
-          const _newCount = (_pcSnap.val() || 0) + 1;
-          await window.firebase.set(_pcRef, _newCount);
-          // Auto-flag trending if orderCount >= 5 and not manually overridden
-          const _pStatRef = window.firebase.ref(window.firebase.database, 'productStats/' + orderData.productId);
-          const _pStat = await window.firebase.get(_pStatRef);
-          const _psd = _pStat.val() || {};
-          if (_newCount >= 5 && !_psd.manualTrending) {
-            await window.firebase.update(_pStatRef, { autoTrending: true });
-            await window.firebase.update(window.firebase.ref(window.firebase.database, 'products/' + orderData.productId), { isTrending: true });
+          const _psRef = window.firebase.ref(window.firebase.database, 'productStats/' + orderData.productId + '/orderCount');
+          const _psSnap = await window.firebase.get(_psRef);
+          const _newCount = (_psSnap.val() || 0) + 1;
+          await window.firebase.set(_psRef, _newCount);
+          if (_newCount >= 5) {
+            const _pRef = window.firebase.ref(window.firebase.database, 'productStats/' + orderData.productId + '/autoTrending');
+            const _manSnap = await window.firebase.get(window.firebase.ref(window.firebase.database, 'productStats/' + orderData.productId + '/manualOverride'));
+            if (!_manSnap.val()) {
+              await window.firebase.set(_pRef, true);
+              await window.firebase.update(window.firebase.ref(window.firebase.database, 'products/' + orderData.productId), { isTrending: true });
+            }
           }
-        } catch(_e) {}
+        } catch(_e) { /* non-critical */ }
         let cachedOrders = cacheManager.get(CACHE_KEYS.ORDERS) || [];
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
@@ -2988,14 +2904,13 @@
       container.appendChild(fragment);
     }
 
-    // ── Product score: orders × 0.6 + rating × 0.4 (for sorting) ─
+    // ── Product score for smart sorting (orders × weight + rating × weight) ──
     function getProductScore(product) {
-      const rating = (() => {
-        const rs = reviews.filter(r => r.productId === product.id);
-        return rs.length ? rs.reduce((a,r)=>a+r.rating,0)/rs.length : 0;
-      })();
-      const orderCount = (window._productStats && window._productStats[product.id]?.orderCount) || product.orderCount || 0;
-      return (orderCount * 0.6) + (rating * 0.4 * 2); // normalise rating to ~same scale
+      const rs = reviews.filter(r => r.productId === product.id);
+      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+      const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
+        || product.orderCount || 0;
+      return (orderCount * 0.6) + (rating * 0.8);
     }
 
     function renderProducts(productsToRender, containerId) {
@@ -3012,7 +2927,10 @@
       const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><div style="font-size:52px;margin-bottom:4px;">🛍️</div><h3 style="margin:0;font-size:1.05rem;font-weight:800;color:var(--text);">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
+        // productGrid and searchResultsGrid have their own HTML empty-state elements
+        if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
+          container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
+        }
         return;
       }
       const fragment = document.createDocumentFragment();
@@ -3385,7 +3303,7 @@
     }
 
     function updateUIForUser(user) {
-      // Cache user data for instant restore on next load
+      // Cache for instant restore next load
       try {
         localStorage.setItem('_bz_cached_user', JSON.stringify({
           uid: user.uid,
@@ -3448,7 +3366,7 @@
 
     function confirmLogout() {
       try { const _m=JSON.parse(localStorage.getItem(NOTIF_META_KEY)||'{}'); _m.loggedOut=true; localStorage.setItem(NOTIF_META_KEY,JSON.stringify(_m)); } catch(e){}
-      try { localStorage.removeItem('_bz_cached_user'); } catch(e){}
+      try { localStorage.removeItem('_bz_cached_user'); } catch(e) {}
       window.firebase.signOut(window.firebase.auth).then(() => {
         showToast('Logged out successfully', 'success');
         document.getElementById('alertModal').classList.remove('active');
@@ -3460,53 +3378,40 @@
     }
 
     async function loadSavedAddresses() {
-      const addressesList = document.getElementById('savedAddressesList');
-      const savedAddressesSection = document.getElementById('savedAddressesSection');
-
-      // Always load from localStorage for instant guest/cached user support
-      let local = JSON.parse(localStorage.getItem(CACHE_KEYS.ADDRESSES) || '[]');
-
-      if (currentUser && window.firebase) {
-        try {
-          const snapshot = await window.firebase.get(
-            window.firebase.query(
-              window.firebase.ref(window.firebase.database, 'addresses'),
-              window.firebase.orderByChild('userId'),
-              window.firebase.equalTo(currentUser.uid)
-            )
-          );
-          if (snapshot.exists()) {
-            const fbData = snapshot.val();
-            const fbList = Object.keys(fbData).map(key => ({ id: key, ...fbData[key] }));
-            // Merge: Firebase is primary, local is fallback
-            const merged = [...fbList];
-            local.forEach(l => { if (!isDuplicateAddress(l, merged)) merged.push(l); });
-            local = merged;
-          }
-        } catch (e) { console.warn('FB load error:', e); }
-      }
-
-      savedAddresses = local.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
-
-      if (savedAddresses.length > 0) {
-        if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-        renderSavedAddresses();
-        const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
-        if (defaultAddr) {
-          fillAddressForm(defaultAddr);
-          userInfo = {
-            fullName: defaultAddr.name,
-            mobile: defaultAddr.mobile,
-            pincode: defaultAddr.pincode,
-            city: defaultAddr.city,
-            state: defaultAddr.state,
-            house: defaultAddr.street || defaultAddr.house
-          };
+      if (!currentUser) return;
+      try {
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'addresses'),
+            window.firebase.orderByChild('userId'),
+            window.firebase.equalTo(currentUser.uid)
+          )
+        );
+        const addressesList = document.getElementById('savedAddressesList');
+        const savedAddressesSection = document.getElementById('savedAddressesSection');
+        if (!snapshot.exists()) {
+          savedAddressesSection.style.display = 'none';
+          savedAddresses = [];
+          return;
         }
-      } else {
-        if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+        const addressesObj = snapshot.val();
+        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
+        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+        if (addresses.length > 0) {
+          savedAddressesSection.style.display = 'block';
+          renderSavedAddresses();
+          const defaultAddr = savedAddresses[0];
+          if (defaultAddr) {
+            fillAddressForm(defaultAddr);
+            userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
+            const radios = document.querySelectorAll('input[name="savedAddress"]');
+            radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
+          }
+        } else savedAddressesSection.style.display = 'none';
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+      } catch (error) {
+        console.error('Error loading addresses:', error);
       }
-      cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
     }
 
     function renderSavedAddresses() {
@@ -3515,101 +3420,74 @@
       addressesList.innerHTML = '';
       savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card' + (address.isDefault ? ' selected' : '');
+        addressCard.className = 'saved-address-card';
         const addressType = address.type || 'Other';
-        const isDefaultLabel = address.isDefault ? '• Default' : '';
-        const street = address.street || address.house || '';
-
+        const isDefault = address.isDefault ? '• Default' : '';
         addressCard.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:12px;">
-            <div style="padding-top:4px;">
-              <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);">
-            </div>
-            <div style="flex:1; cursor:pointer;" class="addr-info-area">
-              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                <span style="font-weight:700; font-size:15px; color:var(--ink);">${escapeHTML(address.name)}</span>
-                <span style="font-size:11px; font-weight:700; background:var(--border); padding:2px 8px; border-radius:4px; text-transform:uppercase;">${addressType}</span>
-                ${address.isDefault ? '<span style="font-size:11px; font-weight:700; color:var(--success);">DEFAULT</span>' : ''}
-              </div>
-              <div style="font-size:13.5px; color:var(--ink-2); line-height:1.4;">
-                ${escapeHTML(street)}, ${escapeHTML(address.city)}, ${escapeHTML(address.state)} - <strong>${escapeHTML(address.pincode)}</strong>
-              </div>
-              <div style="font-size:13.5px; color:var(--ink-2); margin-top:4px;">
-                <span style="color:var(--muted);">Mobile:</span> <strong>${escapeHTML(address.mobile)}</strong>
-              </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
+            <div style="flex:1">
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
             </div>
           </div>
-          <div class="address-actions" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end;">
-            <button class="btn secondary edit-address" data-id="${address.id}" style="padding:6px 16px; font-size:12px;">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}" style="padding:6px 16px; font-size:12px;">Delete</button>
+          <div class="address-actions">
+            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
           </div>
         `;
-
-        const selectAddr = () => {
-          document.querySelectorAll('input[name="savedAddress"]').forEach(r => r.checked = false);
-          document.querySelectorAll('.saved-address-card').forEach(c => c.classList.remove('selected'));
-          addressCard.querySelector('input[type="radio"]').checked = true;
-          addressCard.classList.add('selected');
+        const radio = addressCard.querySelector('input[type="radio"]');
+        radio.addEventListener('click', function(e) {
+          e.stopPropagation();
           fillAddressForm(address);
-          userInfo = {
-            fullName: address.name,
-            mobile: address.mobile,
-            pincode: address.pincode,
-            city: address.city,
-            state: address.state,
-            house: street
-          };
-        };
-
-        addressCard.querySelector('.addr-info-area').addEventListener('click', selectAddr);
-        addressCard.querySelector('input[type="radio"]').addEventListener('change', selectAddr);
-
-        addressCard.querySelector('.edit-address').addEventListener('click', (e) => {
+          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+        });
+        addressCard.addEventListener('click', function(e) {
+          if (e.target.type !== 'radio') {
+            radio.checked = true;
+            fillAddressForm(address);
+            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+          }
+        });
+        const editBtn = addressCard.querySelector('.edit-address');
+        editBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           editAddress(address);
         });
-
-        addressCard.querySelector('.delete-address').addEventListener('click', (e) => {
+        const deleteBtn = addressCard.querySelector('.delete-address');
+        deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           deleteAddressConfirmation(address);
         });
-
         addressesList.appendChild(addressCard);
       });
     }
 
     function fillAddressForm(address) {
-      const fullname = document.getElementById('fullname');
-      const mobile = document.getElementById('mobile');
-      const pincode = document.getElementById('pincode');
-      const city = document.getElementById('city');
-      const state = document.getElementById('state');
-      const house = document.getElementById('house');
-      const addressType = document.getElementById('addressType');
-
-      if (fullname) fullname.value = address.name || '';
-      if (mobile) mobile.value = address.mobile || '';
-      if (pincode) pincode.value = address.pincode || '';
-      if (city) city.value = address.city || '';
-      if (state) state.value = address.state || '';
-      if (house) house.value = address.street || address.house || '';
-      if (addressType) addressType.value = address.type || 'home';
+      document.getElementById('fullname').value = address.name;
+      document.getElementById('mobile').value = address.mobile;
+      document.getElementById('pincode').value = address.pincode;
+      document.getElementById('city').value = address.city;
+      document.getElementById('state').value = address.state;
+      document.getElementById('house').value = address.street;
+      document.getElementById('addressType').value = address.type || 'home';
     }
 
     async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType').value;
-
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
-
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       const addressData = {
         name: fullname,
@@ -3619,32 +3497,19 @@
         state: state,
         street: house,
         type: addressType,
-        isDefault: true,
-        userId: currentUser ? currentUser.uid : 'guest',
-        updatedAt: Date.now()
+        userId: currentUser.uid,
+        isDefault: savedAddresses.length === 0,
+        createdAt: Date.now()
       };
-
-      if (currentEditingAddressId) {
-        addressData.id = currentEditingAddressId;
-        const existing = savedAddresses.find(a => a.id === currentEditingAddressId);
-        if (existing) addressData.isDefault = existing.isDefault;
-      } else {
-        addressData.isDefault = savedAddresses.length === 0;
-      }
-
       try {
-        const savedAddr = saveAddressToLocal(addressData);
-        if (currentUser && window.firebase) {
-          const addressId = addressData.id || 'address_' + Date.now();
-          await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), savedAddr);
-        }
-        showToast(currentEditingAddressId ? 'Address updated successfully' : 'Address saved successfully', 'success');
-
-        currentEditingAddressId = null;
-        const saveBtn = document.getElementById('saveUserInfo');
-        if (saveBtn) saveBtn.textContent = 'Save This Address';
-
-        loadSavedAddresses();
+        const addressId = 'address_' + Date.now();
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        savedAddresses.push({ id: addressId, ...addressData });
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+        showToast('Address saved successfully', 'success');
+        await loadSavedAddresses();
+        document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
@@ -3652,7 +3517,6 @@
     }
 
     function showNewAddressForm() {
-      currentEditingAddressId = null;
       document.getElementById('savedAddressesSection').style.display = 'block';
       document.getElementById('newAddressForm').style.display = 'block';
       document.getElementById('fullname').value = '';
@@ -3663,38 +3527,67 @@
       document.getElementById('house').value = '';
       document.getElementById('addressType').value = 'home';
       const saveBtn = document.getElementById('saveUserInfo');
-      if (saveBtn) saveBtn.textContent = 'Save This Address';
-      window.scrollTo({ top: document.getElementById('newAddressForm').offsetTop - 100, behavior: 'smooth' });
+      saveBtn.textContent = 'Save This Address';
+      saveBtn.onclick = saveUserInfoAndAddress;
     }
 
     function editAddress(address) {
-      currentEditingAddressId = address.id;
       fillAddressForm(address);
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
       const saveBtn = document.getElementById('saveUserInfo');
-      if (saveBtn) saveBtn.textContent = 'Update Address';
-      window.scrollTo({ top: document.getElementById('newAddressForm').offsetTop - 100, behavior: 'smooth' });
+      saveBtn.textContent = 'Update Address';
+      saveBtn.onclick = async function() {
+        const fullname = document.getElementById('fullname').value;
+        const mobile = document.getElementById('mobile').value;
+        const pincode = document.getElementById('pincode').value;
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const house = document.getElementById('house').value;
+        const addressType = document.getElementById('addressType').value;
+        const addressData = {
+          name: fullname,
+          mobile: mobile,
+          pincode: pincode,
+          city: city,
+          state: state,
+          street: house,
+          type: addressType,
+          userId: currentUser.uid,
+          isDefault: address.isDefault
+        };
+        try {
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
+          showToast('Address updated successfully', 'success');
+          document.getElementById('savedAddressesSection').style.display = 'block';
+          document.getElementById('newAddressForm').style.display = 'block';
+          await loadSavedAddresses();
+        } catch (error) {
+          console.error('Error updating address:', error);
+          showToast('Failed to update address', 'error');
+        }
+      };
     }
 
     function deleteAddressConfirmation(address) {
       document.getElementById('alertTitle').textContent = 'Delete Address';
-      document.getElementById('alertMessage').textContent = `Are you sure you want to delete this address?`;
+      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
       document.getElementById('alertModal').classList.add('active');
       document.getElementById('alertConfirmBtn').onclick = async function() {
+        document.getElementById('alertModal').classList.remove('active');
+        if (!currentUser) { showToast('Please log in again', 'error'); return; }
         try {
-          const list = JSON.parse(localStorage.getItem(CACHE_KEYS.ADDRESSES) || '[]');
-          const filtered = list.filter(a => a.id !== address.id);
-          localStorage.setItem(CACHE_KEYS.ADDRESSES, JSON.stringify(filtered));
-          localStorage.setItem('bz_address_updated', Date.now().toString());
-
-          if (currentUser && window.firebase) {
-            await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
-          }
-          showToast('Address deleted successfully', 'success');
-          document.getElementById('alertModal').classList.remove('active');
-          loadSavedAddresses();
+          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
+          showToast('Address deleted', 'success');
+          await loadSavedAddresses();
+          const _sas = document.getElementById('savedAddressesSection');
+          const _naf = document.getElementById('newAddressForm');
+          if (_sas) _sas.style.display = savedAddresses.length ? 'block' : 'none';
+          if (_naf) _naf.style.display = 'block';
         } catch (error) {
           console.error('Error deleting address:', error);
-          showToast('Failed to delete address', 'error');
+          // Never sign out on address delete error
+          showToast('Could not delete address. Please try again.', 'error');
         }
       };
       document.getElementById('alertCancelBtn').onclick = function() {
@@ -4024,11 +3917,9 @@
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage') {
             renderProducts(products, 'homeProductGrid');
-            // Auto-trending: products with isTrending flag OR high auto score
             let trendingProducts = products.filter(p => p.isTrending || p.trending);
             if (!trendingProducts.length) {
-              // Fallback: top 6 by score
-              trendingProducts = [...products].sort((a,b)=>getProductScore(b)-getProductScore(a)).slice(0,6);
+              trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
             }
             if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
             else renderProductSlider(products.slice(0, 10), 'productSlider');
@@ -4051,10 +3942,10 @@
         renderProducts([], 'homeProductGrid');
         renderProducts([], 'productGrid');
       });
-      // Load product stats (order counts) for scoring
+      // Load product order stats for scoring/trending
       get(ref(database, 'productStats')).then(snap => {
         if (snap.exists()) window._productStats = snap.val();
-      }).catch(()=>{});
+      }).catch(() => {});
 
       get(ref(database, 'categories')).then(snapshot => {
         const categoriesObj = snapshot.val();
@@ -4437,350 +4328,403 @@
     }
 
 
-    // ===== CATEGORY SHAPE PAGE =====
-    var _bzShape = 'circle';
+    // ══════════════════════════════════════════════════════════
+    // CATEGORY SHAPE PAGE
+    // ══════════════════════════════════════════════════════════
     function showCategories() { openCategoryShapePage(); }
-    function openCategoryShapePage() { showPage('categoryPage'); setTimeout(bzRenderOrbit, 150); }
-    function bzCalcLayout(n, screenW) {
-      var r = Math.max(Math.ceil(n * 82 / (2 * Math.PI)), 90);
-      return r <= screenW/2 - 48 ? { mode:'circle', radius:r, stageSize:r*2+96 } : { mode:'line' };
+
+    function openCategoryShapePage() {
+      showPage('categoryPage');
+      setTimeout(bzRenderOrbit, 150);
     }
+
+    function bzCalcLayout(n, screenW) {
+      var ITEM_ARC = 84, PAD = 52;
+      var r = Math.max(Math.ceil(n * ITEM_ARC / (2 * Math.PI)), 90);
+      return r <= (screenW / 2 - PAD)
+        ? { mode: 'circle', radius: r, stageSize: r * 2 + PAD * 2 }
+        : { mode: 'line' };
+    }
+
     function bzRenderOrbit() {
-      var ring=document.getElementById('bzOrbitRing'), stage=document.getElementById('bzOrbitStage');
-      if (!ring||!stage) return;
+      var ring  = document.getElementById('bzOrbitRing');
+      var stage = document.getElementById('bzOrbitStage');
+      if (!ring || !stage) return;
       ring.classList.remove('bz-spinning');
-      Array.from(ring.querySelectorAll('.bz-cat-item')).forEach(function(el){el.remove();});
-      if (!categories||!categories.length) { setTimeout(bzRenderOrbit,600); return; }
-      var cats=categories, n=cats.length, screenW=Math.min(window.innerWidth,480), layout=bzCalcLayout(n,screenW);
-      if (layout.mode==='circle') {
-        var sz=Math.min(Math.max(layout.stageSize,220),screenW-16);
-        stage.style.width=sz+'px'; stage.style.height=sz+'px';
-        ring.style.transformOrigin=(sz/2)+'px '+(sz/2)+'px';
-        var svg=document.getElementById('bzGuideSvg');
-        if (svg){svg.setAttribute('viewBox','0 0 '+sz+' '+sz);svg.innerHTML='<circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+layout.radius+'" fill="none" stroke="rgba(37,99,235,0.10)" stroke-width="1.5" stroke-dasharray="6 4"/>';}
-        var iw=76, r=layout.radius, cx=sz/2, cy=sz/2;
-        cats.forEach(function(cat,i){
-          var a=(2*Math.PI*i/n)-Math.PI/2, px=cx+r*Math.cos(a), py=cy+r*Math.sin(a);
-          var img=typeof getProductImage==='function'?getProductImage(cat):'';
-          var nm=(cat.name||'').slice(0,14);
-          var item=document.createElement('div');
-          item.className='bz-cat-item'; item.style.width=iw+'px'; item.style.left=(px-iw/2)+'px'; item.style.top=(py-45)+'px'; item.title=cat.name||'';
-          item.innerHTML='<div class="bz-cat-thumb"></div><span class="bz-cat-label">'+nm+'</span>'; item.querySelector(".bz-cat-thumb").style.backgroundImage="url("+JSON.stringify(img)+")";
-          item.addEventListener('click',function(){filterByCategory(cat.id);});
+      Array.from(ring.querySelectorAll('.bz-cat-item')).forEach(function(el) { el.remove(); });
+      if (!categories || !categories.length) { setTimeout(bzRenderOrbit, 600); return; }
+
+      var cats = categories, n = cats.length;
+      var screenW = Math.min(window.innerWidth, 480);
+      var layout  = bzCalcLayout(n, screenW);
+
+      if (layout.mode === 'circle') {
+        var sz = Math.min(Math.max(layout.stageSize, 220), screenW - 16);
+        stage.style.width  = sz + 'px';
+        stage.style.height = sz + 'px';
+        ring.style.transformOrigin = (sz / 2) + 'px ' + (sz / 2) + 'px';
+        var svg = document.getElementById('bzGuideSvg');
+        if (svg) {
+          svg.setAttribute('viewBox', '0 0 ' + sz + ' ' + sz);
+          svg.innerHTML = '<circle cx="' + (sz/2) + '" cy="' + (sz/2) + '" r="' + layout.radius + '" fill="none" stroke="rgba(37,99,235,0.10)" stroke-width="1.5" stroke-dasharray="6 4"/>';
+        }
+        var iw = 76, r = layout.radius, cx = sz / 2, cy = sz / 2;
+        cats.forEach(function(cat, i) {
+          var a  = (2 * Math.PI * i / n) - Math.PI / 2;
+          var px = cx + r * Math.cos(a), py = cy + r * Math.sin(a);
+          var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
+          var nm  = (cat.name || '').slice(0, 14);
+          var item = document.createElement('div');
+          item.className = 'bz-cat-item';
+          item.style.width = iw + 'px';
+          item.style.left  = (px - iw / 2) + 'px';
+          item.style.top   = (py - 45) + 'px';
+          item.title = cat.name || '';
+          item.innerHTML = '<div class="bz-cat-thumb"></div><span class="bz-cat-label">' + nm + '</span>';
+          var thumb = item.querySelector('.bz-cat-thumb');
+          if (img && thumb) thumb.style.backgroundImage = "url('" + img + "')";
+          item.addEventListener('click', function() { filterByCategory(cat.id); });
           ring.appendChild(item);
         });
-        if (stage.parentElement){stage.parentElement.style.overflowX='';stage.parentElement.style.minHeight=sz+'px';}
-        setTimeout(function(){var r2=document.getElementById('bzOrbitRing');if(r2)r2.classList.add('bz-spinning');},600);
+        var outer = stage.parentElement;
+        if (outer) { outer.style.overflowX = ''; outer.style.minHeight = sz + 'px'; }
+        setTimeout(function() {
+          var r2 = document.getElementById('bzOrbitRing');
+          if (r2) r2.classList.add('bz-spinning');
+        }, 600);
       } else {
-        stage.style.width='auto'; stage.style.height='110px'; ring.style.transformOrigin='0 0';
-        var svg=document.getElementById('bzGuideSvg'); if(svg)svg.innerHTML='';
-        cats.forEach(function(cat){
-          var img=typeof getProductImage==='function'?getProductImage(cat):'';
-          var nm=(cat.name||'').slice(0,14);
-          var item=document.createElement('div');
-          item.className='bz-cat-item'; item.style.cssText='position:relative;left:0;top:0;width:80px;display:inline-flex;flex-direction:column;align-items:center;flex-shrink:0;'; item.title=cat.name||'';
-          item.innerHTML='<div class="bz-cat-thumb"></div><span class="bz-cat-label">'+nm+'</span>'; item.querySelector(".bz-cat-thumb").style.backgroundImage="url("+JSON.stringify(img)+")";
-          item.addEventListener('click',function(){filterByCategory(cat.id);});
+        // LINE MODE — too many categories for circle
+        stage.style.width  = 'auto';
+        stage.style.height = '110px';
+        ring.style.transformOrigin = '0 0';
+        var svg2 = document.getElementById('bzGuideSvg');
+        if (svg2) svg2.innerHTML = '';
+        cats.forEach(function(cat) {
+          var img = typeof getProductImage === 'function' ? getProductImage(cat) : '';
+          var nm  = (cat.name || '').slice(0, 14);
+          var item = document.createElement('div');
+          item.className = 'bz-cat-item';
+          item.style.cssText = 'position:relative;left:0;top:0;width:80px;display:inline-flex;flex-direction:column;align-items:center;flex-shrink:0;';
+          item.title = cat.name || '';
+          item.innerHTML = '<div class="bz-cat-thumb"></div><span class="bz-cat-label">' + nm + '</span>';
+          var thumb = item.querySelector('.bz-cat-thumb');
+          if (img && thumb) thumb.style.backgroundImage = "url('" + img + "')";
+          item.addEventListener('click', function() { filterByCategory(cat.id); });
           ring.appendChild(item);
         });
-        ring.style.cssText='position:relative;display:flex;flex-direction:row;gap:8px;padding:8px;animation:none;transform:none;';
-        if (stage.parentElement){stage.parentElement.style.overflowX='auto';stage.parentElement.style.minHeight='120px';stage.parentElement.style.justifyContent='flex-start';}
+        ring.style.cssText = 'position:relative;display:flex;flex-direction:row;gap:8px;padding:8px;animation:none;transform:none;';
+        var outer2 = stage.parentElement;
+        if (outer2) { outer2.style.overflowX = 'auto'; outer2.style.minHeight = '120px'; outer2.style.justifyContent = 'flex-start'; }
       }
       bzRenderCatTags(cats);
     }
+
     function bzRenderCatTags(cats) {
-      var container=document.getElementById('bzCatTags'); if(!container)return; container.innerHTML='';
-      var tags=(typeof searchTags!=='undefined'&&searchTags.length)?searchTags:cats.map(function(c){return c.name||'';}).filter(Boolean);
-      tags.forEach(function(tag){
-        var chip=document.createElement('button');
-        chip.textContent=tag;
-        chip.style.cssText='padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
-        chip.addEventListener('mouseenter',function(){this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb';});
-        chip.addEventListener('mouseleave',function(){this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0';});
-        chip.addEventListener('click',function(){var cat=categories&&categories.find(function(c){return c.name===tag;});if(cat)filterByCategory(cat.id);});
+      var container = document.getElementById('bzCatTags');
+      if (!container) return;
+      container.innerHTML = '';
+      var tags = (typeof searchTags !== 'undefined' && searchTags.length)
+        ? searchTags : cats.map(function(c) { return c.name || ''; }).filter(Boolean);
+      tags.forEach(function(tag) {
+        var chip = document.createElement('button');
+        chip.textContent = tag;
+        chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
+        chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
+        chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
+        chip.addEventListener('click', function() {
+          var cat = categories && categories.find(function(c) { return c.name === tag; });
+          if (cat) filterByCategory(cat.id);
+        });
         container.appendChild(chip);
       });
     }
-    // ===== END CATEGORY PAGE =====
 
-    // ===== ORDER TRACK ANIMATION PAGE =====
-    var _otStep = 0;
-    var _otOrder = null;
+    // ══════════════════════════════════════════════════════════
+    // ORDER TRACK ANIMATION PAGE
+    // ══════════════════════════════════════════════════════════
+    var _otStep = 0, _otOrder = null;
 
     window.openOrderTrackPage = function() {
-      if (!currentUser) { showAuthModal(); return; }
       showPage('orderTrackPage');
-      otLoadUserOrders();
+      if (currentUser) { otLoadUserOrders(); }
+      else { otSetStep(0); var pk = document.getElementById('otOrderPicker'); if (pk) pk.style.display = 'none'; }
     };
 
     function otLoadUserOrders() {
       if (!currentUser || !window.firebase) return;
-      window.firebase.get(
-        window.firebase.query(
-          window.firebase.ref(window.firebase.database, 'orders'),
-          window.firebase.orderByChild('userId'),
-          window.firebase.equalTo(currentUser.uid)
-        )
-      ).then(function(snap) {
-        var sel = document.getElementById('otOrderSelect');
+      var q = window.firebase.query(
+        window.firebase.ref(window.firebase.database, 'orders'),
+        window.firebase.orderByChild('userId'),
+        window.firebase.equalTo(currentUser.uid)
+      );
+      window.firebase.get(q).then(function(snap) {
+        var sel    = document.getElementById('otOrderSelect');
         var picker = document.getElementById('otOrderPicker');
         if (!sel || !snap.exists()) { otSetStep(0); return; }
-        var orders = Object.values(snap.val()).sort(function(a,b){return (b.orderDate||0)-(a.orderDate||0);});
+        var ordersArr = Object.values(snap.val()).sort(function(a, b) { return (b.orderDate || 0) - (a.orderDate || 0); });
         sel.innerHTML = '<option value="">— Choose an order —</option>';
-        orders.forEach(function(order) {
+        ordersArr.forEach(function(order) {
           var opt = document.createElement('option');
-          opt.value = order.orderId || order.id || '';
-          opt.textContent = (order.productName||'Order').slice(0,28) + ' · ' + new Date(order.orderDate||Date.now()).toLocaleDateString('en-IN');
-          opt._order = order;
+          var oid = order.orderId || order.id || '';
+          opt.value = oid;
+          opt.textContent = (order.productName || 'Order').slice(0, 28) + '  ·  ' + new Date(order.orderDate || Date.now()).toLocaleDateString('en-IN');
+          sel._orderMap = sel._orderMap || {};
+          sel._orderMap[oid] = order;
           sel.appendChild(opt);
         });
-        picker.style.display = 'block';
-        if (orders.length === 1) { otLoadOrder(orders[0].orderId||orders[0].id); sel.value = orders[0].orderId||orders[0].id; }
+        if (picker) picker.style.display = 'block';
+        if (ordersArr.length === 1) { var oid = ordersArr[0].orderId || ordersArr[0].id; sel.value = oid; otLoadOrder(oid); }
         else { otSetStep(0); }
-      }).catch(function(){ otSetStep(0); });
+      }).catch(function() { otSetStep(0); });
     }
 
     window.otLoadOrder = function(orderId) {
-      if (!orderId) { _otOrder=null; document.getElementById('otProductCard').style.display='none'; otSetStep(0); return; }
       var sel = document.getElementById('otOrderSelect');
-      var opt = sel ? Array.from(sel.options).find(function(o){return o.value===orderId;}) : null;
-      var order = opt ? opt._order : null;
-      if (!order) { otSetStep(0); return; }
+      var order = sel && sel._orderMap && sel._orderMap[orderId];
+      if (!orderId || !order) { _otOrder = null; var pc = document.getElementById('otProductCard'); if (pc) pc.style.display = 'none'; otSetStep(0); return; }
       _otOrder = order;
-
-      // Show product card
-      var pc = document.getElementById('otProductCard');
-      var img = document.getElementById('otProductImg');
+      var pc   = document.getElementById('otProductCard');
+      var img  = document.getElementById('otProductImg');
       var nameEl = document.getElementById('otProductName');
       var metaEl = document.getElementById('otProductMeta');
       var idEl   = document.getElementById('otOrderId');
       if (pc) pc.style.display = 'flex';
-      var liveProduct = products.find(function(p){return p.id===order.productId;});
-      var imgUrl = liveProduct ? getProductImage(liveProduct) : (order.productImage||'');
-      if (img) img.style.backgroundImage = "url(" + JSON.stringify(imgUrl) + ")";
+      var lp = products.find(function(p) { return p.id === order.productId; });
+      var imgUrl = lp ? getProductImage(lp) : (order.productImage || '');
+      if (img && imgUrl) img.style.backgroundImage = "url('" + imgUrl + "')";
       if (nameEl) nameEl.textContent = order.productName || 'Product';
-      if (metaEl) metaEl.textContent = formatPrice(order.totalAmount||0) + '  ·  Qty: ' + (order.quantity||1) + '  ·  Size: ' + (order.size||'N/A');
-      if (idEl)   idEl.textContent = 'Order ID: ' + (order.orderId||order.id||'');
-
-      // Map status to step
-      var STATUS_MAP = { placed:0, confirmed:1, shipped:2, out_for_delivery:2, delivered:3, cancelled:0 };
-      var step = STATUS_MAP[(order.status||'placed').toLowerCase()] ?? 0;
-      otSetStep(step);
+      if (metaEl) metaEl.textContent = formatPrice(order.totalAmount || 0) + '  ·  Qty: ' + (order.quantity || 1) + '  ·  Size: ' + (order.size || 'N/A');
+      if (idEl)   idEl.textContent   = 'Order ID: ' + (order.orderId || order.id || '');
+      var SM = { placed: 0, confirmed: 1, shipped: 2, out_for_delivery: 2, delivered: 3, cancelled: 0 };
+      otSetStep(SM[(order.status || 'placed').toLowerCase()] ?? 0);
     };
 
     window.otSetStep = function(step) {
       _otStep = step;
-      var pct = [0, 33, 66, 100][step] || 0;
       var line = document.getElementById('otProgressLine');
-      if (line) line.style.width = pct + '%';
-      for (var i=0;i<4;i++) {
-        var dot = document.getElementById('otDot'+i);
-        var lbl = document.getElementById('otLbl'+i);
+      if (line) line.style.width = [0, 33, 66, 100][step] + '%';
+      for (var i = 0; i < 4; i++) {
+        var dot = document.getElementById('otDot' + i);
+        var lbl = document.getElementById('otLbl' + i);
         if (!dot) continue;
-        dot.className = 'ot-dot' + (i<step?' done':i===step?' active':'');
-        if (lbl) lbl.className = 'ot-step-label' + (i<step?' done':i===step?' active':'');
+        dot.className = 'ot-dot' + (i < step ? ' done' : i === step ? ' active' : '');
+        if (lbl) lbl.className = 'ot-step-label' + (i < step ? ' done' : i === step ? ' active' : '');
       }
-      var titles = ['Order Placed!','Order Confirmed!','Out for Delivery!','Delivered! 🎉'];
-      var descs = [
+      var titles = ['Order Placed!', 'Order Confirmed!', 'Out for Delivery!', 'Delivered! 🎉'];
+      var descs  = [
         'Your order has been received and is being processed.',
         'Buyzo Cart has confirmed your order and is packing it carefully.',
-        'Your order is on the way! Our delivery partner is bringing it to your doorstep.',
+        'Your order is on the way! Our delivery partner is heading to your doorstep.',
         'Your order has been successfully delivered. Enjoy your purchase!'
       ];
-      var t=document.getElementById('otStatusTitle'), d=document.getElementById('otStatusDesc');
-      if(t) t.textContent=titles[step]||'';
-      if(d) d.textContent=descs[step]||'';
+      var t = document.getElementById('otStatusTitle'), d = document.getElementById('otStatusDesc');
+      if (t) t.textContent = titles[step] || '';
+      if (d) d.textContent = descs[step]  || '';
       otRenderAnim(step);
     };
 
     function otRenderAnim(step) {
       var stage = document.getElementById('otAnimStage');
       if (!stage) return;
-      var W = Math.max(stage.offsetWidth || 320, 280), H = 220;
-
-      var productImgUrl = '';
+      var W = Math.max(stage.offsetWidth || 340, 260), H = 220;
+      var imgUrl = '';
       if (_otOrder) {
-        var lp = products.find(function(p){return p.id===_otOrder.productId;});
-        productImgUrl = lp ? getProductImage(lp) : (_otOrder.productImage||'');
+        var lp2 = products.find(function(p) { return p.id === _otOrder.productId; });
+        imgUrl = lp2 ? getProductImage(lp2) : (_otOrder.productImage || '');
       }
-      var pImg = productImgUrl ? '<image href="'+productImgUrl+'" x="'+(W*0.08+4)+'" y="'+(H*0.25+4)+'" width="36" height="46" clip-path="url(#paperClip)"/>' : '';
 
-      var svgs = [
-        // STEP 0 — Paper flying into Buyzo Cart building
-        '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
-        +'<defs><linearGradient id="sky0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dbeafe"/><stop offset="100%" stop-color="#ede9fe"/></linearGradient>'
-        +'<clipPath id="paperClip"><rect x="'+(W*0.08+4)+'" y="'+(H*0.25+4)+'" width="36" height="46"/></clipPath></defs>'
-        +'<rect width="'+W+'" height="'+H+'" fill="url(#sky0)"/>'
-        +'<rect x="0" y="'+(H*0.74)+'" width="'+W+'" height="'+(H*0.26)+'" fill="#bbf7d0"/>'
-        +'<rect x="'+(W*0.58)+'" y="'+(H*0.2)+'" width="'+(W*0.34)+'" height="'+(H*0.54)+'" fill="#2563eb" rx="6"/>'
-        +'<rect x="'+(W*0.61)+'" y="'+(H*0.26)+'" width="'+(W*0.09)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.73)+'" y="'+(H*0.26)+'" width="'+(W*0.09)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.61)+'" y="'+(H*0.4)+'" width="'+(W*0.09)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.73)+'" y="'+(H*0.4)+'" width="'+(W*0.09)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.68)+'" y="'+(H*0.56)+'" width="'+(W*0.08)+'" height="'+(H*0.18)+'" fill="#1d4ed8" rx="3"/>'
-        +'<rect x="'+(W*0.57)+'" y="'+(H*0.13)+'" width="'+(W*0.36)+'" height="'+(H*0.08)+'" fill="#1e40af" rx="4"/>'
-        +'<text x="'+(W*0.75)+'" y="'+(H*0.195)+'" font-family="Arial" font-weight="bold" font-size="9.5" fill="white" text-anchor="middle">BUYZO CART</text>'
-        // Flying paper
-        +'<g style="animation:paperFly0 2.4s ease-in-out infinite;">'
-        +'<rect x="'+(W*0.08)+'" y="'+(H*0.25)+'" width="44" height="56" fill="white" rx="4" stroke="#2563eb" stroke-width="2"/>'
-        +pImg
-        +'<line x1="'+(W*0.08+8)+'" y1="'+(H*0.25+14)+'" x2="'+(W*0.08+36)+'" y2="'+(H*0.25+14)+'" stroke="#2563eb" stroke-width="1.5" opacity="0.4"/>'
-        +'<line x1="'+(W*0.08+8)+'" y1="'+(H*0.25+22)+'" x2="'+(W*0.08+36)+'" y2="'+(H*0.25+22)+'" stroke="#94a3b8" stroke-width="1.2" opacity="0.4"/>'
-        +'<line x1="'+(W*0.08+8)+'" y1="'+(H*0.25+30)+'" x2="'+(W*0.08+28)+'" y2="'+(H*0.25+30)+'" stroke="#94a3b8" stroke-width="1.2" opacity="0.4"/>'
-        +'<text x="'+(W*0.08+22)+'" y="'+(H*0.25+50)+'" font-family="Arial" font-weight="bold" font-size="8" fill="#2563eb" text-anchor="middle">ORDER</text>'
-        +'</g>'
-        +'<style>@keyframes paperFly0{0%{transform:translate(0,0) rotate(-6deg);}55%{transform:translate('+(W*0.28)+'px,-18px) rotate(4deg);}100%{transform:translate('+(W*0.5)+'px,12px) rotate(0deg) scale(0.3);opacity:0;}}</style>'
-        +'<text x="'+(W*0.35)+'" y="'+(H*0.14)+'" font-size="16" style="animation:twinkleA 1.3s infinite alternate;">⭐</text>'
-        +'<text x="'+(W*0.48)+'" y="'+(H*0.09)+'" font-size="12" style="animation:twinkleA 1.8s infinite alternate 0.4s;">✨</text>'
-        +'<style>@keyframes twinkleA{from{opacity:0.3;transform:scale(0.8)}to{opacity:1;transform:scale(1.2)}}</style>'
-        +'</svg>',
+      var scenes = [
+        // PLACED — order paper flying into Buyzo Cart building
+        (function() {
+          var bx = W*0.58, by = H*0.20, bw = W*0.34, bh = H*0.54;
+          return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
+          +'<defs><linearGradient id="g0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dbeafe"/><stop offset="100%" stop-color="#ede9fe"/></linearGradient></defs>'
+          +'<rect width="'+W+'" height="'+H+'" fill="url(#g0)"/>'
+          +'<rect x="0" y="'+(H*0.74)+'" width="'+W+'" height="'+(H*0.26)+'" fill="#bbf7d0"/>'
+          // Building
+          +'<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" fill="#2563eb" rx="6"/>'
+          +'<rect x="'+(bx+bw*0.08)+'" y="'+(by+bh*0.08)+'" width="'+(bw*0.25)+'" height="'+(bh*0.16)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(bx+bw*0.45)+'" y="'+(by+bh*0.08)+'" width="'+(bw*0.25)+'" height="'+(bh*0.16)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(bx+bw*0.08)+'" y="'+(by+bh*0.32)+'" width="'+(bw*0.25)+'" height="'+(bh*0.16)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(bx+bw*0.45)+'" y="'+(by+bh*0.32)+'" width="'+(bw*0.25)+'" height="'+(bh*0.16)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(bx+bw*0.3)+'" y="'+(by+bh*0.6)+'" width="'+(bw*0.25)+'" height="'+(bh*0.4)+'" fill="#1d4ed8" rx="3"/>'
+          +'<rect x="'+(bx-2)+'" y="'+(by-bh*0.12)+'" width="'+(bw+4)+'" height="'+(bh*0.13)+'" fill="#1e40af" rx="4"/>'
+          +'<text x="'+(bx+bw/2)+'" y="'+(by-bh*0.03)+'" font-family="Arial" font-weight="bold" font-size="9" fill="white" text-anchor="middle">BUYZO CART</text>'
+          // Flying paper with product image
+          +'<g style="animation:fly0 2.6s ease-in-out infinite;">'
+          +'<rect x="'+(W*0.05)+'" y="'+(H*0.22)+'" width="44" height="56" fill="white" rx="4" stroke="#2563eb" stroke-width="2"/>'
+          +(imgUrl ? '<image href="'+imgUrl+'" x="'+(W*0.05+4)+'" y="'+(H*0.22+4)+'" width="36" height="36" preserveAspectRatio="xMidYMid slice"/>' : '')
+          +'<line x1="'+(W*0.05+6)+'" y1="'+(H*0.22+45)+'" x2="'+(W*0.05+38)+'" y2="'+(H*0.22+45)+'" stroke="#2563eb" stroke-width="1.5" opacity="0.5"/>'
+          +'<text x="'+(W*0.05+22)+'" y="'+(H*0.22+54)+'" font-family="Arial" font-weight="bold" font-size="7.5" fill="#2563eb" text-anchor="middle">ORDER</text>'
+          +'</g>'
+          +'<style>@keyframes fly0{0%{transform:translate(0,0) rotate(-5deg);}60%{transform:translate('+(W*0.3)+'px,-16px) rotate(4deg);}100%{transform:translate('+(W*0.52)+'px,14px) rotate(0deg) scale(0.3);opacity:0;}}</style>'
+          +'<text x="'+(W*0.35)+'" y="'+(H*0.13)+'" font-size="15" style="animation:tw0 1.4s infinite alternate;">⭐</text>'
+          +'<style>@keyframes tw0{from{opacity:0.3;transform:scale(0.8)}to{opacity:1;transform:scale(1.2)}}</style>'
+          +'</svg>';
+        })(),
 
-        // STEP 1 — Confirmed: big checkmark + confetti at building
-        '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
-        +'<defs><linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dcfce7"/><stop offset="100%" stop-color="#d1fae5"/></linearGradient></defs>'
-        +'<rect width="'+W+'" height="'+H+'" fill="url(#sky1)"/>'
-        +'<rect x="0" y="'+(H*0.74)+'" width="'+W+'" height="'+(H*0.26)+'" fill="#86efac"/>'
-        +'<rect x="'+(W*0.3)+'" y="'+(H*0.18)+'" width="'+(W*0.4)+'" height="'+(H*0.56)+'" fill="#2563eb" rx="6"/>'
-        +'<rect x="'+(W*0.34)+'" y="'+(H*0.24)+'" width="'+(W*0.1)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.56)+'" y="'+(H*0.24)+'" width="'+(W*0.1)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.34)+'" y="'+(H*0.38)+'" width="'+(W*0.1)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.56)+'" y="'+(H*0.38)+'" width="'+(W*0.1)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        +'<rect x="'+(W*0.44)+'" y="'+(H*0.56)+'" width="'+(W*0.12)+'" height="'+(H*0.18)+'" fill="#1d4ed8" rx="3"/>'
-        +'<rect x="'+(W*0.28)+'" y="'+(H*0.11)+'" width="'+(W*0.44)+'" height="'+(H*0.08)+'" fill="#1e40af" rx="4"/>'
-        +'<text x="'+(W*0.5)+'" y="'+(H*0.18)+'" font-family="Arial" font-weight="bold" font-size="10" fill="white" text-anchor="middle">BUYZO CART</text>'
-        +'<g style="animation:popIn1 0.5s ease-out forwards,floatY1 2s ease-in-out 0.5s infinite;">'
-        +'<circle cx="'+(W*0.5)+'" cy="'+(H*0.42)+'" r="30" fill="#22c55e" opacity="0.12"/>'
-        +'<circle cx="'+(W*0.5)+'" cy="'+(H*0.42)+'" r="22" fill="#22c55e"/>'
-        +'<polyline points="'+(W*0.5-11)+','+(H*0.42)+' '+(W*0.5-2)+','+(H*0.42+9)+' '+(W*0.5+13)+','+(H*0.42-11)+'" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
-        +'</g>'
-        +'<circle cx="'+(W*0.18)+'" cy="'+(H*0.3)+'" r="5" fill="#f59e0b" style="animation:confettiA 1.5s ease-in-out infinite;"/>'
-        +'<circle cx="'+(W*0.82)+'" cy="'+(H*0.25)+'" r="4" fill="#ef4444" style="animation:confettiA 1.8s 0.3s ease-in-out infinite;"/>'
-        +'<circle cx="'+(W*0.14)+'" cy="'+(H*0.55)+'" r="4" fill="#8b5cf6" style="animation:confettiA 2s 0.6s ease-in-out infinite;"/>'
-        +'<circle cx="'+(W*0.86)+'" cy="'+(H*0.5)+'" r="5" fill="#06b6d4" style="animation:confettiA 1.4s 0.2s ease-in-out infinite;"/>'
-        +'<text x="'+(W*0.08)+'" y="'+(H*0.35)+'" font-size="18" style="animation:bounceA 1s ease-in-out infinite;">🎉</text>'
-        +'<text x="'+(W*0.84)+'" y="'+(H*0.35)+'" font-size="16" style="animation:bounceA 1s 0.5s ease-in-out infinite;">⭐</text>'
-        +'<style>@keyframes popIn1{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}'
-        +'@keyframes floatY1{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}'
-        +'@keyframes confettiA{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-18px) rotate(180deg)}}'
-        +'@keyframes bounceA{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}</style>'
-        +'</svg>',
+        // CONFIRMED — checkmark at building with confetti
+        (function() {
+          return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
+          +'<defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dcfce7"/><stop offset="100%" stop-color="#d1fae5"/></linearGradient></defs>'
+          +'<rect width="'+W+'" height="'+H+'" fill="url(#g1)"/>'
+          +'<rect x="0" y="'+(H*0.74)+'" width="'+W+'" height="'+(H*0.26)+'" fill="#86efac"/>'
+          +'<rect x="'+(W*0.28)+'" y="'+(H*0.18)+'" width="'+(W*0.44)+'" height="'+(H*0.56)+'" fill="#2563eb" rx="6"/>'
+          +'<rect x="'+(W*0.32)+'" y="'+(H*0.23)+'" width="'+(W*0.1)+'" height="'+(H*0.11)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(W*0.56)+'" y="'+(H*0.23)+'" width="'+(W*0.1)+'" height="'+(H*0.11)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(W*0.32)+'" y="'+(H*0.38)+'" width="'+(W*0.1)+'" height="'+(H*0.11)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(W*0.56)+'" y="'+(H*0.38)+'" width="'+(W*0.1)+'" height="'+(H*0.11)+'" fill="#bfdbfe" rx="3"/>'
+          +'<rect x="'+(W*0.43)+'" y="'+(H*0.56)+'" width="'+(W*0.14)+'" height="'+(H*0.18)+'" fill="#1d4ed8" rx="3"/>'
+          +'<rect x="'+(W*0.26)+'" y="'+(H*0.11)+'" width="'+(W*0.48)+'" height="'+(H*0.08)+'" fill="#1e40af" rx="4"/>'
+          +'<text x="'+(W*0.5)+'" y="'+(H*0.175)+'" font-family="Arial" font-weight="bold" font-size="10" fill="white" text-anchor="middle">BUYZO CART</text>'
+          +'<g style="animation:pop1 0.5s ease-out both,flt1 2s ease-in-out 0.5s infinite;">'
+          +'<circle cx="'+(W*0.5)+'" cy="'+(H*0.41)+'" r="24" fill="#22c55e" opacity="0.15"/>'
+          +'<circle cx="'+(W*0.5)+'" cy="'+(H*0.41)+'" r="19" fill="#22c55e"/>'
+          +'<polyline points="'+(W*0.5-10)+','+(H*0.41)+' '+(W*0.5-2)+','+(H*0.41+8)+' '+(W*0.5+11)+','+(H*0.41-10)+'" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+          +'</g>'
+          +'<circle cx="'+(W*0.17)+'" cy="'+(H*0.3)+'" r="5" fill="#f59e0b" style="animation:cf1 1.5s ease-in-out infinite;"/>'
+          +'<circle cx="'+(W*0.83)+'" cy="'+(H*0.25)+'" r="4" fill="#ef4444" style="animation:cf1 1.8s 0.3s ease-in-out infinite;"/>'
+          +'<circle cx="'+(W*0.12)+'" cy="'+(H*0.55)+'" r="4" fill="#8b5cf6" style="animation:cf1 2s 0.6s ease-in-out infinite;"/>'
+          +'<circle cx="'+(W*0.87)+'" cy="'+(H*0.5)+'" r="5" fill="#06b6d4" style="animation:cf1 1.4s 0.2s ease-in-out infinite;"/>'
+          +'<text x="'+(W*0.1)+'" y="'+(H*0.38)+'" font-size="18" style="animation:bc1 1s ease-in-out infinite;">🎉</text>'
+          +'<style>@keyframes pop1{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}'
+          +'@keyframes flt1{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}'
+          +'@keyframes cf1{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-18px) rotate(180deg)}}'
+          +'@keyframes bc1{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}</style>'
+          +'</svg>';
+        })(),
 
-        // STEP 2 — Shipped: delivery person on truck with BUYZO CART shirt, product box
-        '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
-        +'<defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef9c3"/><stop offset="100%" stop-color="#fde68a"/></linearGradient></defs>'
-        +'<rect width="'+W+'" height="'+H+'" fill="url(#sky2)"/>'
-        // Road
-        +'<rect x="0" y="'+(H*0.72)+'" width="'+W+'" height="'+(H*0.28)+'" fill="#334155"/>'
-        +'<rect x="0" y="'+(H*0.73)+'" width="'+W+'" height="5" fill="#475569"/>'
-        +'<rect x="'+(W*0.05)+'" y="'+(H*0.74)+'" width="'+(W*0.14)+'" height="5" fill="#fbbf24" rx="2.5"/>'
-        +'<rect x="'+(W*0.33)+'" y="'+(H*0.74)+'" width="'+(W*0.14)+'" height="5" fill="#fbbf24" rx="2.5"/>'
-        +'<rect x="'+(W*0.61)+'" y="'+(H*0.74)+'" width="'+(W*0.14)+'" height="5" fill="#fbbf24" rx="2.5"/>'
-        // Animated truck group
-        +'<g style="animation:truckRoll2 3s ease-in-out infinite;">'
-        // Truck body
-        +'<rect x="'+(W*0.03)+'" y="'+(H*0.47)+'" width="'+(W*0.44)+'" height="'+(H*0.25)+'" fill="#2563eb" rx="8"/>'
-        // Cab
-        +'<rect x="'+(W*0.36)+'" y="'+(H*0.41)+'" width="'+(W*0.16)+'" height="'+(H*0.31)+'" fill="#1d4ed8" rx="6 6 0 0"/>'
-        // Cab window
-        +'<rect x="'+(W*0.38)+'" y="'+(H*0.44)+'" width="'+(W*0.11)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="3"/>'
-        // Wheels
-        +'<circle cx="'+(W*0.14)+'" cy="'+(H*0.74)+'" r="13" fill="#1e293b"/>'
-        +'<circle cx="'+(W*0.14)+'" cy="'+(H*0.74)+'" r="6" fill="#94a3b8"/>'
-        +'<circle cx="'+(W*0.36)+'" cy="'+(H*0.74)+'" r="13" fill="#1e293b"/>'
-        +'<circle cx="'+(W*0.36)+'" cy="'+(H*0.74)+'" r="6" fill="#94a3b8"/>'
-        // BUYZO CART text on truck
-        +'<text x="'+(W*0.22)+'" y="'+(H*0.615)+'" font-family="Arial" font-weight="bold" font-size="10" fill="white" text-anchor="middle">BUYZO CART</text>'
-        // Product box on truck
-        +'<rect x="'+(W*0.05)+'" y="'+(H*0.49)+'" width="36" height="34" fill="#fbbf24" rx="4"/>'
-        +'<line x1="'+(W*0.05+18)+'" y1="'+(H*0.49)+'" x2="'+(W*0.05+18)+'" y2="'+(H*0.49+34)+'" stroke="#f59e0b" stroke-width="2"/>'
-        +'<line x1="'+(W*0.05)+'" y1="'+(H*0.49+17)+'" x2="'+(W*0.05+36)+'" y2="'+(H*0.49+17)+'" stroke="#f59e0b" stroke-width="2"/>'
-        // Delivery person body (shirt: BUYZO CART)
-        +'<circle cx="'+(W*0.57)+'" cy="'+(H*0.38)+'" r="13" fill="#fde68a"/>'
-        +'<ellipse cx="'+(W*0.57)+'" cy="'+(H*0.35)+'" rx="14" ry="9" fill="#2563eb"/>'
-        +'<text x="'+(W*0.57)+'" y="'+(H*0.375)+'" font-family="Arial" font-weight="bold" font-size="6" fill="white" text-anchor="middle">BZ</text>'
-        +'<rect x="'+(W*0.505)+'" y="'+(H*0.5)+'" width="'+(W*0.12)+'" height="'+(H*0.16)+'" fill="#2563eb" rx="4"/>'
-        +'<text x="'+(W*0.565)+'" y="'+(H*0.565)+'" font-family="Arial" font-weight="bold" font-size="5.5" fill="white" text-anchor="middle">BUYZO</text>'
-        +'<text x="'+(W*0.565)+'" y="'+(H*0.6)+'" font-family="Arial" font-weight="bold" font-size="5" fill="white" text-anchor="middle">CART</text>'
-        +'</g>'
-        // Speed lines
-        +'<g style="animation:speedLines2 0.5s linear infinite;">'
-        +'<line x1="'+(W*0.66)+'" y1="'+(H*0.52)+'" x2="'+(W*0.82)+'" y2="'+(H*0.52)+'" stroke="#cbd5e1" stroke-width="2.5" opacity="0.7"/>'
-        +'<line x1="'+(W*0.68)+'" y1="'+(H*0.58)+'" x2="'+(W*0.88)+'" y2="'+(H*0.58)+'" stroke="#cbd5e1" stroke-width="2" opacity="0.5"/>'
-        +'<line x1="'+(W*0.64)+'" y1="'+(H*0.64)+'" x2="'+(W*0.76)+'" y2="'+(H*0.64)+'" stroke="#cbd5e1" stroke-width="1.5" opacity="0.35"/>'
-        +'</g>'
-        +'<style>@keyframes truckRoll2{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}'
-        +'@keyframes speedLines2{0%{opacity:0.8;transform:translateX(0)}100%{opacity:0;transform:translateX(-22px)}}</style>'
-        +'</svg>',
+        // SHIPPED — clean delivery truck with BUYZO CART, product box on road
+        (function() {
+          return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
+          +'<defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef9c3"/><stop offset="100%" stop-color="#fde68a"/></linearGradient></defs>'
+          +'<rect width="'+W+'" height="'+H+'" fill="url(#g2)"/>'
+          // Road
+          +'<rect x="0" y="'+(H*0.7)+'" width="'+W+'" height="'+(H*0.3)+'" fill="#334155"/>'
+          +'<rect x="0" y="'+(H*0.7)+'" width="'+W+'" height="5" fill="#475569"/>'
+          // Road dashes
+          +'<rect x="'+(W*0.04)+'" y="'+(H*0.72)+'" width="'+(W*0.12)+'" height="5" fill="#fbbf24" rx="2"/>'
+          +'<rect x="'+(W*0.3)+'" y="'+(H*0.72)+'" width="'+(W*0.12)+'" height="5" fill="#fbbf24" rx="2"/>'
+          +'<rect x="'+(W*0.56)+'" y="'+(H*0.72)+'" width="'+(W*0.12)+'" height="5" fill="#fbbf24" rx="2"/>'
+          +'<rect x="'+(W*0.82)+'" y="'+(H*0.72)+'" width="'+(W*0.12)+'" height="5" fill="#fbbf24" rx="2"/>'
+          // Trees
+          +'<rect x="'+(W*0.82)+'" y="'+(H*0.48)+'" width="6" height="'+(H*0.22)+'" fill="#854d0e"/>'
+          +'<ellipse cx="'+(W*0.82+3)+'" cy="'+(H*0.42)+'" rx="14" ry="18" fill="#16a34a"/>'
+          +'<rect x="'+(W*0.91)+'" y="'+(H*0.52)+'" width="5" height="'+(H*0.18)+'" fill="#854d0e"/>'
+          +'<ellipse cx="'+(W*0.91+2)+'" cy="'+(H*0.46)+'" rx="12" ry="15" fill="#15803d"/>'
+          // Animated truck moving left to right
+          +'<g style="animation:truck2 2.4s ease-in-out infinite;">'
+          // Truck cargo box (left part)
+          +'<rect x="'+(W*0.04)+'" y="'+(H*0.44)+'" width="'+(W*0.38)+'" height="'+(H*0.26)+'" fill="#1e40af" rx="5"/>'
+          // Cargo product image
+          +(imgUrl ? '<image href="'+imgUrl+'" x="'+(W*0.06)+'" y="'+(H*0.46)+'" width="'+(W*0.12)+'" height="'+(H*0.22)+'" preserveAspectRatio="xMidYMid slice" clip-path="url(#cc)"/>' : '')
+          +'<defs><clipPath id="cc"><rect x="'+(W*0.06)+'" y="'+(H*0.46)+'" width="'+(W*0.12)+'" height="'+(H*0.22)+'"/></clipPath></defs>'
+          // BUYZO CART on cargo side
+          +'<text x="'+(W*0.25)+'" y="'+(H*0.59)+'" font-family="Arial" font-weight="bold" font-size="10" fill="#bfdbfe" text-anchor="middle">BUYZO CART</text>'
+          // Cab (right part)
+          +'<rect x="'+(W*0.39)+'" y="'+(H*0.4)+'" width="'+(W*0.18)+'" height="'+(H*0.3)+'" fill="#2563eb" rx="5 5 0 0"/>'
+          // Windscreen
+          +'<rect x="'+(W*0.41)+'" y="'+(H*0.42)+'" width="'+(W*0.13)+'" height="'+(H*0.12)+'" fill="#bfdbfe" rx="4"/>'
+          // Headlight
+          +'<rect x="'+(W*0.545)+'" y="'+(H*0.6)+'" width="'+(W*0.025)+'" height="6" fill="#fef08a" rx="2"/>'
+          // Wheels
+          +'<circle cx="'+(W*0.13)+'" cy="'+(H*0.71)+'" r="13" fill="#1e293b"/><circle cx="'+(W*0.13)+'" cy="'+(H*0.71)+'" r="6" fill="#94a3b8"/>'
+          +'<circle cx="'+(W*0.33)+'" cy="'+(H*0.71)+'" r="13" fill="#1e293b"/><circle cx="'+(W*0.33)+'" cy="'+(H*0.71)+'" r="6" fill="#94a3b8"/>'
+          +'<circle cx="'+(W*0.5)+'" cy="'+(H*0.71)+'" r="10" fill="#1e293b"/><circle cx="'+(W*0.5)+'" cy="'+(H*0.71)+'" r="5" fill="#94a3b8"/>'
+          // Driver silhouette
+          +'<circle cx="'+(W*0.465)+'" cy="'+(H*0.46)+'" r="7" fill="#fde68a"/>'
+          +'</g>'
+          // Speed lines
+          +'<g style="animation:spd2 0.45s linear infinite;">'
+          +'<line x1="'+(W*0.63)+'" y1="'+(H*0.51)+'" x2="'+(W*0.78)+'" y2="'+(H*0.51)+'" stroke="#cbd5e1" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>'
+          +'<line x1="'+(W*0.65)+'" y1="'+(H*0.57)+'" x2="'+(W*0.83)+'" y2="'+(H*0.57)+'" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" opacity="0.5"/>'
+          +'<line x1="'+(W*0.62)+'" y1="'+(H*0.63)+'" x2="'+(W*0.74)+'" y2="'+(H*0.63)+'" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>'
+          +'</g>'
+          +'<style>@keyframes truck2{0%,100%{transform:translateX(0)}50%{transform:translateX(9px)}}'
+          +'@keyframes spd2{0%{opacity:0.8;transform:translateX(0)}100%{opacity:0;transform:translateX(-24px)}}</style>'
+          +'</svg>';
+        })(),
 
-        // STEP 3 — Delivered: truck at house, package at door, banner
-        '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
-        +'<defs><linearGradient id="sky3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0fdf4"/><stop offset="100%" stop-color="#dcfce7"/></linearGradient></defs>'
-        +'<rect width="'+W+'" height="'+H+'" fill="url(#sky3)"/>'
-        // Road
-        +'<rect x="0" y="'+(H*0.72)+'" width="'+W+'" height="'+(H*0.28)+'" fill="#334155"/>'
-        // House roof
-        +'<polygon points="'+(W*0.58)+','+(H*0.14)+' '+(W*0.38)+','+(H*0.34)+' '+(W*0.78)+','+(H*0.34)+'" fill="#ef4444"/>'
-        // House walls
-        +'<rect x="'+(W*0.40)+'" y="'+(H*0.34)+'" width="'+(W*0.36)+'" height="'+(H*0.38)+'" fill="#fef9c3" rx="0 0 4 4"/>'
-        // Door
-        +'<rect x="'+(W*0.52)+'" y="'+(H*0.52)+'" width="'+(W*0.1)+'" height="'+(H*0.2)+'" fill="#92400e" rx="3 3 0 0"/>'
-        // Windows
-        +'<rect x="'+(W*0.42)+'" y="'+(H*0.38)+'" width="'+(W*0.09)+'" height="'+(H*0.1)+'" fill="#bae6fd" rx="3"/>'
-        +'<rect x="'+(W*0.67)+'" y="'+(H*0.38)+'" width="'+(W*0.09)+'" height="'+(H*0.1)+'" fill="#bae6fd" rx="3"/>'
-        // Parked truck
-        +'<rect x="'+(W*0.02)+'" y="'+(H*0.51)+'" width="'+(W*0.3)+'" height="'+(H*0.21)+'" fill="#2563eb" rx="6"/>'
-        +'<rect x="'+(W*0.22)+'" y="'+(H*0.46)+'" width="'+(W*0.12)+'" height="'+(H*0.26)+'" fill="#1d4ed8" rx="5 5 0 0"/>'
-        +'<rect x="'+(W*0.24)+'" y="'+(H*0.48)+'" width="'+(W*0.08)+'" height="'+(H*0.09)+'" fill="#bfdbfe" rx="2"/>'
-        +'<circle cx="'+(W*0.09)+'" cy="'+(H*0.73)+'" r="11" fill="#1e293b"/>'
-        +'<circle cx="'+(W*0.09)+'" cy="'+(H*0.73)+'" r="5" fill="#94a3b8"/>'
-        +'<circle cx="'+(W*0.26)+'" cy="'+(H*0.73)+'" r="11" fill="#1e293b"/>'
-        +'<circle cx="'+(W*0.26)+'" cy="'+(H*0.73)+'" r="5" fill="#94a3b8"/>'
-        +'<text x="'+(W*0.16)+'" y="'+(H*0.635)+'" font-family="Arial" font-weight="bold" font-size="8" fill="white" text-anchor="middle">BUYZO CART</text>'
-        // Package at door
-        +'<rect x="'+(W*0.505)+'" y="'+(H*0.62)+'" width="28" height="24" fill="#fbbf24" rx="3"/>'
-        +'<line x1="'+(W*0.505+14)+'" y1="'+(H*0.62)+'" x2="'+(W*0.505+14)+'" y2="'+(H*0.62+24)+'" stroke="#f59e0b" stroke-width="2"/>'
-        +'<line x1="'+(W*0.505)+'" y1="'+(H*0.62+12)+'" x2="'+(W*0.505+28)+'" y2="'+(H*0.62+12)+'" stroke="#f59e0b" stroke-width="2"/>'
-        // "Delivery Completed" banner
-        +'<rect x="'+(W*0.06)+'" y="'+(H*0.06)+'" width="'+(W*0.88)+'" height="'+(H*0.13)+'" fill="#22c55e" rx="10" style="animation:bannerPop3 0.5s ease-out both;"/>'
-        +'<text x="'+(W*0.5)+'" y="'+(H*0.145)+'" font-family="Arial" font-weight="bold" font-size="12" fill="white" text-anchor="middle">✓ Delivery Completed!</text>'
-        +'<text x="'+(W*0.1)+'" y="'+(H*0.47)+'" font-size="18" style="animation:bounceB 1.1s ease-in-out infinite;">🎉</text>'
-        +'<text x="'+(W*0.84)+'" y="'+(H*0.47)+'" font-size="16" style="animation:bounceB 1.1s 0.55s ease-in-out infinite;">⭐</text>'
-        +'<style>@keyframes bannerPop3{from{transform:scaleX(0);opacity:0}to{transform:scaleX(1);opacity:1}}'
-        +'@keyframes bounceB{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}</style>'
-        +'</svg>'
+        // DELIVERED — truck parked at house, package at door, banner
+        (function() {
+          return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:'+H+'px;">'
+          +'<defs><linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0fdf4"/><stop offset="100%" stop-color="#dcfce7"/></linearGradient></defs>'
+          +'<rect width="'+W+'" height="'+H+'" fill="url(#g3)"/>'
+          +'<rect x="0" y="'+(H*0.72)+'" width="'+W+'" height="'+(H*0.28)+'" fill="#334155"/>'
+          // House
+          +'<polygon points="'+(W*0.58)+','+(H*0.14)+' '+(W*0.37)+','+(H*0.34)+' '+(W*0.79)+','+(H*0.34)+'" fill="#ef4444"/>'
+          +'<rect x="'+(W*0.39)+'" y="'+(H*0.34)+'" width="'+(W*0.38)+'" height="'+(H*0.38)+'" fill="#fef9c3" rx="0 0 4 4"/>'
+          +'<rect x="'+(W*0.51)+'" y="'+(H*0.52)+'" width="'+(W*0.12)+'" height="'+(H*0.2)+'" fill="#92400e" rx="3 3 0 0"/>'
+          +'<rect x="'+(W*0.41)+'" y="'+(H*0.37)+'" width="'+(W*0.1)+'" height="'+(H*0.11)+'" fill="#bae6fd" rx="3"/>'
+          +'<rect x="'+(W*0.65)+'" y="'+(H*0.37)+'" width="'+(W*0.1)+'" height="'+(H*0.11)+'" fill="#bae6fd" rx="3"/>'
+          // Parked truck
+          +'<rect x="'+(W*0.02)+'" y="'+(H*0.5)+'" width="'+(W*0.3)+'" height="'+(H*0.22)+'" fill="#2563eb" rx="6"/>'
+          +'<rect x="'+(W*0.22)+'" y="'+(H*0.45)+'" width="'+(W*0.12)+'" height="'+(H*0.27)+'" fill="#1d4ed8" rx="5 5 0 0"/>'
+          +'<rect x="'+(W*0.24)+'" y="'+(H*0.47)+'" width="'+(W*0.08)+'" height="'+(H*0.1)+'" fill="#bfdbfe" rx="2"/>'
+          +'<circle cx="'+(W*0.09)+'" cy="'+(H*0.73)+'" r="11" fill="#1e293b"/><circle cx="'+(W*0.09)+'" cy="'+(H*0.73)+'" r="5" fill="#94a3b8"/>'
+          +'<circle cx="'+(W*0.26)+'" cy="'+(H*0.73)+'" r="11" fill="#1e293b"/><circle cx="'+(W*0.26)+'" cy="'+(H*0.73)+'" r="5" fill="#94a3b8"/>'
+          +'<text x="'+(W*0.16)+'" y="'+(H*0.63)+'" font-family="Arial" font-weight="bold" font-size="8" fill="#bfdbfe" text-anchor="middle">BUYZO CART</text>'
+          // Package with product image at door
+          +'<rect x="'+(W*0.49)+'" y="'+(H*0.62)+'" width="30" height="26" fill="#fbbf24" rx="3"/>'
+          +(imgUrl ? '<image href="'+imgUrl+'" x="'+(W*0.49+2)+'" y="'+(H*0.62+2)+'" width="26" height="22" preserveAspectRatio="xMidYMid slice"/>' : '')
+          +'<line x1="'+(W*0.49+15)+'" y1="'+(H*0.62)+'" x2="'+(W*0.49+15)+'" y2="'+(H*0.62+26)+'" stroke="#f59e0b" stroke-width="1.5"/>'
+          +'<line x1="'+(W*0.49)+'" y1="'+(H*0.62+13)+'" x2="'+(W*0.49+30)+'" y2="'+(H*0.62+13)+'" stroke="#f59e0b" stroke-width="1.5"/>'
+          // Banner
+          +'<rect x="'+(W*0.05)+'" y="'+(H*0.05)+'" width="'+(W*0.9)+'" height="'+(H*0.13)+'" fill="#22c55e" rx="10" style="animation:bp3 0.5s ease-out both;"/>'
+          +'<text x="'+(W*0.5)+'" y="'+(H*0.14)+'" font-family="Arial" font-weight="bold" font-size="12" fill="white" text-anchor="middle">✓ Delivery Completed!</text>'
+          +'<text x="'+(W*0.1)+'" y="'+(H*0.47)+'" font-size="18" style="animation:bb3 1.1s ease-in-out infinite;">🎉</text>'
+          +'<text x="'+(W*0.84)+'" y="'+(H*0.47)+'" font-size="16" style="animation:bb3 1.1s 0.5s ease-in-out infinite;">⭐</text>'
+          +'<style>@keyframes bp3{from{transform:scaleX(0);opacity:0}to{transform:scaleX(1);opacity:1}}'
+          +'@keyframes bb3{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}</style>'
+          +'</svg>';
+        })()
       ];
 
-      stage.innerHTML = svgs[step] || svgs[0];
+      stage.innerHTML = scenes[step] || scenes[0];
     }
-    // ===== END ORDER TRACK PAGE =====
 
+    // categoryPage + orderTrackPage in showPage switch
     function initApp() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
       updateNotifBadge();
 
-      // ── INSTANT USER RESTORE (no 3-sec flash) ──────────────
+      // ── INSTANT USER RESTORE (no login flash on load) ──────────
       try {
         const _cu = localStorage.getItem('_bz_cached_user');
         if (_cu) {
           const _ud = JSON.parse(_cu);
-          // Show logged-in UI immediately from cache
-          document.getElementById('userProfile').style.display = 'flex';
-          document.getElementById('openLoginTop').style.display = 'none';
-          document.getElementById('mobileLoginBtn').style.display = 'none';
-          document.getElementById('mobileUserProfile').style.display = 'flex';
-          document.getElementById('mobileLogoutBtn').style.display = 'flex';
-          document.getElementById('headerSearchContainer').style.display = 'block';
+          const _prof = document.getElementById('userProfile');
+          const _login = document.getElementById('openLoginTop');
+          const _mLogin = document.getElementById('mobileLoginBtn');
+          const _mProf = document.getElementById('mobileUserProfile');
+          const _mLogout = document.getElementById('mobileLogoutBtn');
+          const _hSearch = document.getElementById('headerSearchContainer');
+          if (_prof) _prof.style.display = 'flex';
+          if (_login) _login.style.display = 'none';
+          if (_mLogin) _mLogin.style.display = 'none';
+          if (_mProf) _mProf.style.display = 'flex';
+          if (_mLogout) _mLogout.style.display = 'flex';
+          if (_hSearch) _hSearch.style.display = 'block';
           const _aim = document.getElementById('userAvatarImg');
           const _aii = document.getElementById('userAvatarInitial');
           const _hn  = document.getElementById('headerUserNameShort');
-          if (_ud.photoURL && _aim) { _aim.src = _ud.photoURL; _aim.style.display='block'; if(_aii) _aii.style.display='none'; }
-          else if (_aii) { _aii.style.display='block'; _aii.textContent=(_ud.displayName||'U')[0].toUpperCase(); if(_aim) _aim.style.display='none'; }
-          if (_hn) { const _sn=(_ud.displayName||'User').split(' ')[0]; _hn.textContent=_sn.length>10?_sn.substring(0,10)+'...':_sn; }
+          if (_ud.photoURL && _aim) {
+            _aim.src = _ud.photoURL; _aim.style.display = 'block';
+            if (_aii) _aii.style.display = 'none';
+          } else if (_aii) {
+            _aii.style.display = 'block';
+            _aii.textContent = (_ud.displayName || 'U')[0].toUpperCase();
+            if (_aim) _aim.style.display = 'none';
+          }
+          if (_hn) {
+            const sn = (_ud.displayName || 'User').split(' ')[0];
+            _hn.textContent = sn.length > 10 ? sn.substring(0, 10) + '...' : sn;
+          }
         }
       } catch(e) {}
-      // ──────────────────────────────────────────────────────
+      // ───────────────────────────────────────────────────────────
 
       setupEventListeners();
       if (window.firebase && window.firebase.auth) {
@@ -4799,7 +4743,7 @@
 
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
-              setTimeout(() => { window.location.href = 'account'; }, 300);
+              setTimeout(() => { window.location.href = '/account'; }, 300);
             }
 
             try {
@@ -5198,7 +5142,7 @@
     })();
 
     function openAccountPage() {
-      window.location.href = 'account';
+      window.location.href = '/account';
     }
 
     function closeAccountPage() {
@@ -5580,6 +5524,201 @@
 })();
 
 
+/* ──────────────────────────────────────────────
+   3. ADDRESS AUTO-FILL IN CHECKOUT
+   When opening checkout/order page, automatically
+   fills the form with the user's default address
+   from localStorage / Firebase.
+   ────────────────────────────────────────────── */
+(function initCheckoutAddressFill() {
+  /**
+   * Key: address fields in checkout form → address object keys
+   * Adjust IDs to match your actual checkout form field IDs.
+   */
+  const FIELD_MAP = {
+    // Checkout form ID : Address object key
+    'fullName'      : 'name',
+    'userName'      : 'name',
+    'userFullName'  : 'name',
+    'checkoutName'  : 'name',
+    'mobileNumber'  : 'mobile',
+    'userMobile'    : 'mobile',
+    'checkoutMobile': 'mobile',
+    'pincode'       : 'pincode',
+    'userPincode'   : 'pincode',
+    'cityName'      : 'city',
+    'userCity'      : 'city',
+    'checkoutCity'  : 'city',
+    'stateName'     : 'state',
+    'userState'     : 'state',
+    'checkoutState' : 'state',
+    'streetAddress' : 'street',
+    'userAddress'   : 'street',
+    'addressLine'   : 'street',
+    'checkoutAddr'  : 'street',
+    // Common patterns in forms
+    'name'          : 'name',
+    'mobile'        : 'mobile',
+    'phone'         : 'mobile',
+    'city'          : 'city',
+    'state'         : 'state',
+    'address'       : 'street',
+    'street'        : 'street',
+  };
+
+  /**
+   * Fill checkout form fields with address data.
+   * @param {Object} address — saved address object
+   */
+  window.fillAddressForm = function(address) {
+    if (!address) return;
+    Object.entries(FIELD_MAP).forEach(([fieldId, key]) => {
+      const el = document.getElementById(fieldId);
+      if (el && address[key]) el.value = address[key];
+    });
+  };
+
+  /**
+   * Load the default (or first) saved address for current user
+   * and fill the checkout form.
+   */
+  window.loadAndFillDefaultAddress = function() {
+    // Try from global savedAddresses first (populated by main.js)
+    if (typeof savedAddresses !== 'undefined' && savedAddresses.length > 0) {
+      const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+      fillAddressForm(def);
+      renderSavedAddressesInCheckout(savedAddresses);
+      return;
+    }
+
+    // Fallback: load directly from Firebase
+    const firebase = window.firebase;
+    const user = typeof currentUser !== 'undefined' ? currentUser : null;
+    if (!firebase || !user) return;
+
+    firebase.database()
+      .ref('addresses')
+      .orderByChild('userId')
+      .equalTo(user.uid)
+      .get()
+      .then(snap => {
+        if (!snap.exists()) return;
+        const list = [];
+        snap.forEach(child => list.push({ id: child.key, ...child.val() }));
+        list.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+        if (list.length > 0) {
+          const def = list.find(a => a.isDefault) || list[0];
+          fillAddressForm(def);
+          renderSavedAddressesInCheckout(list);
+        }
+      })
+      .catch(() => {});
+  };
+
+  /**
+   * Render saved address selector inside checkout page.
+   * Injects a select-an-address panel above the form.
+   */
+  function renderSavedAddressesInCheckout(addresses) {
+    // Find the checkout form container
+    const containers = [
+      document.getElementById('checkoutFormContainer'),
+      document.getElementById('addressFormContainer'),
+      document.getElementById('userInfoForm'),
+      document.querySelector('.checkout-form'),
+      document.querySelector('#userPage form'),
+      document.querySelector('#orderPage .address-section'),
+    ].filter(Boolean);
+
+    if (containers.length === 0) return;
+    const container = containers[0];
+
+    // Remove existing panel if already injected
+    const existing = document.getElementById('bzSavedAddressPanel');
+    if (existing) existing.remove();
+
+    if (addresses.length === 0) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'bzSavedAddressPanel';
+    panel.style.cssText = `
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-family: inherit;
+    `;
+
+    panel.innerHTML = `
+      <div style="font-size:13px;font-weight:600;color:#1d4ed8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <span>📍</span> Saved Addresses
+      </div>
+      <div id="bzAddrList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    `;
+
+    const listEl = panel.querySelector('#bzAddrList');
+    addresses.forEach(addr => {
+      const row = document.createElement('label');
+      row.style.cssText = `
+        display:flex;align-items:flex-start;gap:10px;
+        padding:10px;border-radius:8px;cursor:pointer;
+        border:2px solid ${addr.isDefault ? '#2563eb' : '#e2e8f0'};
+        background:${addr.isDefault ? '#fff' : 'transparent'};
+        transition:all 0.15s;font-size:13px;
+      `;
+      row.innerHTML = `
+        <input type="radio" name="bzAddrSelect" value="${addr.id}"
+          ${addr.isDefault ? 'checked' : ''}
+          style="margin-top:2px;accent-color:#2563eb;">
+        <div>
+          <div style="font-weight:600;">${addr.name} &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400;">${addr.type || 'home'}</span></div>
+          <div style="color:#475569;margin-top:2px;">${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}</div>
+          <div style="color:#64748b;margin-top:1px;">📞 ${addr.mobile}</div>
+        </div>
+      `;
+      row.querySelector('input').addEventListener('change', () => {
+        fillAddressForm(addr);
+        // Update border styles
+        listEl.querySelectorAll('label').forEach(l => {
+          l.style.borderColor = '#e2e8f0';
+          l.style.background = 'transparent';
+        });
+        row.style.borderColor = '#2563eb';
+        row.style.background = '#fff';
+      });
+      listEl.appendChild(row);
+    });
+
+    container.prepend(panel);
+  }
+
+  // Auto-trigger when checkout/order/userPage becomes visible
+  const _origShowPage = window.showPage;
+  if (typeof _origShowPage === 'function') {
+    window.showPage = function(pageId) {
+      _origShowPage.call(this, pageId);
+      const checkoutPages = ['userPage', 'orderPage', 'checkoutPage', 'paymentPage'];
+      if (checkoutPages.includes(pageId) && typeof currentUser !== 'undefined' && currentUser) {
+        setTimeout(loadAndFillDefaultAddress, 200);
+      }
+    };
+  }
+
+  // Also fill when user logs in and is on a checkout page
+  const origSetupAccount = window.setupAccountRealtimeSync;
+  if (typeof origSetupAccount === 'function') {
+    window.setupAccountRealtimeSync = function(uid) {
+      origSetupAccount.call(this, uid);
+      setTimeout(() => {
+        const activePage = document.querySelector('.page.active')?.id || '';
+        if (['userPage','orderPage','checkoutPage'].includes(activePage)) {
+          loadAndFillDefaultAddress();
+        }
+      }, 800);
+    };
+  }
+})();
 
 
 /* ──────────────────────────────────────────────
@@ -5618,14 +5757,14 @@
 
         // If it's an <a> tag, fix the href
         if (fresh.tagName === 'A') {
-          fresh.href = 'sell-product';
+          fresh.href = '/sell-product';
           fresh.removeAttribute('onclick');
           fresh.addEventListener('click', function(e) {
             e.stopPropagation();
             // Close sidebar first if open
             document.querySelector('.sidebar.active, #sideMenu.active, #mobileMenu.active, .mobile-menu.active, [class*="sidebar"].active')?.classList.remove('active');
             document.querySelector('.sidebar-overlay.active, .overlay.active')?.classList.remove('active');
-            setTimeout(() => { window.location.href = 'sell-product'; }, 80);
+            setTimeout(() => { window.location.href = '/sell-product'; }, 80);
           });
         } else {
           // For li/div/button — override onclick
@@ -5635,7 +5774,7 @@
             e.preventDefault();
             document.querySelector('.sidebar.active, #sideMenu.active, #mobileMenu.active, .mobile-menu.active, [class*="sidebar"].active')?.classList.remove('active');
             document.querySelector('.sidebar-overlay.active, .overlay.active')?.classList.remove('active');
-            setTimeout(() => { window.location.href = 'sell-product'; }, 80);
+            setTimeout(() => { window.location.href = '/sell-product'; }, 80);
           });
         }
       }
@@ -5742,6 +5881,104 @@
 })();
 
 
+/* ──────────────────────────────────────────────
+   6. ADDRESS SAVE-ON-ORDER COMPLETION
+   After order is placed, automatically saves
+   the entered address to localStorage / Firebase.
+   Patch: wrap the existing placeOrder / submitOrder.
+   ────────────────────────────────────────────── */
+(function patchOrderAddressSave() {
+  /**
+   * Call this after successful order placement.
+   * Reads from checkout form and saves address.
+   */
+  window.bzSaveAddressAfterOrder = function(uid) {
+    // Read from form
+    const fields = {
+      name:    document.getElementById('fullName')?.value || document.getElementById('userName')?.value || document.getElementById('name')?.value || '',
+      mobile:  document.getElementById('mobileNumber')?.value || document.getElementById('mobile')?.value || document.getElementById('phone')?.value || '',
+      street:  document.getElementById('streetAddress')?.value || document.getElementById('address')?.value || document.getElementById('street')?.value || '',
+      city:    document.getElementById('cityName')?.value || document.getElementById('city')?.value || '',
+      state:   document.getElementById('stateName')?.value || document.getElementById('state')?.value || '',
+      pincode: document.getElementById('pincode')?.value || document.getElementById('postalCode')?.value || '',
+      type:    'home',
+      isDefault: true,
+      updatedAt: Date.now(),
+    };
+
+    // Validate — at least name + street
+    if (!fields.name || !fields.street) return;
+
+    // Save to Firebase if user is logged in
+    const firebase = window.firebase;
+    if (firebase && uid) {
+      // Check for duplicates
+      firebase.database()
+        .ref('addresses')
+        .orderByChild('userId')
+        .equalTo(uid)
+        .get()
+        .then(snap => {
+          let isDuplicate = false;
+          snap.forEach(child => {
+            const a = child.val();
+            if (a.street === fields.street && a.pincode === fields.pincode) {
+              isDuplicate = true;
+              // Make this the default
+              firebase.database().ref('addresses/' + child.key).update({ isDefault: true });
+            } else {
+              firebase.database().ref('addresses/' + child.key).update({ isDefault: false });
+            }
+          });
+          if (!isDuplicate) {
+            fields.userId = uid;
+            firebase.database().ref('addresses').push(fields).then(() => {
+              localStorage.setItem('bz_address_updated', Date.now().toString());
+            });
+          }
+        })
+        .catch(() => {
+          // Fallback: save to localStorage
+          const saved = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+          const isDup = saved.some(a => a.street === fields.street && a.pincode === fields.pincode);
+          if (!isDup) {
+            saved.unshift(fields);
+            localStorage.setItem('bz_addresses', JSON.stringify(saved.slice(0, 10)));
+            localStorage.setItem('bz_address_updated', Date.now().toString());
+          }
+        });
+    } else {
+      // Guest: save to localStorage only
+      const saved = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+      const isDup = saved.some(a => a.street === fields.street && a.pincode === fields.pincode);
+      if (!isDup) {
+        saved.unshift(fields);
+        localStorage.setItem('bz_addresses', JSON.stringify(saved.slice(0, 10)));
+        localStorage.setItem('bz_address_updated', Date.now().toString());
+      }
+    }
+  };
+
+  // Observe placeOrder function to inject address save
+  // Try to wrap common function names
+  const fnNames = ['placeOrder', 'submitOrder', 'handleOrderSubmit', 'confirmOrder'];
+  fnNames.forEach(fnName => {
+    if (typeof window[fnName] === 'function') {
+      const orig = window[fnName];
+      window[fnName] = function(...args) {
+        const result = orig.apply(this, args);
+        // Save address after order
+        const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
+        if (result && typeof result.then === 'function') {
+          result.then(() => bzSaveAddressAfterOrder(uid)).catch(() => {});
+        } else {
+          setTimeout(() => bzSaveAddressAfterOrder(uid), 500);
+        }
+        return result;
+      };
+    }
+  });
+})();
 
 
 /* ──────────────────────────────────────────────
