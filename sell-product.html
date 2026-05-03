@@ -213,6 +213,7 @@
         }
         .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         .form-control.error { border-color: var(--danger); background: #fef2f2; }
+        .form-control.valid { border-color: var(--success); }
         textarea.form-control { resize: vertical; min-height: 90px; }
         select.form-control { cursor: pointer; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -545,6 +546,9 @@
             <a onclick="navigateTo('orders')" id="navOrders">
                 <i class="fas fa-shopping-bag"></i> Orders
             </a>
+            <a onclick="navigateTo('earnings')" id="navEarnings">
+                <i class="fas fa-rupee-sign"></i> Earnings
+            </a>
             <a onclick="navigateTo('similar')" id="navSimilar">
                 <i class="fas fa-link"></i> Similar Products
             </a>
@@ -612,15 +616,6 @@
                     <label class="form-label">Category <span class="required">*</span></label>
                     <select class="form-control" id="prodCategory">
                         <option value="">-- Select Category --</option>
-                        <option>Electronics</option>
-                        <option>Fashion & Clothing</option>
-                        <option>Home & Living</option>
-                        <option>Books</option>
-                        <option>Sports</option>
-                        <option>Beauty</option>
-                        <option>Toys</option>
-                        <option>Food</option>
-                        <option>Other</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -737,17 +732,38 @@
             currentPage: 'dashboard',
             selectedTagIds: new Set(),
             pageHistory: [],
-            uploadingCount: 0
+            uploadingCount: 0,
+            categories: []
         };
 
+        // Show loader immediately — prevents flash before auth resolves
+        document.getElementById('contentArea').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;"><div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div><p style="color:#64748b;font-weight:600;">Loading your dashboard...</p></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+
+        var _authResolved = false;
+        // Safety timeout — if auth takes too long, redirect to login
+        var _authTimeout = setTimeout(function() {
+            if (!_authResolved) { window.location.href = '/'; }
+        }, 8000);
+
         onAuthStateChanged(auth, async (user) => {
+            _authResolved = true;
+            clearTimeout(_authTimeout);
             if (!user) {
                 window.location.href = '/';
                 return;
             }
             window._state.user = user;
-            document.getElementById('headerAvatar').textContent = (user.displayName || user.email || 'S').charAt(0).toUpperCase();
+            var initials = (user.displayName || user.email || 'S').charAt(0).toUpperCase();
+            document.getElementById('headerAvatar').textContent = initials;
             document.getElementById('headerName').textContent = user.displayName || user.email || 'Seller';
+            // Load categories from Firebase
+            try {
+                const catSnap = await get(ref(db, 'categories'));
+                if (catSnap.exists()) {
+                    var cats = Object.values(catSnap.val()).filter(c => c.name);
+                    window._state.categories = cats;
+                }
+            } catch(e) { window._state.categories = []; }
 
             try {
                 const snap = await get(ref(db, 'sellerRequests/' + user.uid));
@@ -768,7 +784,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('contentArea').innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">⚠️ Error loading. Please refresh.</p><button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px;">Refresh</button></div>';
+                document.getElementById('contentArea').innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;font-weight:600;">⚠️ Error loading dashboard.</p><p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">Check your internet connection and try again.</p><button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button></div>';
             }
         });
     </script>
@@ -848,11 +864,11 @@
             document.querySelectorAll('.sidebar-nav a').forEach(function(a) {
                 a.classList.remove('active');
             });
-            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', similar: 'navSimilar', settings: 'navSettings', apply: 'navDashboard' };
+            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', earnings: 'navEarnings', similar: 'navSimilar', settings: 'navSettings', apply: 'navDashboard' };
             var navId = navMap[page];
             if (navId) document.getElementById(navId).classList.add('active');
 
-            var titles = { dashboard: 'Dashboard', products: 'My Products', orders: 'Orders', similar: 'Similar Products', settings: 'Settings', apply: 'Seller Application', pending: 'Application Status', rejected: 'Application Status' };
+            var titles = { dashboard: 'Dashboard', products: 'My Products', orders: 'Orders', earnings: 'Earnings', similar: 'Similar Products', settings: 'Settings', apply: 'Seller Application', pending: 'Application Status', rejected: 'Application Status' };
             document.getElementById('pageTitle').textContent = titles[page] || page;
 
             var isApproved = window._state.sellerData && window._state.sellerData.status === 'approved';
@@ -866,6 +882,7 @@
             else if (page === 'products') renderProductsPage();
             else if (page === 'orders') renderOrdersPage();
             else if (page === 'similar') renderSimilarPage();
+            else if (page === 'earnings') renderEarningsPage();
             else if (page === 'settings') renderSettingsPage();
             else if (page === 'apply') showApplicationForm();
             else if (page === 'pending') showPendingPage(window._state.sellerData);
@@ -1121,121 +1138,262 @@
             document.getElementById('pageTitle').textContent = 'Become a Seller';
 
             document.getElementById('contentArea').innerHTML =
-                '<div class="seller-welcome">' +
-                    '<div class="sw-blob sw-blob-1"></div>' +
-                    '<div class="sw-blob sw-blob-2"></div>' +
-                    '<div class="sw-blob sw-blob-3"></div>' +
-
-                    '<div class="sw-hero">' +
-                        '<div class="sw-orbit-wrap">' +
-                            '<div class="sw-orbit-ring"><div class="sw-orbit-dot"></div></div>' +
-                            '<div class="sw-icon-circle">🛍️</div>' +
-                        '</div>' +
-                        '<h1 class="sw-title">Apna Business<br><span>Online Le Aao!</span></h1>' +
-                        '<p class="sw-sub">Buyzo Cart pe apne products becho — lakhs of customers tak pahuncho. Setup karna bilkul aasaan hai.</p>' +
+                '<div style="max-width:580px;margin:0 auto;padding:20px 0;">' +
+                    '<div style="text-align:center;margin-bottom:32px;">' +
+                        '<div style="width:72px;height:72px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px;">🛍️</div>' +
+                        '<h1 style="font-size:1.6rem;font-weight:800;color:#0f172a;margin-bottom:8px;">Start Selling on Buyzo Cart</h1>' +
+                        '<p style="color:#64748b;font-size:0.95rem;max-width:420px;margin:0 auto;">Reach thousands of customers across India. Setup takes just 5 minutes.</p>' +
                     '</div>' +
 
-                    '<div class="sw-steps">' +
-                        '<div class="sw-step">' +
-                            '<div class="sw-step-num n1">1</div>' +
-                            '<div class="sw-step-icon">📝</div>' +
-                            '<div class="sw-step-info">' +
-                                '<div class="sw-step-title">Information Bharo</div>' +
-                                '<div class="sw-step-desc">Apna naam, business details aur bank account information provide karo.</div>' +
+                    '<div class="card" style="margin-bottom:20px;">' +
+                        '<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>' +
+                        '<div class="card-body" style="padding:8px 20px;">' +
+                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
+                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f97316,#fb923c);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">1</div>' +
+                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">📝 Fill Application Form</div><div style="font-size:0.82rem;color:#64748b;">Enter your business name, category, phone number and bank details.</div></div>' +
                             '</div>' +
-                            '<div class="sw-step-arrow">›</div>' +
-                        '</div>' +
-                        '<div class="sw-step-connector"></div>' +
-
-                        '<div class="sw-step">' +
-                            '<div class="sw-step-num n2">2</div>' +
-                            '<div class="sw-step-icon">🔍</div>' +
-                            '<div class="sw-step-info">' +
-                                '<div class="sw-step-title">Admin Review</div>' +
-                                '<div class="sw-step-desc">Hamari team aapki application review karegi. 2–3 business days lagte hain.</div>' +
+                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
+                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">2</div>' +
+                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">🔍 Admin Review</div><div style="font-size:0.82rem;color:#64748b;">Our team verifies your details. This takes 2–3 business days.</div></div>' +
                             '</div>' +
-                            '<div class="sw-step-arrow">›</div>' +
-                        '</div>' +
-                        '<div class="sw-step-connector"></div>' +
-
-                        '<div class="sw-step">' +
-                            '<div class="sw-step-num n3">3</div>' +
-                            '<div class="sw-step-icon">✅</div>' +
-                            '<div class="sw-step-info">' +
-                                '<div class="sw-step-title">Approval Email</div>' +
-                                '<div class="sw-step-desc">Approved hone par aapko email aayega. Tab seller dashboard unlock ho jaayega.</div>' +
+                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
+                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">3</div>' +
+                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">✅ Get Approved</div><div style="font-size:0.82rem;color:#64748b;">You'll receive an email once approved. Your seller dashboard will unlock instantly.</div></div>' +
                             '</div>' +
-                            '<div class="sw-step-arrow">›</div>' +
-                        '</div>' +
-                        '<div class="sw-step-connector"></div>' +
-
-                        '<div class="sw-step">' +
-                            '<div class="sw-step-num n4">4</div>' +
-                            '<div class="sw-step-icon">🚀</div>' +
-                            '<div class="sw-step-info">' +
-                                '<div class="sw-step-title">Becho aur Kamao!</div>' +
-                                '<div class="sw-step-desc">Products list karo, orders manage karo aur delivery handle karo.</div>' +
+                            '<div style="display:flex;gap:16px;padding:14px 0;align-items:flex-start;">' +
+                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#4ade80);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">4</div>' +
+                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">🚀 List Products & Earn</div><div style="font-size:0.82rem;color:#64748b;">Add your products, manage orders and receive payments directly to your bank account.</div></div>' +
                             '</div>' +
-                            '<div class="sw-step-arrow">🎉</div>' +
                         '</div>' +
                     '</div>' +
 
-                    '<div class="sw-note">' +
-                        '<div class="sw-note-icon">⏱️</div>' +
-                        '<div><strong>Sirf 5 minutes!</strong> Application form bharna bahut aasaan hai. Ek baar approve hone ke baad saara system automatic unlock ho jaata hai.</div>' +
+                    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center;margin-bottom:20px;">' +
+                        '<div style="font-size:1.4rem;">🔒</div>' +
+                        '<div style="font-size:0.85rem;color:#15803d;"><strong>100% Secure.</strong> Your bank details are encrypted and only used for payment transfers.</div>' +
                     '</div>' +
 
-                    '<div class="sw-continue">' +
-                        '<button class="sw-continue-btn" onclick="showApplicationForm()">' +
-                            'Continue — Form Bharo' +
-                            '<span class="btn-arrow">→</span>' +
-                        '</button>' +
+                    '<div style="text-align:center;">' +
+                        '<button onclick="showApplicationForm(1)" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:14px 36px;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,.35);">Get Started → Fill Form</button>' +
+                        '<div style="margin-top:12px;font-size:0.8rem;color:#94a3b8;">Takes less than 5 minutes · Free to join</div>' +
                     '</div>' +
                 '</div>';
         }
 
-        function showApplicationForm() {
+        var _appStep = 1;
+        var _appData = {};
+
+        function _getCatOptions() {
+            var base = '<option value="">-- Select Category --</option>';
+            if (window._state.categories && window._state.categories.length) {
+                return base + window._state.categories.map(function(c){ return '<option value="'+c.name+'">'+c.name+'</option>'; }).join('');
+            }
+            return base + '<option>Electronics</option><option>Fashion & Clothing</option><option>Home & Living</option><option>Books</option><option>Sports</option><option>Beauty</option><option>Toys</option><option>Food</option><option>Other</option>';
+        }
+
+        function _stepBar(current) {
+            var steps = ['Business Info','Bank Details','Review & Submit'];
+            return '<div style="display:flex;align-items:center;margin-bottom:28px;">' +
+                steps.map(function(label, i) {
+                    var n = i + 1;
+                    var done = n < current, active = n === current;
+                    var circStyle = done
+                        ? 'background:#22c55e;border-color:#22c55e;color:#fff;'
+                        : active ? 'background:#2563eb;border-color:#2563eb;color:#fff;'
+                        : 'background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8;';
+                    var labelStyle = done ? 'color:#22c55e;' : active ? 'color:#2563eb;' : 'color:#94a3b8;';
+                    var circle = '<div style="width:32px;height:32px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;'+circStyle+'">'+(done?'✓':n)+'</div>';
+                    var lbl = '<span style="font-size:0.75rem;font-weight:700;margin-left:8px;white-space:nowrap;'+labelStyle+'">'+label+'</span>';
+                    var line = n < steps.length ? '<div style="flex:1;height:2px;background:'+(done?'#22c55e':'#e2e8f0')+';margin:0 8px;min-width:20px;"></div>' : '';
+                    return '<div style="display:flex;align-items:center;flex:1;">'+circle+lbl+'</div>'+line;
+                }).join('') +
+            '</div>';
+        }
+
+        function _fieldErr(id, show) {
+            var el = document.getElementById(id);
+            var err = document.getElementById(id + 'Err');
+            if (el) { el.classList.toggle('error', show); el.classList.toggle('valid', !show && el.value.trim().length > 0); }
+            if (err) err.classList.toggle('show', show);
+        }
+
+        function showApplicationForm(step) {
+            step = step || 1;
+            _appStep = step;
             document.querySelectorAll('.sidebar-nav a').forEach(function(a) { a.style.display = 'none'; });
             document.querySelector('.sidebar-footer').style.display = 'none';
+            document.getElementById('pageTitle').textContent = 'Seller Application — Step ' + step + ' of 3';
 
-            document.getElementById('contentArea').innerHTML = '' +
-                '<h2 style="margin-bottom:16px;">📝 Seller Application</h2>' +
-                '<div class="card"><div class="card-header"><h3 class="card-title">👤 Business Information</h3></div><div class="card-body">' +
-                    '<div class="form-row">' +
-                        '<div class="form-group"><label class="form-label">Full Name <span class="required">*</span></label><input class="form-control" id="appName" placeholder="Your legal full name"></div>' +
-                        '<div class="form-group"><label class="form-label">Phone Number <span class="required">*</span></label><input class="form-control" id="appPhone" type="tel" placeholder="10-digit mobile number"></div>' +
-                    '</div>' +
-                    '<div class="form-row">' +
-                        '<div class="form-group"><label class="form-label">Business / Shop Name <span class="required">*</span></label><input class="form-control" id="appBiz" placeholder="Your shop name"></div>' +
-                        '<div class="form-group">' +
-                            '<label class="form-label">GST Number <small class="text-muted">(optional)</small></label>' +
-                            '<input class="form-control" id="appGST" placeholder="29ABCDE1234F1Z5" style="text-transform:uppercase;" oninput="validateGSTInput()">' +
-                            '<div class="form-error" id="gstError">❌ Invalid GST number! Format: 22AAAAA0000A1Z5</div>' +
+            var content = _stepBar(step);
+
+            if (step === 1) {
+                content +=
+                    '<div class="card"><div class="card-header"><h3 class="card-title">👤 Business Information</h3></div><div class="card-body">' +
+                        '<div class="form-row">' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">Full Name <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appName" placeholder="Your legal full name" value="'+((_appData.name)||'')+'" oninput="appLiveValidate(this,'name')">' +
+                                '<div class="form-error" id="appNameErr">⚠ Name must be at least 3 characters</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">Phone Number <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appPhone" type="tel" placeholder="10-digit mobile" value="'+((_appData.phone)||'')+'" oninput="appLiveValidate(this,'phone')">' +
+                                '<div class="form-error" id="appPhoneErr">⚠ Enter valid 10-digit number</div>' +
+                            '</div>' +
                         '</div>' +
+                        '<div class="form-row">' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">Business / Shop Name <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appBiz" placeholder="Your shop name" value="'+((_appData.biz)||'')+'" oninput="appLiveValidate(this,'biz')">' +
+                                '<div class="form-error" id="appBizErr">⚠ Shop name is required</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">GST Number <small class="text-muted">(optional)</small></label>' +
+                                '<input class="form-control" id="appGST" placeholder="22AAAAA0000A1Z5" style="text-transform:uppercase;" value="'+((_appData.gst)||'')+'" oninput="validateGSTInput()">' +
+                                '<div class="form-error" id="gstError">⚠ Invalid GST format (e.g. 22AAAAA0000A1Z5)</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="form-row">' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">Product Category <span class="required">*</span></label>' +
+                                '<select class="form-control" id="appCat" onchange="appLiveValidate(this,'cat')">'+_getCatOptions()+'</select>' +
+                                '<div class="form-error" id="appCatErr">⚠ Please select a category</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">About Your Business <small class="text-muted">(optional)</small></label>' +
+                                '<textarea class="form-control" id="appDesc" rows="2" placeholder="Describe what you sell...">'+((_appData.desc)||'')+'</textarea>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">' +
+                        '<button class="btn btn-outline" onclick="showSellerWelcome()">← Back</button>' +
+                        '<button class="btn btn-primary" onclick="appNext(1)">Continue → Bank Details</button>' +
+                    '</div>';
+
+                document.getElementById('contentArea').innerHTML = content;
+                // Restore previously entered category
+                if (_appData.cat) {
+                    var sel = document.getElementById('appCat');
+                    if (sel) sel.value = _appData.cat;
+                }
+
+            } else if (step === 2) {
+                content +=
+                    '<div class="card"><div class="card-header"><h3 class="card-title">🏦 Bank Details <small class="text-muted" style="font-weight:400;">(for receiving payments)</small></h3></div><div class="card-body">' +
+                        '<div class="form-group bank-dropdown-wrapper">' +
+                            '<label class="form-label">Bank Name <span class="required">*</span></label>' +
+                            '<input class="form-control" id="appBankDisplay" placeholder="Search and select your bank..." autocomplete="off" value="'+((_appData.bank)||'')+'" onfocus="filterBankDropdown()" oninput="filterBankDropdown()" onclick="filterBankDropdown()">' +
+                            '<input type="hidden" id="appBank" value="'+((_appData.bank)||'')+'">' +
+                            '<div class="bank-dropdown" id="bankDropdown"></div>' +
+                            '<div class="form-error" id="appBankErr">⚠ Please select a bank from the list</div>' +
+                        '</div>' +
+                        '<div class="form-row">' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">Account Number <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appAcc" placeholder="Bank account number" value="'+((_appData.acc)||'')+'" oninput="appLiveValidate(this,'acc')">' +
+                                '<div class="form-error" id="appAccErr">⚠ Account number must contain digits only</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">IFSC Code <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appIFSC" placeholder="SBIN0001234" style="text-transform:uppercase;" value="'+((_appData.ifsc)||'')+'" oninput="appLiveValidate(this,'ifsc')">' +
+                                '<div class="form-error" id="appIFSCErr">⚠ Invalid IFSC (format: SBIN0001234)</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:0.82rem;color:#1d4ed8;">' +
+                            '🔒 <strong>100% Secure.</strong> Bank details are encrypted and only used to transfer your earnings.' +
+                        '</div>' +
+                    '</div></div>' +
+                    '<div style="display:flex;justify-content:space-between;margin-top:4px;">' +
+                        '<button class="btn btn-outline" onclick="showApplicationForm(1)">← Edit Business Info</button>' +
+                        '<button class="btn btn-primary" onclick="appNext(2)">Continue → Review</button>' +
+                    '</div>';
+
+                document.getElementById('contentArea').innerHTML = content;
+
+            } else if (step === 3) {
+                var d = _appData;
+                content +=
+                    '<div class="card"><div class="card-header"><h3 class="card-title">📋 Review Your Application</h3><span style="font-size:0.8rem;color:#64748b;">Please verify all details before submitting</span></div><div class="card-body">' +
+                        '<div style="display:grid;gap:0;">' +
+                            _reviewRow('Full Name', d.name) +
+                            _reviewRow('Phone', d.phone) +
+                            _reviewRow('Business Name', d.biz) +
+                            _reviewRow('Category', d.cat) +
+                            (d.gst ? _reviewRow('GST Number', d.gst) : '') +
+                            _reviewRow('Bank', d.bank) +
+                            _reviewRow('Account Number', '****' + (d.acc || '').slice(-4)) +
+                            _reviewRow('IFSC Code', d.ifsc, true) +
+                        '</div>' +
+                    '</div></div>' +
+                    '<div style="background:#fff8e6;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#92400e;font-size:0.85rem;">' +
+                        '📋 <strong>Important:</strong> Double-check all details before submitting. Review takes 2–3 business days. You cannot edit after submitting.' +
                     '</div>' +
-                    '<div class="form-row">' +
-                        '<div class="form-group"><label class="form-label">Product Category <span class="required">*</span></label><select class="form-control" id="appCat"><option value="">-- Select --</option><option>Electronics</option><option>Fashion & Clothing</option><option>Home & Living</option><option>Books</option><option>Sports</option><option>Beauty</option><option>Toys</option><option>Food</option><option>Other</option></select></div>' +
-                        '<div class="form-group"><label class="form-label">About Your Business</label><textarea class="form-control" id="appDesc" rows="2" placeholder="Describe what you sell..."></textarea></div>' +
-                    '</div>' +
-                '</div></div>' +
-                '<div class="card"><div class="card-header"><h3 class="card-title">🏦 Bank Details <small class="text-muted" style="font-weight:400;">(for receiving payments)</small></h3></div><div class="card-body">' +
-                    '<div class="form-group bank-dropdown-wrapper">' +
-                        '<label class="form-label">Bank Name <span class="required">*</span></label>' +
-                        '<input class="form-control" id="appBankDisplay" placeholder="Search and select bank..." autocomplete="off" onfocus="filterBankDropdown()" oninput="filterBankDropdown()" onclick="filterBankDropdown()">' +
-                        '<input type="hidden" id="appBank">' +
-                        '<div class="bank-dropdown" id="bankDropdown"></div>' +
-                    '</div>' +
-                    '<div class="form-row">' +
-                        '<div class="form-group"><label class="form-label">Account Number <span class="required">*</span></label><input class="form-control" id="appAcc" placeholder="Bank account number"></div>' +
-                        '<div class="form-group"><label class="form-label">IFSC Code <span class="required">*</span></label><input class="form-control" id="appIFSC" placeholder="SBIN0001234" style="text-transform:uppercase;"></div>' +
-                    '</div>' +
-                '</div></div>' +
-                '<div style="background:#fff8e6;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;margin-bottom:20px;color:#92400e;font-size:0.85rem;"><strong>📋 Important:</strong> Double-check all details before submitting. Review takes 2-3 business days.</div>' +
-                '<div class="flex-between mb-2">' +
-                    '<button class="btn btn-secondary" id="appBtn" onclick="submitApp()">Submit Application</button>' +
-                    '<button class="btn btn-outline" onclick="goHome()">← Back to Store</button>' +
-                '</div>';
+                    '<div style="display:flex;justify-content:space-between;">' +
+                        '<button class="btn btn-outline" onclick="showApplicationForm(2)">← Edit Bank Details</button>' +
+                        '<button class="btn btn-success" id="appBtn" onclick="submitApp()">✅ Submit Application</button>' +
+                    '</div>';
+
+                document.getElementById('contentArea').innerHTML = content;
+            }
         }
+
+        function _reviewRow(label, value, isLast) {
+            return '<div style="display:flex;justify-content:space-between;padding:11px 0;'+(isLast?'':'border-bottom:1px solid var(--border);')+'"><span style="color:#64748b;font-size:0.9rem;">'+label+'</span><strong style="font-size:0.9rem;">'+value+'</strong></div>';
+        }
+
+        function appLiveValidate(el, type) {
+            var v = el.value.trim();
+            var rules = {
+                name: function(v){ return v.length >= 3; },
+                phone: function(v){ return /^\d{10,15}$/.test(v); },
+                biz:  function(v){ return v.length > 0; },
+                cat:  function(v){ return v.length > 0; },
+                acc:  function(v){ return /^\d{6,}$/.test(v); },
+                ifsc: function(v){ return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.toUpperCase()); }
+            };
+            var valid = rules[type] ? rules[type](v) : v.length > 0;
+            el.classList.toggle('error', !valid);
+            el.classList.toggle('valid', valid);
+            var errId = { name:'appNameErr', phone:'appPhoneErr', biz:'appBizErr', cat:'appCatErr', acc:'appAccErr', ifsc:'appIFSCErr' }[type];
+            if (errId) { var err = document.getElementById(errId); if(err) err.classList.toggle('show', !valid); }
+        }
+
+        function appNext(step) {
+            if (step === 1) {
+                var name  = (document.getElementById('appName')  ? document.getElementById('appName').value  : '').trim();
+                var phone = (document.getElementById('appPhone') ? document.getElementById('appPhone').value : '').trim();
+                var biz   = (document.getElementById('appBiz')   ? document.getElementById('appBiz').value   : '').trim();
+                var gst   = (document.getElementById('appGST')   ? document.getElementById('appGST').value   : '').trim().toUpperCase();
+                var cat   = document.getElementById('appCat') ? document.getElementById('appCat').value : '';
+                var desc  = (document.getElementById('appDesc')  ? document.getElementById('appDesc').value  : '').trim();
+                var ok = true;
+                if (!name || name.length < 3)         { _fieldErr('appName','appNameErr',true);  ok = false; } else _fieldErr('appName','appNameErr',false);
+                if (!phone || !/^\d{10,15}$/.test(phone)) { _fieldErr('appPhone','appPhoneErr',true); ok = false; } else _fieldErr('appPhone','appPhoneErr',false);
+                if (!biz)                              { _fieldErr('appBiz','appBizErr',true);   ok = false; } else _fieldErr('appBiz','appBizErr',false);
+                if (!cat)                              { _fieldErr('appCat','appCatErr',true);   ok = false; } else _fieldErr('appCat','appCatErr',false);
+                if (gst && !validateGST(gst)) { showToast('Enter valid GST number or leave empty', 'error'); ok = false; }
+                if (!ok) { showToast('Please fix the highlighted fields', 'error'); return; }
+                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc });
+                showApplicationForm(2);
+            } else if (step === 2) {
+                var bank = (document.getElementById('appBank') ? document.getElementById('appBank').value : '').trim();
+                var acc  = (document.getElementById('appAcc')  ? document.getElementById('appAcc').value  : '').trim();
+                var ifsc = (document.getElementById('appIFSC') ? document.getElementById('appIFSC').value : '').trim().toUpperCase();
+                var ok = true;
+                if (!bank) { var bd = document.getElementById('appBankDisplay'); if(bd) bd.classList.add('error'); var be=document.getElementById('appBankErr'); if(be) be.classList.add('show'); ok = false; }
+                if (!acc || !/^\d{6,}$/.test(acc))               { _fieldErr('appAcc','appAccErr',true);  ok = false; } else _fieldErr('appAcc','appAccErr',false);
+                if (!ifsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) { _fieldErr('appIFSC','appIFSCErr',true); ok = false; } else _fieldErr('appIFSC','appIFSCErr',false);
+                if (!ok) { showToast('Please fix the highlighted fields', 'error'); return; }
+                _appData = Object.assign(_appData, { bank: bank, acc: acc, ifsc: ifsc });
+                showApplicationForm(3);
+            }
+        }
+
+        function _fieldErr(fieldId, errId, show) {
+            var f=document.getElementById(fieldId), e=document.getElementById(errId);
+            if(f){ f.classList.toggle('error', show); f.classList.toggle('valid', !show && f.value.trim().length > 0); }
+            if(e) e.classList.toggle('show', show);
+        }
+
 
         function validateGSTInput() {
             var gst = (document.getElementById('appGST') ? document.getElementById('appGST').value : '').trim();
@@ -1257,65 +1415,29 @@
 
         async function submitApp() {
             var user = window._state.user;
-            var name = (document.getElementById('appName') ? document.getElementById('appName').value : '').trim();
-            var phone = (document.getElementById('appPhone') ? document.getElementById('appPhone').value : '').trim();
-            var biz = (document.getElementById('appBiz') ? document.getElementById('appBiz').value : '').trim();
-            var gst = (document.getElementById('appGST') ? document.getElementById('appGST').value : '').trim().toUpperCase();
-            var cat = document.getElementById('appCat') ? document.getElementById('appCat').value : '';
-            var desc = (document.getElementById('appDesc') ? document.getElementById('appDesc').value : '').trim();
-            var bank = (document.getElementById('appBank') ? document.getElementById('appBank').value : '').trim();
-            var acc = (document.getElementById('appAcc') ? document.getElementById('appAcc').value : '').trim();
-            var ifsc = (document.getElementById('appIFSC') ? document.getElementById('appIFSC').value : '').trim().toUpperCase();
-
-            if (!name || !phone || !biz || !cat || !bank || !acc || !ifsc) {
-                showToast('Please fill all required fields', 'error');
+            var d = _appData;
+            if (!d.name || !d.phone || !d.biz || !d.cat || !d.bank || !d.acc || !d.ifsc) {
+                showToast('Please complete all steps first', 'error');
+                showApplicationForm(1);
                 return;
             }
-            if (phone.length < 10 || !/^\d{10,15}$/.test(phone)) {
-                showToast('Enter valid 10-digit phone number', 'error');
-                return;
-            }
-            if (gst && !validateGST(gst)) {
-                showToast('Enter valid GST number or leave empty', 'error');
-                return;
-            }
-            if (ifsc.length < 11 || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-                showToast('Enter valid IFSC code', 'error');
-                return;
-            }
-            if (!/^\d+$/.test(acc)) {
-                showToast('Account number must be digits only', 'error');
-                return;
-            }
-
             var btn = document.getElementById('appBtn');
-            btn.disabled = true;
-            btn.textContent = 'Submitting...';
-
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting...'; }
             try {
                 await window._set(window._ref(window._db, 'sellerRequests/' + user.uid), {
-                    name: name,
-                    phone: phone,
-                    businessName: biz,
-                    gst: gst,
-                    category: cat,
-                    description: desc,
-                    bankName: bank,
-                    accountNumber: acc,
-                    ifsc: ifsc,
-                    email: user.email,
-                    uid: user.uid,
-                    status: 'pending',
-                    appliedAt: Date.now()
+                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '',
+                    category: d.cat, description: d.desc || '',
+                    bankName: d.bank, accountNumber: d.acc, ifsc: d.ifsc,
+                    email: user.email, uid: user.uid, status: 'pending', appliedAt: Date.now()
                 });
-                window._state.sellerData = { name: name, businessName: biz, appliedAt: Date.now() };
-                showToast('Application submitted successfully! 🎉', 'success');
+                window._state.sellerData = { name: d.name, businessName: d.biz, appliedAt: Date.now() };
+                _appData = {};
+                showToast('Application submitted! 🎉 We will review within 2–3 days.', 'success');
                 navigateTo('pending');
             } catch (err) {
                 console.error(err);
-                showToast('Failed to submit. Try again.', 'error');
-                btn.disabled = false;
-                btn.textContent = 'Submit Application';
+                showToast('Failed to submit. Please try again.', 'error');
+                if (btn) { btn.disabled = false; btn.textContent = '✅ Submit Application'; }
             }
         }
 
@@ -1369,6 +1491,56 @@
                 console.error(err);
                 document.getElementById('contentArea').innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">Failed to load dashboard. Please refresh.</p><button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px;">🔄 Refresh</button></div>';
             }
+        }
+
+
+        function renderEarningsPage() {
+            var o = window._state.orders;
+            var delivered = o.filter(function(x){ return (x.status||'').toLowerCase() === 'delivered'; });
+            var shipped   = o.filter(function(x){ return (x.status||'').toLowerCase() === 'shipped'; });
+            var cancelled = o.filter(function(x){ return (x.status||'').toLowerCase() === 'cancelled'; });
+            var totalEarned = delivered.reduce(function(s,x){ return s+(parseFloat(x.totalAmount)||0); }, 0);
+            var inTransit   = shipped.reduce(function(s,x){ return s+(parseFloat(x.totalAmount)||0); }, 0);
+            var allRevenue  = o.filter(function(x){ return (x.status||'').toLowerCase() !== 'cancelled'; }).reduce(function(s,x){ return s+(parseFloat(x.totalAmount)||0); }, 0);
+            var pct  = allRevenue > 0 ? Math.round(totalEarned/allRevenue*100) : 0;
+            var tPct = allRevenue > 0 ? Math.round(inTransit/allRevenue*100)   : 0;
+
+            document.getElementById('contentArea').innerHTML =
+                '<div class="stats-grid">' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#f0fdf4;">💰</div><div class="stat-card-value" style="color:#16a34a;">'+formatCurrency(totalEarned)+'</div><div class="stat-card-label">Total Earned</div></div>' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#fff8e6;">🚚</div><div class="stat-card-value" style="color:#92400e;">'+formatCurrency(inTransit)+'</div><div class="stat-card-label">In Transit</div></div>' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#fef2f2;">❌</div><div class="stat-card-value">'+cancelled.length+'</div><div class="stat-card-label">Cancelled Orders</div></div>' +
+                '</div>' +
+
+                '<div class="card">' +
+                    '<div class="card-header"><h3 class="card-title">Revenue Breakdown</h3></div>' +
+                    '<div class="card-body">' +
+                        '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;">' +
+                            '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px;"></span><strong>Earned '+pct+'%</strong></span>' +
+                            '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;margin-right:6px;"></span><strong>In Transit '+tPct+'%</strong></span>' +
+                        '</div>' +
+                        '<div style="display:flex;height:10px;border-radius:999px;overflow:hidden;background:#f1f5f9;">' +
+                            '<div style="width:'+pct+'%;background:#22c55e;"></div>' +
+                            '<div style="width:'+tPct+'%;background:#f59e0b;"></div>' +
+                        '</div>' +
+                        '<div class="flex-between" style="margin-top:10px;font-size:0.85rem;"><span class="text-muted">Total Revenue (excl. cancelled)</span><strong>'+formatCurrency(allRevenue)+'</strong></div>' +
+                    '</div>' +
+                '</div>' +
+
+                '<div class="card">' +
+                    '<div class="card-header"><h3 class="card-title">✅ Delivered Orders</h3></div>' +
+                    '<div class="card-body">' +
+                        (delivered.length ?
+                            '<div class="table-responsive"><table><thead><tr><th>Order ID</th><th>Product</th><th>Date</th><th>Amount</th></tr></thead><tbody>' +
+                            delivered.slice().sort(function(a,b){ return (b.orderDate||0)-(a.orderDate||0); }).map(function(od){
+                                return '<tr><td><strong>'+((od.orderId||'#'+String(od.id||'').slice(-8).toUpperCase()))+'</strong></td><td>'+(od.productName||'Product')+'</td><td>'+formatDate(od.orderDate)+'</td><td><strong>'+formatCurrency(od.totalAmount)+'</strong></td></tr>';
+                            }).join('') +
+                            '</tbody></table></div>'
+                        :
+                            '<p class="text-muted" style="text-align:center;padding:28px;">No delivered orders yet. Your earnings will appear here once orders are delivered.</p>'
+                        ) +
+                    '</div>' +
+                '</div>';
         }
 
         function renderDashboardPage() {
@@ -1585,6 +1757,19 @@
         }
 
         // ============ PRODUCT CRUD ============
+        function _populateProdCategory(selectedVal) {
+            var sel = document.getElementById('prodCategory');
+            if (!sel) return;
+            var cats = window._state.categories;
+            sel.innerHTML = '<option value="">-- Select Category --</option>';
+            if (cats && cats.length) {
+                cats.forEach(function(c){ var o=document.createElement('option'); o.value=c.name; o.textContent=c.name; sel.appendChild(o); });
+            } else {
+                ['Electronics','Fashion & Clothing','Home & Living','Books','Sports','Beauty','Toys','Food','Other'].forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+            }
+            if (selectedVal) sel.value = selectedVal;
+        }
+
         function openProductForm() {
             window._state.editingId = null;
             window._state.selectedTagIds = new Set();
@@ -1601,6 +1786,8 @@
             document.getElementById('prodSaveBtn').disabled = false;
             document.getElementById('prodSaveBtn').textContent = 'Save Product';
             document.getElementById('productModal').classList.add('active');
+            _populateProdCategory();
+            loadTagsForDropdown();
         }
 
         function editProductForm(id) {
@@ -1629,6 +1816,8 @@
             document.getElementById('prodSaveBtn').disabled = false;
             document.getElementById('prodSaveBtn').textContent = 'Save Product';
             document.getElementById('productModal').classList.add('active');
+            _populateProdCategory(p.category || '');
+            loadTagsForDropdown();
         }
 
         function removeTagChipByName(name) {
