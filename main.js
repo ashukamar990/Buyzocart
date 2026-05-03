@@ -402,10 +402,11 @@
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
+      const ratingMap = getRatingMap(reviews);
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
+        const rA = ratingMap[a.product.id] || 0;
+        const rB = ratingMap[b.product.id] || 0;
         return rB - rA;
       });
       return scored.map(s => s.product);
@@ -440,7 +441,8 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       const results = searchProducts(query);
-      const _scored = [...results].sort((a,b) => getProductScore(b) - getProductScore(a));
+      const ratingMap = getRatingMap(reviews);
+      const _scored = [...results].sort((a,b) => getProductScore(b, ratingMap[b.id] || 0) - getProductScore(a, ratingMap[a.id] || 0));
       const topThree = _scored.slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
@@ -452,7 +454,7 @@
       topThree.forEach(product => {
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
-        const ratingVal = calculateProductRating(product.id);
+        const ratingVal = ratingMap[product.id] || 0;
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
           <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
@@ -900,7 +902,25 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function getRatingMap(reviewsList) {
+      const map = {};
+      const counts = {};
+      const sums = {};
+      reviewsList.forEach(r => {
+        if (!(r.productId in sums)) {
+          sums[r.productId] = 0;
+          counts[r.productId] = 0;
+        }
+        sums[r.productId] += r.rating;
+        counts[r.productId]++;
+      });
+      for (const id in sums) {
+        map[id] = sums[id] / counts[id];
+      }
+      return map;
+    }
+
+    function createProductCard(product, preCalculatedRating) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -910,7 +930,7 @@
       const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = preCalculatedRating !== undefined ? preCalculatedRating : 0;
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -1641,16 +1661,7 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
@@ -2781,14 +2792,7 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
@@ -2808,14 +2812,7 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
@@ -2906,11 +2903,7 @@
     }
 
     // ── Product score: orders × 0.6 + rating × 0.4 (for sorting) ─
-    function getProductScore(product) {
-      const rating = (() => {
-        const rs = reviews.filter(r => r.productId === product.id);
-        return rs.length ? rs.reduce((a,r)=>a+r.rating,0)/rs.length : 0;
-      })();
+    function getProductScore(product, rating = 0) {
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount) || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.4 * 2); // normalise rating to ~same scale
     }
@@ -2918,22 +2911,15 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+      const ratingMap = getRatingMap(reviews);
+      const sorted = [...productsToRender].sort((a, b) => getProductScore(b, ratingMap[b.id] || 0) - getProductScore(a, ratingMap[a.id] || 0));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><div style="font-size:52px;margin-bottom:4px;">🛍️</div><h3 style="margin:0;font-size:1.05rem;font-weight:800;color:var(--text);">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap[product.id])); });
       container.appendChild(fragment);
     }
 
@@ -3916,7 +3902,8 @@
             let trendingProducts = products.filter(p => p.isTrending || p.trending);
             if (!trendingProducts.length) {
               // Fallback: top 6 by score
-              trendingProducts = [...products].sort((a,b)=>getProductScore(b)-getProductScore(a)).slice(0,6);
+              const ratingMap = getRatingMap(reviews);
+              trendingProducts = [...products].sort((a,b)=>getProductScore(b, ratingMap[b.id] || 0)-getProductScore(a, ratingMap[a.id] || 0)).slice(0,6);
             }
             if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
             else renderProductSlider(products.slice(0, 10), 'productSlider');
@@ -5421,11 +5408,12 @@
     if (noResults) noResults.style.display = 'none';
     if (countEl) countEl.textContent = `${results.length} product${results.length !== 1 ? 's' : ''} found for "${query}"`;
 
+    const ratingMap = getRatingMap(reviews);
     results.forEach(product => {
       // Use the existing createProductCard if available
       let card;
       if (typeof createProductCard === 'function') {
-        card = createProductCard(product);
+        card = createProductCard(product, ratingMap[product.id]);
       } else {
         card = document.createElement('div');
         card.className = 'product-card';
