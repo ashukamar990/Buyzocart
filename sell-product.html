@@ -1150,12 +1150,7 @@
                 }) : [];
 
                 var allOrders = orderSnap.exists() ? Object.entries(orderSnap.val()).map(function(entry) {
-                    var v = entry[1];
-                    return { id: entry[0], orderId: v.orderId, productName: v.productName,
-                        productImage: v.productImage, totalAmount: v.totalAmount, status: v.status,
-                        orderDate: v.orderDate, sellerId: v.sellerId, userInfo: v.userInfo,
-                        quantity: v.quantity, items: v.items, address: v.address,
-                        cancelledBy: v.cancelledBy, cancelReason: v.cancelReason };
+                    return { id: entry[0], orderId: entry[1].orderId, productName: entry[1].productName, totalAmount: entry[1].totalAmount, status: entry[1].status, orderDate: entry[1].orderDate, sellerId: entry[1].sellerId, userInfo: entry[1].userInfo, productImage: entry[1].productImage, quantity: entry[1].quantity };
                 }) : [];
 
                 window._state.orders = allOrders.filter(function(o) { return o.sellerId === user.uid; });
@@ -1256,22 +1251,23 @@
         function renderOrdersPage() {
             document.getElementById('contentArea').innerHTML = '' +
                 '<div class="filter-bar">' +
-                    '<input type="text" class="form-control" placeholder="Search orders..." oninput="filterOrderTable()" id="orderSearch">' +
+                    '<input type="text" class="form-control" placeholder="🔍 Search orders..." oninput="filterOrderTable()" id="orderSearch">' +
                     '<select class="form-control" onchange="filterOrderTable()" id="orderStatus" style="min-width:150px;">' +
                         '<option value="all">All Status</option>' +
-                        '<option value="placed">Placed</option>' +
-                        '<option value="confirmed">Confirmed</option>' +
-                        '<option value="shipped">Shipped</option>' +
-                        '<option value="delivered">Delivered</option>' +
-                        '<option value="cancelled">Cancelled</option>' +
+                        '<option value="placed">📦 Placed</option>' +
+                        '<option value="pending">⏳ Pending</option>' +
+                        '<option value="confirmed">✅ Confirmed</option>' +
+                        '<option value="shipped">🚚 Shipped</option>' +
+                        '<option value="delivered">✓ Delivered</option>' +
+                        '<option value="cancelled">✗ Cancelled</option>' +
                     '</select>' +
-                    '<button class="btn btn-outline btn-sm" onclick="clearOrderFilters()">Clear</button>' +
                 '</div>' +
                 '<div class="filter-bar">' +
                     '<label style="font-size:0.8rem;font-weight:600;">From:</label>' +
                     '<input type="date" class="form-control" onchange="filterOrderTable()" id="dateFrom" style="min-width:140px;">' +
                     '<label style="font-size:0.8rem;font-weight:600;">To:</label>' +
                     '<input type="date" class="form-control" onchange="filterOrderTable()" id="dateTo" style="min-width:140px;">' +
+                    '<button class="btn btn-outline btn-sm" onclick="clearOrderFilters()">Clear Filters</button>' +
                 '</div>' +
                 '<div class="card"><div class="card-body">' +
                     '<div class="table-responsive">' +
@@ -1280,49 +1276,38 @@
                     '</div>' +
                     '<p class="text-muted mt-2" id="orderCount">' + window._state.orders.length + ' orders</p>' +
                 '</div></div>';
-            startSellerOrderListener();
         }
-
-        var SBADGE = {
-            placed:    ['badge-warning', 'Placed'],
-            pending:   ['badge-warning', 'Pending'],
-            confirmed: ['badge-success', 'Confirmed'],
-            shipped:   ['badge-info',    'Shipped'],
-            delivered: ['badge-success', 'Delivered'],
-            cancelled: ['badge-danger',  'Cancelled']
-        };
 
         function getOrderActions(o) {
             var s = (o.status || 'placed').toLowerCase();
-            var html = '';
+            var id = o.id;
             if (s === 'placed' || s === 'pending') {
-                html += '<button class="btn btn-outline btn-sm" style="color:#2563eb;border-color:#2563eb;margin-right:4px;" onclick="sellerConfirm('' + o.id + '')">Confirm</button>';
-                html += '<button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444;" onclick="sellerCancel('' + o.id + '')">Cancel</button>';
-            } else if (s === 'confirmed') {
-                html += '<button class="btn btn-outline btn-sm" style="color:#7c3aed;border-color:#7c3aed;margin-right:4px;" onclick="sellerShip('' + o.id + '')">Ship</button>';
-                html += '<button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444;" onclick="sellerCancel('' + o.id + '')">Cancel</button>';
-            } else if (s === 'shipped') {
-                html += '<button class="btn btn-primary btn-sm" style="background:#f97316;border:none;" onclick="openSellerDelivery('' + o.id + '')">Send Delivery</button>';
-            } else if (s === 'delivered') {
-                html += '<span style="font-size:11px;color:#16a34a;font-weight:700;">Completed</span>';
-            } else if (s === 'cancelled') {
-                html += '<span style="font-size:11px;color:#ef4444;">' + (o.cancelledBy ? 'By: ' + o.cancelledBy : '') + '</span>';
+                return '<button class="btn btn-outline btn-sm" style="color:#2563eb;border-color:#2563eb;margin-right:4px;" onclick="sellerConfirmOrder(' + JSON.stringify(id) + ')">Confirm</button>' +
+                       '<button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444;" onclick="sellerCancelOrder(' + JSON.stringify(id) + ')">Cancel</button>';
             }
-            return html || '-';
+            if (s === 'confirmed') {
+                return '<button class="btn btn-outline btn-sm" style="color:#7c3aed;border-color:#7c3aed;margin-right:4px;" onclick="sellerShipOrder(' + JSON.stringify(id) + ')">Mark Shipped</button>' +
+                       '<button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444;" onclick="sellerCancelOrder(' + JSON.stringify(id) + ')">Cancel</button>';
+            }
+            if (s === 'shipped') {
+                return '<button class="btn btn-primary btn-sm" style="background:#f97316;border:none;" onclick="openSellerDeliveryModal(' + JSON.stringify(id) + ')">🛵 Send Delivery</button>';
+            }
+            if (s === 'delivered') { return '<span style="font-size:11px;color:#16a34a;font-weight:700;">✓ Completed</span>'; }
+            if (s === 'cancelled') { return '<span style="font-size:11px;color:#ef4444;">By: ' + (o.cancelledBy || 'N/A') + '</span>'; }
+            return '-';
         }
 
         function renderOrderTableRows(orders) {
             if (!orders.length) return '<tr><td colspan="7" style="text-align:center;padding:30px;">No orders found</td></tr>';
+            var sb = { placed: ['badge-warning', '📦 Placed'], pending: ['badge-warning', '⏳ Pending'], confirmed: ['badge-success', '✅ Confirmed'], shipped: ['badge-info', '🚚 Shipped'], delivered: ['badge-success', '✓ Delivered'], cancelled: ['badge-danger', '✗ Cancelled'] };
             return orders.slice().sort(function(a, b) { return (b.orderDate || 0) - (a.orderDate || 0); }).map(function(o) {
                 var s = (o.status || 'placed').toLowerCase();
-                var b = SBADGE[s] || ['badge-warning', s];
-                var oid = o.orderId || ('#' + String(o.id).slice(-8).toUpperCase());
-                var buyer = (o.userInfo && o.userInfo.fullName) ? o.userInfo.fullName : 'N/A';
+                var b = sb[s] || ['badge-warning', s];
                 return '<tr>' +
-                    '<td><strong>' + oid + '</strong></td>' +
+                    '<td><strong>' + (o.orderId || '#' + String(o.id).slice(-8).toUpperCase()) + '</strong></td>' +
                     '<td>' + formatDate(o.orderDate) + '</td>' +
                     '<td>' + (o.productName || 'Product') + '</td>' +
-                    '<td>' + buyer + '</td>' +
+                    '<td>' + (o.userInfo && o.userInfo.fullName ? o.userInfo.fullName : 'N/A') + '</td>' +
                     '<td><strong>' + formatCurrency(o.totalAmount) + '</strong></td>' +
                     '<td><span class="badge ' + b[0] + '">' + b[1] + '</span></td>' +
                     '<td>' + getOrderActions(o) + '</td>' +
@@ -1553,229 +1538,7 @@
             });
         }
 
-        // ══════════════════════════════════════
-        //  SELLER ORDER ACTIONS
-        // ══════════════════════════════════════
-
-        function sellerConfirm(orderId) {
-            if (!confirm('Confirm this order?')) return;
-            window._update(window._ref(window._db, 'orders/' + orderId), { status: 'confirmed', updatedAt: Date.now() })
-                .then(function() { showToast('Order confirmed!', 'success'); })
-                .catch(function(err) { showToast('Error: ' + err.message, 'error'); });
-        }
-
-        function sellerShip(orderId) {
-            if (!confirm('Mark as Shipped?')) return;
-            window._update(window._ref(window._db, 'orders/' + orderId), { status: 'shipped', updatedAt: Date.now() })
-                .then(function() { showToast('Order marked as Shipped!', 'success'); })
-                .catch(function(err) { showToast('Error: ' + err.message, 'error'); });
-        }
-
-        function sellerCancel(orderId) {
-            if (!confirm('Cancel this order? This cannot be undone.')) return;
-            window._update(window._ref(window._db, 'orders/' + orderId), {
-                status: 'cancelled', cancelledBy: 'seller',
-                cancelReason: 'Cancelled by Seller', cancelledAt: Date.now(), updatedAt: Date.now()
-            }).then(function() { showToast('Order cancelled', 'info'); })
-              .catch(function(err) { showToast('Error: ' + err.message, 'error'); });
-        }
-
-        // ══════════════════════════════════════
-        //  REAL-TIME ORDER LISTENER
-        // ══════════════════════════════════════
-        var _sellerOrderListener = null;
-
-        function startSellerOrderListener() {
-            if (_sellerOrderListener) return;
-            var user = window._state.user;
-            if (!user) return;
-            _sellerOrderListener = window._onValue(
-                window._ref(window._db, 'orders'),
-                function(snap) {
-                    var orders = [];
-                    if (snap.exists()) {
-                        snap.forEach(function(child) {
-                            var v = child.val();
-                            if (v.sellerId === user.uid) {
-                                orders.push({
-                                    id: child.key, orderId: v.orderId,
-                                    productName: v.productName, productImage: v.productImage,
-                                    totalAmount: v.totalAmount, status: v.status,
-                                    orderDate: v.orderDate, sellerId: v.sellerId,
-                                    userInfo: v.userInfo, quantity: v.quantity,
-                                    items: v.items, address: v.address,
-                                    cancelledBy: v.cancelledBy, cancelReason: v.cancelReason
-                                });
-                            }
-                        });
-                    }
-                    window._state.orders = orders;
-                    var tbody = document.getElementById('orderTableBody');
-                    if (!tbody) return;
-                    var q = document.getElementById('orderSearch') ? document.getElementById('orderSearch').value.toLowerCase() : '';
-                    var st = document.getElementById('orderStatus') ? document.getElementById('orderStatus').value : 'all';
-                    var df = document.getElementById('dateFrom') ? document.getElementById('dateFrom').value : '';
-                    var dt = document.getElementById('dateTo') ? document.getElementById('dateTo').value : '';
-                    var filtered = orders;
-                    if (q) filtered = filtered.filter(function(o) { return (o.productName||'').toLowerCase().indexOf(q) !== -1 || (o.orderId||'').toLowerCase().indexOf(q) !== -1; });
-                    if (st !== 'all') filtered = filtered.filter(function(o) { return (o.status||'').toLowerCase() === st; });
-                    if (df) filtered = filtered.filter(function(o) { return o.orderDate >= new Date(df).getTime(); });
-                    if (dt) filtered = filtered.filter(function(o) { return o.orderDate <= new Date(dt).getTime() + 86399999; });
-                    tbody.innerHTML = renderOrderTableRows(filtered);
-                    var cnt = document.getElementById('orderCount');
-                    if (cnt) cnt.textContent = filtered.length + ' orders';
-                },
-                function(err) { console.warn('Order listener error:', err.message); }
-            );
-        }
-
-        // ══════════════════════════════════════
-        //  DELIVERY BOY WHATSAPP SYSTEM
-        // ══════════════════════════════════════
-        var _sellerDeliveryOrderId = null;
-        var _sellerDeliveryLink = '';
-
-        function openSellerDelivery(orderId) {
-            _sellerDeliveryOrderId = orderId;
-            _sellerDeliveryLink = '';
-            var order = null;
-            for (var i = 0; i < window._state.orders.length; i++) {
-                if (window._state.orders[i].id === orderId) { order = window._state.orders[i]; break; }
-            }
-            buildDeliveryModalIfNeeded();
-            var prev = document.getElementById('sdmPreview');
-            if (prev && order) {
-                prev.textContent = (order.orderId || '#' + orderId.slice(-8).toUpperCase()) + ' - ' + (order.productName || 'Product') + ' - ' + formatCurrency(order.totalAmount);
-            }
-            document.getElementById('sdmName').value = '';
-            document.getElementById('sdmPhone').value = '';
-            document.getElementById('sdmLinkBox').style.display = 'none';
-            var btn = document.getElementById('sdmGenBtn');
-            if (btn) { btn.disabled = false; btn.textContent = 'Generate & Send via WhatsApp'; }
-            document.getElementById('sellerDeliveryModal').style.display = 'flex';
-        }
-
-        function closeSellerDelivery() {
-            var m = document.getElementById('sellerDeliveryModal');
-            if (m) m.style.display = 'none';
-        }
-
-        function generateSellerDeliveryLink() {
-            var name  = (document.getElementById('sdmName').value || '').trim() || 'Delivery Partner';
-            var phone = (document.getElementById('sdmPhone').value || '').trim();
-            var code  = document.getElementById('sdmCode').value || '91';
-            if (!phone) { showToast('Enter WhatsApp number', 'error'); return; }
-            var btn = document.getElementById('sdmGenBtn');
-            btn.disabled = true; btn.textContent = 'Creating session...';
-            var sessionId = 'ds_' + Date.now() + '_' + Math.random().toString(36).substr(2, 7);
-            var sessionData = {
-                sessionId: sessionId, deliveryBoyName: name,
-                whatsapp: code + phone, orderIds: [_sellerDeliveryOrderId],
-                status: 'active', createdAt: Date.now(), lastAccessed: null
-            };
-            window._set(window._ref(window._db, 'deliverySessions/' + sessionId), sessionData)
-                .then(function() {
-                    var base = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '') + '/delivery.html';
-                    var link = base + '?session=' + sessionId;
-                    _sellerDeliveryLink = link;
-                    var linkInput = document.getElementById('sdmLink');
-                    if (linkInput) linkInput.value = link;
-                    document.getElementById('sdmLinkBox').style.display = 'block';
-                    btn.disabled = false; btn.textContent = 'Regenerate';
-                    var order = null;
-                    for (var i = 0; i < window._state.orders.length; i++) {
-                        if (window._state.orders[i].id === _sellerDeliveryOrderId) { order = window._state.orders[i]; break; }
-                    }
-                    var sellerName = (window._state.sellerData && window._state.sellerData.businessName) ? window._state.sellerData.businessName : 'Seller';
-                    var msg = 'Namaste ' + name + '!
-
-Aapko ek order deliver karna hai:
-'
-                        + (order ? ((order.productName || 'Product') + ' - ' + formatCurrency(order.totalAmount) + '
-') : '')
-                        + '
-Delivery Link:
-' + link
-                        + '
-
-Is link se order Delivered ya Cancel kar sakte hain.
-- ' + sellerName;
-                    var num = (code + phone).replace(/[^0-9]/g, '');
-                    window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank');
-                })
-                .catch(function(err) {
-                    showToast('Error: ' + err.message, 'error');
-                    btn.disabled = false; btn.textContent = 'Generate & Send via WhatsApp';
-                });
-        }
-
-        function copySellerDeliveryLink() {
-            var inp = document.getElementById('sdmLink');
-            if (!inp || !inp.value) return;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(inp.value).then(function() { showToast('Link copied!', 'success'); });
-            } else {
-                inp.select(); document.execCommand('copy'); showToast('Copied!', 'success');
-            }
-        }
-
-        function sendSellerDeliveryWhatsApp() {
-            var name  = (document.getElementById('sdmName').value || '').trim() || 'Partner';
-            var phone = (document.getElementById('sdmPhone').value || '').trim();
-            var code  = document.getElementById('sdmCode').value || '91';
-            if (!_sellerDeliveryLink) { showToast('Generate link first', 'error'); return; }
-            var msg = 'Namaste ' + name + '!
-
-Delivery Link:
-' + _sellerDeliveryLink + '
-
-Is link se order update karein.';
-            window.open('https://wa.me/' + (code + phone).replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
-        }
-
-        function buildDeliveryModalIfNeeded() {
-            if (document.getElementById('sellerDeliveryModal')) return;
-            var overlay = document.createElement('div');
-            overlay.id = 'sellerDeliveryModal';
-            overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:16px;';
-            overlay.innerHTML =
-                '<div style="background:#fff;border-radius:14px;padding:20px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;">' +
-                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
-                '<h3 style="margin:0;font-size:1rem;font-weight:700;">Send to Delivery Boy</h3>' +
-                '<button onclick="closeSellerDelivery()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;line-height:1;color:#64748b;">x</button>' +
-                '</div>' +
-                '<div id="sdmPreview" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;"></div>' +
-                '<div style="margin-bottom:10px;">' +
-                '<label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Delivery Boy Name</label>' +
-                '<input type="text" id="sdmName" placeholder="e.g. Rahul Kumar" class="form-control">' +
-                '</div>' +
-                '<div style="margin-bottom:14px;">' +
-                '<label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">WhatsApp Number *</label>' +
-                '<div style="display:flex;gap:8px;">' +
-                '<select id="sdmCode" class="form-control" style="width:80px;">' +
-                '<option value="91">+91</option><option value="1">+1</option><option value="44">+44</option><option value="971">+971</option>' +
-                '</select>' +
-                '<input type="tel" id="sdmPhone" placeholder="9876543210" class="form-control" maxlength="12">' +
-                '</div>' +
-                '</div>' +
-                '<div id="sdmLinkBox" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px;">' +
-                '<div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px;">Link Ready</div>' +
-                '<input type="text" id="sdmLink" readonly class="form-control" style="font-size:11px;margin-bottom:8px;">' +
-                '<div style="display:flex;gap:8px;">' +
-                '<button onclick="copySellerDeliveryLink()" class="btn btn-outline btn-sm" style="flex:1;">Copy Link</button>' +
-                '<button onclick="sendSellerDeliveryWhatsApp()" class="btn btn-sm" style="flex:1;background:#25d366;color:#fff;border:none;cursor:pointer;border-radius:8px;font-weight:600;">WhatsApp</button>' +
-                '</div>' +
-                '</div>' +
-                '<button id="sdmGenBtn" onclick="generateSellerDeliveryLink()" class="btn btn-primary" style="width:100%;">Generate and Send via WhatsApp</button>' +
-                '</div>';
-            overlay.addEventListener('click', function(e) { if (e.target === overlay) closeSellerDelivery(); });
-            document.body.appendChild(overlay);
-        }
-
-        // ══════════════════════════════════════
-        //  EVENT LISTENERS
-        // ══════════════════════════════════════
-
+        // ============ EVENT LISTENERS ============
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal-overlay')) {
                 e.target.classList.remove('active');
@@ -1799,6 +1562,150 @@ Is link se order update karein.';
         console.log('🚀 Buyzo Cart Seller Central Ready');
         console.log('✅ Features: Dashboard | Products | Orders | Date Filter | Search | Similar Products');
         console.log('📸 ImgBB Upload: ' + (window._imgbbKey && window._imgbbKey !== 'YOUR_IMGBB_API_KEY_HERE' ? '✅ Enabled' : '⚠️ Using Base64 - Add API Key at line ~980'));
+
+        // ═══════════════════════════════════════════
+        //  SELLER ORDER ACTIONS
+        // ═══════════════════════════════════════════
+        function sellerConfirmOrder(orderId) {
+            if (!confirm('Confirm this order?')) return;
+            window._update(window._ref(window._db, 'orders/' + orderId), { status: 'confirmed', updatedAt: Date.now() })
+                .then(function() {
+                    showToast('Order confirmed!', 'success');
+                    loadDashboardData();
+                })
+                .catch(function(err) { showToast('Error: ' + err.message, 'error'); });
+        }
+
+        function sellerShipOrder(orderId) {
+            if (!confirm('Mark as Shipped?')) return;
+            window._update(window._ref(window._db, 'orders/' + orderId), { status: 'shipped', updatedAt: Date.now() })
+                .then(function() {
+                    showToast('Order marked Shipped!', 'success');
+                    loadDashboardData();
+                })
+                .catch(function(err) { showToast('Error: ' + err.message, 'error'); });
+        }
+
+        function sellerCancelOrder(orderId) {
+            if (!confirm('Cancel this order? This cannot be undone.')) return;
+            window._update(window._ref(window._db, 'orders/' + orderId), {
+                status: 'cancelled', cancelledBy: 'seller',
+                cancelReason: 'Cancelled by Seller',
+                cancelledAt: Date.now(), updatedAt: Date.now()
+            }).then(function() {
+                showToast('Order cancelled', 'info');
+                loadDashboardData();
+            }).catch(function(err) { showToast('Error: ' + err.message, 'error'); });
+        }
+
+        // ═══════════════════════════════════════════
+        //  DELIVERY MODAL (WhatsApp Session System)
+        // ═══════════════════════════════════════════
+        var _sdmOrderId = null;
+        var _sdmLink    = '';
+
+        function openSellerDeliveryModal(orderId) {
+            _sdmOrderId = orderId;
+            _sdmLink    = '';
+            buildSDMIfNeeded();
+            var order = null;
+            var orders = window._state.orders || [];
+            for (var i = 0; i < orders.length; i++) {
+                if (orders[i].id === orderId) { order = orders[i]; break; }
+            }
+            var prev = document.getElementById('sdmPreview');
+            if (prev && order) {
+                prev.textContent = (order.orderId || '#' + orderId.slice(-8).toUpperCase()) + ' - ' + (order.productName || 'Product') + ' - ' + formatCurrency(order.totalAmount);
+            }
+            document.getElementById('sdmName').value  = '';
+            document.getElementById('sdmPhone').value = '';
+            document.getElementById('sdmLinkBox').style.display = 'none';
+            var btn = document.getElementById('sdmGenBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Generate & Send via WhatsApp'; }
+            document.getElementById('sdmModal').style.display = 'flex';
+        }
+
+        function closeSDM() {
+            var m = document.getElementById('sdmModal');
+            if (m) m.style.display = 'none';
+        }
+
+        function generateSDMLink() {
+            var name  = (document.getElementById('sdmName').value  || '').trim() || 'Delivery Partner';
+            var phone = (document.getElementById('sdmPhone').value || '').trim();
+            var code  = document.getElementById('sdmCode').value   || '91';
+            if (!phone) { showToast('WhatsApp number zaroori hai', 'error'); return; }
+            var btn = document.getElementById('sdmGenBtn');
+            btn.disabled = true; btn.textContent = 'Creating...';
+            var sessionId   = 'ds_' + Date.now() + '_' + Math.random().toString(36).substr(2, 7);
+            var sessionData = { sessionId: sessionId, deliveryBoyName: name,
+                whatsapp: code + phone, orderIds: [_sdmOrderId],
+                status: 'active', createdAt: Date.now(), lastAccessed: null };
+            window._set(window._ref(window._db, 'deliverySessions/' + sessionId), sessionData)
+                .then(function() {
+                    var base = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '') + '/delivery.html';
+                    var link = base + '?session=' + sessionId;
+                    _sdmLink = link;
+                    var inp = document.getElementById('sdmLink');
+                    if (inp) inp.value = link;
+                    document.getElementById('sdmLinkBox').style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'Regenerate';
+                    var order  = null;
+                    var orders = window._state.orders || [];
+                    for (var i = 0; i < orders.length; i++) { if (orders[i].id === _sdmOrderId) { order = orders[i]; break; } }
+                    var seller = (window._state.sellerData && window._state.sellerData.businessName) ? window._state.sellerData.businessName : 'Seller';
+                    var msg    = 'Namaste ' + name + '!\n\nAapko ek order deliver karna hai:\n'
+                        + (order ? (order.productName || 'Product') + ' - ' + formatCurrency(order.totalAmount) + '\n' : '')
+                        + '\nDelivery Link:\n' + link
+                        + '\n\nIs link se order Delivered ya Cancel kar sakte hain.\n- ' + seller;
+                    window.open('https://wa.me/' + (code + phone).replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
+                })
+                .catch(function(err) { showToast('Error: ' + err.message, 'error'); btn.disabled = false; btn.textContent = 'Generate & Send via WhatsApp'; });
+        }
+
+        function copySDMLink() {
+            var inp = document.getElementById('sdmLink');
+            if (!inp || !inp.value) return;
+            if (navigator.clipboard) { navigator.clipboard.writeText(inp.value).then(function() { showToast('Link copied!', 'success'); }); }
+            else { inp.select(); document.execCommand('copy'); showToast('Copied!', 'success'); }
+        }
+
+        function resendSDMWhatsApp() {
+            var name  = (document.getElementById('sdmName').value  || '').trim() || 'Partner';
+            var phone = (document.getElementById('sdmPhone').value || '').trim();
+            var code  = document.getElementById('sdmCode').value   || '91';
+            if (!_sdmLink) { showToast('Pehle link generate karo', 'error'); return; }
+            var msg = 'Delivery Link:\n' + _sdmLink + '\n\nIs link se order update karein.';
+            window.open('https://wa.me/' + (code + phone).replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
+        }
+
+        function buildSDMIfNeeded() {
+            if (document.getElementById('sdmModal')) return;
+            var el = document.createElement('div');
+            el.id = 'sdmModal';
+            el.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:16px;';
+            el.innerHTML =
+                '<div style="background:#fff;border-radius:14px;padding:20px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+                '<h3 style="margin:0;font-size:1rem;font-weight:700;">🛵 Send to Delivery Boy</h3>' +
+                '<button onclick="closeSDM()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#64748b;line-height:1;">x</button>' +
+                '</div>' +
+                '<div id="sdmPreview" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;"></div>' +
+                '<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Delivery Boy Name</label><input type="text" id="sdmName" placeholder="Rahul Kumar" class="form-control"></div>' +
+                '<div style="margin-bottom:14px;"><label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">WhatsApp Number *</label>' +
+                '<div style="display:flex;gap:8px;"><select id="sdmCode" class="form-control" style="width:80px;"><option value="91">+91</option><option value="1">+1</option><option value="44">+44</option><option value="971">+971</option></select>' +
+                '<input type="tel" id="sdmPhone" placeholder="9876543210" class="form-control" maxlength="12"></div></div>' +
+                '<div id="sdmLinkBox" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px;">' +
+                '<div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px;">✅ Link Ready</div>' +
+                '<input type="text" id="sdmLink" readonly class="form-control" style="font-size:11px;margin-bottom:8px;">' +
+                '<div style="display:flex;gap:8px;"><button onclick="copySDMLink()" class="btn btn-outline btn-sm" style="flex:1;">Copy Link</button>' +
+                '<button onclick="resendSDMWhatsApp()" class="btn btn-sm" style="flex:1;background:#25d366;color:#fff;border:none;cursor:pointer;border-radius:8px;font-weight:600;">Send WhatsApp</button></div></div>' +
+                '<button id="sdmGenBtn" onclick="generateSDMLink()" class="btn btn-primary" style="width:100%;">Generate &amp; Send via WhatsApp</button>' +
+                '</div>';
+            el.addEventListener('click', function(e) { if (e.target === el) closeSDM(); });
+            document.body.appendChild(el);
+        }
+
     </script>
 </body>
 </html>
