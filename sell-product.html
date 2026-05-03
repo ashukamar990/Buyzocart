@@ -580,9 +580,10 @@
             </div>
         </header>
         <div class="content-area" id="contentArea">
-            <div style="text-align:center;padding:60px 20px;">
-                <div class="spinner" style="margin:0 auto 16px;"></div>
-                <p class="text-muted">Loading Seller Central...</p>
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;">
+                <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div>
+                <p style="color:#64748b;font-weight:600;">Connecting to Buyzo Cart...</p>
+                <p style="color:#94a3b8;font-size:0.8rem;">Please wait while we load your dashboard</p>
             </div>
         </div>
     </main>
@@ -716,11 +717,7 @@
         window._push = push;
         window._onValue = onValue;
 
-        // ============ IMGBB CONFIG ============
-        // 🔑 APNI IMGBB API KEY YAHAN DALO
-        // Free key milegi: https://api.imgbb.com/ → Login → API tab
-        // ⚠️ KEY ADD KARO, WARNA IMAGES BASE64 FORMAT ME SAVE HONGI (SLOW)
-        window._imgbbKey = 'YOUR_IMGBB_API_KEY_HERE'; // ← Yahan paste karo
+        window._imgbbKey = 'YOUR_IMGBB_API_KEY_HERE';
 
         window._state = {
             user: null,
@@ -736,42 +733,55 @@
             categories: []
         };
 
-        // Show loader immediately — prevents flash before auth resolves
-        document.getElementById('contentArea').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;"><div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div><p style="color:#64748b;font-weight:600;">Loading your dashboard...</p></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
-
         var _authResolved = false;
-        // Safety timeout — if auth takes too long, redirect to login
         var _authTimeout = setTimeout(function() {
-            if (!_authResolved) { window.location.href = '/'; }
-        }, 8000);
+            if (!_authResolved) {
+                document.getElementById('contentArea').innerHTML = 
+                    '<div style="text-align:center;padding:40px;">' +
+                    '<div style="font-size:3rem;margin-bottom:12px;">⏱️</div>' +
+                    '<p style="color:#ef4444;font-weight:600;font-size:1.1rem;">Connection Timeout</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 20px;">Server response is slow. Please check your internet and try again.</p>' +
+                    '<button class="btn btn-primary" onclick="location.reload()">🔄 Retry Now</button>' +
+                    '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Home</button></div>';
+            }
+        }, 20000);
 
         onAuthStateChanged(auth, async (user) => {
             _authResolved = true;
             clearTimeout(_authTimeout);
+            
             if (!user) {
                 window.location.href = '/';
                 return;
             }
+            
             window._state.user = user;
             var initials = (user.displayName || user.email || 'S').charAt(0).toUpperCase();
             document.getElementById('headerAvatar').textContent = initials;
             document.getElementById('headerName').textContent = user.displayName || user.email || 'Seller';
-            // Load categories from Firebase
+
             try {
                 const catSnap = await get(ref(db, 'categories'));
                 if (catSnap.exists()) {
-                    var cats = Object.values(catSnap.val()).filter(c => c.name);
+                    var cats = Object.values(catSnap.val()).filter(c => c && c.name);
                     window._state.categories = cats;
+                } else {
+                    window._state.categories = [];
                 }
-            } catch(e) { window._state.categories = []; }
+            } catch(catErr) {
+                console.error('Category load failed:', catErr);
+                window._state.categories = [];
+            }
 
             try {
                 const snap = await get(ref(db, 'sellerRequests/' + user.uid));
+                
                 if (!snap.exists()) {
                     showSellerWelcome();
                 } else {
                     const data = snap.val();
                     window._state.sellerData = data;
+                    
                     if (data.status === 'approved') {
                         await loadDashboardData();
                     } else if (data.status === 'pending') {
@@ -783,8 +793,14 @@
                     }
                 }
             } catch (err) {
-                console.error(err);
-                document.getElementById('contentArea').innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;font-weight:600;">⚠️ Error loading dashboard.</p><p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">Check your internet connection and try again.</p><button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button></div>';
+                console.error('Dashboard load error:', err);
+                document.getElementById('contentArea').innerHTML = 
+                    '<div style="text-align:center;padding:40px;">' +
+                    '<div style="font-size:3rem;margin-bottom:12px;">⚠️</div>' +
+                    '<p style="color:#ef4444;font-weight:600;font-size:1.1rem;">Dashboard Load Failed</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0;">Error: ' + (err.message || 'Connection failed') + '</p>' +
+                    '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh Page</button>' +
+                    '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Back to Store</button></div>';
             }
         });
     </script>
@@ -941,7 +957,6 @@
             window._state.uploadedImages = [];
             if (!files.length) return;
 
-            // Show preview
             files.forEach(function(file) {
                 var localUrl = URL.createObjectURL(file);
                 var div = document.createElement('div');
@@ -950,14 +965,12 @@
                 preview.appendChild(div);
             });
 
-            // Upload
             document.getElementById('prodSaveBtn').disabled = true;
             document.getElementById('prodSaveBtn').textContent = 'Uploading Images...';
 
             var urls = await uploadMultipleImages(files);
             window._state.uploadedImages = urls;
 
-            // Update preview
             var items = preview.querySelectorAll('.img-preview-item');
             items.forEach(function(item) {
                 var progress = item.querySelector('.upload-progress');
@@ -1231,19 +1244,19 @@
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Full Name <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appName" placeholder="Your legal full name" value="'+((_appData.name)||'')+'" oninput="appLiveValidate(this,'name')">' +
+                                '<input class="form-control" id="appName" placeholder="Your legal full name" value="'+((_appData.name)||'')+'" oninput="appLiveValidate(this,\'name\')">' +
                                 '<div class="form-error" id="appNameErr">⚠ Name must be at least 3 characters</div>' +
                             '</div>' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Phone Number <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appPhone" type="tel" placeholder="10-digit mobile" value="'+((_appData.phone)||'')+'" oninput="appLiveValidate(this,'phone')">' +
+                                '<input class="form-control" id="appPhone" type="tel" placeholder="10-digit mobile" value="'+((_appData.phone)||'')+'" oninput="appLiveValidate(this,\'phone\')">' +
                                 '<div class="form-error" id="appPhoneErr">⚠ Enter valid 10-digit number</div>' +
                             '</div>' +
                         '</div>' +
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Business / Shop Name <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appBiz" placeholder="Your shop name" value="'+((_appData.biz)||'')+'" oninput="appLiveValidate(this,'biz')">' +
+                                '<input class="form-control" id="appBiz" placeholder="Your shop name" value="'+((_appData.biz)||'')+'" oninput="appLiveValidate(this,\'biz\')">' +
                                 '<div class="form-error" id="appBizErr">⚠ Shop name is required</div>' +
                             '</div>' +
                             '<div class="form-group">' +
@@ -1255,7 +1268,7 @@
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Product Category <span class="required">*</span></label>' +
-                                '<select class="form-control" id="appCat" onchange="appLiveValidate(this,'cat')">'+_getCatOptions()+'</select>' +
+                                '<select class="form-control" id="appCat" onchange="appLiveValidate(this,\'cat\')">'+_getCatOptions()+'</select>' +
                                 '<div class="form-error" id="appCatErr">⚠ Please select a category</div>' +
                             '</div>' +
                             '<div class="form-group">' +
@@ -1270,7 +1283,6 @@
                     '</div>';
 
                 document.getElementById('contentArea').innerHTML = content;
-                // Restore previously entered category
                 if (_appData.cat) {
                     var sel = document.getElementById('appCat');
                     if (sel) sel.value = _appData.cat;
@@ -1289,12 +1301,12 @@
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Account Number <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appAcc" placeholder="Bank account number" value="'+((_appData.acc)||'')+'" oninput="appLiveValidate(this,'acc')">' +
+                                '<input class="form-control" id="appAcc" placeholder="Bank account number" value="'+((_appData.acc)||'')+'" oninput="appLiveValidate(this,\'acc\')">' +
                                 '<div class="form-error" id="appAccErr">⚠ Account number must contain digits only</div>' +
                             '</div>' +
                             '<div class="form-group">' +
                                 '<label class="form-label">IFSC Code <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appIFSC" placeholder="SBIN0001234" style="text-transform:uppercase;" value="'+((_appData.ifsc)||'')+'" oninput="appLiveValidate(this,'ifsc')">' +
+                                '<input class="form-control" id="appIFSC" placeholder="SBIN0001234" style="text-transform:uppercase;" value="'+((_appData.ifsc)||'')+'" oninput="appLiveValidate(this,\'ifsc\')">' +
                                 '<div class="form-error" id="appIFSCErr">⚠ Invalid IFSC (format: SBIN0001234)</div>' +
                             '</div>' +
                         '</div>' +
@@ -1388,13 +1400,6 @@
             }
         }
 
-        function _fieldErr(fieldId, errId, show) {
-            var f=document.getElementById(fieldId), e=document.getElementById(errId);
-            if(f){ f.classList.toggle('error', show); f.classList.toggle('valid', !show && f.value.trim().length > 0); }
-            if(e) e.classList.toggle('show', show);
-        }
-
-
         function validateGSTInput() {
             var gst = (document.getElementById('appGST') ? document.getElementById('appGST').value : '').trim();
             var input = document.getElementById('appGST');
@@ -1473,26 +1478,63 @@
         // ============ LOAD DASHBOARD DATA ============
         async function loadDashboardData() {
             var user = window._state.user;
+            if (!user) {
+                console.error('No authenticated user');
+                showSellerWelcome();
+                return;
+            }
+            
             try {
-                var prodSnap = await window._get(window._ref(window._db, 'sellerProducts/' + user.uid));
-                var orderSnap = await window._get(window._ref(window._db, 'orders'));
-
+                console.log('Loading products for seller:', user.uid);
+                const prodSnap = await window._get(window._ref(window._db, 'sellerProducts/' + user.uid));
+                
                 window._state.products = prodSnap.exists() ? Object.entries(prodSnap.val()).map(function(entry) {
-                    return { id: entry[0], title: entry[1].title, price: entry[1].price, stock: entry[1].stock, category: entry[1].category, desc: entry[1].desc, fullDesc: entry[1].fullDesc, images: entry[1].images, tags: entry[1].tags, status: entry[1].status, sizes: entry[1].sizes };
+                    return { 
+                        id: entry[0], 
+                        title: entry[1].title, 
+                        price: entry[1].price, 
+                        stock: entry[1].stock, 
+                        category: entry[1].category, 
+                        desc: entry[1].desc, 
+                        fullDesc: entry[1].fullDesc, 
+                        images: entry[1].images, 
+                        tags: entry[1].tags, 
+                        status: entry[1].status, 
+                        sizes: entry[1].sizes 
+                    };
                 }) : [];
 
+                console.log('Loading orders...');
+                const orderSnap = await window._get(window._ref(window._db, 'orders'));
+
                 var allOrders = orderSnap.exists() ? Object.entries(orderSnap.val()).map(function(entry) {
-                    return { id: entry[0], orderId: entry[1].orderId, productName: entry[1].productName, totalAmount: entry[1].totalAmount, status: entry[1].status, orderDate: entry[1].orderDate, sellerId: entry[1].sellerId, userInfo: entry[1].userInfo, productImage: entry[1].productImage, quantity: entry[1].quantity };
+                    return { 
+                        id: entry[0], 
+                        orderId: entry[1].orderId, 
+                        productName: entry[1].productName, 
+                        totalAmount: entry[1].totalAmount, 
+                        status: entry[1].status, 
+                        orderDate: entry[1].orderDate, 
+                        sellerId: entry[1].sellerId, 
+                        userInfo: entry[1].userInfo, 
+                        productImage: entry[1].productImage, 
+                        quantity: entry[1].quantity 
+                    };
                 }) : [];
 
                 window._state.orders = allOrders.filter(function(o) { return o.sellerId === user.uid; });
+                console.log('Dashboard loaded:', window._state.products.length, 'products,', window._state.orders.length, 'orders');
                 navigateTo('dashboard');
+                
             } catch (err) {
-                console.error(err);
-                document.getElementById('contentArea').innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">Failed to load dashboard. Please refresh.</p><button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px;">🔄 Refresh</button></div>';
+                console.error('Failed to load dashboard data:', err);
+                document.getElementById('contentArea').innerHTML = 
+                    '<div style="text-align:center;padding:40px;">' +
+                    '<p style="color:#ef4444;font-weight:600;">⚠️ Failed to load dashboard data.</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">Error: ' + (err.message || 'Unknown error') + '</p>' +
+                    '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button></div>';
             }
         }
-
 
         function renderEarningsPage() {
             var o = window._state.orders;
@@ -1960,7 +2002,7 @@
 
         console.log('🚀 Buyzo Cart Seller Central Ready');
         console.log('✅ Features: Dashboard | Products | Orders | Date Filter | Search | Similar Products');
-        console.log('📸 ImgBB Upload: ' + (window._imgbbKey && window._imgbbKey !== 'YOUR_IMGBB_API_KEY_HERE' ? '✅ Enabled' : '⚠️ Using Base64 - Add API Key at line ~980'));
+        console.log('📸 ImgBB Upload: ' + (window._imgbbKey && window._imgbbKey !== 'YOUR_IMGBB_API_KEY_HERE' ? '✅ Enabled' : '⚠️ Using Base64 - Add API Key'));
 
         function sellerConfirmOrder(orderId) {
             if (!confirm('Confirm this order?')) return;
@@ -2014,16 +2056,7 @@
                     var order=null,orders=window._state.orders||[];
                     for(var i=0;i<orders.length;i++){if(orders[i].id===_sdmOrderId){order=orders[i];break;}}
                     var seller=(window._state.sellerData&&window._state.sellerData.businessName)?window._state.sellerData.businessName:'Seller';
-                    var msg='Namaste '+name+'!
-
-Aapko ek order deliver karna hai:
-'+(order?(order.productName||'Product')+' - '+formatCurrency(order.totalAmount)+'
-':'')+'
-Delivery Link:
-'+link+'
-
-Is link se order Delivered ya Cancel kar sakte hain.
-- '+seller;
+                    var msg='Namaste '+name+'!\n\nAapko ek order deliver karna hai:\n'+(order?(order.productName||'Product')+' - '+formatCurrency(order.totalAmount)+'\n':'')+'\nDelivery Link:\n'+link+'\n\nIs link se order Delivered ya Cancel kar sakte hain.\n- '+seller;
                     window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(msg),'_blank');
                 })
                 .catch(function(err){showToast('Error: '+err.message,'error');btn.disabled=false;btn.textContent='Generate and Send via WhatsApp';});
@@ -2034,8 +2067,7 @@ Is link se order Delivered ya Cancel kar sakte hain.
             var phone=(document.getElementById('sdmPhone').value||'').trim();
             var code=document.getElementById('sdmCode').value||'91';
             if(!_sdmLink){showToast('Pehle generate karo','error');return;}
-            window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent('Delivery Link:
-'+_sdmLink),'_blank');
+            window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent('Delivery Link:\n'+_sdmLink),'_blank');
         }
         function buildSDM(){
             var el=document.createElement('div');el.id='sdmModal';
@@ -2051,7 +2083,6 @@ Is link se order Delivered ya Cancel kar sakte hain.
             el.addEventListener('click',function(e){if(e.target===el)closeSDM();});
             document.body.appendChild(el);
         }
-
     </script>
 </body>
 </html>
