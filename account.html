@@ -702,8 +702,15 @@
       console.log('🔔 Auth state changed. User:', user ? user.email : 'null');
 
       if (!user) {
-        console.log('❌ No user, redirecting to home...');
-        window.location.href = '/';
+        // Even for guest, we show addresses if they exist in localStorage
+        const localAddr = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+        if (localAddr.length > 0) {
+          updateUIForGuest();
+          accLoadAddresses();
+        } else {
+          console.log('❌ No user and no local addresses, redirecting...');
+          window.location.href = '/';
+        }
         return;
       }
 
@@ -720,7 +727,7 @@
       try {
         await Promise.all([
           loadUserProfile(user),
-          loadAddresses(user),
+          accLoadAddresses(),
           loadWishlist(user),
           loadOrders(user),
           loadCurrency(),
@@ -736,6 +743,19 @@
         console.error('❌ Data load error:', error);
       }
     });
+
+    function updateUIForGuest() {
+      document.getElementById('userChip').style.display = 'none';
+      document.getElementById('accountPageName').textContent = 'Guest User';
+      document.getElementById('accountPageEmail').textContent = 'Login to sync addresses';
+      // Hide sections that guest can't use
+      document.querySelectorAll('.menu-item:not([onclick*="addressPage"])').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.card:not(.danger-zone)').forEach(el => {
+        if (!el.closest('#addressPage')) el.style.display = 'none';
+      });
+      document.querySelector('.danger-zone').style.display = 'none';
+      accShowSubPage('addressPage');
+    }
 
     // ========== UPDATE UI ==========
     function updateUIForUser(user) {
@@ -881,15 +901,27 @@
       accOpenModal('alertModal');
     };
 
+    /**
+     * Utility to sanitize user input for rendering
+     */
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // ========== ADDRESS RENDERING ==========
-    function renderAddressList(snap, container) {
+    function accRenderAddressList(addresses, container) {
       container.innerHTML = '';
-      if (!snap.exists()) {
+      if (!addresses || addresses.length === 0) {
         container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
         return;
       }
-      snap.forEach(child => {
-        const a = { id: child.key, ...child.val() };
+      addresses.forEach(a => {
         const card = document.createElement('div');
         card.className = 'address-card' + (a.isDefault ? ' default' : '');
         card.innerHTML = `
@@ -897,15 +929,34 @@
             <span class="address-type-badge">${a.type || 'home'}</span>
             ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
           </div>
-          <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
-          <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
-          <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
+          <div style="font-weight:600;margin-bottom:0.25rem">${escapeHTML(a.name)}</div>
+          <div style="color:var(--text-secondary);font-size:0.875rem">${escapeHTML(a.street || a.house)}, ${escapeHTML(a.city)}, ${escapeHTML(a.state)} - ${escapeHTML(a.pincode)}</div>
+          <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${escapeHTML(a.mobile)}</div>
           <div class="address-actions">
-            <button class="btn-outline btn-sm edit-addr" data-id="${a.id}">Edit</button>
-            <button class="btn-outline btn-sm delete-addr" data-id="${a.id}">Delete</button>
-            ${!a.isDefault ? `<button class="btn-outline btn-sm default-addr" data-id="${a.id}">Set Default</button>` : ''}
+            <button class="btn-outline btn-sm acc-edit-addr" data-id="${a.id}">Edit</button>
+            <button class="btn-outline btn-sm acc-delete-addr" data-id="${a.id}">Delete</button>
+            ${!a.isDefault ? `<button class="btn-outline btn-sm acc-default-addr" data-id="${a.id}">Set Default</button>` : ''}
           </div>`;
         container.appendChild(card);
+      });
+
+      // Bind actions
+      container.querySelectorAll('.acc-edit-addr').forEach(btn => {
+        btn.onclick = () => {
+          const addr = addresses.find(x => x.id === btn.dataset.id);
+          if (addr) accShowAddressForm(addr);
+        };
+      });
+      container.querySelectorAll('.acc-delete-addr').forEach(btn => {
+        btn.onclick = () => {
+          const addr = addresses.find(x => x.id === btn.dataset.id);
+          if (addr) accDeleteAddress(addr);
+        };
+      });
+      container.querySelectorAll('.acc-default-addr').forEach(btn => {
+        btn.onclick = () => {
+          accSetDefaultAddress(btn.dataset.id);
+        };
       });
     }
 
@@ -971,16 +1022,36 @@
     }
 
     // ========== LOAD ADDRESSES (Initial) ==========
-    async function loadAddresses(user) {
+    async function accLoadAddresses() {
       const container = document.getElementById('savedAddresses');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;"></div></div>';
-      try {
-        const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
-        renderAddressList(snap, container);
-      } catch (e) {
-        container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Could not load addresses.</p>';
+
+      let local = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+      const user = window._accCurrentUser;
+
+      if (user) {
+        try {
+          const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
+          if (snap.exists()) {
+            const fbData = snap.val();
+            const fbList = Object.keys(fbData).map(k => ({ id: k, ...fbData[k] }));
+            const merged = [...fbList];
+            local.forEach(l => {
+              const isDup = merged.some(f =>
+                String(f.name).toLowerCase() === String(l.name).toLowerCase() &&
+                String(f.mobile) === String(l.mobile) &&
+                String(f.pincode) === String(l.pincode)
+              );
+              if (!isDup) merged.push(l);
+            });
+            local = merged;
+          }
+        } catch (e) { console.warn('FB load err:', e); }
       }
+
+      const sorted = local.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
+      localStorage.setItem('bz_addresses', JSON.stringify(sorted));
+      accRenderAddressList(sorted, container);
     }
 
     // ========== LOAD WISHLIST (Initial) ==========
@@ -1009,7 +1080,7 @@
       }
     }
 
-    // ========== ADDRESS FORM ==========
+    // ========== ADDRESS ACTIONS ==========
     let _editingAddressId = null;
 
     window.accShowAddressForm = function(address = null) {
@@ -1023,7 +1094,7 @@
         document.getElementById('addressPincode').value = address.pincode || '';
         document.getElementById('addressCity').value = address.city || '';
         document.getElementById('addressState').value = address.state || '';
-        document.getElementById('addressStreet').value = address.street || '';
+        document.getElementById('addressStreet').value = address.street || address.house || '';
         document.getElementById('addressType').value = address.type || 'home';
       } else {
         _editingAddressId = null;
@@ -1033,7 +1104,43 @@
         });
         document.getElementById('addressType').value = 'home';
       }
+      window.scrollTo({ top: document.getElementById('newAddressForm').offsetTop - 100, behavior: 'smooth' });
     };
+
+    async function accDeleteAddress(address) {
+      accShowAlert('Delete Address', 'Are you sure you want to remove this address?', async () => {
+        try {
+          const local = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+          const filtered = local.filter(a => a.id !== address.id);
+          localStorage.setItem('bz_addresses', JSON.stringify(filtered));
+          localStorage.setItem('bz_address_updated', Date.now().toString());
+
+          if (window._accCurrentUser && address.id && !address.id.startsWith('address_')) {
+            await remove(ref(db, 'addresses/' + address.id));
+          }
+          accShowToast('Address deleted', 'success');
+          accLoadAddresses();
+        } catch (e) { accShowToast('Delete failed', 'error'); }
+      });
+    }
+
+    async function accSetDefaultAddress(id) {
+      const local = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
+      local.forEach(a => a.isDefault = (a.id === id));
+      localStorage.setItem('bz_addresses', JSON.stringify(local));
+      localStorage.setItem('bz_address_updated', Date.now().toString());
+
+      const user = window._accCurrentUser;
+      if (user) {
+        try {
+          const updates = {};
+          local.forEach(a => { if (!a.id.startsWith('address_')) updates['addresses/' + a.id + '/isDefault'] = (a.id === id); });
+          if (Object.keys(updates).length) await update(ref(db), updates);
+        } catch (e) {}
+      }
+      accShowToast('Default address updated', 'success');
+      accLoadAddresses();
+    }
 
     window.accHideAddressForm = function() {
       document.getElementById('newAddressForm').style.display = 'none';
@@ -1145,8 +1252,6 @@
 
       // Save Address
       if (e.target.id === 'saveAddress') {
-        const user = window._accCurrentUser;
-        if (!user) { accShowToast('Please login first', 'error'); return; }
         const addr = {
           name: document.getElementById('addressName')?.value?.trim() || '',
           mobile: document.getElementById('addressMobile')?.value?.trim() || '',
@@ -1155,7 +1260,6 @@
           state: document.getElementById('addressState')?.value?.trim() || '',
           street: document.getElementById('addressStreet')?.value?.trim() || '',
           type: document.getElementById('addressType')?.value || 'home',
-          userId: user.uid,
           updatedAt: Date.now()
         };
         if (!addr.name || !addr.mobile || !addr.pincode || !addr.city || !addr.state || !addr.street) {
@@ -1165,16 +1269,38 @@
         const btn = e.target;
         btn.disabled = true; btn.textContent = 'Saving...';
         try {
+          let currentLocal = JSON.parse(localStorage.getItem('bz_addresses') || '[]');
           if (_editingAddressId) {
-            await update(ref(db, 'addresses/' + _editingAddressId), addr);
+            addr.id = _editingAddressId;
+            const idx = currentLocal.findIndex(x => x.id === _editingAddressId);
+            if (idx !== -1) currentLocal[idx] = { ...currentLocal[idx], ...addr };
           } else {
-            addr.createdAt = Date.now();
-            await push(ref(db, 'addresses'), addr);
+            addr.id = 'address_' + Date.now();
+            addr.isDefault = currentLocal.length === 0;
+            currentLocal.unshift(addr);
+          }
+          localStorage.setItem('bz_addresses', JSON.stringify(currentLocal));
+          localStorage.setItem('bz_address_updated', Date.now().toString());
+
+          const user = window._accCurrentUser;
+          if (user) {
+            const fbAddr = { ...addr, userId: user.uid };
+            if (_editingAddressId && !_editingAddressId.startsWith('address_')) {
+              await update(ref(db, 'addresses/' + _editingAddressId), fbAddr);
+            } else {
+              const newRef = push(ref(db, 'addresses'));
+              await set(newRef, fbAddr);
+              // Update local ID with Firebase key
+              const idx = currentLocal.findIndex(x => x.id === addr.id);
+              if (idx !== -1) currentLocal[idx].id = newRef.key;
+              localStorage.setItem('bz_addresses', JSON.stringify(currentLocal));
+            }
           }
           accShowToast('Address saved! ✅', 'success');
           accHideAddressForm();
+          accLoadAddresses();
         } catch (err) {
-          accShowToast('Failed to save', 'error');
+          accShowToast('Save error: ' + err.message, 'error');
         } finally {
           btn.disabled = false; btn.textContent = 'Save Address';
         }
@@ -1216,45 +1342,6 @@
         localStorage.setItem('theme', theme);
       }
 
-      // Edit Address (delegated)
-      if (e.target.classList.contains('edit-addr')) {
-        const id = e.target.getAttribute('data-id');
-        try {
-          const snap = await get(ref(db, 'addresses/' + id));
-          if (snap.exists()) {
-            accShowAddressForm({ id, ...snap.val() });
-          }
-        } catch (err) {}
-      }
-
-      // Delete Address (delegated)
-      if (e.target.classList.contains('delete-addr')) {
-        const id = e.target.getAttribute('data-id');
-        accShowAlert('Delete Address', 'Are you sure?', async () => {
-          try {
-            await remove(ref(db, 'addresses/' + id));
-            accShowToast('Deleted', 'success');
-          } catch (err) {
-            accShowToast('Failed', 'error');
-          }
-        });
-      }
-
-      // Set Default Address (delegated)
-      if (e.target.classList.contains('default-addr')) {
-        const id = e.target.getAttribute('data-id');
-        const user = window._accCurrentUser;
-        if (!user) { accShowToast('Please login first', 'error'); return; }
-        try {
-          const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
-          const updates = {};
-          snap.forEach(child => { updates['addresses/' + child.key + '/isDefault'] = (child.key === id); });
-          await update(ref(db), updates);
-          accShowToast('Default set!', 'success');
-        } catch (err) {
-          accShowToast('Failed', 'error');
-        }
-      }
 
       // Remove from Wishlist (delegated)
       if (e.target.classList.contains('remove-wish')) {
@@ -1338,6 +1425,24 @@
         if (desc) desc.textContent = 'Extra security for your account';
       }
     }
+
+    window.addEventListener('storage', function(e) {
+      if (e.key === 'bz_addresses' || e.key === 'bz_address_updated') {
+        accLoadAddresses();
+      }
+      if (e.key === 'bz_profile_updated' && e.newValue) {
+        try {
+          const d = JSON.parse(e.newValue);
+          if (d.name) {
+            document.getElementById('accountPageName').textContent = d.name;
+            document.getElementById('chipUserName').textContent = d.name;
+            const init = d.name.charAt(0).toUpperCase();
+            document.getElementById('chipAvatarInitial').textContent = init;
+            document.getElementById('accountPageAvatarInitial').textContent = init;
+          }
+        } catch(e2) {}
+      }
+    });
 
     console.log('✅ Account Page Ready - All systems operational');
     console.log('📋 Features: Orders | Addresses | Wishlist | Settings | Sell Product');
