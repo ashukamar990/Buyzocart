@@ -3750,13 +3750,36 @@
     }
 
     function updateHeroContent() {
+      // Apply hero background from adminSettings
+      var heroSection = document.getElementById('heroSection')
+        || document.querySelector('.hero-section')
+        || document.querySelector('section.hero')
+        || document.querySelector('.hero');
+      if (heroSection) {
+        if (adminSettings.heroBgImage) {
+          heroSection.style.backgroundImage = "url('" + adminSettings.heroBgImage + "')";
+          heroSection.style.backgroundSize = 'cover';
+          heroSection.style.backgroundPosition = 'center';
+        } else {
+          heroSection.style.backgroundImage = '';
+        }
+      }
       const heroHeading = document.getElementById('heroHeading');
       const heroSubheading = document.getElementById('heroSubheading');
       const heroMessagesContainer = document.getElementById('heroMessages');
       const highlightStrip = document.querySelector('.highlight-strip');
 
-      if (heroHeading) heroHeading.innerHTML = adminSettings.heroHeading || 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
-      if (heroSubheading) heroSubheading.textContent = adminSettings.heroSubheading || 'Clean, fast checkout. Hand‑picked products. Fully responsive UI.';
+      // Force innerHTML update — clears any stale/cached content
+      var defaultHeading = 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
+      var defaultSub = 'Clean, fast checkout. Hand-picked products. Fully responsive UI.';
+      if (heroHeading) {
+        var newH = adminSettings.heroHeading !== undefined ? (adminSettings.heroHeading || defaultHeading) : defaultHeading;
+        heroHeading.innerHTML = newH;
+      }
+      if (heroSubheading) {
+        var newS = adminSettings.heroSubheading !== undefined ? (adminSettings.heroSubheading || defaultSub) : defaultSub;
+        heroSubheading.textContent = newS;
+      }
 
       if (heroMessagesContainer && adminSettings.heroMessages && adminSettings.heroMessages.length) {
         heroMessagesContainer.innerHTML = '';
@@ -3777,28 +3800,6 @@
         }
       }
 
-      // ── Hero Background Image ──
-      var heroBgEl = document.getElementById('heroSection')
-        || document.querySelector('.hero-section')
-        || document.querySelector('[class*="hero"]');
-      if (heroBgEl) {
-        if (adminSettings.heroBgImage) {
-          heroBgEl.style.backgroundImage = "url('" + adminSettings.heroBgImage + "')";
-          heroBgEl.style.backgroundSize = 'cover';
-          heroBgEl.style.backgroundPosition = 'center';
-        } else {
-          heroBgEl.style.backgroundImage = '';
-        }
-      }
-
-      // ── Hero CTA Button text ──
-      var ctaBtn = document.getElementById('heroCtaBtn') || document.querySelector('.hero-cta-btn');
-      if (ctaBtn && adminSettings.heroCtaText) ctaBtn.textContent = adminSettings.heroCtaText;
-
-      // ── Hero Rating badge ──
-      var ratBadge = document.getElementById('heroRatingBadge') || document.querySelector('.hero-rating');
-      if (ratBadge && adminSettings.heroRating) ratBadge.textContent = adminSettings.heroRating;
-
       if (adminSettings.popularSearches && Array.isArray(adminSettings.popularSearches) && adminSettings.popularSearches.length) {
         popularSearches = adminSettings.popularSearches;
         loadPopularSearches();
@@ -3809,7 +3810,6 @@
       }
 
       updateHeroStats();
-      refreshHeroStats();
     }
 
     function updateHeroStats() {
@@ -3851,39 +3851,8 @@
         el.textContent = value;
         if (row) row.style.display = '';
       } else {
-        // Keep showing the element with — instead of hiding
         el.textContent = '—';
-        if (row) row.style.display = '';
       }
-    }
-
-    // Call hero stats auto-refresh on Firebase order/review updates
-    function refreshHeroStats() {
-      const db  = window.firebase && window.firebase.database;
-      const ref = window.firebase && window.firebase.ref;
-      const get = window.firebase && window.firebase.get;
-      if (!db || !ref || !get) return;
-
-      // Products count
-      get(ref(db, 'products')).then(function(snap) {
-        var count = snap.exists() ? Object.keys(snap.val()).length : 0;
-        setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : '0+');
-      }).catch(function(){});
-
-      // Users (customers) count
-      get(ref(db, 'users')).then(function(snap) {
-        var count = snap.exists() ? Object.keys(snap.val()).length : 0;
-        setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : '0+');
-      }).catch(function(){});
-
-      // Avg rating from reviews + orders
-      get(ref(db, 'reviews')).then(function(snap) {
-        if (!snap.exists()) { setHeroStat('heroStatRating', '4.9★'); return; }
-        var vals = Object.values(snap.val()).filter(function(r){ return r && r.rating; });
-        if (!vals.length) { setHeroStat('heroStatRating', '4.9★'); return; }
-        var avg = vals.reduce(function(s,r){ return s + (r.rating||0); }, 0) / vals.length;
-        setHeroStat('heroStatRating', avg.toFixed(1) + '★');
-      }).catch(function(){ setHeroStat('heroStatRating', '4.9★'); });
     }
 
     function updateCurrencySymbols() {
@@ -4140,11 +4109,13 @@
       });
       onValue(ref(database, 'adminSettings'), snapshot => {
         const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
-        }
+        // Always apply — even null means reset to defaults
+        adminSettings = settingsObj ? { ...adminSettings, ...settingsObj } : { ...adminSettings };
+        // Clear cache so stale values don't persist
+        try { cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings); } catch(e) {}
+        // Always call both — don't skip
+        updateAdminSettingsUI();
+        updateHeroContent();
       });
       onValue(ref(database, 'outOfStock'), snapshot => {
         const outOfStockObj = snapshot.val();
@@ -5882,9 +5853,15 @@
     }
 
     // Hero background image
-    const heroBg = document.getElementById('heroSection') || document.querySelector('.hero-section');
-    if (heroBg && settings.heroBgImage) {
-      heroBg.style.backgroundImage = `url('${settings.heroBgImage}')`;
+    const heroBg = document.getElementById('heroSection') || document.querySelector('.hero-section') || document.querySelector('.hero') || document.querySelector('section.hero');
+    if (heroBg) {
+      if (settings.heroBgImage) {
+        heroBg.style.backgroundImage = `url('${settings.heroBgImage}')`;
+        heroBg.style.backgroundSize = 'cover';
+        heroBg.style.backgroundPosition = 'center';
+      } else {
+        heroBg.style.backgroundImage = '';
+      }
     }
 
     // Rating display
