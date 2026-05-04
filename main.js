@@ -930,7 +930,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          <div class="product-card-rating">
+          <div class="product-card-rating" role="img" aria-label="Rated ${rating.toFixed(1)} out of 5 stars">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
           </div>
@@ -2127,8 +2127,12 @@
     function setRating(rating) {
       const stars = document.querySelectorAll('.rating-star');
       stars.forEach((star, index) => {
-        if (index < rating) star.classList.add('active');
+        const active = index < rating;
+        if (active) star.classList.add('active');
         else star.classList.remove('active');
+        if (star.tagName === 'BUTTON') {
+          star.setAttribute('aria-pressed', active ? 'true' : 'false');
+        }
       });
     }
 
@@ -2202,7 +2206,7 @@
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
-          <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
+          <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;" role="img" aria-label="Rating ${review.rating} out of 5 stars">${stars}</div>
           <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
