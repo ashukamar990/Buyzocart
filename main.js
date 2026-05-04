@@ -395,10 +395,18 @@
         const desc = p.description || '';
         const cat = p.category || '';
         const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
-        const combined = [name, desc, cat, tags].join(' ');
+        const brand = p.brand || '';
+        const pid = p.id || p.productId || '';
+        // ✅ PRODUCT ID SEARCH: exact match = instant top result
+        if (pid && (pid.toLowerCase() === q.toLowerCase() || pid.toLowerCase().includes(q.toLowerCase()))) {
+          scored.push({ product: p, score: 1000 });
+          return;
+        }
+        const combined = [name, desc, cat, tags, brand].join(' ');
         let score = 0;
         score = Math.max(score, fuzzyScore(name, q));
         score = Math.max(score, fuzzyScore(cat, q) * 0.7);
+        score = Math.max(score, fuzzyScore(brand, q) * 0.8);
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
@@ -930,6 +938,11 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
+          ${product.brand ? `<div style="font-size:11px;color:#64748b;margin:-2px 0 4px;display:flex;align-items:center;gap:4px;font-weight:600;">${product.brand}${(function(){try{var b=window._brandsData&&window._brandsData[product.brandId||product.brand.toLowerCase().replace(/[^a-z0-9]/g,'_')];return b&&b.blueTickAdmin?'<span style="color:#2563eb;font-size:10px;">✓</span>':'';}catch(e){return '';}})()}</div>` : ''}
+          <div style="font-size:10px;color:#cbd5e1;margin-bottom:3px;display:flex;align-items:center;gap:4px;">
+            <span style="font-family:monospace;color:#94a3b8">ID: ${productId.slice(-8).toUpperCase()}</span>
+            <button onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${productId}').then(function(){var t=document.createElement('div');t.textContent='Copied!';t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;z-index:9999;';document.body.appendChild(t);setTimeout(function(){t.remove();},1500);})" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;font-size:11px;line-height:1;" title="Copy Product ID">📋</button>
+          </div>
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -3750,36 +3763,13 @@
     }
 
     function updateHeroContent() {
-      // Apply hero background from adminSettings
-      var heroSection = document.getElementById('heroSection')
-        || document.querySelector('.hero-section')
-        || document.querySelector('section.hero')
-        || document.querySelector('.hero');
-      if (heroSection) {
-        if (adminSettings.heroBgImage) {
-          heroSection.style.backgroundImage = "url('" + adminSettings.heroBgImage + "')";
-          heroSection.style.backgroundSize = 'cover';
-          heroSection.style.backgroundPosition = 'center';
-        } else {
-          heroSection.style.backgroundImage = '';
-        }
-      }
       const heroHeading = document.getElementById('heroHeading');
       const heroSubheading = document.getElementById('heroSubheading');
       const heroMessagesContainer = document.getElementById('heroMessages');
       const highlightStrip = document.querySelector('.highlight-strip');
 
-      // Force innerHTML update — clears any stale/cached content
-      var defaultHeading = 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
-      var defaultSub = 'Clean, fast checkout. Hand-picked products. Fully responsive UI.';
-      if (heroHeading) {
-        var newH = adminSettings.heroHeading !== undefined ? (adminSettings.heroHeading || defaultHeading) : defaultHeading;
-        heroHeading.innerHTML = newH;
-      }
-      if (heroSubheading) {
-        var newS = adminSettings.heroSubheading !== undefined ? (adminSettings.heroSubheading || defaultSub) : defaultSub;
-        heroSubheading.textContent = newS;
-      }
+      if (heroHeading) heroHeading.innerHTML = adminSettings.heroHeading || 'Welcome to <span style="color:var(--accent)">Buyzo Cart</span>';
+      if (heroSubheading) heroSubheading.textContent = adminSettings.heroSubheading || 'Clean, fast checkout. Hand‑picked products. Fully responsive UI.';
 
       if (heroMessagesContainer && adminSettings.heroMessages && adminSettings.heroMessages.length) {
         heroMessagesContainer.innerHTML = '';
@@ -4107,31 +4097,49 @@
           if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
         } else banners = [];
       });
+      // Load brands for blue tick display on cards
+      onValue(ref(database, 'brands'), snapshot => {
+        window._brandsData = {};
+        if (snapshot.exists()) {
+          snapshot.forEach(child => {
+            window._brandsData[child.key] = child.val();
+          });
+        }
+      });
+
       onValue(ref(database, 'adminSettings'), snapshot => {
         const settingsObj = snapshot.val();
-        // Always apply — even null means reset to defaults
-        adminSettings = settingsObj ? { ...adminSettings, ...settingsObj } : { ...adminSettings };
-        // Clear cache so stale values don't persist
-        try { cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings); } catch(e) {}
-        // Always call both — don't skip
-        updateAdminSettingsUI();
-        updateHeroContent();
+        if (settingsObj) {
+          adminSettings = { ...adminSettings, ...settingsObj };
+          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
+          updateAdminSettingsUI();
+        }
       });
       onValue(ref(database, 'outOfStock'), snapshot => {
         const outOfStockObj = snapshot.val();
         if (outOfStockObj) window.outOfStockItems = outOfStockObj;
       });
 
-      let _lastAdminNotifTs = Date.now();
+      let _lastAdminNotifTs = 0;
+      let _adminNotifLoaded = false;
       onValue(ref(database, 'adminNotifications'), snapshot => {
         if (!snapshot.exists()) return;
+        const now = Date.now();
+        const cutoff = now - (7 * 24 * 60 * 60 * 1000); // 7 days
         snapshot.forEach(child => {
           const n = child.val();
-          if (n.timestamp && n.timestamp > _lastAdminNotifTs) {
-            _lastAdminNotifTs = n.timestamp;
-            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info' });
+          if (!n || !n.timestamp) return;
+          if (!_adminNotifLoaded) {
+            // First load: show all from last 7 days
+            if (n.timestamp > cutoff) {
+              addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info', timestamp: n.timestamp });
+            }
+          } else if (n.timestamp > _lastAdminNotifTs) {
+            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info', timestamp: n.timestamp });
           }
+          if (n.timestamp > _lastAdminNotifTs) _lastAdminNotifTs = n.timestamp;
         });
+        _adminNotifLoaded = true;
       });
     }
 
@@ -5853,15 +5861,9 @@
     }
 
     // Hero background image
-    const heroBg = document.getElementById('heroSection') || document.querySelector('.hero-section') || document.querySelector('.hero') || document.querySelector('section.hero');
-    if (heroBg) {
-      if (settings.heroBgImage) {
-        heroBg.style.backgroundImage = `url('${settings.heroBgImage}')`;
-        heroBg.style.backgroundSize = 'cover';
-        heroBg.style.backgroundPosition = 'center';
-      } else {
-        heroBg.style.backgroundImage = '';
-      }
+    const heroBg = document.getElementById('heroSection') || document.querySelector('.hero-section');
+    if (heroBg && settings.heroBgImage) {
+      heroBg.style.backgroundImage = `url('${settings.heroBgImage}')`;
     }
 
     // Rating display
@@ -6008,6 +6010,119 @@
         return result;
       };
     }
+
+
+    // ══════════════════════════════════════
+    //  BRANDS PAGE SYSTEM
+    // ══════════════════════════════════════
+    let _siteBrandsAll = [];
+
+    function loadBrandsPage() {
+      if (_siteBrandsAll.length) { renderSiteBrands(_siteBrandsAll); return; }
+
+      Promise.all([
+        get(ref(database, 'products')),
+        get(ref(database, 'brands'))
+      ]).then(([prodSnap, brandSnap]) => {
+        const brandMap = {};
+
+        // Manual brands with blue tick info
+        if (brandSnap.exists()) {
+          brandSnap.forEach(child => {
+            const b = child.val();
+            if (b && b.name) {
+              brandMap[child.key] = { id: child.key, name: b.name, blueTickAdmin: !!b.blueTickAdmin, products: [], followers: b.followers || 0 };
+            }
+          });
+        }
+
+        // Products
+        if (prodSnap.exists()) {
+          prodSnap.forEach(child => {
+            const p = child.val();
+            if (!p || !p.brand) return;
+            const bid = p.brandId || p.brand.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            if (!brandMap[bid]) {
+              brandMap[bid] = { id: bid, name: p.brand, blueTickAdmin: false, products: [], followers: 0 };
+            }
+            brandMap[bid].products.push(child.key);
+          });
+        }
+
+        _siteBrandsAll = Object.values(brandMap).filter(b => b.products.length > 0);
+        _siteBrandsAll.sort((a, b) => b.products.length - a.products.length);
+        renderSiteBrands(_siteBrandsAll);
+      }).catch(err => {
+        console.error('Brand load error:', err);
+      });
+    }
+
+    function filterSiteBrands() {
+      const q = (document.getElementById('brandSearchSite')?.value || '').toLowerCase().trim();
+      if (!q) { renderSiteBrands(_siteBrandsAll); return; }
+      renderSiteBrands(_siteBrandsAll.filter(b => b.name.toLowerCase().includes(q)));
+    }
+
+    function renderSiteBrands(brands) {
+      const popularGrid = document.getElementById('popularBrandsGrid');
+      const otherGrid   = document.getElementById('otherBrandsGrid');
+      const emptyEl     = document.getElementById('brandsEmptyState');
+      const popSection  = document.getElementById('popularBrandsSection');
+      const othSection  = document.getElementById('otherBrandsSection');
+      if (!popularGrid || !otherGrid) return;
+
+      if (!brands.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        if (popSection) popSection.style.display = 'none';
+        if (othSection) othSection.style.display = 'none';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      const colors = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669'];
+      const makeCard = (b) => {
+        const color = colors[b.name.charCodeAt(0) % colors.length];
+        const initials = b.name.slice(0,2).toUpperCase();
+        const el = document.createElement('div');
+        el.className = 'brand-card';
+        el.innerHTML = `
+          <div class="brand-avatar" style="background:${color}">${initials}</div>
+          <div class="brand-name">${b.name}${b.blueTickAdmin ? ' <span class="brand-blue-tick">✓</span>' : ''}</div>
+          <div class="brand-count">${b.products.length} products</div>`;
+        el.onclick = () => showBrandProducts(b.id, b.name);
+        return el;
+      };
+
+      const popular = brands.filter(b => b.blueTickAdmin);
+      const others  = brands.filter(b => !b.blueTickAdmin);
+
+      if (popSection) popSection.style.display = popular.length ? 'block' : 'none';
+      popularGrid.innerHTML = '';
+      popular.forEach(b => popularGrid.appendChild(makeCard(b)));
+
+      if (othSection) othSection.style.display = others.length ? 'block' : 'none';
+      otherGrid.innerHTML = '';
+      others.forEach(b => otherGrid.appendChild(makeCard(b)));
+    }
+
+    function showBrandProducts(brandId, brandName) {
+      // Filter products by brand and show on products page
+      const branded = products.filter(p => {
+        const pid = p.brandId || (p.brand && p.brand.toLowerCase().replace(/[^a-z0-9]/g, '_')) || '';
+        return pid === brandId || (p.brand && p.brand.toLowerCase() === brandName.toLowerCase());
+      });
+      window.currentCategoryFilter = null;
+      showPage('productsPage');
+      const grid = document.getElementById('productGrid');
+      const title = document.getElementById('productsPageTitle') || document.querySelector('.products-page-title');
+      if (title) title.textContent = '🏷️ ' + brandName;
+      if (grid) renderProducts(branded, 'productGrid');
+    }
+
+    // Call loadBrandsPage when brandsPage becomes active
+    const _origShowPage = window.showPage || function(){};
+
+
   });
 })();
 
