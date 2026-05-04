@@ -3766,17 +3766,6 @@
           if (index === 0) span.classList.add('active');
           heroMessagesContainer.appendChild(span);
         });
-        // Restart ticker after dynamic load
-        if (window._heroTickerInterval) clearInterval(window._heroTickerInterval);
-        let _heroTickIdx = 0;
-        const _heroSpans = heroMessagesContainer.querySelectorAll('span');
-        if (_heroSpans.length > 1) {
-          window._heroTickerInterval = setInterval(() => {
-            _heroSpans.forEach(s => s.classList.remove('active'));
-            _heroTickIdx = (_heroTickIdx + 1) % _heroSpans.length;
-            _heroSpans[_heroTickIdx].classList.add('active');
-          }, 3000);
-        }
       }
 
       if (highlightStrip) {
@@ -4103,63 +4092,21 @@
           updateAdminSettingsUI();
         }
       });
-
-      // ── Popular Searches — real-time from popularSearches/ node ──
-      onValue(ref(database, 'popularSearches'), snapshot => {
-        if (snapshot.exists()) {
-          const raw = snapshot.val();
-          const terms = Object.values(raw)
-            .filter(item => item && item.active !== false)
-            .sort((a, b) => (b.count || 0) - (a.count || 0))
-            .map(item => item.term || item.name || '')
-            .filter(Boolean);
-          if (terms.length) {
-            popularSearches = terms;
-            loadPopularSearches();
-          }
-        }
-      });
-
-      // ── Search Tags — real-time from searchTags/ node ──
-      onValue(ref(database, 'searchTags'), snapshot => {
-        if (snapshot.exists()) {
-          const raw = snapshot.val();
-          const tags = Object.values(raw)
-            .filter(item => item && item.active !== false)
-            .map(item => item.name || item.term || '')
-            .filter(Boolean);
-          if (tags.length) {
-            searchTags = tags;
-            loadSearchTags();
-          }
-        }
-      });
       onValue(ref(database, 'outOfStock'), snapshot => {
         const outOfStockObj = snapshot.val();
         if (outOfStockObj) window.outOfStockItems = outOfStockObj;
       });
 
-      let _lastAdminNotifTs = 0;
-      let _adminNotifLoaded = false;
+      let _lastAdminNotifTs = Date.now();
       onValue(ref(database, 'adminNotifications'), snapshot => {
         if (!snapshot.exists()) return;
-        const now = Date.now();
-        const cutoff = now - (7 * 24 * 60 * 60 * 1000); // show last 7 days
         snapshot.forEach(child => {
           const n = child.val();
-          if (!n || !n.timestamp) return;
-          // First load: show all recent (last 7 days) notifications
-          // Subsequent updates: only show truly new ones
-          if (!_adminNotifLoaded) {
-            if (n.timestamp > cutoff) {
-              addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info', timestamp: n.timestamp });
-            }
-          } else if (n.timestamp > _lastAdminNotifTs) {
-            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info', timestamp: n.timestamp });
+          if (n.timestamp && n.timestamp > _lastAdminNotifTs) {
+            _lastAdminNotifTs = n.timestamp;
+            addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info' });
           }
-          if (n.timestamp > _lastAdminNotifTs) _lastAdminNotifTs = n.timestamp;
         });
-        _adminNotifLoaded = true;
       });
     }
 
