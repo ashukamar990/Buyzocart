@@ -3777,6 +3777,28 @@
         }
       }
 
+      // ── Hero Background Image ──
+      var heroBgEl = document.getElementById('heroSection')
+        || document.querySelector('.hero-section')
+        || document.querySelector('[class*="hero"]');
+      if (heroBgEl) {
+        if (adminSettings.heroBgImage) {
+          heroBgEl.style.backgroundImage = "url('" + adminSettings.heroBgImage + "')";
+          heroBgEl.style.backgroundSize = 'cover';
+          heroBgEl.style.backgroundPosition = 'center';
+        } else {
+          heroBgEl.style.backgroundImage = '';
+        }
+      }
+
+      // ── Hero CTA Button text ──
+      var ctaBtn = document.getElementById('heroCtaBtn') || document.querySelector('.hero-cta-btn');
+      if (ctaBtn && adminSettings.heroCtaText) ctaBtn.textContent = adminSettings.heroCtaText;
+
+      // ── Hero Rating badge ──
+      var ratBadge = document.getElementById('heroRatingBadge') || document.querySelector('.hero-rating');
+      if (ratBadge && adminSettings.heroRating) ratBadge.textContent = adminSettings.heroRating;
+
       if (adminSettings.popularSearches && Array.isArray(adminSettings.popularSearches) && adminSettings.popularSearches.length) {
         popularSearches = adminSettings.popularSearches;
         loadPopularSearches();
@@ -3787,6 +3809,7 @@
       }
 
       updateHeroStats();
+      refreshHeroStats();
     }
 
     function updateHeroStats() {
@@ -3828,8 +3851,39 @@
         el.textContent = value;
         if (row) row.style.display = '';
       } else {
+        // Keep showing the element with — instead of hiding
         el.textContent = '—';
+        if (row) row.style.display = '';
       }
+    }
+
+    // Call hero stats auto-refresh on Firebase order/review updates
+    function refreshHeroStats() {
+      const db  = window.firebase && window.firebase.database;
+      const ref = window.firebase && window.firebase.ref;
+      const get = window.firebase && window.firebase.get;
+      if (!db || !ref || !get) return;
+
+      // Products count
+      get(ref(db, 'products')).then(function(snap) {
+        var count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : '0+');
+      }).catch(function(){});
+
+      // Users (customers) count
+      get(ref(db, 'users')).then(function(snap) {
+        var count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : '0+');
+      }).catch(function(){});
+
+      // Avg rating from reviews + orders
+      get(ref(db, 'reviews')).then(function(snap) {
+        if (!snap.exists()) { setHeroStat('heroStatRating', '4.9★'); return; }
+        var vals = Object.values(snap.val()).filter(function(r){ return r && r.rating; });
+        if (!vals.length) { setHeroStat('heroStatRating', '4.9★'); return; }
+        var avg = vals.reduce(function(s,r){ return s + (r.rating||0); }, 0) / vals.length;
+        setHeroStat('heroStatRating', avg.toFixed(1) + '★');
+      }).catch(function(){ setHeroStat('heroStatRating', '4.9★'); });
     }
 
     function updateCurrencySymbols() {
