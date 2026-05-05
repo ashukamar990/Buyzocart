@@ -583,10 +583,17 @@
         const element = document.createElement('div');
         element.className = 'search-tag';
         element.textContent = tag;
-        element.addEventListener('click', () => {
+        element.style.cursor = 'pointer';
+        element.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
           closeSearchPanel();
           filterProductsByTag(tag);
         });
+        element.addEventListener('touchend', function(e) {
+          e.preventDefault();
+          closeSearchPanel();
+          filterProductsByTag(tag);
+        }, { passive: false });
         container.appendChild(element);
       });
     }
@@ -914,7 +921,10 @@
       }
       const card = document.createElement('div');
       card.className = 'product-card';
-      const productId = product.id || product.productId || product._id || product.key || `product-${Date.now()}-${Math.random()}`;
+      const productId = product.id || product.productId || product._id || product.key || (function(){
+        var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        var id='';for(var i=0;i<6;i++)id+=chars[Math.floor(Math.random()*chars.length)];return id;
+      })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
@@ -938,11 +948,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div style="font-size:11px;color:#64748b;margin:-2px 0 4px;display:flex;align-items:center;gap:4px;font-weight:600;">${product.brand}${(function(){try{var b=window._brandsData&&window._brandsData[product.brandId||product.brand.toLowerCase().replace(/[^a-z0-9]/g,'_')];return b&&b.blueTickAdmin?'<span style="color:#2563eb;font-size:10px;">✓</span>':'';}catch(e){return '';}})()}</div>` : ''}
-          <div style="font-size:10px;color:#cbd5e1;margin-bottom:3px;display:flex;align-items:center;gap:4px;">
-            <span style="font-family:monospace;color:#94a3b8">ID: ${productId.slice(-8).toUpperCase()}</span>
-            <button onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${productId}').then(function(){var t=document.createElement('div');t.textContent='Copied!';t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;z-index:9999;';document.body.appendChild(t);setTimeout(function(){t.remove();},1500);})" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;font-size:11px;line-height:1;" title="Copy Product ID">📋</button>
-          </div>
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var b=window._brandsData&&window._brandsData[product.brandId||(product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')];return b&&b.blueTickAdmin?'<span style="color:#2563eb;font-size:9px;background:#eff6ff;padding:1px 4px;border-radius:10px;">✓</span>':'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -1155,6 +1161,29 @@
       if (elements.detailFullDesc) elements.detailFullDesc.textContent = productFullDesc;
       if (elements.detailSku) elements.detailSku.textContent = 'SKU: ' + productSku;
       if (elements.breadcrumbProductName) elements.breadcrumbProductName.textContent = productName;
+
+      // ── Brand name in detail ──
+      var brandBadgeEl = document.getElementById('detailBrandBadge');
+      if (!brandBadgeEl) {
+        brandBadgeEl = document.createElement('div');
+        brandBadgeEl.id = 'detailBrandBadge';
+        var titleEl = elements.detailTitle;
+        if (titleEl && titleEl.parentNode) titleEl.parentNode.insertBefore(brandBadgeEl, titleEl.nextSibling);
+      }
+      if (freshProduct.brand) {
+        var bBrandId = freshProduct.brandId || freshProduct.brand.toLowerCase().replace(/[^a-z0-9]/g,'_');
+        var bData = (window._brandsData||{})[bBrandId] || {};
+        var blueTick = bData.blueTickAdmin ? '<span style="font-size:10px;margin-left:2px;">✓</span>' : '';
+        brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
+          + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
+          + '<span>Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11px;">'+(freshProduct.id||'').toUpperCase()+'</code></span>'
+          + '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+freshProduct.id+'\').then(function(){showToast(\'Product ID copied!\',\'success\')})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:0;" title="Copy">📋</button>'
+          + '</div>';
+        brandBadgeEl.style.display = 'block';
+      } else {
+        brandBadgeEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">'+(freshProduct.id||'').toUpperCase()+'</code></div>';
+        brandBadgeEl.style.display = 'block';
+      }
       if (elements.mainProductImage && currentProductImages.length > 0) {
         elements.mainProductImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
       }
@@ -4771,8 +4800,9 @@
             document.getElementById('authModal')?.classList.remove('active');
 
             setupAccountRealtimeSync(user.uid);
-            // Real-time orders listener for myOrdersPage
             setupOrdersRealtimeListener(user);
+            // Load following brands products
+            setTimeout(() => { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
 
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
@@ -6121,6 +6151,160 @@
 
     // Call loadBrandsPage when brandsPage becomes active
     const _origShowPage = window.showPage || function(){};
+
+
+
+    // ══════════════════════════════════════
+    //  BRAND PROFILE PAGE
+    // ══════════════════════════════════════
+    window._currentBrandId = null;
+
+    function showBrandProfile(brandId, brandName) {
+      window._currentBrandId = brandId;
+      // Build or show brand profile page
+      var page = document.getElementById('brandProfilePage');
+      if (!page) {
+        page = document.createElement('section');
+        page.id = 'brandProfilePage';
+        page.className = 'page';
+        page.style.cssText = 'min-height:100vh;background:#f8fafc;';
+        document.querySelector('main').appendChild(page);
+      }
+
+      // Load brand data
+      Promise.all([
+        get(ref(database, 'brands/' + brandId)),
+        get(ref(database, 'brandFollowers/' + brandId))
+      ]).then(([brandSnap, followSnap]) => {
+        var brandData = brandSnap.val() || { name: brandName, blueTickAdmin: false };
+        var followers = followSnap.exists() ? Object.keys(followSnap.val()).length : 0;
+        var isFollowing = currentUser && followSnap.exists() && followSnap.val()[currentUser.uid];
+        var colors = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626'];
+        var color = colors[(brandName || '').charCodeAt(0) % colors.length];
+        var initials = (brandName || 'B').slice(0,2).toUpperCase();
+
+        // Get brand products
+        var brandProds = products.filter(p => {
+          var bid = p.brandId || (p.brand && p.brand.toLowerCase().replace(/[^a-z0-9]/g,'_')) || '';
+          return bid === brandId || (p.brand && p.brand.toLowerCase() === (brandName||'').toLowerCase());
+        });
+
+        page.innerHTML = `
+          <div style="max-width:600px;margin:0 auto;padding-bottom:80px;">
+            <!-- Back button -->
+            <div style="padding:16px;display:flex;align-items:center;gap:12px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:10;">
+              <button onclick="history.back();showPage('homePage');" style="width:36px;height:36px;border-radius:50%;border:1px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              </button>
+              <span style="font-weight:800;font-size:16px;">Brand Profile</span>
+            </div>
+
+            <!-- Brand Header -->
+            <div style="background:${color};padding:32px 20px;text-align:center;position:relative;">
+              <div style="width:80px;height:80px;border-radius:20px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px;margin:0 auto 12px;">${initials}</div>
+              <div style="color:#fff;font-size:1.2rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;">
+                ${brandData.name || brandName}
+                ${brandData.blueTickAdmin ? '<span style="background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:800;">✓ Verified</span>' : ''}
+              </div>
+              ${brandData.description ? `<p style="color:rgba(255,255,255,.85);font-size:13px;margin:8px 0 0;">${brandData.description}</p>` : ''}
+            </div>
+
+            <!-- Stats -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-bottom:1px solid #e2e8f0;">
+              <div style="padding:16px;text-align:center;border-right:1px solid #e2e8f0;">
+                <div style="font-size:1.3rem;font-weight:800;color:#0f172a;">${brandProds.length}</div>
+                <div style="font-size:11px;color:#64748b;">Products</div>
+              </div>
+              <div style="padding:16px;text-align:center;border-right:1px solid #e2e8f0;">
+                <div style="font-size:1.3rem;font-weight:800;color:#0f172a;" id="brandFollowerCount">${followers}</div>
+                <div style="font-size:11px;color:#64748b;">Followers</div>
+              </div>
+              <div style="padding:16px;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:800;color:#0f172a;">0</div>
+                <div style="font-size:11px;color:#64748b;">Following</div>
+              </div>
+            </div>
+
+            <!-- Follow Button -->
+            <div style="padding:16px;background:#fff;margin-bottom:8px;text-align:center;">
+              ${currentUser ? `<button id="brandFollowBtn" onclick="toggleBrandFollow('${brandId}','${brandName.replace(/'/g,'')}')" style="padding:10px 40px;border-radius:50px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;${isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:#2563eb;color:#fff;'}">
+                ${isFollowing ? '✓ Following' : '+ Follow'}
+              </button>` : `<button onclick="checkAuthAndShowAccount()" style="padding:10px 40px;border-radius:50px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:700;">Login to Follow</button>`}
+            </div>
+
+            <!-- Products -->
+            <div style="padding:16px;">
+              <div style="font-weight:800;font-size:15px;margin-bottom:12px;">${brandProds.length} Products</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="brandProductsGrid"></div>
+              ${!brandProds.length ? '<p style="color:#94a3b8;text-align:center;padding:30px;">No products yet</p>' : ''}
+            </div>
+          </div>`;
+
+        // Render brand products
+        if (brandProds.length) {
+          const grid = page.querySelector('#brandProductsGrid');
+          if (grid) renderProducts(brandProds, 'brandProductsGrid');
+        }
+
+        showPage('brandProfilePage');
+      }).catch(err => {
+        console.error('Brand profile error:', err);
+      });
+    }
+
+    // ══════ Follow / Unfollow Brand ══════
+    function toggleBrandFollow(brandId, brandName) {
+      if (!currentUser) { showToast('Login to follow brands', 'error'); return; }
+      var uid = currentUser.uid;
+      var followRef = ref(database, 'brandFollowers/' + brandId + '/' + uid);
+
+      get(followRef).then(snap => {
+        if (snap.exists()) {
+          // Unfollow
+          return remove(followRef).then(() => {
+            var btn = document.getElementById('brandFollowBtn');
+            if (btn) { btn.textContent = '+ Follow'; btn.style.background = '#2563eb'; btn.style.color = '#fff'; }
+            var cnt = document.getElementById('brandFollowerCount');
+            if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
+            showToast('Unfollowed ' + brandName, 'info');
+          });
+        } else {
+          // Follow
+          return set(followRef, { userId: uid, brandId, brandName, followedAt: Date.now() }).then(() => {
+            var btn = document.getElementById('brandFollowBtn');
+            if (btn) { btn.textContent = '✓ Following'; btn.style.background = '#f1f5f9'; btn.style.color = '#64748b'; }
+            var cnt = document.getElementById('brandFollowerCount');
+            if (cnt) cnt.textContent = parseInt(cnt.textContent) + 1;
+            showToast('Following ' + brandName + '!', 'success');
+          });
+        }
+      }).catch(err => showToast('Error: ' + err.message, 'error'));
+    }
+
+    // ══════ Following Products Section (Trending ke niche) ══════
+    function loadFollowingProducts() {
+      if (!currentUser) return;
+      var uid = currentUser.uid;
+      get(ref(database, 'brandFollowers')).then(snap => {
+        if (!snap.exists()) return;
+        var followedBrands = [];
+        snap.forEach(child => {
+          if (child.val()[uid]) followedBrands.push(child.key);
+        });
+        if (!followedBrands.length) return;
+
+        var followingProds = products.filter(p => {
+          var bid = p.brandId || (p.brand && p.brand.toLowerCase().replace(/[^a-z0-9]/g,'_')) || '';
+          return followedBrands.includes(bid);
+        });
+        if (!followingProds.length) return;
+
+        var container = document.getElementById('followingProductsSection');
+        if (!container) return;
+        container.style.display = 'block';
+        renderProducts(followingProds.slice(0, 10), 'followingProductsGrid');
+      }).catch(() => {});
+    }
 
 
   });
