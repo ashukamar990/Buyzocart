@@ -805,11 +805,11 @@
             }
             
             // Normalize and check duplicates
-            var normalizedName = brandName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            var normalizedName = brandName.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
             
             // Check against existing brands
             var exists = window._state.brands.some(function(b) {
-                return (b.name || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() === normalizedName;
+                return (b.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim() === normalizedName;
             });
             
             if (exists) {
@@ -818,7 +818,7 @@
             }
             
             // Check protected brands
-            var PROTECTED = ['nike', 'adidas', 'apple', 'samsung', 'sony', 'microsoft', 'google', 'amazon'];
+            var PROTECTED = ['nike', 'adidas', 'apple', 'samsung', 'sony', 'microsoft', 'google', 'amazon', 'puma', 'gucci', 'zara', 'rolex'];
             if (PROTECTED.indexOf(normalizedName) !== -1) {
                 showToast('🚫 This is a protected brand. Cannot request.', 'error');
                 return;
@@ -852,10 +852,7 @@
 
         // ✅ Generate unique product code
         window.generateProductCode = function() {
-            var numbers = '';
-            for (var i = 0; i < 3; i++) {
-                numbers += Math.floor(Math.random() * 10);
-            }
+            var numbers = Math.floor(100 + Math.random() * 900).toString();
             var letters = '';
             var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             for (var j = 0; j < 3; j++) {
@@ -2195,7 +2192,8 @@
             var sellerId = user.uid;
 
             var data = {
-                title: name,
+                productId: '', // Placeholder, will be set after push
+                productName: name,
                 price: price,
                 stock: stock,
                 category: category,
@@ -2224,6 +2222,7 @@
                 var productId;
                 if (window._state.editingId) {
                     productId = window._state.editingId;
+                    data.productId = productId;
                     // Keep existing product code if editing
                     var existing = window._state.products.find(function(p) { return p.id === productId; });
                     if (existing && existing.productCode) {
@@ -2234,36 +2233,35 @@
                     data.createdAt = Date.now();
                     var newRef = await window._push(window._ref(window._db, 'sellerProducts/' + sellerId), data);
                     productId = newRef.key;
+                    data.productId = productId;
+                    await window._update(window._ref(window._db, 'sellerProducts/' + sellerId + '/' + productId), { productId: productId });
                 }
                 
                 // Sync to global products
                 await window._set(window._ref(window._db, 'products/' + productId), {
-                    id: productId,
-                    title: name,
-                    name: name,
+                    productId: productId,
+                    productName: name,
                     price: price,
+                    brandId: brandId,
+                    brandName: brandName,
+                    brandLogo: brandLogo,
+                    sellerId: sellerId,
+                    sellerName: sellerName,
+                    productCode: data.productCode,
                     stock: stock,
                     quantity: stock,
                     category: category,
                     description: desc,
-                    desc: desc,
                     fullDescription: fullDesc,
-                    fullDesc: fullDesc,
                     sizes: sizes,
                     tags: tags,
                     images: window._state.uploadedImages,
                     image: window._state.uploadedImages[0] || '',
                     status: active ? 'active' : 'inactive',
-                    sellerId: sellerId,
-                    sellerName: sellerName,
-                    source: 'seller',
-                    brandId: brandId,
-                    brandName: brandName,
-                    brandLogo: brandLogo,
-                    productCode: data.productCode,
                     sellerEmail: user.email || '',
                     createdAt: data.createdAt || Date.now(),
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
+                    source: 'seller'
                 });
                 
                 showToast('✅ Product saved! Code: ' + data.productCode, 'success');
