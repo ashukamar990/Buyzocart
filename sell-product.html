@@ -307,95 +307,6 @@
         .mt-2 { margin-top: 12px; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; }
 
-        /* 🆕 BRAND SELECTION STYLES */
-        .brand-select-wrapper { position: relative; }
-        .brand-preview {
-            display: none;
-            margin-top: 8px;
-            padding: 10px 12px;
-            background: #f8fafc;
-            border-radius: 8px;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid var(--border);
-        }
-        .brand-preview.active { display: flex; }
-        .brand-preview-logo { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); }
-        .brand-preview-info { flex: 1; }
-        .brand-preview-name { font-weight: 700; font-size: 0.9rem; }
-        .brand-preview-badge { font-size: 0.7rem; }
-        .brand-verified-badge { color: #2563eb; font-weight: 700; }
-
-        /* 🆕 NEW BRAND REQUEST STYLES */
-        .new-brand-request {
-            display: none;
-            margin-top: 8px;
-            padding: 12px;
-            background: #fffbeb;
-            border: 1px solid #fcd34d;
-            border-radius: 8px;
-        }
-        .new-brand-request.active { display: block; }
-        .new-brand-request input { margin-bottom: 8px; }
-        .new-brand-request .btn { margin-right: 6px; }
-
-        /* 🆕 BRAND OPTION IN DROPDOWN */
-        .brand-option {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-        }
-        .brand-option-logo { width: 20px; height: 20px; border-radius: 4px; object-fit: cover; }
-        .brand-option-name { flex: 1; }
-
-        /* 🆕 PRODUCT CODE STYLE */
-        .product-code { 
-            font-family: 'Courier New', monospace; 
-            font-weight: 700; 
-            background: #f1f5f9; 
-            padding: 2px 8px; 
-            border-radius: 4px; 
-            font-size: 0.8rem; 
-        }
-
-        /* 🆕 BRAND PAGE STYLES */
-        .brand-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 16px;
-        }
-        .brand-card {
-            background: var(--surface);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .brand-card:hover { 
-            transform: translateY(-4px); 
-            box-shadow: var(--shadow-lg); 
-        }
-        .brand-card-logo {
-            width: 64px;
-            height: 64px;
-            border-radius: 12px;
-            object-fit: cover;
-            margin: 0 auto 12px;
-            border: 2px solid var(--border);
-        }
-        .brand-card-name {
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 4px;
-        }
-        .brand-card-stats {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
         .tag-chip-container {
             display: flex;
             flex-wrap: wrap;
@@ -461,7 +372,6 @@
             .filter-bar { flex-direction: column; }
             .filter-bar input, .filter-bar select { min-width: 100%; }
             .content-area { padding: 16px; }
-            .brand-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -477,9 +387,6 @@
             </a>
             <a onclick="navigateTo('products')" id="navProducts">
                 <i class="fas fa-box"></i> My Products
-            </a>
-            <a onclick="navigateTo('brands')" id="navBrands">
-                <i class="fas fa-star"></i> My Brands
             </a>
             <a onclick="navigateTo('orders')" id="navOrders">
                 <i class="fas fa-shopping-bag"></i> Orders
@@ -527,7 +434,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- 🔥 UPDATED PRODUCT MODAL WITH BRAND SELECTION -->
     <div class="modal-overlay" id="productModal">
         <div class="modal">
             <div class="modal-header">
@@ -539,37 +445,6 @@
                     <label class="form-label">Product Name <span class="required">*</span></label>
                     <input type="text" class="form-control" id="prodName" placeholder="Enter product name">
                 </div>
-                
-                <!-- 🔥 BRAND SELECTION - NEW SYSTEM -->
-                <div class="form-group">
-                    <label class="form-label">Select Brand <span class="required">*</span></label>
-                    <select class="form-control" id="prodBrand" onchange="handleBrandSelection(this.value)">
-                        <option value="">-- Select Brand --</option>
-                    </select>
-                    <div class="brand-preview" id="brandPreview">
-                        <img class="brand-preview-logo" id="brandPreviewLogo" src="" alt="">
-                        <div class="brand-preview-info">
-                            <div class="brand-preview-name" id="brandPreviewName"></div>
-                            <div class="brand-preview-badge">
-                                <span class="brand-verified-badge" id="brandPreviewVerified" style="display:none;">🔵 Verified</span>
-                                <span id="brandPreviewLevel" style="font-size:0.7rem;color:#64748b;"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-outline btn-sm mt-2" onclick="showNewBrandRequest()" style="width:100%;">
-                        + Request New Brand
-                    </button>
-                    <div class="new-brand-request" id="newBrandRequest">
-                        <label class="form-label" style="font-size:0.8rem;">Enter New Brand Name:</label>
-                        <input type="text" class="form-control" id="newBrandName" placeholder="e.g., My Brand Name">
-                        <div style="display:flex;gap:6px;margin-top:8px;">
-                            <button type="button" class="btn btn-primary btn-sm" onclick="requestNewBrand()">Submit Request</button>
-                            <button type="button" class="btn btn-outline btn-sm" onclick="hideNewBrandRequest()">Cancel</button>
-                        </div>
-                        <small class="text-muted" style="display:block;margin-top:6px;">⚠️ New brands require admin approval before use.</small>
-                    </div>
-                </div>
-
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Price (₹) <span class="required">*</span></label>
@@ -585,6 +460,33 @@
                     <select class="form-control" id="prodCategory">
                         <option value="">-- Select Category --</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand <span class="required">*</span></label>
+                    <div style="position:relative;" id="brandDropdownWrap">
+                      <div id="brandDropdownTrigger" onclick="toggleBrandDropdown()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;background:#fff;min-height:42px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="if(!document.getElementById('brandSelectDropdown').classList.contains('open'))this.style.borderColor='var(--border)'">
+                        <div id="brandDropdownLogo" style="width:28px;height:28px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;font-size:12px;overflow:hidden;"></div>
+                        <span id="brandDropdownLabel" style="flex:1;color:#94a3b8;font-size:14px;">-- Select Brand --</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                      </div>
+                      <div id="brandSelectDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:999;max-height:260px;overflow-y:auto;margin-top:4px;">
+                        <div style="padding:8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;">
+                          <input type="text" id="brandDropdownSearch" placeholder="🔍 Search brand..." oninput="filterBrandDropdown()" onclick="event.stopPropagation()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;outline:none;">
+                        </div>
+                        <div id="brandDropdownList" style="padding:4px 0;">
+                          <div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;">Loading brands...</div>
+                        </div>
+                        <div style="border-top:1px solid var(--border);padding:8px;">
+                          <div onclick="showRequestBrandModal()" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:8px;color:var(--primary);font-weight:700;font-size:13px;background:var(--primary-light);">
+                            <span style="font-size:16px;">＋</span> Request New Brand
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <input type="hidden" id="prodBrand" />
+                    <input type="hidden" id="prodBrandId" />
+                    <input type="hidden" id="prodBrandLogo" />
+                    <small class="text-muted">Only admin-approved brands available. Can't find yours? Request it.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Short Description <span class="required">*</span></label>
@@ -650,6 +552,43 @@
         </div>
     </div>
 
+    <!-- Brand Request Modal -->
+    <div class="modal-overlay" id="brandRequestModal">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🏷️ Request New Brand</h3>
+                <button class="modal-close" onclick="closeModal('brandRequestModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400e;">
+                    <strong>ℹ️ Note:</strong> Sellers cannot create brands directly. Your request will be reviewed by admin (1–2 business days).
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand Name <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="reqBrandName" placeholder="Enter brand name" oninput="checkBrandDuplicate(this.value)">
+                    <div id="brandDuplicateWarning" style="display:none;margin-top:6px;padding:8px 12px;background:#fee2e2;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600;"></div>
+                    <small class="text-muted">Normalized names are checked for duplicates automatically.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand Logo URL <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
+                    <input type="url" class="form-control" id="reqBrandLogo" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand Description <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
+                    <textarea class="form-control" id="reqBrandDesc" placeholder="Brief description about the brand" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Why do you want to sell this brand?</label>
+                    <textarea class="form-control" id="reqBrandReason" placeholder="e.g. Authorized distributor, own brand..." rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('brandRequestModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitBrandRequest()">Submit Request</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getDatabase, ref, set, get, update, remove, query, orderByChild, equalTo, push, onValue } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
@@ -689,176 +628,13 @@
             sellerData: null,
             products: [],
             orders: [],
-            brands: [],
             editingId: null,
             uploadedImages: [],
             currentPage: 'dashboard',
             selectedTagIds: new Set(),
             pageHistory: [],
             uploadingCount: 0,
-            categories: [],
-            selectedBrand: null
-        };
-
-        // ✅ Load all brands from Firebase
-        window.loadAllBrands = async function() {
-            try {
-                const snap = await get(ref(db, 'brands'));
-                if (snap.exists()) {
-                    window._state.brands = Object.entries(snap.val()).map(function(entry) {
-                        return {
-                            id: entry[0],
-                            ...entry[1]
-                        };
-                    }).filter(function(b) { return b.status === 'approved' || b.isVerified; });
-                } else {
-                    window._state.brands = [];
-                }
-                console.log('✅ Brands loaded:', window._state.brands.length);
-            } catch (err) {
-                console.error('❌ Failed to load brands:', err);
-                window._state.brands = [];
-            }
-        };
-
-        // ✅ Populate brand dropdown
-        window.populateBrandDropdown = function(selectedBrandId) {
-            var sel = document.getElementById('prodBrand');
-            if (!sel) return;
-            
-            sel.innerHTML = '<option value="">-- Select Brand --</option>';
-            
-            if (window._state.brands && window._state.brands.length) {
-                window._state.brands.forEach(function(brand) {
-                    var opt = document.createElement('option');
-                    opt.value = brand.id;
-                    opt.textContent = brand.name + (brand.isVerified ? ' 🔵' : '');
-                    opt.dataset.logo = brand.logo || '';
-                    opt.dataset.name = brand.name || '';
-                    opt.dataset.verified = brand.isVerified ? 'true' : 'false';
-                    opt.dataset.level = brand.verificationLevel || 'normal';
-                    sel.appendChild(opt);
-                });
-            }
-            
-            if (selectedBrandId) {
-                sel.value = selectedBrandId;
-                handleBrandSelection(selectedBrandId);
-            }
-        };
-
-        // ✅ Handle brand selection change
-        window.handleBrandSelection = function(brandId) {
-            var preview = document.getElementById('brandPreview');
-            var previewLogo = document.getElementById('brandPreviewLogo');
-            var previewName = document.getElementById('brandPreviewName');
-            var previewVerified = document.getElementById('brandPreviewVerified');
-            var previewLevel = document.getElementById('brandPreviewLevel');
-            
-            if (!brandId) {
-                preview.classList.remove('active');
-                window._state.selectedBrand = null;
-                return;
-            }
-            
-            var sel = document.getElementById('prodBrand');
-            var selectedOption = sel.options[sel.selectedIndex];
-            
-            var brand = window._state.brands.find(function(b) { return b.id === brandId; });
-            
-            if (brand) {
-                window._state.selectedBrand = brand;
-                previewLogo.src = brand.logo || 'https://placehold.co/32';
-                previewName.textContent = brand.name;
-                
-                if (brand.isVerified) {
-                    previewVerified.style.display = 'inline';
-                } else {
-                    previewVerified.style.display = 'none';
-                }
-                
-                previewLevel.textContent = brand.verificationLevel || 'normal';
-                preview.classList.add('active');
-            }
-        };
-
-        // ✅ Show new brand request form
-        window.showNewBrandRequest = function() {
-            document.getElementById('newBrandRequest').classList.add('active');
-            document.getElementById('prodBrand').disabled = true;
-        };
-
-        // ✅ Hide new brand request form
-        window.hideNewBrandRequest = function() {
-            document.getElementById('newBrandRequest').classList.remove('active');
-            document.getElementById('prodBrand').disabled = false;
-            document.getElementById('newBrandName').value = '';
-        };
-
-        // ✅ Request new brand
-        window.requestNewBrand = async function() {
-            var brandName = (document.getElementById('newBrandName').value || '').trim();
-            
-            if (!brandName || brandName.length < 2) {
-                showToast('⚠️ Brand name must be at least 2 characters', 'error');
-                return;
-            }
-            
-            // Normalize and check duplicates
-            var normalizedName = brandName.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
-            
-            // Check against existing brands
-            var exists = window._state.brands.some(function(b) {
-                return (b.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim() === normalizedName;
-            });
-            
-            if (exists) {
-                showToast('⚠️ This brand already exists! Please select from dropdown.', 'error');
-                return;
-            }
-            
-            // Check protected brands
-            var PROTECTED = ['nike', 'adidas', 'apple', 'samsung', 'sony', 'microsoft', 'google', 'amazon', 'puma', 'gucci', 'zara', 'rolex'];
-            if (PROTECTED.indexOf(normalizedName) !== -1) {
-                showToast('🚫 This is a protected brand. Cannot request.', 'error');
-                return;
-            }
-            
-            var btn = document.querySelector('#newBrandRequest .btn-primary');
-            if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
-            
-            try {
-                var user = window._state.user;
-                await set(ref(db, 'brandRequests/' + user.uid + '_' + Date.now()), {
-                    name: brandName,
-                    normalizedName: normalizedName,
-                    requestedBy: user.uid,
-                    requestedByName: user.displayName || user.email,
-                    requestedAt: Date.now(),
-                    status: 'pending'
-                });
-                
-                showToast('✅ Brand request submitted! Admin will review.', 'success');
-                hideNewBrandRequest();
-                document.getElementById('newBrandName').value = '';
-                
-            } catch (err) {
-                console.error('Brand request failed:', err);
-                showToast('❌ Failed to submit request. Try again.', 'error');
-            } finally {
-                if (btn) { btn.disabled = false; btn.textContent = 'Submit Request'; }
-            }
-        };
-
-        // ✅ Generate unique product code
-        window.generateProductCode = function() {
-            var numbers = Math.floor(100 + Math.random() * 900).toString();
-            var letters = '';
-            var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            for (var j = 0; j < 3; j++) {
-                letters += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return numbers + letters;
+            categories: []
         };
 
         // ✅ GLOBALLY ACCESSIBLE loadDashboardData
@@ -886,11 +662,7 @@
                         images: entry[1].images, 
                         tags: entry[1].tags, 
                         status: entry[1].status, 
-                        sizes: entry[1].sizes,
-                        brandId: entry[1].brandId || '',
-                        brandName: entry[1].brandName || '',
-                        brandLogo: entry[1].brandLogo || '',
-                        productCode: entry[1].productCode || ''
+                        sizes: entry[1].sizes 
                     };
                 }) : [];
                 console.log('✅ Products loaded:', window._state.products.length);
@@ -915,9 +687,6 @@
 
                 window._state.orders = allOrders.filter(function(o) { return o.sellerId === user.uid; });
                 console.log('✅ Orders loaded:', window._state.orders.length);
-                
-                // Load brands
-                await window.loadAllBrands();
                 
                 if (typeof navigateTo === 'function') {
                     navigateTo('dashboard');
@@ -972,9 +741,6 @@
                 console.error('Category load failed:', catErr);
                 window._state.categories = [];
             }
-            
-            // Load brands early
-            await window.loadAllBrands();
 
             try {
                 const snap = await get(ref(db, 'sellerRequests/' + user.uid));
@@ -1083,31 +849,11 @@
             document.querySelectorAll('.sidebar-nav a').forEach(function(a) {
                 a.classList.remove('active');
             });
-            var navMap = { 
-                dashboard: 'navDashboard', 
-                products: 'navProducts', 
-                brands: 'navBrands',
-                orders: 'navOrders', 
-                earnings: 'navEarnings', 
-                similar: 'navSimilar', 
-                settings: 'navSettings', 
-                apply: 'navDashboard' 
-            };
+            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', earnings: 'navEarnings', similar: 'navSimilar', settings: 'navSettings', apply: 'navDashboard' };
             var navId = navMap[page];
             if (navId) document.getElementById(navId).classList.add('active');
 
-            var titles = { 
-                dashboard: 'Dashboard', 
-                products: 'My Products', 
-                brands: 'My Brands',
-                orders: 'Orders', 
-                earnings: 'Earnings', 
-                similar: 'Similar Products', 
-                settings: 'Settings', 
-                apply: 'Seller Application', 
-                pending: 'Application Status', 
-                rejected: 'Application Status' 
-            };
+            var titles = { dashboard: 'Dashboard', products: 'My Products', orders: 'Orders', earnings: 'Earnings', similar: 'Similar Products', settings: 'Settings', apply: 'Seller Application', pending: 'Application Status', rejected: 'Application Status' };
             document.getElementById('pageTitle').textContent = titles[page] || page;
 
             var isApproved = window._state.sellerData && window._state.sellerData.status === 'approved';
@@ -1119,7 +865,6 @@
 
             if (page === 'dashboard') renderDashboardPage();
             else if (page === 'products') renderProductsPage();
-            else if (page === 'brands') renderBrandsPage();
             else if (page === 'orders') renderOrdersPage();
             else if (page === 'similar') renderSimilarPage();
             else if (page === 'earnings') renderEarningsPage();
@@ -1695,100 +1440,6 @@
                 '</div>';
         }
 
-        // ============ 🆕 BRANDS PAGE ============
-        function renderBrandsPage() {
-            var brands = window._state.brands;
-            var sellerBrands = brands.filter(function(b) {
-                return b.ownerId === window._state.user.uid;
-            });
-
-            document.getElementById('contentArea').innerHTML = '' +
-                '<h2 style="margin-bottom:16px;">🏷️ My Brands</h2>' +
-                '<div class="filter-bar">' +
-                    '<button class="btn btn-primary" onclick="openBrandRequestModal()">+ Request New Brand</button>' +
-                '</div>' +
-                '<div class="card">' +
-                    '<div class="card-header"><h3 class="card-title">Your Brands (' + sellerBrands.length + ')</h3></div>' +
-                    '<div class="card-body">' +
-                        (sellerBrands.length ? 
-                            '<div class="brand-grid">' +
-                            sellerBrands.map(function(brand) {
-                                return '<div class="brand-card">' +
-                                    '<img class="brand-card-logo" src="' + (brand.logo || 'https://placehold.co/64') + '" onerror="this.src=\'https://placehold.co/64\'">' +
-                                    '<div class="brand-card-name">' + brand.name + ' ' + (brand.isVerified ? '🔵' : '') + '</div>' +
-                                    '<div class="brand-card-stats">' +
-                                        '<span>Followers: ' + (brand.followersCount || 0) + '</span> · ' +
-                                        '<span>Products: ' + (brand.totalProducts || 0) + '</span>' +
-                                    '</div>' +
-                                    '<span class="badge ' + (brand.verificationLevel === 'premium' ? 'badge-warning' : brand.isVerified ? 'badge-info' : 'badge-success') + '" style="margin-top:8px;">' + 
-                                        (brand.verificationLevel || 'normal') + 
-                                    '</span>' +
-                                '</div>';
-                            }).join('') +
-                            '</div>'
-                        :
-                            '<div class="empty-state">' +
-                                '<div class="empty-state-icon">🏷️</div>' +
-                                '<div class="empty-state-title">No Brands Yet</div>' +
-                                '<div class="empty-state-text">Request a new brand or select existing brands when adding products.</div>' +
-                            '</div>'
-                        ) +
-                    '</div>' +
-                '</div>' +
-                '<div class="card">' +
-                    '<div class="card-header"><h3 class="card-title">All Available Brands</h3></div>' +
-                    '<div class="card-body">' +
-                        '<div class="brand-grid">' +
-                        brands.map(function(brand) {
-                            return '<div class="brand-card" style="text-align:left;display:flex;align-items:center;gap:12px;padding:14px;">' +
-                                '<img src="' + (brand.logo || 'https://placehold.co/48') + '" style="width:48px;height:48px;border-radius:8px;object-fit:cover;" onerror="this.src=\'https://placehold.co/48\'">' +
-                                '<div style="flex:1;">' +
-                                    '<div style="font-weight:700;font-size:0.9rem;">' + brand.name + ' ' + (brand.isVerified ? '🔵' : '') + '</div>' +
-                                    '<div style="font-size:0.75rem;color:#64748b;">' + (brand.totalProducts || 0) + ' products · ' + (brand.followersCount || 0) + ' followers</div>' +
-                                '</div>' +
-                            '</div>';
-                        }).join('') +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-        }
-
-        function openBrandRequestModal() {
-            var brandName = prompt('Enter new brand name to request:');
-            if (!brandName || !brandName.trim()) return;
-            
-            var normalizedName = brandName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '');
-            
-            // Check existing
-            var exists = window._state.brands.some(function(b) {
-                return (b.name || '').toLowerCase().replace(/[^a-z0-9\s]/g, '') === normalizedName;
-            });
-            
-            if (exists) {
-                showToast('⚠️ Brand already exists!', 'error');
-                return;
-            }
-            
-            var PROTECTED = ['nike', 'adidas', 'apple', 'samsung', 'sony', 'microsoft', 'google', 'amazon'];
-            if (PROTECTED.indexOf(normalizedName) !== -1) {
-                showToast('🚫 Protected brand. Cannot request.', 'error');
-                return;
-            }
-            
-            window._set(window._ref(window._db, 'brandRequests/' + window._state.user.uid + '_' + Date.now()), {
-                name: brandName.trim(),
-                normalizedName: normalizedName,
-                requestedBy: window._state.user.uid,
-                requestedByName: window._state.user.displayName || window._state.user.email,
-                requestedAt: Date.now(),
-                status: 'pending'
-            }).then(function() {
-                showToast('✅ Brand request submitted!', 'success');
-            }).catch(function(err) {
-                showToast('❌ Failed: ' + err.message, 'error');
-            });
-        }
-
         function renderEarningsPage() {
             var o = window._state.orders;
             var delivered = o.filter(function(x){ return (x.status||'').toLowerCase() === 'delivered'; });
@@ -1845,9 +1496,9 @@
             document.getElementById('contentArea').innerHTML = '' +
                 '<div class="stats-grid">' +
                     '<div class="stat-card" onclick="navigateTo(\'products\')"><div class="stat-card-icon" style="background:#eff6ff;">📦</div><div class="stat-card-value">' + p.length + '</div><div class="stat-card-label">My Products</div></div>' +
-                    '<div class="stat-card" onclick="navigateTo(\'brands\')"><div class="stat-card-icon" style="background:#f0fdf4;">🏷️</div><div class="stat-card-value">' + window._state.brands.length + '</div><div class="stat-card-label">Available Brands</div></div>' +
+                    '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#f0fdf4;">📋</div><div class="stat-card-value">' + o.length + '</div><div class="stat-card-label">Total Orders</div></div>' +
                     '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#fff8e6;">⏳</div><div class="stat-card-value">' + pending + '</div><div class="stat-card-label">Pending Orders</div></div>' +
-                    '<div class="stat-card" onclick="navigateTo(\'earnings\')"><div class="stat-card-icon" style="background:#f5f3ff;">💰</div><div class="stat-card-value" style="font-size:1.2rem;">' + formatCurrency(earnings) + '</div><div class="stat-card-label">Earnings (Delivered)</div></div>' +
+                    '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#f5f3ff;">💰</div><div class="stat-card-value" style="font-size:1.2rem;">' + formatCurrency(earnings) + '</div><div class="stat-card-label">Earnings (Delivered)</div></div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
                     '<div class="card"><div class="card-header"><h3 class="card-title">📦 Recent Products</h3><button class="btn btn-primary btn-sm" onclick="navigateTo(\'products\')">View All</button></div><div class="card-body">' + renderProductMiniList(p.slice(0, 5)) + '</div></div>' +
@@ -1862,8 +1513,7 @@
                 return '<div class="flex-between" style="padding:10px 0;border-bottom:1px solid var(--border);">' +
                     '<div style="display:flex;align-items:center;gap:12px;">' +
                         '<img src="' + img + '" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" onerror="this.src=\'https://placehold.co/40\'">' +
-                        '<div><div style="font-weight:600;font-size:0.85rem;">' + (p.title || 'Untitled') + '</div>' +
-                        '<div style="font-size:0.7rem;color:#64748b;">' + (p.brandName ? p.brandName + (p.productCode ? ' · ' + p.productCode : '') : p.productCode || '') + '</div></div>' +
+                        '<div><div style="font-weight:600;font-size:0.85rem;">' + (p.title || 'Untitled') + '</div><div class="text-muted" style="font-size:0.75rem;">' + formatCurrency(p.price) + '</div></div>' +
                     '</div>' +
                 '</div>';
             }).join('');
@@ -1883,15 +1533,11 @@
             document.getElementById('contentArea').innerHTML = '' +
                 '<div class="filter-bar">' +
                     '<input type="text" class="form-control" placeholder="🔍 Search products..." oninput="filterProductTable()" id="prodSearch">' +
-                    '<select class="form-control" onchange="filterProductTable()" id="prodBrandFilter" style="min-width:150px;">' +
-                        '<option value="all">All Brands</option>' +
-                        window._state.brands.map(function(b) { return '<option value="' + b.id + '">' + b.name + '</option>'; }).join('') +
-                    '</select>' +
                     '<button class="btn btn-primary" onclick="openProductForm()">+ Add Product</button>' +
                 '</div>' +
                 '<div class="card"><div class="card-body">' +
                     '<div class="table-responsive">' +
-                        '<table><thead><tr><th>Image</th><th>Name</th><th>Brand</th><th>Code</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>' +
+                        '<table><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>' +
                         '<tbody id="prodTableBody">' + renderProductTableRows(window._state.products) + '</tbody></table>' +
                     '</div>' +
                     '<p class="text-muted mt-2" id="prodCount">' + window._state.products.length + ' products</p>' +
@@ -1899,17 +1545,13 @@
         }
 
         function renderProductTableRows(products) {
-            if (!products.length) return '<tr><td colspan="8" style="text-align:center;padding:30px;">No products yet. <a href="javascript:openProductForm()" style="color:var(--primary);">Add one!</a></td></tr>';
+            if (!products.length) return '<tr><td colspan="7" style="text-align:center;padding:30px;">No products yet. <a href="javascript:openProductForm()" style="color:var(--primary);">Add one!</a></td></tr>';
             return products.map(function(p) {
                 var img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/48';
                 return '<tr>' +
                     '<td><img src="' + img + '" class="product-img" onerror="this.src=\'https://placehold.co/48\'"></td>' +
                     '<td><strong>' + (p.title || 'Untitled') + '</strong></td>' +
-                    '<td>' + (p.brandName ? 
-                        '<span style="display:flex;align-items:center;gap:6px;">' +
-                        (p.brandLogo ? '<img src="' + p.brandLogo + '" style="width:18px;height:18px;border-radius:4px;object-fit:cover;">' : '') +
-                        p.brandName + '</span>' : 'N/A') + '</td>' +
-                    '<td><span class="product-code">' + (p.productCode || 'N/A') + '</span></td>' +
+                    '<td>' + (p.category || 'N/A') + '</td>' +
                     '<td>' + formatCurrency(p.price) + '</td>' +
                     '<td>' + (p.stock || 0) + '</td>' +
                     '<td><span class="badge ' + (p.status === 'inactive' ? 'badge-danger' : 'badge-success') + '">' + (p.status || 'active') + '</span></td>' +
@@ -1923,21 +1565,11 @@
 
         function filterProductTable() {
             var q = (document.getElementById('prodSearch') ? document.getElementById('prodSearch').value : '').toLowerCase();
-            var brandFilter = document.getElementById('prodBrandFilter') ? document.getElementById('prodBrandFilter').value : 'all';
-            
-            var filtered = window._state.products.slice();
-            if (q) filtered = filtered.filter(function(p) {
-                return (p.title || '').toLowerCase().indexOf(q) !== -1 || 
-                       (p.category || '').toLowerCase().indexOf(q) !== -1 ||
-                       (p.productCode || '').toLowerCase().indexOf(q) !== -1 ||
-                       (p.brandName || '').toLowerCase().indexOf(q) !== -1;
-            });
-            if (brandFilter !== 'all') {
-                filtered = filtered.filter(function(p) { return p.brandId === brandFilter; });
-            }
-            
+            var filtered = q ? window._state.products.filter(function(p) {
+                return (p.title || '').toLowerCase().indexOf(q) !== -1 || (p.category || '').toLowerCase().indexOf(q) !== -1;
+            }) : window._state.products;
             document.getElementById('prodTableBody').innerHTML = renderProductTableRows(filtered);
-            document.getElementById('prodCount').textContent = (q || brandFilter !== 'all') ? 'Found ' + filtered.length + ' of ' + window._state.products.length + ' products' : window._state.products.length + ' products';
+            document.getElementById('prodCount').textContent = q ? 'Found ' + filtered.length + ' of ' + window._state.products.length + ' products' : window._state.products.length + ' products';
         }
 
         function renderOrdersPage() {
@@ -2082,7 +1714,6 @@
         function openProductForm() {
             window._state.editingId = null;
             window._state.selectedTagIds = new Set();
-            window._state.selectedBrand = null;
             document.getElementById('prodModalTitle').textContent = 'Add Product';
             ['prodName', 'prodPrice', 'prodStock', 'prodCategory', 'prodDesc', 'prodFullDesc', 'prodSizes', 'prodTags'].forEach(function(id) {
                 var el = document.getElementById(id);
@@ -2096,12 +1727,15 @@
             document.getElementById('prodSaveBtn').disabled = false;
             document.getElementById('prodSaveBtn').textContent = 'Save Product';
             document.getElementById('productModal').classList.add('active');
-            document.getElementById('brandPreview').classList.remove('active');
-            document.getElementById('newBrandRequest').classList.remove('active');
-            document.getElementById('prodBrand').disabled = false;
             _populateProdCategory();
-            window.populateBrandDropdown();
             loadTagsForDropdown();
+            loadBrandsForDropdown();
+            // Reset brand dropdown
+            var lbl = document.getElementById('brandDropdownLabel'); if(lbl){lbl.textContent='-- Select Brand --';lbl.style.color='#94a3b8';}
+            var logo = document.getElementById('brandDropdownLogo'); if(logo){logo.innerHTML='';logo.style.background='#f1f5f9';}
+            document.getElementById('prodBrand').value='';
+            document.getElementById('prodBrandId').value='';
+            document.getElementById('prodBrandLogo').value='';
         }
 
         function editProductForm(id) {
@@ -2130,11 +1764,7 @@
             document.getElementById('prodSaveBtn').disabled = false;
             document.getElementById('prodSaveBtn').textContent = 'Save Product';
             document.getElementById('productModal').classList.add('active');
-            document.getElementById('brandPreview').classList.remove('active');
-            document.getElementById('newBrandRequest').classList.remove('active');
-            document.getElementById('prodBrand').disabled = false;
             _populateProdCategory(p.category || '');
-            window.populateBrandDropdown(p.brandId || '');
             loadTagsForDropdown();
         }
 
@@ -2158,7 +1788,6 @@
             }
         }
 
-        // 🔥 UPDATED SAVE PRODUCT WITH BRAND + PRODUCT CODE
         async function saveProduct() {
             var name = (document.getElementById('prodName') ? document.getElementById('prodName').value : '').trim();
             var price = parseFloat(document.getElementById('prodPrice') ? document.getElementById('prodPrice').value : 0);
@@ -2169,7 +1798,11 @@
             var sizes = (document.getElementById('prodSizes') ? document.getElementById('prodSizes').value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
             var tags = (document.getElementById('prodTags') ? document.getElementById('prodTags').value : '').split(',').map(function(t) { return t.trim(); }).filter(Boolean);
             var active = document.getElementById('prodActive') ? document.getElementById('prodActive').checked !== false : true;
-            var brandId = document.getElementById('prodBrand') ? document.getElementById('prodBrand').value : '';
+
+            // Brand from dropdown
+            var brandName = (document.getElementById('prodBrand') ? document.getElementById('prodBrand').value : '').trim();
+            var brandId   = (document.getElementById('prodBrandId') ? document.getElementById('prodBrandId').value : '').trim();
+            var brandLogo = (document.getElementById('prodBrandLogo') ? document.getElementById('prodBrandLogo').value : '').trim();
 
             if (!name || name.length < 2) { showToast('Enter valid product name (min 2 chars)', 'error'); return; }
             if (isIllegal([name, desc, fullDesc].join(' '))) { showToast('⚠️ Prohibited content detected.', 'error'); return; }
@@ -2177,40 +1810,32 @@
             if (!category) { showToast('Select a category', 'error'); return; }
             if (!desc || desc.length < 5) { showToast('Description must be at least 5 characters', 'error'); return; }
             if (!window._state.uploadedImages.length) { showToast('Upload at least 1 image', 'error'); return; }
-            if (!brandId) { showToast('Please select a brand', 'error'); return; }
+            if (!brandName || !brandId) { showToast('Please select a brand from the dropdown', 'error'); return; }
 
-            // Get brand info
-            var brand = window._state.brands.find(function(b) { return b.id === brandId; });
-            var brandName = brand ? brand.name : 'Unknown';
-            var brandLogo = brand ? (brand.logo || '') : '';
+            // Auto-generate product code if new
+            var productCode = _generateProductCode();
 
-            // Generate product code
-            var productCode = window.generateProductCode();
-
-            var user = window._state.user;
-            var sellerName = user.displayName || user.email || 'Seller';
-            var sellerId = user.uid;
+            var sellerName = (window._state.sellerData && window._state.sellerData.businessName) || window._state.user.displayName || window._state.user.email || 'Seller';
 
             var data = {
-                productId: '', // Placeholder, will be set after push
-                productName: name,
-                price: price,
-                stock: stock,
+                title: name, name: name,
+                price: price, stock: stock, quantity: stock,
                 category: category,
-                desc: desc,
-                fullDesc: fullDesc,
-                sizes: sizes,
-                tags: tags,
+                desc: desc, description: desc,
+                fullDesc: fullDesc, fullDescription: fullDesc,
+                sizes: sizes, tags: tags,
                 images: window._state.uploadedImages,
                 image: window._state.uploadedImages[0] || '',
                 status: active ? 'active' : 'inactive',
-                sellerId: sellerId,
+                sellerId: window._state.user.uid,
                 sellerName: sellerName,
-                sellerEmail: user.email || '',
+                sellerEmail: window._state.user.email || '',
+                brand: brandName,
                 brandId: brandId,
                 brandName: brandName,
                 brandLogo: brandLogo,
                 productCode: productCode,
+                source: 'seller',
                 updatedAt: Date.now()
             };
 
@@ -2222,59 +1847,41 @@
                 var productId;
                 if (window._state.editingId) {
                     productId = window._state.editingId;
-                    data.productId = productId;
-                    // Keep existing product code if editing
-                    var existing = window._state.products.find(function(p) { return p.id === productId; });
-                    if (existing && existing.productCode) {
-                        data.productCode = existing.productCode;
-                    }
-                    await window._update(window._ref(window._db, 'sellerProducts/' + sellerId + '/' + productId), data);
+                    // preserve existing code
+                    var existingProd = window._state.products.find(function(p){return p.id===productId;});
+                    if (existingProd && existingProd.productCode) data.productCode = existingProd.productCode;
+                    delete data.createdAt;
+                    await window._update(window._ref(window._db, 'sellerProducts/' + window._state.user.uid + '/' + productId), data);
                 } else {
                     data.createdAt = Date.now();
-                    var newRef = await window._push(window._ref(window._db, 'sellerProducts/' + sellerId), data);
+                    var newRef = await window._push(window._ref(window._db, 'sellerProducts/' + window._state.user.uid), data);
                     productId = newRef.key;
-                    data.productId = productId;
-                    await window._update(window._ref(window._db, 'sellerProducts/' + sellerId + '/' + productId), { productId: productId });
                 }
-                
-                // Sync to global products
-                await window._set(window._ref(window._db, 'products/' + productId), {
-                    productId: productId,
-                    productName: name,
-                    price: price,
-                    brandId: brandId,
-                    brandName: brandName,
-                    brandLogo: brandLogo,
-                    sellerId: sellerId,
-                    sellerName: sellerName,
-                    productCode: data.productCode,
-                    stock: stock,
-                    quantity: stock,
-                    category: category,
-                    description: desc,
-                    fullDescription: fullDesc,
-                    sizes: sizes,
-                    tags: tags,
-                    images: window._state.uploadedImages,
-                    image: window._state.uploadedImages[0] || '',
-                    status: active ? 'active' : 'inactive',
-                    sellerEmail: user.email || '',
-                    createdAt: data.createdAt || Date.now(),
-                    updatedAt: Date.now(),
-                    source: 'seller'
-                });
-                
-                showToast('✅ Product saved! Code: ' + data.productCode, 'success');
+                data.id = productId;
+                await window._set(window._ref(window._db, 'products/' + productId), data);
+
+                // Update brand's totalProducts count
+                try {
+                    var bSnap = await window._get(window._ref(window._db, 'brands/' + brandId + '/totalProducts'));
+                    var cur = bSnap.exists() ? (bSnap.val() || 0) : 0;
+                    await window._set(window._ref(window._db, 'brands/' + brandId + '/totalProducts'), cur + (window._state.editingId ? 0 : 1));
+                } catch(e){}
+
+                showToast('Product saved & live! ✅', 'success');
                 closeModal('productModal');
-                if (window.loadDashboardData) {
-                    await window.loadDashboardData();
-                }
+                if (window.loadDashboardData) await window.loadDashboardData();
             } catch (err) {
                 console.error(err);
                 showToast('Failed to save. Try again.', 'error');
                 btn.disabled = false;
                 btn.textContent = 'Save Product';
             }
+        }
+
+        function _generateProductCode() {
+            var nums = Math.floor(100 + Math.random() * 900).toString();
+            var letters = Array.from({length:3}, function(){ return String.fromCharCode(65 + Math.floor(Math.random() * 26)); }).join('');
+            return nums + letters;
         }
 
         function deleteProduct(id) {
@@ -2313,7 +1920,171 @@
         });
 
         console.log('🚀 Buyzo Cart Seller Central Ready');
-        console.log('✅ Brand System Loaded Successfully');
+        console.log('✅ All functions loaded successfully');
+
+        // ═══════════════════════════════════════
+        //  BRAND DROPDOWN SYSTEM
+        // ═══════════════════════════════════════
+        var _allBrands = [];
+
+        function loadBrandsForDropdown() {
+            if (_allBrands.length) { renderBrandDropdownList(_allBrands); return; }
+            if (!window._db) return;
+            window._get(window._ref(window._db, 'brands')).then(function(snap) {
+                _allBrands = [];
+                if (snap.exists()) {
+                    snap.forEach(function(child) {
+                        var b = child.val();
+                        if (b && b.name) {
+                            _allBrands.push({ id: child.key, name: b.name, logo: b.logo||'', blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel||'normal' });
+                        }
+                    });
+                }
+                _allBrands.sort(function(a,b){ return a.name.localeCompare(b.name); });
+                renderBrandDropdownList(_allBrands);
+            }).catch(function() {
+                document.getElementById('brandDropdownList').innerHTML = '<div style="padding:12px;text-align:center;color:#ef4444;font-size:13px;">Failed to load brands</div>';
+            });
+        }
+
+        function renderBrandDropdownList(brands) {
+            var list = document.getElementById('brandDropdownList');
+            if (!list) return;
+            if (!brands.length) {
+                list.innerHTML = '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;">No approved brands yet</div>';
+                return;
+            }
+            list.innerHTML = brands.map(function(b) {
+                var colors = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1'];
+                var color = colors[b.name.charCodeAt(0) % colors.length];
+                var initials = b.name.slice(0,2).toUpperCase();
+                var logoHtml = b.logo
+                    ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" onerror="this.style.display=\'none\'">'
+                    : '<span style="font-size:11px;font-weight:800;">'+initials+'</span>';
+                var badge = b.verificationLevel === 'premium' ? ' ⭐' : b.blueTickAdmin ? ' <span style="color:#2563eb;font-size:10px;">✓</span>' : '';
+                return '<div onclick="selectBrandFromDropdown(\''+b.id+'\',\''+b.name.replace(/'/g,'\\\'').replace(/"/g,'\\"')+'\',\''+b.logo+'\')" '+
+                    'style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .15s;" '+
+                    'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'#fff\'">' +
+                    '<div style="width:28px;height:28px;border-radius:6px;background:'+color+';color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">'+logoHtml+'</div>' +
+                    '<span style="font-size:13px;font-weight:600;flex:1;">'+b.name+badge+'</span>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function toggleBrandDropdown() {
+            var dd = document.getElementById('brandSelectDropdown');
+            if (!dd) return;
+            var isOpen = dd.style.display === 'block';
+            if (!isOpen) {
+                dd.style.display = 'block';
+                loadBrandsForDropdown();
+                setTimeout(function(){ document.getElementById('brandDropdownSearch') && document.getElementById('brandDropdownSearch').focus(); }, 100);
+            } else {
+                dd.style.display = 'none';
+            }
+        }
+
+        function filterBrandDropdown() {
+            var q = (document.getElementById('brandDropdownSearch') ? document.getElementById('brandDropdownSearch').value : '').toLowerCase();
+            var filtered = q ? _allBrands.filter(function(b){ return b.name.toLowerCase().indexOf(q) !== -1; }) : _allBrands;
+            renderBrandDropdownList(filtered);
+        }
+
+        function selectBrandFromDropdown(id, name, logo) {
+            document.getElementById('prodBrand').value = name;
+            document.getElementById('prodBrandId').value = id;
+            document.getElementById('prodBrandLogo').value = logo || '';
+            var label = document.getElementById('brandDropdownLabel');
+            if (label) { label.textContent = name; label.style.color = '#0f172a'; }
+            var logoWrap = document.getElementById('brandDropdownLogo');
+            var colors = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1'];
+            var color = colors[name.charCodeAt(0) % colors.length];
+            if (logoWrap) {
+                logoWrap.style.background = logo ? 'transparent' : color;
+                logoWrap.style.color = '#fff';
+                logoWrap.innerHTML = logo ? '<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" onerror="this.style.display=\'none\'">' : name.slice(0,2).toUpperCase();
+            }
+            document.getElementById('brandSelectDropdown').style.display = 'none';
+        }
+
+        document.addEventListener('click', function(e) {
+            var wrap = document.getElementById('brandDropdownWrap');
+            if (wrap && !wrap.contains(e.target)) {
+                var dd = document.getElementById('brandSelectDropdown');
+                if (dd) dd.style.display = 'none';
+            }
+        });
+
+        // ═══════════════════════════════════════
+        //  BRAND REQUEST SYSTEM
+        // ═══════════════════════════════════════
+        var PROTECTED_NAMES = new Set(['nike','adidas','puma','samsung','apple','google','amazon','microsoft','sony','lg','oneplus','realme','xiaomi']);
+
+        function showRequestBrandModal() {
+            document.getElementById('brandSelectDropdown').style.display = 'none';
+            document.getElementById('reqBrandName').value = '';
+            document.getElementById('reqBrandLogo').value = '';
+            document.getElementById('reqBrandDesc').value = '';
+            document.getElementById('reqBrandReason').value = '';
+            document.getElementById('brandDuplicateWarning').style.display = 'none';
+            document.getElementById('brandRequestModal').classList.add('active');
+        }
+
+        function checkBrandDuplicate(val) {
+            var norm = val.toLowerCase().replace(/[^a-z0-9]/g,'');
+            var warn = document.getElementById('brandDuplicateWarning');
+            if (!warn) return;
+            if (!norm) { warn.style.display='none'; return; }
+            if (PROTECTED_NAMES.has(norm)) {
+                warn.style.display='block';
+                warn.textContent='⛔ "'+val+'" is a protected brand. Only admin can create it.';
+                return;
+            }
+            var duplicate = _allBrands.find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
+            if (duplicate) {
+                warn.style.display='block';
+                warn.textContent='⚠️ Brand "'+duplicate.name+'" already exists. Select it from the dropdown.';
+            } else {
+                warn.style.display='none';
+            }
+        }
+
+        async function submitBrandRequest() {
+            var brandName = (document.getElementById('reqBrandName').value || '').trim();
+            var logo = (document.getElementById('reqBrandLogo').value || '').trim();
+            var desc = (document.getElementById('reqBrandDesc').value || '').trim();
+            var reason = (document.getElementById('reqBrandReason').value || '').trim();
+
+            if (!brandName || brandName.length < 2) { showToast('Enter brand name', 'error'); return; }
+            var norm = brandName.toLowerCase().replace(/[^a-z0-9]/g,'');
+            if (PROTECTED_NAMES.has(norm)) { showToast('Cannot request protected brand', 'error'); return; }
+            var dup = _allBrands.find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
+            if (dup) { showToast('Brand already exists — select from dropdown', 'error'); return; }
+
+            var uid = window._state.user && window._state.user.uid;
+            if (!uid) { showToast('Login required', 'error'); return; }
+
+            var requestData = {
+                name: brandName,
+                normalizedName: norm,
+                logo: logo,
+                description: desc,
+                reason: reason,
+                requestedBy: uid,
+                requestedByEmail: (window._state.user && window._state.user.email) || '',
+                requestedByName: (window._state.sellerData && window._state.sellerData.businessName) || '',
+                status: 'pending',
+                requestedAt: Date.now()
+            };
+
+            try {
+                await window._push(window._ref(window._db, 'brandRequests'), requestData);
+                showToast('Brand request submitted! Admin will review in 1–2 days.', 'success');
+                closeModal('brandRequestModal');
+            } catch(err) {
+                showToast('Failed: ' + err.message, 'error');
+            }
+        }
 
         function sellerConfirmOrder(orderId) {
             if (!confirm('Confirm this order?')) return;
