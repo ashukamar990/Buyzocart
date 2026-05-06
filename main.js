@@ -2494,11 +2494,42 @@
       if (viewAllBtn) viewAllBtn.addEventListener('click', showAllRatings);
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay')?.textContent;
+      const btn = document.getElementById('copyOrderIdBtn');
+      if (!orderId || !btn || btn.classList.contains('copied')) return;
+
+      navigator.clipboard.writeText(orderId).then(() => {
+        const originalIcon = btn.innerHTML;
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        btn.classList.add('copied');
+        showToast('Order ID copied!', 'success');
+        setTimeout(() => {
+          btn.innerHTML = originalIcon;
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(() => showToast('Failed to copy', 'error'));
+    }
+
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const btn = document.getElementById('copyShareLink');
+      if (!shareLink || !btn || btn.textContent === 'Copied! ✓') return;
+
+      navigator.clipboard.writeText(shareLink.value).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied! ✓';
+        btn.classList.add('copied');
+        showToast('Link copied!', 'success');
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(() => {
+        shareLink.select();
+        document.execCommand('copy');
+        showToast('Link copied!', 'success');
+      });
     }
 
     // ===== REAL-TIME ORDERS LISTENER =====
@@ -4406,6 +4437,7 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
