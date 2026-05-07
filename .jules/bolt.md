@@ -22,3 +22,7 @@
 ## 2026-04-30 - Address System Optimization
 **Learning:** Centralizing address logic into a set of utility functions and using Map-like lookups for duplicate detection ensures (1)$ to (N)$ efficiency in local data management.
 **Action:** Use centralized utility functions for CRUD operations on localStorage to maintain state consistency across multiple SPA pages.
+
+## 2025-05-15 - Rating Map Optimization
+**Learning:** In projects with many-to-one relationships (like Reviews-to-Products), calculating aggregates (like average ratings) inside rendering loops leads to $O(P \times R)$ complexity. Pre-calculating a Map reduces this to $O(P + R)$.
+**Action:** Always pre-calculate aggregate maps when rendering or sorting lists based on related entity data.
