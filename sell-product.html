@@ -743,7 +743,7 @@
                 console.log('✅ Orders loaded:', window._state.orders.length);
 
                 // Check & auto-approve any pending brand requests older than 24hrs
-                if (user && user.uid) await checkAndAutoApproveBrands(user.uid);
+                if (typeof window.checkAndAutoApproveBrands === 'function') await window.checkAndAutoApproveBrands(user.uid);
 
                 if (typeof navigateTo === 'function') {
                     navigateTo('dashboard');
@@ -2154,7 +2154,7 @@
         // ════════════════════════════════════════════
         // BRAND AUTO-APPROVE (24 HOURS)
         // ════════════════════════════════════════════
-        async function checkAndAutoApproveBrands(uid) {
+        window.checkAndAutoApproveBrands = async function checkAndAutoApproveBrands(uid) {
             try {
                 var snap = await window._get(window._ref(window._db, 'brandRequests'));
                 if (!snap.exists()) return;
