@@ -13,3 +13,6 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+## 2026-05-07 - Defensive Quantity Selection
+**Learning:** Disabling boundary buttons in quantity selectors (min/max) provides immediate functional and visual feedback, preventing invalid user actions and reducing reliance on error toasts.
+**Action:** Implement `disabled` state logic for all incremental/decremental controls and provide corresponding CSS styles (opacity, cursor) to signal restricted interaction.

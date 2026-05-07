@@ -662,7 +662,10 @@
           if (currentUser) loadSavedAddresses();
           break;
         case 'orderPage':
-          if (currentProduct) initOrderPageGallery();
+          if (currentProduct) {
+            initOrderPageGallery();
+            updateQuantityButtonsState();
+          }
           break;
         case 'productsPage':
           renderProducts(products, 'productGrid');
@@ -1920,6 +1923,7 @@
         sizeOptionsContainer.appendChild(opt);
       });
       document.getElementById('qtySelect').value = 1;
+      updateQuantityButtonsState();
       initOrderPageGallery();
       showPage('orderPage');
     }
@@ -2151,18 +2155,37 @@
       if (chargeNote) chargeNote.style.display = paymentMethod === 'prepaid' ? 'block' : 'none';
     }
 
+    function updateQuantityButtonsState() {
+      const qtyInput = document.getElementById('qtySelect');
+      if (!qtyInput) return;
+      const value = parseInt(qtyInput.value);
+      const min = parseInt(qtyInput.min) || 1;
+      const max = parseInt(qtyInput.max) || 3;
+      const minusBtn = document.querySelector('.qty-minus');
+      const plusBtn = document.querySelector('.qty-plus');
+      if (minusBtn) minusBtn.disabled = (value <= min);
+      if (plusBtn) plusBtn.disabled = (value >= max);
+    }
+
     function decreaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
       let value = parseInt(qtyInput.value);
-      if (value > 1) qtyInput.value = value - 1;
+      if (value > 1) {
+        qtyInput.value = value - 1;
+        updateQuantityButtonsState();
+      }
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
     }
 
     function increaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
       let value = parseInt(qtyInput.value);
-      if (value < 3) qtyInput.value = value + 1;
-      else showToast('Maximum 3 units per order', 'error');
+      if (value < 3) {
+        qtyInput.value = value + 1;
+        updateQuantityButtonsState();
+      } else {
+        showToast('Maximum 3 units per order', 'error');
+      }
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
     }
 
