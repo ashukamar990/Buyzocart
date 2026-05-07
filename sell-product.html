@@ -88,6 +88,43 @@
         .sidebar-nav a.active { background: #1e293b; color: white; border-left-color: var(--primary); }
         .sidebar-nav a i { width: 18px; text-align: center; font-size: 0.9rem; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid #1e293b; }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes popIn { from { opacity:0; transform:scale(.93); } to { opacity:1; transform:scale(1); } }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+        .anim-up { animation: fadeInUp .35s ease both; }
+        .modal { animation: popIn .22s ease; }
+        .stat-card { animation: fadeInUp .35s ease both; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary); }
+        /* Brand Dropdown */
+        .bdd-wrap { position:relative; }
+        .bdd-trigger { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; background:#fff; min-height:44px; transition:var(--transition); }
+        .bdd-trigger:hover, .bdd-trigger.open { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+        .bdd-logo { width:30px; height:30px; border-radius:7px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; overflow:hidden; flex-shrink:0; color:#94a3b8; }
+        .bdd-menu { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1.5px solid var(--primary); border-radius:var(--radius-sm); box-shadow:var(--shadow-lg); z-index:500; animation:slideDown .18s ease; }
+        .bdd-menu.open { display:block; }
+        .bdd-search { padding:8px; border-bottom:1px solid var(--border); }
+        .bdd-search input { width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; outline:none; }
+        .bdd-search input:focus { border-color:var(--primary); }
+        .bdd-list { max-height:210px; overflow-y:auto; }
+        .bdd-item { display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; border-bottom:1px solid #f8fafc; transition:background .15s; }
+        .bdd-item:hover { background:var(--primary-light); }
+        .bdd-item .bi { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; color:#fff; flex-shrink:0; overflow:hidden; }
+        .bdd-item .bt strong { font-size:13px; display:block; }
+        .bdd-item .bt span { font-size:11px; color:#64748b; }
+        .bdd-footer { padding:8px; border-top:1px solid var(--border); }
+        .bdd-req { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; color:var(--primary); font-weight:700; font-size:13px; cursor:pointer; background:var(--primary-light); }
+        .bdd-req:hover { background:#dbeafe; }
+        /* Bank dropdown fix */
+        .bank-dropdown { border:1.5px solid var(--primary) !important; animation:slideDown .18s ease; }
+        .bank-option:first-child { font-weight:700; }
+        /* Seller ID Banner */
+        .sid-banner { background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1.5px solid #bfdbfe; border-radius:10px; padding:10px 14px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+        .sid-val { font-family:monospace; font-size:12px; font-weight:800; color:#1e40af; word-break:break-all; }
+        /* Brand Profile Page */
+        .brand-cover { height:160px; border-radius:16px; overflow:hidden; position:relative; }
+        .brand-avatar-box { width:84px; height:84px; border-radius:20px; border:4px solid #fff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:800; color:#fff; box-shadow:0 4px 20px rgba(0,0,0,.15); overflow:hidden; cursor:pointer; }
+        .brand-stat-box { flex:1; padding:14px; text-align:center; border-right:1px solid var(--border); }
+        .brand-stat-box:last-child { border-right:none; }
 
         .main-content {
             flex: 1;
@@ -397,6 +434,9 @@
             <a onclick="navigateTo('similar')" id="navSimilar">
                 <i class="fas fa-link"></i> Similar Products
             </a>
+            <a onclick="navigateTo('brand')" id="navBrand">
+                <i class="fas fa-award"></i> My Brand
+            </a>
             <a onclick="navigateTo('settings')" id="navSettings">
                 <i class="fas fa-cog"></i> Settings
             </a>
@@ -461,13 +501,43 @@
                         <option value="">-- Select Category --</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Brand Name <span class="required">*</span></label>
-                    <div style="position:relative;">
-                        <input type="text" class="form-control" id="prodBrand" placeholder="e.g. Nike, Samsung, Your Brand..." autocomplete="off" oninput="filterBrandSuggestions(this.value)">
-                        <div id="brandSuggestionsBox" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:999;max-height:180px;overflow-y:auto;"></div>
+                <!-- Seller ID Banner -->
+                <div class="sid-banner" id="sellerIdBanner">
+                    <span style="font-size:1.2rem;">🆔</span>
+                    <div style="flex:1;">
+                        <div style="font-size:11px;color:#64748b;font-weight:600;">Your Seller ID (auto-attached to every product)</div>
+                        <div class="sid-val" id="modalSellerId">Loading...</div>
                     </div>
-                    <small class="text-muted">Your approved business name will be shown under each product.</small>
+                    <button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('modalSellerId').textContent).then(()=>showToast('Seller ID copied!','success'))" title="Copy" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:14px;padding:4px;">📋</button>
+                </div>
+
+                <!-- Brand Dropdown -->
+                <div class="form-group">
+                    <label class="form-label">Brand <span class="required">*</span></label>
+                    <div class="bdd-wrap" id="bddWrap">
+                        <div class="bdd-trigger" id="bddTrigger" onclick="toggleBrandDD()">
+                            <div class="bdd-logo" id="bddLogo">?</div>
+                            <span id="bddLabel" style="flex:1;color:#94a3b8;font-size:14px;">-- Select Brand --</span>
+                            <i class="fas fa-chevron-down" style="color:#94a3b8;font-size:11px;"></i>
+                        </div>
+                        <div class="bdd-menu" id="bddMenu">
+                            <div class="bdd-search">
+                                <input type="text" id="bddSearch" placeholder="🔍 Search brand..." oninput="filterBrandDD()" onclick="event.stopPropagation()">
+                            </div>
+                            <div class="bdd-list" id="bddList">
+                                <div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">Loading brands...</div>
+                            </div>
+                            <div class="bdd-footer">
+                                <div class="bdd-req" onclick="openBrandReqModal()">
+                                    <i class="fas fa-plus-circle"></i> Request New Brand
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="prodBrand">
+                    <input type="hidden" id="prodBrandId">
+                    <input type="hidden" id="prodBrandLogo">
+                    <small class="text-muted">Only admin-approved brands available. Can't find yours? Request it above.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Short Description <span class="required">*</span></label>
@@ -597,7 +667,7 @@
                 window._state.products = prodSnap.exists() ? Object.entries(prodSnap.val()).map(function(entry) {
                     return { 
                         id: entry[0], 
-                        title: entry[1].title, 
+                        title: entry[1].name || entry[1].title || '',
                         price: entry[1].price, 
                         stock: entry[1].stock, 
                         category: entry[1].category, 
@@ -606,10 +676,30 @@
                         images: entry[1].images, 
                         tags: entry[1].tags, 
                         status: entry[1].status, 
-                        sizes: entry[1].sizes 
+                        sizes: entry[1].sizes,
+                        brand: entry[1].brand || '',
+                        brandId: entry[1].brandId || '',
+                        brandName: entry[1].brandName || entry[1].brand || '',
+                        brandLogo: entry[1].brandLogo || '',
+                        productCode: entry[1].productCode || ''
                     };
                 }) : [];
                 console.log('✅ Products loaded:', window._state.products.length);
+
+                // Load brands for product form dropdown
+                try {
+                    var brandSnap2 = await get(ref(db, 'brands'));
+                    window._state.brands = [];
+                    if (brandSnap2.exists()) {
+                        brandSnap2.forEach(function(c) {
+                            var b = c.val();
+                            if (b && b.name) window._state.brands.push({
+                                id: c.key, name: b.name, logo: b.logo || '',
+                                blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel || 'normal'
+                            });
+                        });
+                    }
+                } catch(be) { window._state.brands = []; }
 
                 console.log('📋 Loading orders...');
                 const orderSnap = await get(ref(db, 'orders'));
@@ -793,11 +883,11 @@
             document.querySelectorAll('.sidebar-nav a').forEach(function(a) {
                 a.classList.remove('active');
             });
-            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', earnings: 'navEarnings', similar: 'navSimilar', settings: 'navSettings', apply: 'navDashboard' };
+            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', earnings: 'navEarnings', similar: 'navSimilar', settings: 'navSettings', brand: 'navBrand', apply: 'navDashboard' };
             var navId = navMap[page];
             if (navId) document.getElementById(navId).classList.add('active');
 
-            var titles = { dashboard: 'Dashboard', products: 'My Products', orders: 'Orders', earnings: 'Earnings', similar: 'Similar Products', settings: 'Settings', apply: 'Seller Application', pending: 'Application Status', rejected: 'Application Status' };
+            var titles = { dashboard: 'Dashboard', products: 'My Products', orders: 'Orders', earnings: 'Earnings', similar: 'Similar Products', settings: 'Settings', brand: 'My Brand', apply: 'Seller Application', pending: 'Application Status', rejected: 'Application Status' };
             document.getElementById('pageTitle').textContent = titles[page] || page;
 
             var isApproved = window._state.sellerData && window._state.sellerData.status === 'approved';
@@ -808,6 +898,7 @@
             document.querySelector('.sidebar-footer').style.display = isApproved ? 'block' : 'none';
 
             if (page === 'dashboard') renderDashboardPage();
+            else if (page === 'brand') renderBrandPage();
             else if (page === 'products') renderProductsPage();
             else if (page === 'orders') renderOrdersPage();
             else if (page === 'similar') renderSimilarPage();
@@ -1035,19 +1126,48 @@
         ];
 
         function filterBankDropdown() {
-            var search = (document.getElementById('appBankSearch') ? document.getElementById('appBankSearch').value : '').toLowerCase();
+            var rawInput = document.getElementById('appBankDisplay') ? document.getElementById('appBankDisplay').value : '';
+            var q = rawInput.trim().toLowerCase();
             var dropdown = document.getElementById('bankDropdown');
-            var filtered = search ? ALL_BANKS.filter(function(b) { return b.toLowerCase().indexOf(search) !== -1; }) : ALL_BANKS;
-            dropdown.innerHTML = filtered.map(function(b) {
-                return '<div class="bank-option" onclick="selectBank(\'' + b.replace(/'/g, "\\'") + '\')">' + b + '</div>';
-            }).join('');
+            if (!dropdown) return;
+
+            var filtered;
+            if (!q) {
+                filtered = ALL_BANKS; // Show all when empty
+            } else {
+                var exact    = ALL_BANKS.filter(function(b){ return b.toLowerCase() === q; });
+                var starts   = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) === 0 && exact.indexOf(b) === -1; });
+                var contains = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) > 0 && starts.indexOf(b) === -1 && exact.indexOf(b) === -1; });
+                filtered = exact.concat(starts).concat(contains);
+            }
+
+            if (!filtered.length) {
+                dropdown.innerHTML = '<div style="padding:14px;text-align:center;color:#94a3b8;font-size:13px;">No bank found — try different spelling</div>';
+            } else {
+                dropdown.innerHTML = filtered.map(function(b) {
+                    var label = b;
+                    if (q) {
+                        var idx = b.toLowerCase().indexOf(q);
+                        if (idx !== -1) {
+                            label = b.slice(0, idx)
+                                + '<strong style="color:var(--primary);font-weight:800;">' + b.slice(idx, idx + rawInput.trim().length) + '</strong>'
+                                + b.slice(idx + rawInput.trim().length);
+                        }
+                    }
+                    return '<div class="bank-option" onclick="selectBank(\'' + b.replace(/'/g, "\\'") + '\')">🏦 ' + label + '</div>';
+                }).join('');
+            }
             dropdown.classList.add('open');
         }
 
         function selectBank(name) {
-            document.getElementById('appBankDisplay').value = name;
-            document.getElementById('appBank').value = name;
-            document.getElementById('bankDropdown').classList.remove('open');
+            var disp = document.getElementById('appBankDisplay');
+            var hid  = document.getElementById('appBank');
+            var dd   = document.getElementById('bankDropdown');
+            if (disp) { disp.value = name; disp.style.borderColor='var(--success)'; disp.classList.remove('error'); disp.classList.add('valid'); }
+            if (hid)  hid.value = name;
+            if (dd)   dd.classList.remove('open');
+            showToast('✓ ' + name + ' selected', 'success');
         }
 
         document.addEventListener('click', function(e) {
@@ -1630,15 +1750,25 @@
         }
 
         function renderSettingsPage() {
+            var uid = window._state.user && window._state.user.uid;
             document.getElementById('contentArea').innerHTML = '' +
-                '<h2 style="margin-bottom:16px;">⚙️ Settings</h2>' +
+                '<h2 style="margin-bottom:16px;font-size:1.1rem;font-weight:800;">⚙️ Settings</h2>' +
                 '<div class="card"><div class="card-body">' +
-                    '<div style="display:grid;gap:12px;">' +
-                        '<div class="flex-between" style="padding:10px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Business Name</span><strong>' + ((window._state.sellerData && window._state.sellerData.businessName) ? window._state.sellerData.businessName : 'N/A') + '</strong></div>' +
-                        '<div class="flex-between" style="padding:10px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Email</span><strong>' + (window._state.user ? window._state.user.email : 'N/A') + '</strong></div>' +
-                        '<div class="flex-between" style="padding:10px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Account Status</span><span class="badge badge-success">Approved ✅</span></div>' +
-                        '<div class="flex-between" style="padding:10px 0;"><span class="text-muted">Total Products</span><strong>' + window._state.products.length + '</strong> | <span class="text-muted">Total Orders</span><strong>' + window._state.orders.length + '</strong></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;"><span class="text-muted">Business Name</span><strong>' + ((window._state.sellerData && window._state.sellerData.businessName) ? window._state.sellerData.businessName : 'N/A') + '</strong></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Email</span><strong>' + (window._state.user ? window._state.user.email : 'N/A') + '</strong></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Account Status</span><span class="badge badge-success">✅ Approved</span></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">' +
+                        '<span class="text-muted">Seller ID</span>' +
+                        '<div style="display:flex;align-items:center;gap:8px;">' +
+                            '<code style="background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;word-break:break-all;">' + (uid||'N/A') + '</code>' +
+                            '<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + (uid||'') + '\').then(function(){showToast(\'Seller ID copied!\',\'success\')})">📋</button>' +
+                        '</div>' +
                     '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Total Products</span><strong>' + window._state.products.length + '</strong></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;"><span class="text-muted">Total Orders</span><strong>' + window._state.orders.length + '</strong></div>' +
+                '</div></div>' +
+                '<div class="card"><div class="card-body">' +
+                    '<button class="btn btn-primary" onclick="navigateTo(\'brand\')" style="width:100%;padding:12px;font-size:15px;"><i class="fas fa-award"></i> Manage My Brand Profile</button>' +
                 '</div></div>';
         }
 
@@ -1673,6 +1803,19 @@
             document.getElementById('productModal').classList.add('active');
             _populateProdCategory();
             loadTagsForDropdown();
+            // Show Seller ID
+            var uid = window._state.user && window._state.user.uid;
+            var sidEl = document.getElementById('modalSellerId');
+            if (sidEl) sidEl.textContent = uid || 'N/A';
+            // Reset brand dropdown
+            var lbl = document.getElementById('bddLabel'), logo = document.getElementById('bddLogo');
+            if (lbl) { lbl.textContent = '-- Select Brand --'; lbl.style.color = '#94a3b8'; }
+            if (logo) { logo.textContent = '?'; logo.style.background = '#f1f5f9'; logo.style.color = '#94a3b8'; }
+            document.getElementById('prodBrand').value = '';
+            document.getElementById('prodBrandId').value = '';
+            document.getElementById('prodBrandLogo').value = '';
+            // Load brands into dropdown
+            renderBrandDDList(window._state.brands || []);
         }
 
         function editProductForm(id) {
@@ -1745,10 +1888,20 @@
 
             var brandInput = document.getElementById('prodBrand');
             var brandName = brandInput ? brandInput.value.trim() : '';
-            if (!brandName) { showToast('Brand name is required', 'error'); return; }
+            var brandId   = document.getElementById('prodBrandId') ? document.getElementById('prodBrandId').value.trim() : '';
+            var brandLogo = document.getElementById('prodBrandLogo') ? document.getElementById('prodBrandLogo').value.trim() : '';
+            if (!brandName || !brandId) { showToast('Brand select karo dropdown se', 'error'); return; }
+
+            var productCode = (function() {
+                var n = Math.floor(100 + Math.random() * 900).toString();
+                var l = Array.from({length:3}, function(){ return String.fromCharCode(65 + Math.floor(Math.random()*26)); }).join('');
+                return n + l;
+            })();
+            var sellerName = (window._state.sellerData && window._state.sellerData.businessName) || window._state.user.displayName || window._state.user.email || 'Seller';
 
             var data = {
                 title: name,
+                name: name,
                 price: price,
                 stock: stock,
                 category: category,
@@ -1760,9 +1913,12 @@
                 image: window._state.uploadedImages[0] || '',
                 status: active ? 'active' : 'inactive',
                 sellerId: window._state.user.uid,
-                sellerName: window._state.user.displayName || window._state.user.email,
+                sellerName: sellerName,
                 brand: brandName,
-                brandId: brandName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                brandId: brandId,
+                brandName: brandName,
+                brandLogo: brandLogo,
+                productCode: productCode,
                 sellerEmail: window._state.user.email || '',
                 updatedAt: Date.now()
             };
@@ -1858,6 +2014,385 @@
         console.log('🚀 Buyzo Cart Seller Central Ready');
         console.log('✅ All functions loaded successfully');
 
+        // ════════════════════════════════════════════
+        // BRAND DROPDOWN SYSTEM
+        // ════════════════════════════════════════════
+        var _bddOpen = false;
+        var BRAND_COLORS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669'];
+
+        function toggleBrandDD() {
+            _bddOpen = !_bddOpen;
+            var menu = document.getElementById('bddMenu');
+            var trig = document.getElementById('bddTrigger');
+            if (!menu) return;
+            menu.classList.toggle('open', _bddOpen);
+            if (trig) trig.classList.toggle('open', _bddOpen);
+            if (_bddOpen) {
+                renderBrandDDList(window._state.brands || []);
+                setTimeout(function() { var s=document.getElementById('bddSearch'); if(s) s.focus(); }, 80);
+            }
+        }
+
+        function filterBrandDD() {
+            var q = (document.getElementById('bddSearch') ? document.getElementById('bddSearch').value : '').toLowerCase().trim();
+            var all = window._state.brands || [];
+            renderBrandDDList(q ? all.filter(function(b){ return b.name.toLowerCase().indexOf(q) !== -1; }) : all);
+        }
+
+        function renderBrandDDList(brands) {
+            var list = document.getElementById('bddList');
+            if (!list) return;
+            if (!brands.length) {
+                list.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">No approved brands yet.<br>Request one below ↓</div>';
+                return;
+            }
+            list.innerHTML = brands.map(function(b) {
+                var color = BRAND_COLORS[b.name.charCodeAt(0) % BRAND_COLORS.length];
+                var initials = b.name.slice(0,2).toUpperCase();
+                var logoInner = b.logo
+                    ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:7px;" onerror="this.style.display=\'none\'">'
+                    : initials;
+                var badge = b.verificationLevel==='premium' ? ' ⭐' : b.blueTickAdmin ? ' <span style="color:#2563eb;font-size:10px;font-weight:800;">✓</span>' : '';
+                return '<div class="bdd-item" onclick="selectBrandDD(\''+b.id+'\',\''+b.name.replace(/'/g,"\\'").replace(/"/g,'\\"')+'\',\''+( b.logo||'')+'\',\''+color+'\')">'+
+                    '<div class="bi" style="background:'+color+';">'+logoInner+'</div>'+
+                    '<div class="bt"><strong>'+b.name+badge+'</strong><span>'+(b.verificationLevel==='premium'?'Premium':b.blueTickAdmin?'Verified':'Brand')+'</span></div>'+
+                    '</div>';
+            }).join('');
+        }
+
+        function selectBrandDD(id, name, logo, color) {
+            document.getElementById('prodBrand').value = name;
+            document.getElementById('prodBrandId').value = id;
+            document.getElementById('prodBrandLogo').value = logo || '';
+            var lbl  = document.getElementById('bddLabel');
+            var logo2 = document.getElementById('bddLogo');
+            if (lbl)  { lbl.textContent = name; lbl.style.color = '#0f172a'; }
+            if (logo2) {
+                if (logo) {
+                    logo2.innerHTML = '<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" onerror="this.innerHTML=\''+name.slice(0,2).toUpperCase()+'\'">';
+                    logo2.style.background = 'transparent';
+                } else {
+                    logo2.textContent = name.slice(0,2).toUpperCase();
+                    logo2.style.background = color;
+                    logo2.style.color = '#fff';
+                }
+            }
+            var menu = document.getElementById('bddMenu'), trig = document.getElementById('bddTrigger');
+            if (menu) menu.classList.remove('open');
+            if (trig) trig.classList.remove('open');
+            _bddOpen = false;
+        }
+
+        document.addEventListener('click', function(e) {
+            var wrap = document.getElementById('bddWrap');
+            if (wrap && !wrap.contains(e.target) && _bddOpen) {
+                var menu=document.getElementById('bddMenu'), trig=document.getElementById('bddTrigger');
+                if (menu) menu.classList.remove('open');
+                if (trig) trig.classList.remove('open');
+                _bddOpen = false;
+            }
+        });
+
+        // ════════════════════════════════════════════
+        // BRAND REQUEST SYSTEM
+        // ════════════════════════════════════════════
+        var PROTECTED_BRANDS_SET = new Set(['nike','adidas','puma','samsung','apple','google','amazon','microsoft','sony','lg','oneplus','realme','xiaomi','motorola','hp','dell','lenovo','asus','zara','gucci','prada']);
+
+        function openBrandReqModal() {
+            var menu=document.getElementById('bddMenu'); if(menu) menu.classList.remove('open');
+            _bddOpen = false;
+            ['reqBrandName','reqBrandLogo2','reqBrandDesc2','reqBrandReason2'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+            var w=document.getElementById('brandDupWarn'); if(w) w.style.display='none';
+            document.getElementById('brandReqModal').classList.add('active');
+        }
+
+        function checkBrandDup(val) {
+            var norm = val.toLowerCase().replace(/[^a-z0-9]/g,'');
+            var warn = document.getElementById('brandDupWarn');
+            if (!warn || !norm) { if(warn) warn.style.display='none'; return; }
+            if (PROTECTED_BRANDS_SET.has(norm)) {
+                warn.style.display='block';
+                warn.textContent='⛔ "'+val+'" is a protected brand. Only admin can create it.';
+                return;
+            }
+            var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
+            if (dup) {
+                warn.style.display='block';
+                warn.textContent='⚠️ Brand "'+dup.name+'" already exists — select it from the dropdown!';
+            } else {
+                warn.style.display='none';
+            }
+        }
+
+        async function submitBrandReq() {
+            var name   = (document.getElementById('reqBrandName').value||'').trim();
+            var logo   = (document.getElementById('reqBrandLogo2').value||'').trim();
+            var desc   = (document.getElementById('reqBrandDesc2').value||'').trim();
+            var reason = (document.getElementById('reqBrandReason2').value||'').trim();
+            if (!name || name.length < 2) { showToast('Brand name enter karo', 'error'); return; }
+            var norm = name.toLowerCase().replace(/[^a-z0-9]/g,'');
+            if (PROTECTED_BRANDS_SET.has(norm)) { showToast('Protected brand — request nahi kar sakte', 'error'); return; }
+            var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
+            if (dup) { showToast('Brand already exists — dropdown se select karo', 'error'); return; }
+            var uid = window._state.user && window._state.user.uid;
+            if (!uid) { showToast('Login required', 'error'); return; }
+            try {
+                await window._push(window._ref(window._db, 'brandRequests'), {
+                    name: name, normalizedName: norm, logo: logo, description: desc, reason: reason,
+                    requestedBy: uid, requestedByEmail: (window._state.user.email||''),
+                    requestedByName: (window._state.sellerData && window._state.sellerData.businessName)||'',
+                    status: 'pending', requestedAt: Date.now()
+                });
+                showToast('Brand request submitted! Admin 1–2 days mein review karega.', 'success');
+                closeModal('brandReqModal');
+            } catch(err) { showToast('Failed: '+err.message, 'error'); }
+        }
+
+        // ════════════════════════════════════════════
+        // BRAND PAGE — Instagram-style Profile
+        // ════════════════════════════════════════════
+        var _myBrandData = null;
+
+        async function renderBrandPage() {
+            var uid = window._state.user && window._state.user.uid;
+            var ca = document.getElementById('contentArea');
+            ca.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:50vh;gap:14px;"><div class="spinner"></div><span style="color:#64748b;font-weight:600;">Loading Brand...</span></div>';
+            try {
+                var brandReqSnap = await window._get(window._ref(window._db, 'brandRequests'));
+                var brandSnap    = await window._get(window._ref(window._db, 'brands'));
+
+                var myReq = null;
+                if (brandReqSnap.exists()) {
+                    brandReqSnap.forEach(function(c) {
+                        var r = c.val();
+                        if (r && r.requestedBy === uid) {
+                            if (!myReq || (r.requestedAt||0) > (myReq.requestedAt||0)) myReq = Object.assign({_key:c.key}, r);
+                        }
+                    });
+                }
+                var myBrand = null;
+                if (myReq && myReq.status === 'approved' && brandSnap.exists()) {
+                    var norm = myReq.normalizedName || (myReq.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+                    brandSnap.forEach(function(c) {
+                        var b = c.val();
+                        if (b && (c.key === norm || (b.name||'').toLowerCase().replace(/[^a-z0-9]/g,'') === norm)) {
+                            myBrand = Object.assign({id:c.key}, b);
+                        }
+                    });
+                }
+                _myBrandData = myBrand;
+
+                if (myBrand)       _renderBrandProfile(myBrand, myReq, uid);
+                else if (myReq)    _renderBrandReqStatus(myReq, uid);
+                else               _renderNoBrand(uid);
+            } catch(err) {
+                ca.innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">Error: '+err.message+'</p><button class="btn btn-primary" onclick="renderBrandPage()" style="margin-top:12px;">Retry</button></div>';
+            }
+        }
+
+        function _brandColor2(name) {
+            return BRAND_COLORS[(name||'A').charCodeAt(0) % BRAND_COLORS.length];
+        }
+
+        function _renderNoBrand(uid) {
+            document.getElementById('contentArea').innerHTML =
+                '<div style="max-width:580px;margin:0 auto;" class="anim-up">'
+                +'<div style="text-align:center;padding:32px 20px 24px;">'
+                    +'<div style="width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin:0 auto 16px;box-shadow:0 8px 32px rgba(37,99,235,.3);">🏷️</div>'
+                    +'<h2 style="font-weight:800;margin-bottom:8px;">Create Your Brand</h2>'
+                    +'<p style="color:#64748b;max-width:360px;margin:0 auto;">Build your brand identity on Buyzo Cart. Request a brand — admin will approve it in 1–2 days.</p>'
+                +'</div>'
+                +'<div class="card" style="margin-bottom:16px;">'
+                    +'<div class="card-header"><h3 class="card-title">🆔 Your Seller ID</h3></div>'
+                    +'<div class="card-body">'
+                        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+                            +'<code style="background:#f1f5f9;border:1px solid #e2e8f0;padding:6px 12px;border-radius:8px;font-weight:700;font-size:12px;word-break:break-all;flex:1;">'+(uid||'N/A')+'</code>'
+                            +'<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+(uid||'')+'\').then(function(){showToast(\'Seller ID copied!\',\'success\')})">📋 Copy</button>'
+                        +'</div>'
+                    +'</div>'
+                +'</div>'
+                +'<div class="card" style="margin-bottom:16px;">'
+                    +'<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>'
+                    +'<div class="card-body">'
+                        +_stepHtml('1','Request Brand','Enter brand name + logo. Admin verifies & approves.','linear-gradient(135deg,#f97316,#fb923c)')
+                        +_stepHtml('2','Admin Approval','Brand gets created in 1–2 business days.','linear-gradient(135deg,#2563eb,#60a5fa)')
+                        +_stepHtml('3','Select in Products','Approved brand appears in Add Product dropdown.','linear-gradient(135deg,#16a34a,#4ade80)')
+                    +'</div>'
+                +'</div>'
+                +'<div style="text-align:center;padding:16px 0;">'
+                    +'<button onclick="openBrandReqModal()" class="btn btn-primary" style="padding:13px 40px;font-size:15px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);border:none;">'
+                        +'<i class="fas fa-plus"></i> Request New Brand'
+                    +'</button>'
+                +'</div>'
+                +'</div>';
+        }
+
+        function _stepHtml(num, title, desc, grad) {
+            return '<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">'
+                +'<div style="width:36px;height:36px;border-radius:50%;background:'+grad+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">'+num+'</div>'
+                +'<div><div style="font-weight:700;font-size:0.9rem;margin-bottom:3px;">'+title+'</div><div style="font-size:0.8rem;color:#64748b;">'+desc+'</div></div>'
+                +'</div>';
+        }
+
+        function _renderBrandReqStatus(req, uid) {
+            var color = _brandColor2(req.name||'B');
+            var initials = (req.name||'B').slice(0,2).toUpperCase();
+            var sc = {
+                pending:  {icon:'⏳', label:'Under Review', bg:'#fef3c7', tc:'#92400e', msg:'Your request is being reviewed. Typically 1–2 business days.'},
+                approved: {icon:'✅', label:'Approved', bg:'#dcfce7', tc:'#166534', msg:'Brand approved! Admin is creating it now.'},
+                rejected: {icon:'❌', label:'Rejected', bg:'#fee2e2', tc:'#991b1b', msg:req.rejectionReason||'Request was rejected.'}
+            }[req.status] || {icon:'⏳',label:'Pending',bg:'#fef3c7',tc:'#92400e',msg:'Under review.'};
+
+            document.getElementById('contentArea').innerHTML =
+                '<div style="max-width:540px;margin:0 auto;" class="anim-up">'
+                +'<div style="text-align:center;padding:32px 20px 20px;">'
+                    +'<div style="width:72px;height:72px;border-radius:18px;background:'+color+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;margin:0 auto 14px;">'
+                        +(req.logo?'<img src="'+req.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">':initials)
+                    +'</div>'
+                    +'<h2 style="font-weight:800;margin-bottom:8px;">'+(req.name||'Brand')+'</h2>'
+                    +'<span style="background:'+sc.bg+';color:'+sc.tc+';padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;">'+sc.icon+' '+sc.label+'</span>'
+                +'</div>'
+                +'<div style="background:'+sc.bg+';border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:'+sc.tc+';">'+sc.msg+'</div>'
+                +'<div class="card"><div class="card-body">'
+                    +'<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="color:#64748b;">Request ID</span><code style="font-size:12px;">'+(req._key||'').slice(-8).toUpperCase()+'</code></div>'
+                    +'<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="color:#64748b;">Submitted</span><strong>'+formatDate(req.requestedAt)+'</strong></div>'
+                    +'<div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:#64748b;">Seller ID</span><code style="font-size:11px;word-break:break-all;">'+(uid||'N/A')+'</code></div>'
+                +'</div></div>'
+                +(req.status==='rejected'?'<div style="text-align:center;padding:16px 0;"><button onclick="openBrandReqModal()" class="btn btn-primary"><i class="fas fa-redo"></i> Request Again</button></div>':'')
+                +'</div>';
+        }
+
+        function _renderBrandProfile(brand, req, uid) {
+            var color = _brandColor2(brand.name);
+            var initials = brand.name.slice(0,2).toUpperCase();
+            var myProds = (window._state.products||[]).filter(function(p){ return p.brandId===brand.id || p.brandName===brand.name; });
+            var verBadge = brand.verificationLevel==='premium'
+                ? '<span style="background:linear-gradient(135deg,#fef3c7,#fcd34d);color:#92400e;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:800;">⭐ Premium</span>'
+                : brand.blueTickAdmin
+                    ? '<span style="background:#eff6ff;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:800;">✓ Verified</span>'
+                    : '<span style="background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">Unverified</span>';
+
+            document.getElementById('contentArea').innerHTML =
+                '<div style="max-width:580px;margin:0 auto;" class="anim-up">'
+
+                // ── COVER BANNER ──
+                +'<div class="brand-cover" style="background:'+(brand.banner?'url(\''+brand.banner+'\') center/cover':'linear-gradient(135deg,'+color+','+color+'bb)')+';margin-bottom:0;">'
+                    +'<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0) 40%,rgba(0,0,0,.45));"></div>'
+                    +'<button onclick="_editBrandProfileModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.9);border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;backdrop-filter:blur(4px);"><i class="fas fa-camera"></i> Edit Cover</button>'
+                +'</div>'
+
+                // ── AVATAR + NAME ──
+                +'<div style="background:#fff;padding:0 20px 20px;border-bottom:1px solid var(--border);">'
+                    +'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:-42px;margin-bottom:14px;">'
+                        +'<div style="position:relative;">'
+                            +'<div class="brand-avatar-box" style="background:'+color+';" onclick="_editBrandProfileModal()">'
+                                +(brand.logo?'<img src="'+brand.logo+'" style="width:100%;height:100%;object-fit:cover;">':initials)
+                            +'</div>'
+                            +'<div style="position:absolute;bottom:-4px;right:-4px;width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;" onclick="_editBrandProfileModal()"><i class="fas fa-pen"></i></div>'
+                        +'</div>'
+                        +'<button onclick="_editBrandProfileModal()" class="btn btn-outline btn-sm" style="margin-bottom:8px;"><i class="fas fa-pen"></i> Edit Profile</button>'
+                    +'</div>'
+
+                    +'<div style="margin-bottom:12px;">'
+                        +'<div style="font-size:1.1rem;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">'+brand.name+' '+verBadge+'</div>'
+                        +(brand.description?'<p style="color:#64748b;font-size:13px;margin:0;">'+brand.description+'</p>':'<p style="color:#94a3b8;font-size:13px;font-style:italic;margin:0;">No description — <a onclick="_editBrandProfileModal()" style="color:var(--primary);cursor:pointer;">Add one</a></p>')
+                    +'</div>'
+
+                    // Stats Row
+                    +'<div style="display:flex;background:#f8fafc;border-radius:12px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden;">'
+                        +'<div class="brand-stat-box"><span style="font-size:1.1rem;font-weight:800;display:block;">'+(brand.followersCount||0)+'</span><span style="font-size:11px;color:#64748b;font-weight:600;">Followers</span></div>'
+                        +'<div class="brand-stat-box"><span style="font-size:1.1rem;font-weight:800;display:block;">'+myProds.length+'</span><span style="font-size:11px;color:#64748b;font-weight:600;">Products</span></div>'
+                        +'<div class="brand-stat-box"><span style="font-size:1.1rem;font-weight:800;display:block;">'+(brand.rating?'⭐'+brand.rating:'N/A')+'</span><span style="font-size:11px;color:#64748b;font-weight:600;">Rating</span></div>'
+                        +'<div class="brand-stat-box"><span style="font-size:1.1rem;font-weight:800;display:block;">'+(brand.totalReviews||0)+'</span><span style="font-size:11px;color:#64748b;font-weight:600;">Reviews</span></div>'
+                    +'</div>'
+
+                    // Action Buttons
+                    +'<div style="display:flex;gap:10px;">'
+                        +'<button onclick="navigateTo(\'products\')" style="flex:1;padding:11px;border-radius:10px;background:var(--primary);color:#fff;border:none;cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;"><i class="fas fa-plus"></i> Add Product</button>'
+                        +'<button onclick="_editBrandProfileModal()" style="flex:1;padding:11px;border-radius:10px;background:#f1f5f9;color:#0f172a;border:none;cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;"><i class="fas fa-pen"></i> Edit Brand</button>'
+                    +'</div>'
+                +'</div>'
+
+                // ── SELLER + BRAND IDs ──
+                +'<div class="card" style="margin-top:16px;">'
+                    +'<div class="card-header"><h3 class="card-title">🆔 Seller Identity</h3></div>'
+                    +'<div class="card-body">'
+                        +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">'
+                            +'<span style="color:#64748b;">Seller ID</span>'
+                            +'<div style="display:flex;align-items:center;gap:8px;">'
+                                +'<code style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;word-break:break-all;">'+(uid||'N/A')+'</code>'
+                                +'<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+(uid||'')+'\').then(function(){showToast(\'Copied!\',\'success\')})">📋</button>'
+                            +'</div>'
+                        +'</div>'
+                        +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">'
+                            +'<span style="color:#64748b;">Brand ID</span>'
+                            +'<code style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">'+brand.id+'</code>'
+                        +'</div>'
+                        +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">'
+                            +'<span style="color:#64748b;">Verification</span>'+verBadge
+                        +'</div>'
+                    +'</div>'
+                +'</div>'
+
+                // ── MY PRODUCTS ──
+                +'<div class="card">'
+                    +'<div class="card-header"><h3 class="card-title">🛍️ Brand Products ('+myProds.length+')</h3><button class="btn btn-primary btn-sm" onclick="navigateTo(\'products\')">View All</button></div>'
+                    +'<div class="card-body">'
+                        +(myProds.length ? myProds.slice(0,5).map(function(p){
+                            var img=(p.images&&p.images[0])||'https://placehold.co/44';
+                            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">'
+                                +'<div style="display:flex;align-items:center;gap:12px;">'
+                                    +'<img src="'+img+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;" onerror="this.src=\'https://placehold.co/44\'">'
+                                    +'<div><div style="font-weight:700;font-size:13px;">'+(p.title||'Product')+'</div><div style="font-size:11px;color:#64748b;">'+formatCurrency(p.price)+' · '+(p.productCode||'N/A')+'</div></div>'
+                                +'</div>'
+                                +'<span class="badge '+(p.status==='inactive'?'badge-danger':'badge-success')+'">'+(p.status||'active')+'</span>'
+                            +'</div>';
+                        }).join('') : '<p style="color:#94a3b8;text-align:center;padding:20px;">No products yet. <a onclick="navigateTo(\'products\')" style="color:var(--primary);cursor:pointer;">Add one</a></p>')
+                    +'</div>'
+                +'</div>'
+
+                +'</div>';
+        }
+
+        function _editBrandProfileModal() {
+            if (!_myBrandData) return;
+            var existing = document.getElementById('_ebModal');
+            if (existing) existing.remove();
+            var el = document.createElement('div');
+            el.id = '_ebModal';
+            el.className = 'modal-overlay active';
+            el.innerHTML =
+                '<div class="modal" style="max-width:480px;">'
+                    +'<div class="modal-header"><h3 class="modal-title">✏️ Edit Brand Profile</h3><button class="modal-close" onclick="document.getElementById(\'_ebModal\').remove()">&times;</button></div>'
+                    +'<div class="modal-body">'
+                        +'<div class="form-group"><label class="form-label">Description</label><textarea class="form-control" id="ebDesc" rows="3">'+(_myBrandData.description||'')+'</textarea></div>'
+                        +'<div class="form-group"><label class="form-label">Logo URL</label><input class="form-control" id="ebLogo" value="'+(_myBrandData.logo||'')+'" placeholder="https://..."></div>'
+                        +'<div class="form-group"><label class="form-label">Banner URL</label><input class="form-control" id="ebBanner" value="'+(_myBrandData.banner||'')+'" placeholder="https://..."></div>'
+                    +'</div>'
+                    +'<div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById(\'_ebModal\').remove()">Cancel</button><button class="btn btn-primary" onclick="saveBrandEdits()">Save Changes</button></div>'
+                +'</div>';
+            el.addEventListener('click', function(e){ if(e.target===el) el.remove(); });
+            document.body.appendChild(el);
+        }
+
+        async function saveBrandEdits() {
+            if (!_myBrandData) return;
+            var desc   = (document.getElementById('ebDesc').value||'').trim();
+            var logo   = (document.getElementById('ebLogo').value||'').trim();
+            var banner = (document.getElementById('ebBanner').value||'').trim();
+            try {
+                await window._update(window._ref(window._db,'brands/'+_myBrandData.id),{description:desc,logo:logo,banner:banner,updatedAt:Date.now()});
+                showToast('Brand profile updated! ✅','success');
+                var m=document.getElementById('_ebModal'); if(m) m.remove();
+                renderBrandPage();
+            } catch(err) { showToast('Failed: '+err.message,'error'); }
+        }
+
+        function formatDate(ts) {
+            if (!ts) return 'N/A';
+            return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        }
+
         function sellerConfirmOrder(orderId) {
             if (!confirm('Confirm this order?')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'confirmed', updatedAt:Date.now() })
@@ -1938,5 +2473,50 @@
             document.body.appendChild(el);
         }
     </script>
+
+    <!-- ══ BRAND REQUEST MODAL ══ -->
+    <div class="modal-overlay" id="brandReqModal">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🏷️ Request New Brand</h3>
+                <button class="modal-close" onclick="closeModal('brandReqModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400e;">
+                    <strong>ℹ️ Note:</strong> Sellers cannot create brands directly. Admin will review your request (1–2 days) and approve it.
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand Name <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="reqBrandName" placeholder="e.g. Nike, My Brand..." oninput="checkBrandDup(this.value)">
+                    <div id="brandDupWarn" style="display:none;margin-top:6px;padding:8px 12px;background:#fee2e2;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600;"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Logo URL <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
+                    <input type="url" class="form-control" id="reqBrandLogo2" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
+                    <textarea class="form-control" id="reqBrandDesc2" rows="2" placeholder="Brief brand description..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Why do you want to sell this brand?</label>
+                    <textarea class="form-control" id="reqBrandReason2" rows="2" placeholder="e.g. Authorized reseller, own brand..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('brandReqModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitBrandReq()">
+                    <i class="fas fa-paper-plane"></i> Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ BRAND PROFILE MODAL ══ -->
+    <div id="brandProfileOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);" onclick="closeBrandProfile()">
+        <div id="brandProfileBox" onclick="event.stopPropagation()" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;width:min(560px,95vw);max-height:90vh;overflow-y:auto;animation:popIn .22s ease;">
+        </div>
+    </div>
+
 </body>
 </html>
