@@ -120,6 +120,20 @@
         /* Seller ID Banner */
         .sid-banner { background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1.5px solid #bfdbfe; border-radius:10px; padding:10px 14px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
         .sid-val { font-family:monospace; font-size:12px; font-weight:800; color:#1e40af; word-break:break-all; }
+        /* Seller ID Preview Box */
+        .sid-preview { margin-top:8px; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .sid-preview.available { background:#f0fdf4; border:1.5px solid #86efac; color:#15803d; }
+        .sid-preview.taken { background:#fef2f2; border:1.5px solid #fca5a5; color:#991b1b; }
+        .sid-preview.checking { background:#fff8e6; border:1.5px solid #fcd34d; color:#92400e; }
+        /* Mobile Home Buttons */
+        .mobile-home-btn { display:none; }
+        .topbar-home-btn { display:none; }
+        @media (max-width:768px) {
+            .mobile-home-btn { display:flex !important; align-items:center; gap:8px; width:100%; background:#1e293b; color:#94a3b8; border:none; padding:12px 20px; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; transition:var(--transition); }
+            .mobile-home-btn:hover { background:#0f172a; color:white; }
+            .topbar-home-btn { display:inline-flex !important; align-items:center; gap:6px; background:#f1f5f9; border:none; padding:7px 13px; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; color:#475569; font-family:inherit; }
+            .topbar-home-btn:hover { background:#e2e8f0; }
+        }
         /* Brand Profile Page */
         .brand-cover { height:160px; border-radius:16px; overflow:hidden; position:relative; }
         .brand-avatar-box { width:84px; height:84px; border-radius:20px; border:4px solid #fff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:800; color:#fff; box-shadow:0 4px 20px rgba(0,0,0,.15); overflow:hidden; cursor:pointer; }
@@ -445,6 +459,9 @@
             <button class="btn btn-outline btn-sm" onclick="goHome()" style="width:100%;color:white;border-color:#334155;">
                 ← Back to Store
             </button>
+            <button class="mobile-home-btn" onclick="goHome()">
+                <i class="fas fa-home"></i> Back to Home
+            </button>
         </div>
     </aside>
 
@@ -457,6 +474,9 @@
                 <h1 class="topbar-title" id="pageTitle">Dashboard</h1>
             </div>
             <div class="topbar-right">
+                <button class="topbar-home-btn" onclick="goHome()" title="Back to Store">
+                    <i class="fas fa-home"></i> Home
+                </button>
                 <div class="user-chip">
                     <div class="user-avatar" id="headerAvatar">S</div>
                     <span id="headerName">Seller</span>
@@ -513,7 +533,7 @@
 
                 <!-- Brand Dropdown -->
                 <div class="form-group">
-                    <label class="form-label">Brand <span class="required">*</span></label>
+                    <label class="form-label">Brand <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
                     <div class="bdd-wrap" id="bddWrap">
                         <div class="bdd-trigger" id="bddTrigger" onclick="toggleBrandDD()">
                             <div class="bdd-logo" id="bddLogo">?</div>
@@ -721,7 +741,10 @@
 
                 window._state.orders = allOrders.filter(function(o) { return o.sellerId === user.uid; });
                 console.log('✅ Orders loaded:', window._state.orders.length);
-                
+
+                // Check & auto-approve any pending brand requests older than 24hrs
+                if (user && user.uid) await checkAndAutoApproveBrands(user.uid);
+
                 if (typeof navigateTo === 'function') {
                     navigateTo('dashboard');
                 }
@@ -784,6 +807,10 @@
                 } else {
                     const data = snap.val();
                     window._state.sellerData = data;
+                    // Load custom sellerId into state
+                    if (!data.sellerId && data.uid) {
+                        // Backward compat: try to find by uid in sellerIds
+                    }
                     
                     if (data.status === 'approved') {
                         await window.loadDashboardData();
@@ -1125,7 +1152,53 @@
             "Standard Chartered Bank", "HSBC Bank", "Citibank", "Deutsche Bank"
         ];
 
-        function filterBankDropdown() {
+        // ============ SELLER ID FUNCTIONS ============
+        var _sidCheckTimer = null;
+
+        function onSellerIdInput(val) {
+            val = val.replace(/[^a-zA-Z0-9_-]/g, '');
+            var inp = document.getElementById('appSellerId');
+            if (inp) inp.value = val;
+            if (!val || val.length < 3) {
+                updateSellerIdPreview('idle', val.length > 0 ? 'Min 3 characters required' : 'Enter a unique Seller ID');
+                return;
+            }
+            if (val.length > 30) { updateSellerIdPreview('taken', 'Max 30 characters allowed'); return; }
+            updateSellerIdPreview('checking', 'Checking availability...');
+            clearTimeout(_sidCheckTimer);
+            _sidCheckTimer = setTimeout(function() { checkSellerIdUnique(val); }, 600);
+        }
+
+        async function checkSellerIdUnique(sellerId) {
+            try {
+                var snap = await window._get(window._ref(window._db, 'sellerIds/' + sellerId));
+                if (snap.exists()) {
+                    var data = snap.val();
+                    if (data && data.uid && data.uid === (window._state.user && window._state.user.uid)) {
+                        updateSellerIdPreview('available', '✅ This is your current Seller ID');
+                        _appData.sellerId = sellerId;
+                    } else {
+                        updateSellerIdPreview('taken', '❌ "' + sellerId + '" is already taken. Try another.');
+                    }
+                } else {
+                    updateSellerIdPreview('available', '✅ "' + sellerId + '" is available!');
+                    _appData.sellerId = sellerId;
+                }
+            } catch(e) {
+                updateSellerIdPreview('checking', 'Could not verify — try again');
+            }
+        }
+
+        function updateSellerIdPreview(status, msg) {
+            var box = document.getElementById('sellerIdPreview');
+            if (!box) return;
+            box.className = 'sid-preview ' + (status === 'available' ? 'available' : status === 'taken' ? 'taken' : 'checking');
+            box.style.display = 'flex';
+            var icon = status === 'available' ? '✅' : status === 'taken' ? '❌' : '⏳';
+            box.innerHTML = '<span>' + icon + '</span><span>' + msg + '</span>';
+        }
+
+
             var rawInput = document.getElementById('appBankDisplay') ? document.getElementById('appBankDisplay').value : '';
             var q = rawInput.trim().toLowerCase();
             var dropdown = document.getElementById('bankDropdown');
@@ -1305,6 +1378,13 @@
                                 '<textarea class="form-control" id="appDesc" rows="2" placeholder="Describe what you sell...">'+((_appData.desc)||'')+'</textarea>' +
                             '</div>' +
                         '</div>' +
+                        '<div class="form-group" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 16px;">' +
+                            '<label class="form-label" style="color:#15803d;">🆔 Seller ID <span class="required">*</span> <small style="font-weight:400;color:#64748b;">(unique username for your shop)</small></label>' +
+                            '<input class="form-control" id="appSellerId" placeholder="e.g. rahul_shop, sneaker_hub_india" maxlength="30" value="'+((_appData.sellerId)||'')+'" oninput="onSellerIdInput(this.value)" style="border-color:#86efac;font-family:monospace;font-weight:700;">' +
+                            '<div id="sellerIdPreview" class="sid-preview checking" style="display:none;"></div>' +
+                            '<div class="form-error" id="appSellerIdErr">⚠ Seller ID required (letters, numbers, - and _ only, min 3 chars)</div>' +
+                            '<small style="color:#64748b;display:block;margin-top:6px;">⚠️ <strong>Cannot be changed later.</strong> Examples: <code>rahul_shop</code>, <code>adidas524</code>, <code>sneaker_hub</code></small>' +
+                        '</div>' +
                     '</div></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">' +
                         '<button class="btn btn-outline" onclick="showSellerWelcome()">← Back</button>' +
@@ -1360,6 +1440,7 @@
                             _reviewRow('Business Name', d.biz) +
                             _reviewRow('Category', d.cat) +
                             (d.gst ? _reviewRow('GST Number', d.gst) : '') +
+                            _reviewRow('Seller ID 🆔', d.sellerId || 'N/A') +
                             _reviewRow('Bank', d.bank) +
                             _reviewRow('Account Number', '****' + (d.acc || '').slice(-4)) +
                             _reviewRow('IFSC Code', d.ifsc, true) +
@@ -1406,14 +1487,27 @@
                 var gst   = (document.getElementById('appGST')   ? document.getElementById('appGST').value   : '').trim().toUpperCase();
                 var cat   = document.getElementById('appCat') ? document.getElementById('appCat').value : '';
                 var desc  = (document.getElementById('appDesc')  ? document.getElementById('appDesc').value  : '').trim();
+                var sid   = (document.getElementById('appSellerId') ? document.getElementById('appSellerId').value : '').trim();
                 var ok = true;
                 if (!name || name.length < 3)         { _fieldErr('appName','appNameErr',true);  ok = false; } else _fieldErr('appName','appNameErr',false);
                 if (!phone || !/^\d{10,15}$/.test(phone)) { _fieldErr('appPhone','appPhoneErr',true); ok = false; } else _fieldErr('appPhone','appPhoneErr',false);
                 if (!biz)                              { _fieldErr('appBiz','appBizErr',true);   ok = false; } else _fieldErr('appBiz','appBizErr',false);
                 if (!cat)                              { _fieldErr('appCat','appCatErr',true);   ok = false; } else _fieldErr('appCat','appCatErr',false);
                 if (gst && !validateGST(gst)) { showToast('Enter valid GST number or leave empty', 'error'); ok = false; }
+                if (!sid || sid.length < 3 || !/^[a-zA-Z0-9_-]+$/.test(sid)) { _fieldErr('appSellerId','appSellerIdErr',true); ok = false; } else _fieldErr('appSellerId','appSellerIdErr',false);
+                if (ok && sid) {
+                    // Check if sellerId is taken before proceeding
+                    var preview = document.getElementById('sellerIdPreview');
+                    if (preview && preview.classList.contains('taken')) { showToast('Seller ID already taken — choose a different one', 'error'); return; }
+                    if (preview && preview.classList.contains('checking')) { showToast('Checking Seller ID availability...', 'warning'); return; }
+                    if (!_appData.sellerId || _appData.sellerId !== sid) {
+                        showToast('Please wait for Seller ID availability check', 'warning');
+                        onSellerIdInput(sid);
+                        return;
+                    }
+                }
                 if (!ok) { showToast('Please fix the highlighted fields', 'error'); return; }
-                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc });
+                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc, sellerId: sid });
                 showApplicationForm(2);
             } else if (step === 2) {
                 var bank = (document.getElementById('appBank') ? document.getElementById('appBank').value : '').trim();
@@ -1455,16 +1549,32 @@
                 showApplicationForm(1);
                 return;
             }
+            if (!d.sellerId || d.sellerId.length < 3) {
+                showToast('Seller ID required — go back to Step 1', 'error');
+                showApplicationForm(1);
+                return;
+            }
             var btn = document.getElementById('appBtn');
             if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting...'; }
             try {
+                // Double-check Seller ID uniqueness before final submit
+                var sidSnap = await window._get(window._ref(window._db, 'sellerIds/' + d.sellerId));
+                if (sidSnap.exists() && sidSnap.val().uid !== user.uid) {
+                    showToast('Seller ID "' + d.sellerId + '" was just taken! Go back and choose another.', 'error');
+                    if (btn) { btn.disabled = false; btn.textContent = '✅ Submit Application'; }
+                    showApplicationForm(1);
+                    return;
+                }
+                // Reserve the Seller ID
+                await window._set(window._ref(window._db, 'sellerIds/' + d.sellerId), { uid: user.uid, reservedAt: Date.now() });
                 await window._set(window._ref(window._db, 'sellerRequests/' + user.uid), {
                     name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '',
                     category: d.cat, description: d.desc || '',
                     bankName: d.bank, accountNumber: d.acc, ifsc: d.ifsc,
-                    email: user.email, uid: user.uid, status: 'pending', appliedAt: Date.now()
+                    email: user.email, uid: user.uid, status: 'pending', appliedAt: Date.now(),
+                    sellerId: d.sellerId
                 });
-                window._state.sellerData = { name: d.name, businessName: d.biz, appliedAt: Date.now() };
+                window._state.sellerData = { name: d.name, businessName: d.biz, appliedAt: Date.now(), sellerId: d.sellerId };
                 _appData = {};
                 showToast('Application submitted! 🎉 We will review within 2–3 days.', 'success');
                 navigateTo('pending');
@@ -1556,8 +1666,21 @@
             var o = window._state.orders;
             var pending = o.filter(function(x) { return ['placed','pending','confirmed'].indexOf((x.status||'').toLowerCase()) !== -1; }).length;
             var earnings = o.filter(function(x) { return (x.status||'').toLowerCase() === 'delivered'; }).reduce(function(s, x) { return s + (parseFloat(x.totalAmount) || 0); }, 0);
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || (window._state.user && window._state.user.uid) || '';
+
+            var sidBanner = customSid ? (
+                '<div class="sid-banner" style="margin-bottom:16px;">' +
+                    '<span style="font-size:1.3rem;">🆔</span>' +
+                    '<div style="flex:1;">' +
+                        '<div style="font-size:11px;color:#3730a3;font-weight:600;">Your Seller ID</div>' +
+                        '<div class="sid-val">' + customSid + '</div>' +
+                    '</div>' +
+                    '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + customSid + '\').then(function(){showToast(\'Seller ID copied!\',\'success\')})" title="Copy Seller ID" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:14px;padding:4px;">📋</button>' +
+                '</div>'
+            ) : '';
 
             document.getElementById('contentArea').innerHTML = '' +
+                sidBanner +
                 '<div class="stats-grid">' +
                     '<div class="stat-card" onclick="navigateTo(\'products\')"><div class="stat-card-icon" style="background:#eff6ff;">📦</div><div class="stat-card-value">' + p.length + '</div><div class="stat-card-label">My Products</div></div>' +
                     '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#f0fdf4;">📋</div><div class="stat-card-value">' + o.length + '</div><div class="stat-card-label">Total Orders</div></div>' +
@@ -1612,9 +1735,10 @@
             if (!products.length) return '<tr><td colspan="7" style="text-align:center;padding:30px;">No products yet. <a href="javascript:openProductForm()" style="color:var(--primary);">Add one!</a></td></tr>';
             return products.map(function(p) {
                 var img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/48';
+                var sidDisplay = p.sellerCustomId || ((window._state.sellerData && window._state.sellerData.sellerId) || '');
                 return '<tr>' +
                     '<td><img src="' + img + '" class="product-img" onerror="this.src=\'https://placehold.co/48\'"></td>' +
-                    '<td><strong>' + (p.title || 'Untitled') + '</strong></td>' +
+                    '<td><strong>' + (p.title || 'Untitled') + '</strong>' + (sidDisplay ? '<br><code style="font-size:10px;color:#64748b;background:#f1f5f9;padding:1px 6px;border-radius:4px;">🆔 '+sidDisplay+'</code>' : '') + '</td>' +
                     '<td>' + (p.category || 'N/A') + '</td>' +
                     '<td>' + formatCurrency(p.price) + '</td>' +
                     '<td>' + (p.stock || 0) + '</td>' +
@@ -1751,17 +1875,27 @@
 
         function renderSettingsPage() {
             var uid = window._state.user && window._state.user.uid;
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || uid;
             document.getElementById('contentArea').innerHTML = '' +
                 '<h2 style="margin-bottom:16px;font-size:1.1rem;font-weight:800;">⚙️ Settings</h2>' +
+                '<div class="sid-banner" style="margin-bottom:16px;">' +
+                    '<span style="font-size:1.4rem;">🆔</span>' +
+                    '<div style="flex:1;">' +
+                        '<div style="font-size:11px;color:#3730a3;font-weight:700;">YOUR SELLER ID</div>' +
+                        '<div class="sid-val" style="font-size:15px;">' + customSid + '</div>' +
+                        '<div style="font-size:10px;color:#64748b;margin-top:2px;">This ID is permanently attached to all your products</div>' +
+                    '</div>' +
+                    '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + customSid + '\').then(function(){showToast(\'Seller ID copied!\',\'success\')})" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:15px;padding:4px;">📋</button>' +
+                '</div>' +
                 '<div class="card"><div class="card-body">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;"><span class="text-muted">Business Name</span><strong>' + ((window._state.sellerData && window._state.sellerData.businessName) ? window._state.sellerData.businessName : 'N/A') + '</strong></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Email</span><strong>' + (window._state.user ? window._state.user.email : 'N/A') + '</strong></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Account Status</span><span class="badge badge-success">✅ Approved</span></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">' +
-                        '<span class="text-muted">Seller ID</span>' +
+                        '<span class="text-muted">Seller ID <small style="color:#94a3b8;">(cannot change)</small></span>' +
                         '<div style="display:flex;align-items:center;gap:8px;">' +
-                            '<code style="background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;word-break:break-all;">' + (uid||'N/A') + '</code>' +
-                            '<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + (uid||'') + '\').then(function(){showToast(\'Seller ID copied!\',\'success\')})">📋</button>' +
+                            '<code style="background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;word-break:break-all;">' + customSid + '</code>' +
+                            '<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + customSid + '\').then(function(){showToast(\'Seller ID copied!\',\'success\')})">📋</button>' +
                         '</div>' +
                     '</div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Total Products</span><strong>' + window._state.products.length + '</strong></div>' +
@@ -1803,10 +1937,10 @@
             document.getElementById('productModal').classList.add('active');
             _populateProdCategory();
             loadTagsForDropdown();
-            // Show Seller ID
-            var uid = window._state.user && window._state.user.uid;
+            // Show custom Seller ID
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || (window._state.user && window._state.user.uid) || 'N/A';
             var sidEl = document.getElementById('modalSellerId');
-            if (sidEl) sidEl.textContent = uid || 'N/A';
+            if (sidEl) sidEl.textContent = customSid;
             // Reset brand dropdown
             var lbl = document.getElementById('bddLabel'), logo = document.getElementById('bddLogo');
             if (lbl) { lbl.textContent = '-- Select Brand --'; lbl.style.color = '#94a3b8'; }
@@ -1890,7 +2024,7 @@
             var brandName = brandInput ? brandInput.value.trim() : '';
             var brandId   = document.getElementById('prodBrandId') ? document.getElementById('prodBrandId').value.trim() : '';
             var brandLogo = document.getElementById('prodBrandLogo') ? document.getElementById('prodBrandLogo').value.trim() : '';
-            if (!brandName || !brandId) { showToast('Brand select karo dropdown se', 'error'); return; }
+            // Brand is optional - not mandatory
 
             var productCode = (function() {
                 var n = Math.floor(100 + Math.random() * 900).toString();
@@ -1898,6 +2032,7 @@
                 return n + l;
             })();
             var sellerName = (window._state.sellerData && window._state.sellerData.businessName) || window._state.user.displayName || window._state.user.email || 'Seller';
+            var customSellerId = (window._state.sellerData && window._state.sellerData.sellerId) || window._state.user.uid;
 
             var data = {
                 title: name,
@@ -1913,6 +2048,7 @@
                 image: window._state.uploadedImages[0] || '',
                 status: active ? 'active' : 'inactive',
                 sellerId: window._state.user.uid,
+                sellerCustomId: customSellerId,
                 sellerName: sellerName,
                 brand: brandName,
                 brandId: brandId,
@@ -1955,10 +2091,11 @@
                     image: window._state.uploadedImages[0] || '',
                     status: active ? 'active' : 'inactive',
                     sellerId: window._state.user.uid,
+                    sellerCustomId: customSellerId,
                     sellerName: window._state.user.displayName || window._state.user.email,
                     source: 'seller',
                     brand: brandName,
-                    brandId: brandName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                    brandId: brandName ? brandName.toLowerCase().replace(/[^a-z0-9]/g, '_') : '',
                     sellerEmail: window._state.user.email || '',
                     createdAt: data.createdAt || Date.now(),
                     updatedAt: Date.now()
@@ -2015,8 +2152,55 @@
         console.log('✅ All functions loaded successfully');
 
         // ════════════════════════════════════════════
-        // BRAND DROPDOWN SYSTEM
+        // BRAND AUTO-APPROVE (24 HOURS)
         // ════════════════════════════════════════════
+        async function checkAndAutoApproveBrands(uid) {
+            try {
+                var snap = await window._get(window._ref(window._db, 'brandRequests'));
+                if (!snap.exists()) return;
+                var now = Date.now();
+                var toApprove = [];
+                snap.forEach(function(c) {
+                    var r = c.val();
+                    if (r && r.status === 'pending' && r.requestedBy === uid) {
+                        var autoAt = r.autoApproveAt || (r.requestedAt + 24 * 60 * 60 * 1000);
+                        if (now >= autoAt) {
+                            toApprove.push({ key: c.key, data: r });
+                        }
+                    }
+                });
+                for (var i = 0; i < toApprove.length; i++) {
+                    var req = toApprove[i];
+                    var brandId = req.data.normalizedName || (req.data.name||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+                    // Create the brand in brands path
+                    await window._set(window._ref(window._db, 'brands/' + brandId), {
+                        name: req.data.name,
+                        normalizedName: req.data.normalizedName || brandId,
+                        logo: req.data.logo || '',
+                        description: req.data.description || '',
+                        ownerId: req.data.requestedBy,
+                        ownerEmail: req.data.requestedByEmail || '',
+                        ownerName: req.data.requestedByName || '',
+                        verificationLevel: 'normal',
+                        blueTickAdmin: false,
+                        createdAt: Date.now(),
+                        autoApproved: true
+                    });
+                    // Update the request status to approved
+                    await window._update(window._ref(window._db, 'brandRequests/' + req.key), {
+                        status: 'approved',
+                        approvedAt: Date.now(),
+                        autoApproved: true
+                    });
+                    console.log('✅ Brand auto-approved:', req.data.name);
+                    showToast('🎉 Your brand "' + req.data.name + '" has been auto-approved!', 'success');
+                }
+            } catch(e) {
+                console.warn('Auto-approve check failed:', e.message);
+            }
+        }
+
+
         var _bddOpen = false;
         var BRAND_COLORS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669'];
 
@@ -2141,9 +2325,10 @@
                     name: name, normalizedName: norm, logo: logo, description: desc, reason: reason,
                     requestedBy: uid, requestedByEmail: (window._state.user.email||''),
                     requestedByName: (window._state.sellerData && window._state.sellerData.businessName)||'',
-                    status: 'pending', requestedAt: Date.now()
+                    status: 'pending', requestedAt: Date.now(),
+                    autoApproveAt: Date.now() + 24 * 60 * 60 * 1000
                 });
-                showToast('Brand request submitted! Admin 1–2 days mein review karega.', 'success');
+                showToast('Brand request submitted! ✅ Auto-approved in 24 hours.', 'success');
                 closeModal('brandReqModal');
             } catch(err) { showToast('Failed: '+err.message, 'error'); }
         }
@@ -2195,27 +2380,28 @@
         }
 
         function _renderNoBrand(uid) {
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || uid;
             document.getElementById('contentArea').innerHTML =
                 '<div style="max-width:580px;margin:0 auto;" class="anim-up">'
                 +'<div style="text-align:center;padding:32px 20px 24px;">'
                     +'<div style="width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin:0 auto 16px;box-shadow:0 8px 32px rgba(37,99,235,.3);">🏷️</div>'
                     +'<h2 style="font-weight:800;margin-bottom:8px;">Create Your Brand</h2>'
-                    +'<p style="color:#64748b;max-width:360px;margin:0 auto;">Build your brand identity on Buyzo Cart. Request a brand — admin will approve it in 1–2 days.</p>'
+                    +'<p style="color:#64748b;max-width:360px;margin:0 auto;">Build your brand identity on Buyzo Cart. Request a brand — it auto-approves in <strong>24 hours</strong>.</p>'
                 +'</div>'
                 +'<div class="card" style="margin-bottom:16px;">'
                     +'<div class="card-header"><h3 class="card-title">🆔 Your Seller ID</h3></div>'
                     +'<div class="card-body">'
                         +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-                            +'<code style="background:#f1f5f9;border:1px solid #e2e8f0;padding:6px 12px;border-radius:8px;font-weight:700;font-size:12px;word-break:break-all;flex:1;">'+(uid||'N/A')+'</code>'
-                            +'<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+(uid||'')+'\').then(function(){showToast(\'Seller ID copied!\',\'success\')})">📋 Copy</button>'
+                            +'<code style="background:#f1f5f9;border:1px solid #e2e8f0;padding:6px 12px;border-radius:8px;font-weight:700;font-size:13px;word-break:break-all;flex:1;">'+customSid+'</code>'
+                            +'<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+customSid+'\').then(function(){showToast(\'Seller ID copied!\',\'success\')})">📋 Copy</button>'
                         +'</div>'
                     +'</div>'
                 +'</div>'
                 +'<div class="card" style="margin-bottom:16px;">'
                     +'<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>'
                     +'<div class="card-body">'
-                        +_stepHtml('1','Request Brand','Enter brand name + logo. Admin verifies & approves.','linear-gradient(135deg,#f97316,#fb923c)')
-                        +_stepHtml('2','Admin Approval','Brand gets created in 1–2 business days.','linear-gradient(135deg,#2563eb,#60a5fa)')
+                        +_stepHtml('1','Request Brand','Enter brand name + logo. Submit the form below.','linear-gradient(135deg,#f97316,#fb923c)')
+                        +_stepHtml('2','Auto-Approve in 24h','Brand is automatically approved after 24 hours. No admin needed!','linear-gradient(135deg,#2563eb,#60a5fa)')
                         +_stepHtml('3','Select in Products','Approved brand appears in Add Product dropdown.','linear-gradient(135deg,#16a34a,#4ade80)')
                     +'</div>'
                 +'</div>'
@@ -2237,9 +2423,33 @@
         function _renderBrandReqStatus(req, uid) {
             var color = _brandColor2(req.name||'B');
             var initials = (req.name||'B').slice(0,2).toUpperCase();
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || uid;
+
+            // Calculate countdown
+            var autoAt = req.autoApproveAt || (req.requestedAt + 24 * 60 * 60 * 1000);
+            var remaining = autoAt - Date.now();
+            var hoursLeft = Math.max(0, Math.floor(remaining / (1000 * 60 * 60)));
+            var minsLeft  = Math.max(0, Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60)));
+            var countdownHtml = '';
+            if (req.status === 'pending') {
+                if (remaining > 0) {
+                    countdownHtml = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;">'
+                        +'<div style="font-size:2rem;">⏱️</div>'
+                        +'<div>'
+                            +'<div style="font-weight:800;color:#15803d;font-size:15px;">Auto-approving in ' + hoursLeft + 'h ' + minsLeft + 'm</div>'
+                            +'<div style="font-size:12px;color:#64748b;margin-top:2px;">Your brand will be automatically approved 24 hours after request.</div>'
+                        +'</div>'
+                    +'</div>';
+                } else {
+                    countdownHtml = '<div style="background:#fef9c3;border:1px solid #fcd34d;border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:14px;color:#92400e;">'
+                        +'⚡ Auto-approval is processing... Refresh the page in a moment.'
+                    +'</div>';
+                }
+            }
+
             var sc = {
-                pending:  {icon:'⏳', label:'Under Review', bg:'#fef3c7', tc:'#92400e', msg:'Your request is being reviewed. Typically 1–2 business days.'},
-                approved: {icon:'✅', label:'Approved', bg:'#dcfce7', tc:'#166534', msg:'Brand approved! Admin is creating it now.'},
+                pending:  {icon:'⏳', label:'Pending — Auto-Approving', bg:'#fef3c7', tc:'#92400e', msg:'Your brand will auto-approve in 24 hours from submission.'},
+                approved: {icon:'✅', label:'Approved', bg:'#dcfce7', tc:'#166534', msg:'Brand approved! Refresh the page to see your brand profile.'},
                 rejected: {icon:'❌', label:'Rejected', bg:'#fee2e2', tc:'#991b1b', msg:req.rejectionReason||'Request was rejected.'}
             }[req.status] || {icon:'⏳',label:'Pending',bg:'#fef3c7',tc:'#92400e',msg:'Under review.'};
 
@@ -2252,13 +2462,16 @@
                     +'<h2 style="font-weight:800;margin-bottom:8px;">'+(req.name||'Brand')+'</h2>'
                     +'<span style="background:'+sc.bg+';color:'+sc.tc+';padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;">'+sc.icon+' '+sc.label+'</span>'
                 +'</div>'
+                + countdownHtml
                 +'<div style="background:'+sc.bg+';border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:'+sc.tc+';">'+sc.msg+'</div>'
                 +'<div class="card"><div class="card-body">'
                     +'<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="color:#64748b;">Request ID</span><code style="font-size:12px;">'+(req._key||'').slice(-8).toUpperCase()+'</code></div>'
                     +'<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="color:#64748b;">Submitted</span><strong>'+formatDate(req.requestedAt)+'</strong></div>'
-                    +'<div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:#64748b;">Seller ID</span><code style="font-size:11px;word-break:break-all;">'+(uid||'N/A')+'</code></div>'
+                    +'<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="color:#64748b;">Auto-Approve At</span><strong>'+formatDate(autoAt)+'</strong></div>'
+                    +'<div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:#64748b;">Seller ID</span><code style="font-size:11px;word-break:break-all;">'+customSid+'</code></div>'
                 +'</div></div>'
                 +(req.status==='rejected'?'<div style="text-align:center;padding:16px 0;"><button onclick="openBrandReqModal()" class="btn btn-primary"><i class="fas fa-redo"></i> Request Again</button></div>':'')
+                +'<div style="text-align:center;padding:8px 0;"><button onclick="renderBrandPage()" class="btn btn-outline btn-sm"><i class="fas fa-sync-alt"></i> Refresh Status</button></div>'
                 +'</div>';
         }
 
@@ -2266,6 +2479,7 @@
             var color = _brandColor2(brand.name);
             var initials = brand.name.slice(0,2).toUpperCase();
             var myProds = (window._state.products||[]).filter(function(p){ return p.brandId===brand.id || p.brandName===brand.name; });
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || uid;
             var verBadge = brand.verificationLevel==='premium'
                 ? '<span style="background:linear-gradient(135deg,#fef3c7,#fcd34d);color:#92400e;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:800;">⭐ Premium</span>'
                 : brand.blueTickAdmin
@@ -2320,8 +2534,8 @@
                         +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">'
                             +'<span style="color:#64748b;">Seller ID</span>'
                             +'<div style="display:flex;align-items:center;gap:8px;">'
-                                +'<code style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;word-break:break-all;">'+(uid||'N/A')+'</code>'
-                                +'<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+(uid||'')+'\').then(function(){showToast(\'Copied!\',\'success\')})">📋</button>'
+                                +'<code style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;word-break:break-all;">'+customSid+'</code>'
+                                +'<button class="btn btn-outline btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+customSid+'\').then(function(){showToast(\'Copied!\',\'success\')})">📋</button>'
                             +'</div>'
                         +'</div>'
                         +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">'
@@ -2482,8 +2696,8 @@
                 <button class="modal-close" onclick="closeModal('brandReqModal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400e;">
-                    <strong>ℹ️ Note:</strong> Sellers cannot create brands directly. Admin will review your request (1–2 days) and approve it.
+                <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#15803d;">
+                    <strong>⏱️ Auto-Approve:</strong> Your brand request will be <strong>automatically approved within 24 hours</strong> — no admin action needed. You'll see a countdown timer on the brand page.
                 </div>
                 <div class="form-group">
                     <label class="form-label">Brand Name <span class="required">*</span></label>
