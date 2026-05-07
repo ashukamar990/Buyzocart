@@ -701,7 +701,8 @@
                         brandId: entry[1].brandId || '',
                         brandName: entry[1].brandName || entry[1].brand || '',
                         brandLogo: entry[1].brandLogo || '',
-                        productCode: entry[1].productCode || ''
+                        productCode: entry[1].productCode || '',
+                        sellerCustomId: entry[1].sellerCustomId || ''
                     };
                 }) : [];
                 console.log('✅ Products loaded:', window._state.products.length);
@@ -742,8 +743,34 @@
                 window._state.orders = allOrders.filter(function(o) { return o.sellerId === user.uid; });
                 console.log('✅ Orders loaded:', window._state.orders.length);
 
-                // Check & auto-approve any pending brand requests older than 24hrs
-                if (typeof window.checkAndAutoApproveBrands === 'function') await window.checkAndAutoApproveBrands(user.uid);
+                // ── Auto-approve brand requests older than 24hrs (inline, no external call) ──
+                try {
+                    var brReqSnap = await get(ref(db, 'brandRequests'));
+                    if (brReqSnap.exists()) {
+                        var nowTs = Date.now();
+                        brReqSnap.forEach(function(c) {
+                            var r = c.val();
+                            if (r && r.status === 'pending' && r.requestedBy === user.uid) {
+                                var autoAt = r.autoApproveAt || ((r.requestedAt || 0) + 24 * 60 * 60 * 1000);
+                                if (nowTs >= autoAt) {
+                                    var brandId2 = r.normalizedName || (r.name || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                    set(ref(db, 'brands/' + brandId2), {
+                                        name: r.name, normalizedName: r.normalizedName || brandId2,
+                                        logo: r.logo || '', description: r.description || '',
+                                        ownerId: r.requestedBy, ownerEmail: r.requestedByEmail || '',
+                                        ownerName: r.requestedByName || '',
+                                        verificationLevel: 'normal', blueTickAdmin: false,
+                                        createdAt: Date.now(), autoApproved: true
+                                    }).then(function() {
+                                        return update(ref(db, 'brandRequests/' + c.key), { status: 'approved', approvedAt: Date.now(), autoApproved: true });
+                                    }).then(function() {
+                                        console.log('✅ Brand auto-approved:', r.name);
+                                    }).catch(function(e) { console.warn('Auto-approve failed:', e.message); });
+                                }
+                            }
+                        });
+                    }
+                } catch(ae) { console.warn('Brand auto-approve check skipped:', ae.message); }
 
                 if (typeof navigateTo === 'function') {
                     navigateTo('dashboard');
@@ -2151,54 +2178,6 @@
         console.log('🚀 Buyzo Cart Seller Central Ready');
         console.log('✅ All functions loaded successfully');
 
-        // ════════════════════════════════════════════
-        // BRAND AUTO-APPROVE (24 HOURS)
-        // ════════════════════════════════════════════
-        window.checkAndAutoApproveBrands = async function checkAndAutoApproveBrands(uid) {
-            try {
-                var snap = await window._get(window._ref(window._db, 'brandRequests'));
-                if (!snap.exists()) return;
-                var now = Date.now();
-                var toApprove = [];
-                snap.forEach(function(c) {
-                    var r = c.val();
-                    if (r && r.status === 'pending' && r.requestedBy === uid) {
-                        var autoAt = r.autoApproveAt || (r.requestedAt + 24 * 60 * 60 * 1000);
-                        if (now >= autoAt) {
-                            toApprove.push({ key: c.key, data: r });
-                        }
-                    }
-                });
-                for (var i = 0; i < toApprove.length; i++) {
-                    var req = toApprove[i];
-                    var brandId = req.data.normalizedName || (req.data.name||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
-                    // Create the brand in brands path
-                    await window._set(window._ref(window._db, 'brands/' + brandId), {
-                        name: req.data.name,
-                        normalizedName: req.data.normalizedName || brandId,
-                        logo: req.data.logo || '',
-                        description: req.data.description || '',
-                        ownerId: req.data.requestedBy,
-                        ownerEmail: req.data.requestedByEmail || '',
-                        ownerName: req.data.requestedByName || '',
-                        verificationLevel: 'normal',
-                        blueTickAdmin: false,
-                        createdAt: Date.now(),
-                        autoApproved: true
-                    });
-                    // Update the request status to approved
-                    await window._update(window._ref(window._db, 'brandRequests/' + req.key), {
-                        status: 'approved',
-                        approvedAt: Date.now(),
-                        autoApproved: true
-                    });
-                    console.log('✅ Brand auto-approved:', req.data.name);
-                    showToast('🎉 Your brand "' + req.data.name + '" has been auto-approved!', 'success');
-                }
-            } catch(e) {
-                console.warn('Auto-approve check failed:', e.message);
-            }
-        }
 
 
         var _bddOpen = false;
