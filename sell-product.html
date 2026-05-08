@@ -765,7 +765,10 @@
                     };
                 }) : [];
 
-                window._state.orders = allOrders.filter(function(o) { return o.sellerId === user.uid; });
+                window._state.orders = allOrders.filter(function(o) {
+                    var customSid = window._state.sellerData && window._state.sellerData.sellerId;
+                    return o.sellerId === user.uid || (customSid && o.sellerId === customSid) || o.sellerUid === user.uid;
+                });
                 console.log('✅ Orders loaded:', window._state.orders.length);
 
                 // Auto-approve brands check on every dashboard load
