@@ -492,6 +492,43 @@
         viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
+      // ── Brand results ──
+      const allBrandsForSearch = window.__bzBrandsCache || [];
+      if (allBrandsForSearch.length) {
+        const qLower = query.toLowerCase().trim();
+        const matchedBrands = allBrandsForSearch.filter(b =>
+          (b.name||'').toLowerCase().includes(qLower) || (b.description||'').toLowerCase().includes(qLower)
+        ).slice(0, 3);
+        if (matchedBrands.length) {
+          const hdr = document.createElement('div');
+          hdr.style.cssText = 'padding:5px 12px 3px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #f1f5f9;background:var(--surface,#fff);';
+          hdr.textContent = '🏷️  Brands';
+          suggestionsContainer.appendChild(hdr);
+          const brandColors = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+          const BT = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          matchedBrands.forEach(b => {
+            const col = brandColors[(b.name||'A').charCodeAt(0) % brandColors.length];
+            const initials = (b.name||'B').slice(0,2).toUpperCase();
+            const logoHtml = b.logo
+              ? `<img src="${b.logo}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`
+              : `<div style="width:38px;height:38px;border-radius:8px;background:${col};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">${initials}</div>`;
+            const verBadge = b.blueTickAdmin ? BT : '';
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;transition:background .15s;';
+            row.innerHTML = logoHtml
+              + `<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:3px;">${b.name||''}${verBadge}</div>`
+              + `<div style="font-size:11px;color:#64748b;">📦 ${b.products?b.products.length:0} products${b.followers?' &nbsp;❤️ '+b.followers:''}</div></div>`
+              + '<span style="font-size:10px;background:#eff6ff;color:#2563eb;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Brand</span>';
+            row.addEventListener('mouseenter', function(){this.style.background='#f8fafc';});
+            row.addEventListener('mouseleave', function(){this.style.background='';});
+            row.addEventListener('click', () => {
+              closeSearchPanel();
+              if (typeof window.showBrandProfile === 'function') window.showBrandProfile(b.id, b.name);
+            });
+            suggestionsContainer.appendChild(row);
+          });
+        }
+      }
     }
 
     function clearSearchSuggestions() {
@@ -4453,6 +4490,42 @@
         setTimeout(function() {
           var r2 = document.getElementById('bzOrbitRing');
           if (r2) r2.classList.add('bz-spinning');
+          // Swipe speed control
+          var stg = document.getElementById('bzOrbitStage');
+          if (stg && !stg._bzSpeedInited) {
+            stg._bzSpeedInited = true;
+            var curDur = 22;
+            function applyOrbitSpeed(dur) {
+              curDur = Math.max(3, Math.min(80, dur));
+              var rng = document.getElementById('bzOrbitRing');
+              if (!rng) return;
+              rng.style.animationDuration = curDur + 's';
+              rng.querySelectorAll('.bz-cat-item').forEach(function(it) {
+                it.style.animationDuration = curDur + 's';
+              });
+            }
+            var ts = {x:0, y:0, t:0};
+            stg.addEventListener('touchstart', function(e) {
+              ts.x = e.touches[0].clientX; ts.y = e.touches[0].clientY; ts.t = Date.now();
+            }, { passive: true });
+            stg.addEventListener('touchend', function(e) {
+              var dx = e.changedTouches[0].clientX - ts.x;
+              var dy = e.changedTouches[0].clientY - ts.y;
+              var dt = Math.max(1, Date.now() - ts.t);
+              if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+              if (Math.abs(dy) > Math.abs(dx) * 1.5) return;
+              var vel = Math.abs(dx) / dt;
+              applyOrbitSpeed(curDur + (dx > 0 ? 5 : -5) * (1 + vel * 8));
+            }, { passive: true });
+            var ms2 = {x:0, t:0, dn:false};
+            stg.addEventListener('mousedown', function(e) { ms2.x=e.clientX; ms2.t=Date.now(); ms2.dn=true; });
+            stg.addEventListener('mouseup', function(e) {
+              if (!ms2.dn) return; ms2.dn = false;
+              var dx2 = e.clientX - ms2.x; var dt2 = Math.max(1, Date.now() - ms2.t);
+              if (Math.abs(dx2) < 10) return;
+              applyOrbitSpeed(curDur + (dx2 > 0 ? 5 : -5) * (1 + Math.abs(dx2)/dt2 * 8));
+            });
+          }
         }, 600);
       } else {
         // LINE MODE — too many categories for circle
@@ -4485,18 +4558,26 @@
       var container = document.getElementById('bzCatTags');
       if (!container) return;
       container.innerHTML = '';
-      var tags = (typeof searchTags !== 'undefined' && searchTags.length)
+      var tags = (typeof searchTags !== 'undefined' && searchTags && searchTags.length)
         ? searchTags : cats.map(function(c) { return c.name || ''; }).filter(Boolean);
       tags.forEach(function(tag) {
         var chip = document.createElement('button');
         chip.textContent = tag;
-        chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
+        chip.type = 'button';
+        chip.style.cssText = 'padding:7px 15px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;'
+          + 'color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;'
+          + '-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;';
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
-        chip.addEventListener('click', function() {
+        function doTagFilter(e) {
+          e.preventDefault(); e.stopPropagation();
           var cat = categories && categories.find(function(c) { return c.name === tag; });
-          if (cat) filterByCategory(cat.id);
-        });
+          if (cat && typeof filterByCategory === 'function') { filterByCategory(cat.id); }
+          else if (typeof filterProductsByTag === 'function') { filterProductsByTag(tag); }
+          else if (typeof performSearch === 'function') { performSearch(tag); }
+        }
+        chip.addEventListener('click', doTagFilter);
+        chip.addEventListener('touchend', function(e) { e.preventDefault(); doTagFilter(e); }, { passive: false });
         container.appendChild(chip);
       });
     }
@@ -6163,10 +6244,11 @@
       var color = _brandColor(b.name);
       var initials = b.name.slice(0, 2).toUpperCase();
 
+      var _bzBlueTick = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;" aria-label="Verified"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       var badge = b.verificationLevel === 'premium'
         ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;white-space:nowrap;">⭐ Premium</span>'
         : b.blueTickAdmin
-          ? '<span style="background:#eff6ff;color:#2563eb;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;">✓</span>'
+          ? _bzBlueTick
           : '';
 
       var logoInner = b.logo
@@ -6336,10 +6418,11 @@
           return bid === brandId || (p.brand || '').toLowerCase() === name.toLowerCase();
         });
 
+        var _bzBlueTick2 = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;" aria-label="Verified"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         var verBadgeInline = level === 'premium'
           ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:1px 8px;border-radius:12px;font-size:11px;font-weight:800;"> ⭐ Premium</span>'
           : isVerified
-            ? '<span style="background:#eff6ff;color:#2563eb;padding:1px 8px;border-radius:12px;font-size:11px;font-weight:800;"> ✓ Verified</span>'
+            ? _bzBlueTick2
             : '';
 
         var logoHtml = logo
@@ -6394,6 +6477,39 @@
 
         if (brandProds.length) {
           setTimeout(function() { renderProducts(brandProds, 'brandProductsGrid'); }, 30);
+          // Add Trending / Most Popular / Latest sections
+          setTimeout(function() {
+            var extraWrap = document.createElement('div');
+            extraWrap.id = 'bzBrandExtras';
+            function addBrandSection(emoji, title, prods) {
+              if (!prods.length) return;
+              var gridId = 'bzBrandMini_' + title.replace(/\W/g, '');
+              var sec = document.createElement('div');
+              sec.style.cssText = 'padding:0 16px 20px;';
+              sec.innerHTML = '<div style="font-weight:800;font-size:14px;margin-bottom:10px;">' + emoji + ' ' + title + '</div>'
+                + '<div id="' + gridId + '" class="product-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>';
+              extraWrap.appendChild(sec);
+              setTimeout(function() { renderProducts(prods, gridId); }, 60);
+            }
+            var trending = brandProds.slice().sort(function(a,b) {
+              return ((b.views||0)+(b.orders||0)*2) - ((a.views||0)+(a.orders||0)*2);
+            }).slice(0, 4);
+            var popular = brandProds.slice().sort(function(a,b) {
+              var ra = typeof calculateProductRating==='function'?calculateProductRating(a.id):(a.rating||0);
+              var rb = typeof calculateProductRating==='function'?calculateProductRating(b.id):(b.rating||0);
+              return rb - ra;
+            }).slice(0, 4);
+            var latest = brandProds.slice().sort(function(a,b) {
+              return ((b.addedAt||b.createdAt||0) - (a.addedAt||a.createdAt||0));
+            }).slice(0, 4);
+            if (brandProds.length >= 2) {
+              addBrandSection('🔥', 'Trending', trending);
+              addBrandSection('⭐', 'Most Popular', popular);
+              addBrandSection('🆕', 'Latest', latest);
+            }
+            var pgDiv = page.querySelector('#brandProductsGrid');
+            if (pgDiv && pgDiv.parentElement) pgDiv.parentElement.appendChild(extraWrap);
+          }, 200);
         }
         window.scrollTo(0, 0);
       }).catch(function(err) {
@@ -6464,13 +6580,325 @@
     // Menu onclick handler — safe wrapper
     window._openBrandsPage = function() {
       showPage('brandsPage');
-      setTimeout(function() { loadBrandsPage(); }, 80);
+      // Reset cache so fresh load happens
+      window._siteBrandsAll = [];
+      window.__bzBrandsCache = [];
+      setTimeout(function() {
+        if (typeof bzLoadBrandsPageFixed === 'function') bzLoadBrandsPageFixed();
+        else loadBrandsPage();
+      }, 80);
     };
 
     // oninput handler for search input
     window._filterSiteBrands = function() { filterSiteBrands(); };
 
+    // ─── Cache brands for search suggestions ───
+    (function bzCacheBrandsForSearch() {
+      var _orig = window.loadBrandsPage;
+      window.loadBrandsPage = function() {
+        if (typeof _orig === 'function') _orig();
+      };
+    })();
+
   });
+})();
+
+/* ══════════════════════════════════════════════════════════
+   BUYZO — BRAND FULL LOADER (Firebase-scoped fixed version)
+   Loads brands with correct Firebase references.
+   Also caches brands for search suggestions.
+   ══════════════════════════════════════════════════════════ */
+(function bzBrandLoader() {
+  'use strict';
+
+  var BT = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;" aria-label="Verified"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  window.__BZ_BLUE_TICK = BT;
+
+  function brandColor(name) {
+    var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+    return cs[(name||'A').charCodeAt(0) % cs.length];
+  }
+
+  // ── Full brand loader ──
+  function bzLoadBrandsPageFixed() {
+    var fb = window.firebase;
+    if (!fb || !fb.database) { setTimeout(bzLoadBrandsPageFixed, 600); return; }
+    var get = fb.get, ref = fb.ref, db = fb.database;
+    var sp = document.getElementById('brandsLoadingSpinner');
+    if (sp) sp.style.display = 'block';
+    ['popularBrandsSection','suggestedBrandsSection','otherBrandsSection',
+     'followingBrandsSection','brandsEmptyState'].forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+
+    // Use cache if not invalidated
+    if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
+      if (sp) sp.style.display = 'none';
+      bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
+      return;
+    }
+
+    var uid = window.currentUser ? window.currentUser.uid : null;
+    Promise.all([
+      get(ref(db, 'products')),
+      get(ref(db, 'brands')),
+      uid ? get(ref(db, 'brandFollowers')) : Promise.resolve(null)
+    ]).then(function(res) {
+      var prodSnap = res[0], brandSnap = res[1], followSnap = res[2];
+      var brandMap = {};
+      if (brandSnap && brandSnap.exists()) {
+        brandSnap.forEach(function(c) {
+          var b = c.val();
+          if (b && b.name) brandMap[c.key] = {
+            id: c.key, name: b.name, logo: b.logo||'', description: b.description||'',
+            blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel||'normal',
+            followers: b.followersCount||b.followers||0, rating: b.rating||0,
+            totalReviews: b.totalReviews||0, products: []
+          };
+        });
+      }
+      if (prodSnap && prodSnap.exists()) {
+        prodSnap.forEach(function(c) {
+          var p = c.val(); if (!p || !p.brand) return;
+          var bid = p.brandId || (p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+          if (!brandMap[bid]) brandMap[bid] = {
+            id: bid, name: p.brandName||p.brand, logo: p.brandLogo||'', description:'',
+            blueTickAdmin: false, verificationLevel:'normal', followers:0, rating:0, totalReviews:0, products:[]
+          };
+          brandMap[bid].products.push(c.key);
+        });
+      }
+      var followedSet = {};
+      if (followSnap && followSnap.exists && followSnap.exists() && uid) {
+        followSnap.forEach(function(c) { if (c.val() && c.val()[uid]) followedSet[c.key] = true; });
+      }
+      var arr = Object.values(brandMap).filter(function(b) { return b.products.length > 0 || b.blueTickAdmin; });
+      arr.sort(function(a,b) {
+        return ((b.followers||0)+(b.rating||0)*100+b.products.length*10) - ((a.followers||0)+(a.rating||0)*100+a.products.length*10);
+      });
+      window.__bzBrandsCache = arr;
+      window.__bzFollowedSet = followedSet;
+      if (sp) sp.style.display = 'none';
+      bzRenderBrandsFixed(arr, followedSet);
+      renderFollowingBrandsHomeStrip();
+    }).catch(function(err) {
+      console.error('Brand load error:', err);
+      var spErr = document.getElementById('brandsLoadingSpinner');
+      if (spErr) spErr.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:20px;">Failed to load brands. <button onclick="bzLoadBrandsPageFixed()" style="margin-top:8px;padding:6px 16px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></p>';
+    });
+  }
+  window.bzLoadBrandsPageFixed = bzLoadBrandsPageFixed;
+
+  // ── Make brand card ──
+  function bzMakeBrandCard(b, isFollowing) {
+    var col = brandColor(b.name);
+    var initials = (b.name||'B').slice(0,2).toUpperCase();
+    var badge = b.verificationLevel==='premium'
+      ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;white-space:nowrap;margin-top:2px;display:inline-block;">⭐ Premium</span>'
+      : b.blueTickAdmin ? '<div style="margin-top:2px;">'+BT+'</div>' : '';
+    var logoInner = b.logo
+      ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\\"none\\"">'
+      : '<span style="font-size:17px;font-weight:800;color:#fff;">'+initials+'</span>';
+    var safeBName = b.name.replace(/'/g, '').replace(/"/g, '');
+    var followBtn = window.currentUser
+      ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\"'+b.id+'\",\"'+safeBName+'\",this)" style="margin-top:8px;width:100%;padding:6px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;'
+        +(isFollowing?'background:#f1f5f9;color:#64748b;':'background:#2563eb;color:#fff;')+'">'
+        +(isFollowing?'\u2713 Following':'+ Follow')+'</button>'
+      : '';
+    var el = document.createElement('div');
+    el.style.cssText = 'background:var(--surface,#fff);border:1.5px solid #e2e8f0;border-radius:14px;padding:12px;cursor:pointer;transition:border-color .18s,box-shadow .18s;';
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+        + '<div style="width:42px;height:42px;border-radius:10px;background:'+col+';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">'+logoInner+'</div>'
+        + '<div style="flex:1;min-width:0;"><div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</div>'+(badge?'<div>'+badge+'</div>':'')+'</div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;">'
+        +'<span>📦 '+b.products.length+'</span>'
+        +(b.followers?'<span>❤️ '+b.followers+'</span>':'')
+        +(b.rating?'<span>⭐ '+b.rating+'</span>':'')
+      +'</div>'+followBtn;
+    el.addEventListener('mouseenter', function(){ this.style.borderColor='#2563eb'; this.style.boxShadow='0 4px 16px rgba(37,99,235,.12)'; });
+    el.addEventListener('mouseleave', function(){ this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'; });
+    el.addEventListener('click', function(e) {
+      if (e.target.tagName==='BUTTON'||e.target.closest('button')) return;
+      if (typeof window.showBrandProfile==='function') window.showBrandProfile(b.id, b.name);
+    });
+    return el;
+  }
+
+  // ── Render brand sections ──
+  function bzRenderBrandsFixed(brands, followedSet) {
+    followedSet = followedSet || {};
+    var popularGrid  = document.getElementById('popularBrandsGrid');
+    var sugGrid      = document.getElementById('suggestedBrandsGrid');
+    var otherGrid    = document.getElementById('otherBrandsGrid');
+    var followingRow = document.getElementById('followingBrandsRow');
+    var emptyEl      = document.getElementById('brandsEmptyState');
+    var popSection   = document.getElementById('popularBrandsSection');
+    var sugSection   = document.getElementById('suggestedBrandsSection');
+    var othSection   = document.getElementById('otherBrandsSection');
+    var followingSec = document.getElementById('followingBrandsSection');
+    if (!brands.length) {
+      if (emptyEl) emptyEl.style.display = 'block';
+      [popSection,sugSection,othSection,followingSec].forEach(function(s){ if(s) s.style.display='none'; });
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    // Following strip
+    var followed = brands.filter(function(b){ return !!followedSet[b.id]; });
+    if (followed.length && followingSec && followingRow) {
+      followingSec.style.display = 'block';
+      followingRow.innerHTML = followed.map(function(b) {
+        var col = brandColor(b.name);
+        var ini = (b.name||'B').slice(0,2).toUpperCase();
+        var logo = b.logo
+          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\'none\'">'
+          : '<div style="width:52px;height:52px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;">'+ini+'</div>';
+        var vt = b.blueTickAdmin ? '<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:50%;padding:1px;">'+BT.replace('width="15" height="15"','width="13" height="13"')+'</div>' : '';
+        return '<div onclick="window.showBrandProfile(\"'+b.id+'\",\"'+b.name.replace(/'/g,'').replace(/"/g,'')+'\")" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;">'
+          +'<div style="position:relative;width:52px;height:52px;border-radius:10px;border:2px solid #2563eb;overflow:hidden;">'+logo+vt+'</div>'
+          +'<span style="font-size:10px;font-weight:700;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+b.name+'</span>'
+          +'</div>';
+      }).join('');
+    } else if (followingSec) followingSec.style.display='none';
+
+    var popular  = brands.filter(function(b){ return b.blueTickAdmin||b.verificationLevel==='premium'||((b.followers||0)+(b.rating||0)*100+b.products.length*10)>50; });
+    var nonPop   = brands.filter(function(b){ return !popular.includes(b); });
+    var suggested = nonPop.filter(function(b){ return !followedSet[b.id]; }).slice(0,4);
+    var rest = nonPop.filter(function(b){ return !suggested.includes(b); });
+
+    if (popSection&&popularGrid){ popSection.style.display=popular.length?'block':'none'; popularGrid.innerHTML=''; popular.forEach(function(b){ popularGrid.appendChild(bzMakeBrandCard(b,!!followedSet[b.id])); }); }
+    if (sugSection&&sugGrid){ sugSection.style.display=suggested.length?'block':'none'; sugGrid.innerHTML=''; suggested.forEach(function(b){ sugGrid.appendChild(bzMakeBrandCard(b,!!followedSet[b.id])); }); }
+    if (othSection&&otherGrid){ othSection.style.display=rest.length?'block':'none'; otherGrid.innerHTML=''; rest.forEach(function(b){ otherGrid.appendChild(bzMakeBrandCard(b,!!followedSet[b.id])); }); }
+  }
+
+  // Override global openers
+  window._openBrandsPage = function() {
+    if (typeof showPage==='function') showPage('brandsPage');
+    window.__bzBrandsCache = []; window.__bzFollowedSet = {};
+    setTimeout(bzLoadBrandsPageFixed, 100);
+  };
+  window.loadBrandsPage = bzLoadBrandsPageFixed;
+  window._filterSiteBrands = function() {
+    var inp = document.getElementById('brandSearchSite');
+    var q = inp ? inp.value.toLowerCase().trim() : '';
+    var all = window.__bzBrandsCache || [];
+    if (!q) { bzRenderBrandsFixed(all, window.__bzFollowedSet||{}); return; }
+    bzRenderBrandsFixed(all.filter(function(b){ return (b.name||'').toLowerCase().includes(q); }), window.__bzFollowedSet||{});
+  };
+
+  // ── Following Brands Strip on Home page ──
+  function renderFollowingBrandsHomeStrip() {
+    if (!window.currentUser) return;
+    var uid = window.currentUser.uid;
+    var allBrands = window.__bzBrandsCache || [];
+    var fb = window.firebase;
+    if (!fb || !fb.database || !allBrands.length) return;
+    fb.get(fb.ref(fb.database, 'brandFollowers')).then(function(snap) {
+      var followedIds = [];
+      if (snap.exists()) snap.forEach(function(c){ if(c.val()&&c.val()[uid]) followedIds.push(c.key); });
+      if (!followedIds.length) return;
+      var followed = allBrands.filter(function(b){ return followedIds.includes(b.id); });
+      if (!followed.length) return;
+      var homePage = document.getElementById('homePage');
+      if (!homePage) return;
+      var sec = document.getElementById('bzFollowingBrandsStrip');
+      if (!sec) {
+        sec = document.createElement('div');
+        sec.id = 'bzFollowingBrandsStrip';
+        sec.style.cssText = 'padding:0 0 4px;';
+        sec.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 10px;">'
+          +'<h2 style="margin:0;font-size:1.05rem;font-weight:800;">❤️ Following</h2>'
+          +'<a onclick="window._openBrandsPage&&window._openBrandsPage()" style="font-size:12px;color:#2563eb;cursor:pointer;font-weight:600;">Manage →</a>'
+          +'</div>'
+          +'<div id="bzFollowingBrandsIcons" style="display:flex;gap:16px;overflow-x:auto;padding:0 4px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;"></div>';
+        var trending = homePage.querySelector('.trending-section');
+        if (trending) trending.parentNode.insertBefore(sec, trending);
+        else { var grid = document.getElementById('homeProductGrid'); if(grid) grid.parentNode.insertBefore(sec, grid); }
+      }
+      var row = document.getElementById('bzFollowingBrandsIcons');
+      if (!row) return;
+      row.innerHTML = '';
+      followed.forEach(function(b) {
+        var col = brandColor(b.name);
+        var ini = (b.name||'B').slice(0,2).toUpperCase();
+        var logoInner = b.logo
+          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
+          : '<span style="font-size:16px;font-weight:800;color:#fff;">'+ini+'</span>';
+        var tick = b.blueTickAdmin ? '<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:50%;padding:1px;">'+BT.replace('width="15" height="15"','width="13" height="13"')+'</div>' : '';
+        var el = document.createElement('div');
+        el.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;';
+        el.innerHTML = '<div style="position:relative;width:58px;height:58px;">'
+          +'<div style="width:58px;height:58px;border-radius:14px;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+logoInner+'</div>'+tick
+          +'</div>'
+          +'<span style="font-size:10px;font-weight:700;max-width:66px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text,#0f172a);">'+(b.name||'')+'</span>';
+        el.addEventListener('click', function(){ if(typeof window.showBrandProfile==='function') window.showBrandProfile(b.id, b.name); });
+        row.appendChild(el);
+      });
+      sec.style.display = 'block';
+    }).catch(function(){});
+  }
+  window.renderFollowingBrandsHomeStrip = renderFollowingBrandsHomeStrip;
+
+  // ── Sell Product → My Shop ──
+  function checkSellerApproval() {
+    var user = window.currentUser;
+    if (!user) return;
+    var fb = window.firebase;
+    if (!fb || !fb.database) return;
+    var uid = user.uid;
+    if (localStorage.getItem('bz_seller_approved_'+uid)==='1') { applyMyShopMenu(); return; }
+    function applyMyShopMenu() {
+      var txt = document.getElementById('menuSellProductText');
+      if (txt) { txt.textContent = 'My Shop'; txt.style.color = '#7c3aed'; }
+      var item = document.getElementById('menuSellProductItem');
+      if (item) { var svg = item.querySelector('svg'); if(svg) svg.style.color='#7c3aed'; }
+      document.querySelectorAll('footer a').forEach(function(a){
+        if((a.textContent||'').trim()==='Sell Product') a.textContent='My Shop 🏪';
+      });
+      localStorage.setItem('bz_seller_approved_'+uid,'1');
+    }
+    fb.get(fb.ref(fb.database,'sellers/'+uid)).then(function(snap) {
+      if (snap.exists()) {
+        var d=snap.val();
+        if (d.approved===true||d.status==='approved'||d.verified===true) { applyMyShopMenu(); return; }
+      }
+      return fb.get(fb.ref(fb.database,'sellerRequests/'+uid));
+    }).then(function(snap2) {
+      if (!snap2||!snap2.exists||!snap2.exists()) return;
+      var d2=snap2.val();
+      if (d2&&(d2.approved===true||d2.status==='approved')) applyMyShopMenu();
+    }).catch(function(){});
+  }
+  window.checkSellerApproval = checkSellerApproval;
+
+  // ── Auth watchers ──
+  var _bld_iv = setInterval(function() {
+    if (window.currentUser) {
+      clearInterval(_bld_iv);
+      setTimeout(renderFollowingBrandsHomeStrip, 3000);
+      setTimeout(checkSellerApproval, 2000);
+    }
+  }, 700);
+
+  // Auto-load brands cache silently when Firebase is ready (for search)
+  (function prefetchBrandsCache() {
+    var fb = window.firebase;
+    if (!fb || !fb.database) { setTimeout(prefetchBrandsCache, 1200); return; }
+    if (window.__bzBrandsCache && window.__bzBrandsCache.length) return;
+    var get=fb.get, ref=fb.ref, db=fb.database;
+    Promise.all([get(ref(db,'products')), get(ref(db,'brands'))]).then(function(res) {
+      var prodSnap=res[0], brandSnap=res[1];
+      var brandMap={};
+      if (brandSnap&&brandSnap.exists()) {
+        brandSnap.forEach(function(c){ var b=c.val(); if(b&&b.name) brandMap[c.key]={ id:c.key,name:b.name,logo:b.logo||'',description:b.description||'',blueTickAdmin:!!b.blueTickAdmin,verificationLevel:b.verificationLevel||'normal',followers:b.followersCount||b.followers||0,rating:b.rating||0,products:[] }; });
+      }
+      if (prodSnap&&prodSnap.exists()) {
+        prodSnap.forEach(function(c){ var p=c.val(); if(!p||!p.brand) return; var bid=p.brandId||(p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_'); if(!brandMap[bid]) brandMap[bid]={id:bid,name:p.brandName||p.brand,logo:p.brandLogo||'',description:'',blueTickAdmin:false,verificationLevel:'normal',followers:0,rating:0,products:[]}; brandMap[bid].products.push(c.key); });
+      }
+      window.__bzBrandsCache = Object.values(brandMap).filter(function(b){ return b.products.length>0||b.blueTickAdmin; });
+    }).catch(function(){});
+  })();
+
 })();
 
 
