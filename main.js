@@ -2445,6 +2445,24 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay').textContent;
+      if (!orderId) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(orderId).then(() => {
+          showToast('Order ID copied!', 'success');
+        });
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = orderId;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('Order ID copied!', 'success');
+      }
+    }
+
     // ===== REAL-TIME ORDERS LISTENER =====
     let _ordersListenerUnsubscribe = null;
     function setupOrdersRealtimeListener(user) {
@@ -4349,6 +4367,7 @@
         });
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));

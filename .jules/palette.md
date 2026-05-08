@@ -13,3 +13,6 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+## 2026-05-08 - Semantic Buttons and Clipboard Utilities
+**Learning:** Converting interactive 'div' elements to semantic '<button type="button">' with 'aria-label' immediately enables keyboard accessibility and better screen reader support without breaking existing CSS that targeted the specific ID or class.
+**Action:** Always prefer semantic buttons for custom icons or menu toggles. Provide explicit clipboard copy buttons for critical IDs (like Order IDs) to improve mobile UX.
