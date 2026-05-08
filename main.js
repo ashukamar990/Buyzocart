@@ -6160,10 +6160,11 @@
         return;
       }
 
+      var _fb3 = window.firebase;
       Promise.all([
-        get(ref(database, 'products')),
-        get(ref(database, 'brands')),
-        currentUser ? get(ref(database, 'brandFollowers')) : Promise.resolve(null)
+        _fb3.get(_fb3.ref(_fb3.database, 'products')),
+        _fb3.get(_fb3.ref(_fb3.database, 'brands')),
+        currentUser ? _fb3.get(_fb3.ref(_fb3.database, 'brandFollowers')) : Promise.resolve(null)
       ]).then(function(res) {
         var prodSnap  = res[0];
         var brandSnap = res[1];
@@ -6393,9 +6394,10 @@
       showPage('brandProfilePage');
       window.scrollTo(0, 0);
 
+      var _fb = window.firebase;
       Promise.all([
-        get(ref(database, 'brands/' + brandId)),
-        get(ref(database, 'brandFollowers/' + brandId))
+        _fb.get(_fb.ref(_fb.database, 'brands/' + brandId)),
+        _fb.get(_fb.ref(_fb.database, 'brandFollowers/' + brandId))
       ]).then(function(res) {
         var bd         = res[0].exists() ? res[0].val() : {};
         var followSnap = res[1];
@@ -6526,19 +6528,20 @@
     function toggleBrandFollow(brandId, brandName, btnEl) {
       if (!currentUser) { showToast('Please login to follow brands', 'error'); return; }
       var uid = currentUser.uid;
-      var followRef = ref(database, 'brandFollowers/' + brandId + '/' + uid);
+      var _fb2 = window.firebase;
+      var followRef = _fb2.ref(_fb2.database, 'brandFollowers/' + brandId + '/' + uid);
       var btn = btnEl || document.getElementById('brandFollowBtn');
 
-      get(followRef).then(function(snap) {
+      _fb2.get(followRef).then(function(snap) {
         if (snap.exists()) {
-          return remove(followRef).then(function() {
+          return _fb2.remove(followRef).then(function() {
             if (btn) { btn.textContent = '+ Follow'; btn.style.background = '#2563eb'; btn.style.color = '#fff'; }
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') - 1);
             showToast('Unfollowed ' + brandName);
           });
         } else {
-          return set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
+          return _fb2.set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
             if (btn) { btn.textContent = '✓ Following'; btn.style.background = '#f1f5f9'; btn.style.color = '#64748b'; }
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = parseInt(cnt.textContent || '0') + 1;
@@ -6552,7 +6555,7 @@
     function loadFollowingProducts() {
       if (!currentUser) return;
       var uid = currentUser.uid;
-      get(ref(database, 'brandFollowers')).then(function(snap) {
+      window.firebase.get(window.firebase.ref(window.firebase.database, 'brandFollowers')).then(function(snap) {
         if (!snap.exists()) return;
         var followed = [];
         snap.forEach(function(c) { if (c.val() && c.val()[uid]) followed.push(c.key); });
