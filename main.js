@@ -6440,9 +6440,10 @@
             + '<button onclick="window.showBrandProducts(\'' + brandId + '\',\'' + safeName + '\')" style="padding:10px 20px;border-radius:50px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;background:#fff;color:#0f172a;margin-left:8px;">Shop Now</button>'
           : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="padding:10px 28px;border-radius:50px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:700;">Login to Follow</button>';
 
-        // Banner: use bd.banner if available, else gradient
-        var bannerStyle = bd.banner
-          ? 'background:url(' + JSON.stringify(bd.banner) + ') center/cover no-repeat;'
+        // Banner: check all possible Firebase field names for brand banner
+        var bannerUrl = bd.banner || bd.bannerUrl || bd.bannerImage || bd.coverImage || bd.cover || bd.headerImage || '';
+        var bannerStyle = bannerUrl
+          ? 'background:url(' + JSON.stringify(bannerUrl) + ') center/cover no-repeat;'
           : 'background:linear-gradient(135deg,' + color + ',' + color + 'aa);';
 
         page.innerHTML =
@@ -6911,51 +6912,58 @@
   function renderFollowingBrandsHomeStrip() {
     if (!window.currentUser) return;
     var uid = window.currentUser.uid;
-    var allBrands = window.__bzBrandsCache || [];
     var fb = window.firebase;
-    if (!fb || !fb.database || !allBrands.length) return;
+    if (!fb || !fb.database) return;
+    var allBrands = window.__bzBrandsCache || [];
+
     fb.get(fb.ref(fb.database, 'brandFollowers')).then(function(snap) {
       var followedIds = [];
       if (snap.exists()) snap.forEach(function(c){ if(c.val()&&c.val()[uid]) followedIds.push(c.key); });
       if (!followedIds.length) return;
-      var followed = allBrands.filter(function(b){ return followedIds.includes(b.id); });
-      if (!followed.length) return;
-      var homePage = document.getElementById('homePage');
-      if (!homePage) return;
-      var sec = document.getElementById('bzFollowingBrandsStrip');
-      if (!sec) {
-        sec = document.createElement('div');
-        sec.id = 'bzFollowingBrandsStrip';
-        sec.style.cssText = 'padding:0 0 4px;';
-        sec.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 10px;">'
-          +'<h2 style="margin:0;font-size:1.05rem;font-weight:800;">❤️ Following</h2>'
-          +'<a onclick="window._openBrandsPage&&window._openBrandsPage()" style="font-size:12px;color:#2563eb;cursor:pointer;font-weight:600;">Manage →</a>'
-          +'</div>'
-          +'<div id="bzFollowingBrandsIcons" style="display:flex;gap:16px;overflow-x:auto;padding:0 4px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;"></div>';
-        var trending = homePage.querySelector('.trending-section');
-        if (trending) trending.parentNode.insertBefore(sec, trending);
-        else { var grid = document.getElementById('homeProductGrid'); if(grid) grid.parentNode.insertBefore(sec, grid); }
-      }
-      var row = document.getElementById('bzFollowingBrandsIcons');
-      if (!row) return;
-      row.innerHTML = '';
-      followed.forEach(function(b) {
-        var col = brandColor(b.name);
-        var ini = (b.name||'B').slice(0,2).toUpperCase();
-        var logoInner = b.logo
-          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
-          : '<span style="font-size:16px;font-weight:800;color:#fff;">'+ini+'</span>';
-        var tick = b.blueTickAdmin ? '<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:50%;padding:1px;">'+BT.replace('width="15" height="15"','width="13" height="13"')+'</div>' : '';
-        var el = document.createElement('div');
-        el.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;';
-        el.innerHTML = '<div style="position:relative;width:58px;height:58px;">'
-          +'<div style="width:58px;height:58px;border-radius:14px;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+logoInner+'</div>'+tick
-          +'</div>'
-          +'<span style="font-size:10px;font-weight:700;max-width:66px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text,#0f172a);">'+(b.name||'')+'</span>';
-        el.addEventListener('click', function(){ if(typeof window.showBrandProfile==='function') window.showBrandProfile(b.id, b.name); });
-        row.appendChild(el);
-      });
+
+      // Get followed brands from cache or build list from ids
+      var followed = allBrands.filter(function(b){ return followedIds.indexOf(b.id) !== -1; });
+
+      // Also show section with just ids if cache empty
+      var sec = document.getElementById('followingProductsSection');
+      if (!sec) return;
       sec.style.display = 'block';
+
+      // ── Fill brand icon circles ──
+      var iconsRow = document.getElementById('bzFollowingBrandsIcons');
+      if (iconsRow) {
+        iconsRow.innerHTML = '';
+        var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+        var BZ_BT = window.__BZ_BLUE_TICK || '';
+        var renderList = followed.length ? followed : followedIds.map(function(id){ return {id:id, name:id, logo:'', blueTickAdmin:false}; });
+        renderList.forEach(function(b) {
+          var col = cs[(b.name||'A').charCodeAt(0) % cs.length];
+          var ini = (b.name||'B').slice(0,2).toUpperCase();
+          var lInner = b.logo
+            ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
+            : '<span style="font-size:14px;font-weight:800;color:#fff;">'+ini+'</span>';
+          var tick = b.blueTickAdmin
+            ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BZ_BT.replace(/width="15"/,'width="11"').replace(/height="15"/,'height="11"')+'</div>'
+            : '';
+          var item = document.createElement('div');
+          item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:58px;';
+          item.innerHTML = '<div style="position:relative;width:54px;height:54px;">'
+            +'<div style="width:54px;height:54px;border-radius:50%;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick
+            +'</div>'
+            +'<span style="font-size:10px;font-weight:700;max-width:64px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
+          item.addEventListener('click', function(){ if(typeof window.showBrandProfile==='function') window.showBrandProfile(b.id, b.name); });
+          iconsRow.appendChild(item);
+        });
+      }
+
+      // ── Fill brand products ──
+      var prods = (window.products||[]).filter(function(p){
+        var bid = p.brandId || (p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+        return followedIds.indexOf(bid) !== -1;
+      });
+      if (prods.length) {
+        renderProducts(prods.slice(0,10), 'followingProductsGrid');
+      }
     }).catch(function(){});
   }
   window.renderFollowingBrandsHomeStrip = renderFollowingBrandsHomeStrip;
