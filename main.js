@@ -2482,6 +2482,15 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay')?.textContent;
+      if (orderId) {
+        navigator.clipboard.writeText(orderId).then(() => {
+          showToast('Order ID copied to clipboard!', 'success');
+        });
+      }
+    }
+
     // ===== REAL-TIME ORDERS LISTENER =====
     let _ordersListenerUnsubscribe = null;
     function setupOrdersRealtimeListener(user) {
@@ -4387,6 +4396,7 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
