@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-09 - One-Tap Data Persistence (Copy Button)
+**Learning:** Users often need to save specific transaction identifiers (like Order IDs) for reference outside the app. Requiring manual text selection on mobile is high-friction and error-prone.
+**Action:** Always provide a dedicated "Copy" button with immediate visual feedback (toast/label change) next to critical alphanumeric identifiers to streamline the user's workflow.
