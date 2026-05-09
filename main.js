@@ -724,6 +724,15 @@
         case 'categoryPage':
           setTimeout(function() { bzRenderOrbit(); }, 100);
           break;
+        case 'brandsPage':
+          setTimeout(function() {
+            if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
+              bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
+            } else {
+              bzLoadBrandsPageFixed();
+            }
+          }, 40);
+          break;
       }
     }
 
@@ -6455,14 +6464,16 @@
               + '</button>'
               + '<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</span>'
             + '</div>'
-            // Banner + logo
-            + '<div style="height:130px;' + bannerStyle + 'position:relative;">'
-              + '<div id="bpLogoHolder" style="position:absolute;bottom:-28px;left:18px;width:64px;height:64px;border-radius:16px;border:3px solid #fff;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer;">'
+            // Banner (no overflow hidden) + logo overlapping at bottom
+            + '<div style="position:relative;padding-bottom:36px;">'
+              + '<div style="height:130px;' + bannerStyle + 'border-radius:0;">'
+              + '</div>'
+              + '<div id="bpLogoHolder" style="position:absolute;bottom:0;left:18px;width:68px;height:68px;border-radius:18px;border:3.5px solid #fff;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.18);cursor:pointer;z-index:5;">'
                 + logoHtml
               + '</div>'
             + '</div>'
             // Profile info
-            + '<div style="background:#fff;padding:40px 18px 16px;border-bottom:1px solid #e2e8f0;">'
+            + '<div style="background:#fff;padding:10px 18px 16px;border-bottom:1px solid #e2e8f0;">'
               + '<div style="font-size:1.1rem;font-weight:800;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'
                 + name + (verBadgeInline ? ('&ensp;' + verBadgeInline) : '')
               + '</div>'
@@ -6896,8 +6907,15 @@
   // Override global openers
   window._openBrandsPage = function() {
     if (typeof showPage==='function') showPage('brandsPage');
-    window.__bzBrandsCache = []; window.__bzFollowedSet = {};
-    setTimeout(bzLoadBrandsPageFixed, 100);
+    // Load immediately — show skeleton then data
+    setTimeout(function() {
+      if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
+        // Cache available — render right away, no white space
+        bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
+      } else {
+        bzLoadBrandsPageFixed();
+      }
+    }, 50);
   };
   window.loadBrandsPage = bzLoadBrandsPageFixed;
   window._filterSiteBrands = function() {
@@ -6956,14 +6974,9 @@
         });
       }
 
-      // ── Fill brand products ──
-      var prods = (window.products||[]).filter(function(p){
-        var bid = p.brandId || (p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
-        return followedIds.indexOf(bid) !== -1;
-      });
-      if (prods.length) {
-        renderProducts(prods.slice(0,10), 'followingProductsGrid');
-      }
+      // Hide followingProductsGrid — only brand circles shown, not products
+      var fg = document.getElementById('followingProductsGrid');
+      if (fg) fg.style.display = 'none';
     }).catch(function(){});
   }
   window.renderFollowingBrandsHomeStrip = renderFollowingBrandsHomeStrip;
