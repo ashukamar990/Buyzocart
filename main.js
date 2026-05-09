@@ -510,7 +510,7 @@
             const col = brandColors[(b.name||'A').charCodeAt(0) % brandColors.length];
             const initials = (b.name||'B').slice(0,2).toUpperCase();
             const logoHtml = b.logo
-              ? `<img src="${b.logo}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`
+              ? `<img src="${b.logo}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">`
               : `<div style="width:38px;height:38px;border-radius:8px;background:${col};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">${initials}</div>`;
             const verBadge = b.blueTickAdmin ? BT : '';
             const row = document.createElement('div');
@@ -985,7 +985,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var b=window._brandsData&&window._brandsData[product.brandId||(product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')];return b&&b.blueTickAdmin?'<span style="color:#2563eb;font-size:9px;background:#eff6ff;padding:1px 4px;border-radius:10px;">✓</span>':'';}catch(e){return '';}})()}</div>` : ''}
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var cacheB=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.id===(product.brandId||(product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_'))||x.name===(product.brand||'');});return cacheB&&cacheB.blueTickAdmin?'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 100 100\" style=\"display:inline-block;vertical-align:middle;margin-left:2px;\"><path d=\"M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z\" fill=\"#1DA1F2\"/><polyline points=\"31,50 44,63 69,36\" fill=\"none\" stroke=\"white\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>':'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -2274,7 +2274,7 @@
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
               <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
               ${isVerified} ${isPending}
@@ -6440,42 +6440,115 @@
             + '<button onclick="window.showBrandProducts(\'' + brandId + '\',\'' + safeName + '\')" style="padding:10px 20px;border-radius:50px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;background:#fff;color:#0f172a;margin-left:8px;">Shop Now</button>'
           : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="padding:10px 28px;border-radius:50px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:700;">Login to Follow</button>';
 
+        // Banner: use bd.banner if available, else gradient
+        var bannerStyle = bd.banner
+          ? 'background:url(' + JSON.stringify(bd.banner) + ') center/cover no-repeat;'
+          : 'background:linear-gradient(135deg,' + color + ',' + color + 'aa);';
+
         page.innerHTML =
           '<div style="max-width:640px;margin:0 auto;">'
             // Sticky top bar
             + '<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,.06);">'
-              + '<button onclick="showPage(\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+              + '<button onclick="history.length>1?history.back():showPage(\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
                 + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>'
               + '</button>'
               + '<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</span>'
             + '</div>'
             // Banner + logo
-            + '<div style="height:110px;background:linear-gradient(135deg,' + color + ',' + color + 'aa);position:relative;">'
-              + '<div style="position:absolute;bottom:-24px;left:18px;width:56px;height:56px;border-radius:14px;border:3px solid #fff;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.15);">'
+            + '<div style="height:130px;' + bannerStyle + 'position:relative;">'
+              + '<div id="bpLogoHolder" style="position:absolute;bottom:-28px;left:18px;width:64px;height:64px;border-radius:16px;border:3px solid #fff;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer;">'
                 + logoHtml
               + '</div>'
             + '</div>'
             // Profile info
-            + '<div style="background:#fff;padding:34px 18px 16px;border-bottom:1px solid #e2e8f0;">'
-              + '<div style="font-size:1.05rem;font-weight:800;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'
-                + name + verBadgeInline
+            + '<div style="background:#fff;padding:40px 18px 16px;border-bottom:1px solid #e2e8f0;">'
+              + '<div style="font-size:1.1rem;font-weight:800;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'
+                + name + (verBadgeInline ? ('&ensp;' + verBadgeInline) : '')
               + '</div>'
-              + (desc ? '<p style="font-size:13px;color:#64748b;margin:4px 0 10px;max-width:380px;">' + desc + '</p>' : '')
-              + '<div style="display:flex;gap:22px;margin:10px 0 14px;">'
-                + '<div style="text-align:center;"><div style="font-size:1.1rem;font-weight:800;" id="brandFollowerCount">' + followers + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">Followers</div></div>'
-                + '<div style="text-align:center;"><div style="font-size:1.1rem;font-weight:800;">' + brandProds.length + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">Products</div></div>'
-                + (bd.rating ? '<div style="text-align:center;"><div style="font-size:1.1rem;font-weight:800;">⭐ ' + bd.rating + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">' + (bd.totalReviews || 0) + ' Reviews</div></div>' : '')
+              + (desc ? '<p style="font-size:13px;color:#64748b;margin:6px 0 10px;max-width:380px;line-height:1.5;">' + desc + '</p>' : '')
+              + '<div style="display:flex;gap:24px;margin:12px 0 16px;">'
+                + '<div style="text-align:center;"><div style="font-size:1.15rem;font-weight:800;" id="brandFollowerCount">' + followers + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">Followers</div></div>'
+                + '<div style="text-align:center;"><div style="font-size:1.15rem;font-weight:800;">' + brandProds.length + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">Products</div></div>'
+                + (bd.rating ? '<div style="text-align:center;"><div style="font-size:1.15rem;font-weight:800;">\u2b50 ' + bd.rating + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">' + (bd.totalReviews || 0) + ' Reviews</div></div>' : '')
               + '</div>'
               + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + followBtnHtml + '</div>'
             + '</div>'
+            // Also Following section
+            + '<div id="bpFollowingSection" style="display:none;padding:14px 16px;background:#fafafa;border-bottom:1px solid #f1f5f9;">'
+              + '<div style="font-weight:800;font-size:12px;margin-bottom:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Also Following</div>'
+              + '<div id="bpFollowingRow" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;"></div>'
+            + '</div>'
             // Products
             + '<div style="padding:16px;">'
-              + '<div style="font-weight:800;font-size:14px;margin-bottom:12px;">🛍️ ' + brandProds.length + ' Products</div>'
+              + '<div style="font-weight:800;font-size:14px;margin-bottom:12px;">\ud83d\udecd\ufe0f ' + brandProds.length + ' Products</div>'
               + (brandProds.length
                   ? '<div class="product-grid" id="brandProductsGrid"></div>'
                   : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No products listed yet</div>')
             + '</div>'
           + '</div>';
+
+        // Logo hold/long-press → full-screen preview
+        setTimeout(function() {
+          var holder = document.getElementById('bpLogoHolder');
+          if (!holder) return;
+          var holdTimer;
+          function openLogoPreview() {
+            var ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s;';
+            ov.innerHTML = logo
+              ? '<img src="' + logo + '" style="max-width:88vw;max-height:88vh;border-radius:20px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.5);">'
+              : '<div style="width:200px;height:200px;border-radius:32px;background:' + color + ';display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:800;color:#fff;">' + initials + '</div>';
+            ov.addEventListener('click', function(){ document.body.removeChild(ov); });
+            document.body.appendChild(ov);
+          }
+          holder.addEventListener('mousedown', function(){ holdTimer = setTimeout(openLogoPreview, 500); });
+          holder.addEventListener('mouseup', function(){ clearTimeout(holdTimer); });
+          holder.addEventListener('mouseleave', function(){ clearTimeout(holdTimer); });
+          holder.addEventListener('touchstart', function(){ holdTimer = setTimeout(openLogoPreview, 500); }, { passive: true });
+          holder.addEventListener('touchend', function(){ clearTimeout(holdTimer); });
+          holder.addEventListener('touchmove', function(){ clearTimeout(holdTimer); }, { passive: true });
+          holder.addEventListener('contextmenu', function(e){ e.preventDefault(); openLogoPreview(); });
+        }, 200);
+
+        // Load "Also Following" brands for this brand
+        setTimeout(function() {
+          var _fb4 = window.firebase;
+          if (!_fb4) return;
+          _fb4.get(_fb4.ref(_fb4.database, 'brandFollowers')).then(function(allFollowSnap) {
+            var followingIds = [];
+            if (allFollowSnap.exists()) {
+              allFollowSnap.forEach(function(c) {
+                var val = c.val();
+                if (val && val[brandId] && c.key !== brandId) followingIds.push(c.key);
+              });
+            }
+            if (!followingIds.length) return;
+            var allBrands = window.__bzBrandsCache || [];
+            var followingBrands = allBrands.filter(function(b){ return followingIds.indexOf(b.id) !== -1; });
+            followingBrands.sort(function(a,b){ return ((b.followers||0)+(b.blueTickAdmin?10000:0)) - ((a.followers||0)+(a.blueTickAdmin?10000:0)); });
+            followingBrands = followingBrands.slice(0,20);
+            if (!followingBrands.length) return;
+            var sec = document.getElementById('bpFollowingSection');
+            var row = document.getElementById('bpFollowingRow');
+            if (!sec || !row) return;
+            sec.style.display = 'block';
+            var BZ_BT2 = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 100 100"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+            followingBrands.forEach(function(b) {
+              var bc = cs[(b.name||'A').charCodeAt(0) % cs.length];
+              var ini = (b.name||'B').slice(0,2).toUpperCase();
+              var lInner = b.logo
+                ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'" >'
+                : '<span style="font-size:13px;font-weight:800;color:#fff;">' + ini + '</span>';
+              var item = document.createElement('div');
+              item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;';
+              item.innerHTML = '<div style="width:46px;height:46px;border-radius:12px;border:2px solid #e2e8f0;background:' + bc + ';display:flex;align-items:center;justify-content:center;overflow:hidden;">' + lInner + '</div>'
+                + '<span style="font-size:9px;font-weight:700;max-width:54px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (b.name||'').slice(0,10) + (b.blueTickAdmin ? BZ_BT2 : '') + '</span>';
+              item.addEventListener('click', function(){ window.showBrandProfile(b.id, b.name); });
+              row.appendChild(item);
+            });
+          }).catch(function(){});
+        }, 500);
 
         if (brandProds.length) {
           setTimeout(function() { renderProducts(brandProds, 'brandProductsGrid'); }, 30);
@@ -6622,21 +6695,42 @@
     return cs[(name||'A').charCodeAt(0) % cs.length];
   }
 
-  // ── Full brand loader ──
+  // ── Full brand loader (professional, instant skeleton) ──
   function bzLoadBrandsPageFixed() {
     var fb = window.firebase;
     if (!fb || !fb.database) { setTimeout(bzLoadBrandsPageFixed, 600); return; }
     var get = fb.get, ref = fb.ref, db = fb.database;
-    var sp = document.getElementById('brandsLoadingSpinner');
-    if (sp) sp.style.display = 'block';
-    ['popularBrandsSection','suggestedBrandsSection','otherBrandsSection',
-     'followingBrandsSection','brandsEmptyState'].forEach(function(id) {
-      var el = document.getElementById(id); if (el) el.style.display = 'none';
-    });
 
-    // Use cache if not invalidated
+    // Add shimmer keyframe
+    if (!document.getElementById('bzShimmerStyle')) {
+      var st = document.createElement('style');
+      st.id = 'bzShimmerStyle';
+      st.textContent = '@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
+      document.head.appendChild(st);
+    }
+
+    // Hide spinner, show skeleton grids immediately
+    var sp = document.getElementById('brandsLoadingSpinner');
+    if (sp) sp.style.display = 'none';
+    ['suggestedBrandsSection','otherBrandsSection','followingBrandsSection','brandsEmptyState'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.style.display='none';
+    });
+    var popSec = document.getElementById('popularBrandsSection');
+    var popGrid = document.getElementById('popularBrandsGrid');
+    if (popSec && popGrid) {
+      popSec.style.display = 'block';
+      popGrid.innerHTML = '';
+      var skFrag = document.createDocumentFragment();
+      for (var si=0; si<4; si++) {
+        var sk = document.createElement('div');
+        sk.style.cssText = 'border-radius:16px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;height:120px;';
+        skFrag.appendChild(sk);
+      }
+      popGrid.appendChild(skFrag);
+    }
+
+    // Use cache if valid
     if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
-      if (sp) sp.style.display = 'none';
       bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
       return;
     }
@@ -6647,132 +6741,156 @@
       get(ref(db, 'brands')),
       uid ? get(ref(db, 'brandFollowers')) : Promise.resolve(null)
     ]).then(function(res) {
-      var prodSnap = res[0], brandSnap = res[1], followSnap = res[2];
-      var brandMap = {};
+      var prodSnap=res[0], brandSnap=res[1], followSnap=res[2];
+      var brandMap={};
       if (brandSnap && brandSnap.exists()) {
         brandSnap.forEach(function(c) {
-          var b = c.val();
-          if (b && b.name) brandMap[c.key] = {
-            id: c.key, name: b.name, logo: b.logo||'', description: b.description||'',
-            blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel||'normal',
-            followers: b.followersCount||b.followers||0, rating: b.rating||0,
-            totalReviews: b.totalReviews||0, products: []
+          var b=c.val();
+          if (b && b.name) brandMap[c.key]={
+            id:c.key, name:b.name, logo:b.logo||'', banner:b.banner||'',
+            description:b.description||'', blueTickAdmin:!!b.blueTickAdmin,
+            verificationLevel:b.verificationLevel||'normal',
+            followers:b.followersCount||b.followers||0, rating:b.rating||0,
+            totalReviews:b.totalReviews||0, products:[]
           };
         });
       }
       if (prodSnap && prodSnap.exists()) {
         prodSnap.forEach(function(c) {
-          var p = c.val(); if (!p || !p.brand) return;
-          var bid = p.brandId || (p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
-          if (!brandMap[bid]) brandMap[bid] = {
-            id: bid, name: p.brandName||p.brand, logo: p.brandLogo||'', description:'',
-            blueTickAdmin: false, verificationLevel:'normal', followers:0, rating:0, totalReviews:0, products:[]
-          };
+          var p=c.val(); if(!p||!p.brand) return;
+          var bid=p.brandId||(p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+          if(!brandMap[bid]) brandMap[bid]={id:bid,name:p.brandName||p.brand,logo:p.brandLogo||'',banner:'',description:'',blueTickAdmin:false,verificationLevel:'normal',followers:0,rating:0,totalReviews:0,products:[]};
           brandMap[bid].products.push(c.key);
         });
       }
-      var followedSet = {};
+      var followedSet={};
       if (followSnap && followSnap.exists && followSnap.exists() && uid) {
-        followSnap.forEach(function(c) { if (c.val() && c.val()[uid]) followedSet[c.key] = true; });
+        followSnap.forEach(function(c){ if(c.val()&&c.val()[uid]) followedSet[c.key]=true; });
       }
-      var arr = Object.values(brandMap).filter(function(b) { return b.products.length > 0 || b.blueTickAdmin; });
-      arr.sort(function(a,b) {
-        return ((b.followers||0)+(b.rating||0)*100+b.products.length*10) - ((a.followers||0)+(a.rating||0)*100+a.products.length*10);
+      var arr=Object.values(brandMap).filter(function(b){ return b.products.length>0||b.blueTickAdmin; });
+      arr.sort(function(a,b2){
+        return ((b2.followers||0)+(b2.rating||0)*100+b2.products.length*10+(b2.blueTickAdmin?5000:0))
+             - ((a.followers||0)+(a.rating||0)*100+a.products.length*10+(a.blueTickAdmin?5000:0));
       });
-      window.__bzBrandsCache = arr;
-      window.__bzFollowedSet = followedSet;
-      if (sp) sp.style.display = 'none';
+      window.__bzBrandsCache=arr;
+      window.__bzFollowedSet=followedSet;
       bzRenderBrandsFixed(arr, followedSet);
-      renderFollowingBrandsHomeStrip();
+      if (typeof renderFollowingBrandsHomeStrip==='function') renderFollowingBrandsHomeStrip();
     }).catch(function(err) {
-      console.error('Brand load error:', err);
-      var spErr = document.getElementById('brandsLoadingSpinner');
-      if (spErr) spErr.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:20px;">Failed to load brands. <button onclick="bzLoadBrandsPageFixed()" style="margin-top:8px;padding:6px 16px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></p>';
+      console.error('Brand load error:',err);
+      var g=document.getElementById('popularBrandsGrid');
+      if(g) g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:24px;color:#ef4444;font-size:13px;">Failed to load.<br><button onclick="window.__bzBrandsCache=[];bzLoadBrandsPageFixed()" style="margin-top:8px;padding:8px 20px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></div>';
     });
   }
   window.bzLoadBrandsPageFixed = bzLoadBrandsPageFixed;
 
-  // ── Make brand card ──
+  // ── Make brand card (professional) ──
   function bzMakeBrandCard(b, isFollowing) {
-    var col = brandColor(b.name);
-    var initials = (b.name||'B').slice(0,2).toUpperCase();
-    var badge = b.verificationLevel==='premium'
-      ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;white-space:nowrap;margin-top:2px;display:inline-block;">⭐ Premium</span>'
-      : b.blueTickAdmin ? '<div style="margin-top:2px;">'+BT+'</div>' : '';
-    var logoInner = b.logo
-      ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\\"none\\"">'
+    var col=brandColor(b.name);
+    var initials=(b.name||'B').slice(0,2).toUpperCase();
+    var BZ_BT=window.__BZ_BLUE_TICK||'';
+    var logoInner=b.logo
+      ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
       : '<span style="font-size:17px;font-weight:800;color:#fff;">'+initials+'</span>';
-    var safeBName = b.name.replace(/'/g, '').replace(/"/g, '');
-    var followBtn = window.currentUser
-      ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\"'+b.id+'\",\"'+safeBName+'\",this)" style="margin-top:8px;width:100%;padding:6px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;'
+    var safeName=(b.name||'').replace(/'/g,'').replace(/"/g,'');
+    var followBtn=window.currentUser
+      ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\"'+b.id+'\",\"'+safeName+'\",this)" style="margin-top:9px;width:100%;padding:7px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:all .15s;'
         +(isFollowing?'background:#f1f5f9;color:#64748b;':'background:#2563eb;color:#fff;')+'">'
-        +(isFollowing?'\u2713 Following':'+ Follow')+'</button>'
-      : '';
-    var el = document.createElement('div');
-    el.style.cssText = 'background:var(--surface,#fff);border:1.5px solid #e2e8f0;border-radius:14px;padding:12px;cursor:pointer;transition:border-color .18s,box-shadow .18s;';
-    el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
-        + '<div style="width:42px;height:42px;border-radius:10px;background:'+col+';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">'+logoInner+'</div>'
-        + '<div style="flex:1;min-width:0;"><div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</div>'+(badge?'<div>'+badge+'</div>':'')+'</div>'
+        +(isFollowing?'✓ Following':'+ Follow')+'</button>'
+      :'';
+    var bannerTop=b.banner
+      ? '<div style="height:42px;margin:-14px -14px 10px;background:url('+JSON.stringify(b.banner)+') center/cover no-repeat;border-radius:14px 14px 0 0;"></div>'
+      :'';
+    var el=document.createElement('div');
+    el.style.cssText='background:var(--surface,#fff);border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;cursor:pointer;transition:all .2s;';
+    el.innerHTML=bannerTop
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+        +'<div style="width:46px;height:46px;border-radius:12px;background:'+col+';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #f1f5f9;">'+logoInner+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px;">'+(b.name||'')+( b.blueTickAdmin?'&nbsp;'+BZ_BT:'')+( b.verificationLevel==='premium'?'<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;font-weight:800;margin-left:3px;">PRO</span>':'')+' </div>'
+          +(b.description?'<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+b.description+'</div>':'')
+        +'</div>'
       +'</div>'
-      +'<div style="font-size:11px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;">'
+      +'<div style="font-size:11px;color:#64748b;display:flex;gap:10px;">'
         +'<span>📦 '+b.products.length+'</span>'
         +(b.followers?'<span>❤️ '+b.followers+'</span>':'')
         +(b.rating?'<span>⭐ '+b.rating+'</span>':'')
       +'</div>'+followBtn;
-    el.addEventListener('mouseenter', function(){ this.style.borderColor='#2563eb'; this.style.boxShadow='0 4px 16px rgba(37,99,235,.12)'; });
-    el.addEventListener('mouseleave', function(){ this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'; });
-    el.addEventListener('click', function(e) {
-      if (e.target.tagName==='BUTTON'||e.target.closest('button')) return;
-      if (typeof window.showBrandProfile==='function') window.showBrandProfile(b.id, b.name);
+    el.addEventListener('mouseenter',function(){this.style.borderColor='#2563eb';this.style.boxShadow='0 6px 20px rgba(37,99,235,.14)';this.style.transform='translateY(-1px)';});
+    el.addEventListener('mouseleave',function(){this.style.borderColor='#e2e8f0';this.style.boxShadow='none';this.style.transform='';});
+    el.addEventListener('click',function(e){
+      if(e.target.tagName==='BUTTON'||e.target.closest('button')) return;
+      if(typeof window.showBrandProfile==='function') window.showBrandProfile(b.id,b.name);
     });
     return el;
   }
 
-  // ── Render brand sections ──
+  // ── Render brand sections (no flash, category-style following strip) ──
   function bzRenderBrandsFixed(brands, followedSet) {
-    followedSet = followedSet || {};
-    var popularGrid  = document.getElementById('popularBrandsGrid');
-    var sugGrid      = document.getElementById('suggestedBrandsGrid');
-    var otherGrid    = document.getElementById('otherBrandsGrid');
-    var followingRow = document.getElementById('followingBrandsRow');
-    var emptyEl      = document.getElementById('brandsEmptyState');
-    var popSection   = document.getElementById('popularBrandsSection');
-    var sugSection   = document.getElementById('suggestedBrandsSection');
-    var othSection   = document.getElementById('otherBrandsSection');
-    var followingSec = document.getElementById('followingBrandsSection');
+    followedSet=followedSet||{};
+    var popularGrid=document.getElementById('popularBrandsGrid');
+    var sugGrid=document.getElementById('suggestedBrandsGrid');
+    var otherGrid=document.getElementById('otherBrandsGrid');
+    var followingRow=document.getElementById('followingBrandsRow');
+    var emptyEl=document.getElementById('brandsEmptyState');
+    var popSection=document.getElementById('popularBrandsSection');
+    var sugSection=document.getElementById('suggestedBrandsSection');
+    var othSection=document.getElementById('otherBrandsSection');
+    var followingSec=document.getElementById('followingBrandsSection');
+    var BZ_BT=window.__BZ_BLUE_TICK||'';
+    var cs=['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+
     if (!brands.length) {
-      if (emptyEl) emptyEl.style.display = 'block';
-      [popSection,sugSection,othSection,followingSec].forEach(function(s){ if(s) s.style.display='none'; });
+      if(emptyEl) emptyEl.style.display='block';
+      [popSection,sugSection,othSection,followingSec].forEach(function(s){if(s)s.style.display='none';});
       return;
     }
-    if (emptyEl) emptyEl.style.display = 'none';
-    // Following strip
-    var followed = brands.filter(function(b){ return !!followedSet[b.id]; });
+    if(emptyEl) emptyEl.style.display='none';
+
+    // Following strip — category-style circles
+    var followed=brands.filter(function(b){return !!followedSet[b.id];});
     if (followed.length && followingSec && followingRow) {
-      followingSec.style.display = 'block';
-      followingRow.innerHTML = followed.map(function(b) {
-        var col = brandColor(b.name);
-        var ini = (b.name||'B').slice(0,2).toUpperCase();
-        var logo = b.logo
-          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\'none\'">'
-          : '<div style="width:52px;height:52px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;">'+ini+'</div>';
-        var vt = b.blueTickAdmin ? '<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:50%;padding:1px;">'+BT.replace('width="15" height="15"','width="13" height="13"')+'</div>' : '';
-        return '<div onclick="window.showBrandProfile(\"'+b.id+'\",\"'+b.name.replace(/'/g,'').replace(/"/g,'')+'\")" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;">'
-          +'<div style="position:relative;width:52px;height:52px;border-radius:10px;border:2px solid #2563eb;overflow:hidden;">'+logo+vt+'</div>'
-          +'<span style="font-size:10px;font-weight:700;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+b.name+'</span>'
-          +'</div>';
-      }).join('');
-    } else if (followingSec) followingSec.style.display='none';
+      followingSec.style.display='block';
+      followingRow.innerHTML='';
+      followed.forEach(function(b) {
+        var col=cs[(b.name||'A').charCodeAt(0)%cs.length];
+        var ini=(b.name||'B').slice(0,2).toUpperCase();
+        var lInner=b.logo
+          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
+          : '<span style="font-size:15px;font-weight:800;color:#fff;">'+ini+'</span>';
+        var tick=b.blueTickAdmin
+          ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BZ_BT.replace(/width="15"/g,'width="12"').replace(/height="15"/g,'height="12"')+'</div>'
+          : '';
+        var item=document.createElement('div');
+        item.style.cssText='flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:60px;';
+        item.innerHTML='<div style="position:relative;width:56px;height:56px;">'
+          +'<div style="width:56px;height:56px;border-radius:50%;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick
+          +'</div>'
+          +'<span style="font-size:10px;font-weight:700;max-width:62px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
+        item.addEventListener('click',function(){window.showBrandProfile(b.id,b.name);});
+        followingRow.appendChild(item);
+      });
+    } else if(followingSec) followingSec.style.display='none';
 
-    var popular  = brands.filter(function(b){ return b.blueTickAdmin||b.verificationLevel==='premium'||((b.followers||0)+(b.rating||0)*100+b.products.length*10)>50; });
-    var nonPop   = brands.filter(function(b){ return !popular.includes(b); });
-    var suggested = nonPop.filter(function(b){ return !followedSet[b.id]; }).slice(0,4);
-    var rest = nonPop.filter(function(b){ return !suggested.includes(b); });
+    var popular=brands.filter(function(b){return b.blueTickAdmin||b.verificationLevel==='premium'||((b.followers||0)+(b.rating||0)*100+b.products.length*10)>50;});
+    var nonPop=brands.filter(function(b){return popular.indexOf(b)===-1;});
+    var suggested=nonPop.filter(function(b){return !followedSet[b.id];}).slice(0,6);
+    var rest=nonPop.filter(function(b){return suggested.indexOf(b)===-1;});
 
-    if (popSection&&popularGrid){ popSection.style.display=popular.length?'block':'none'; popularGrid.innerHTML=''; popular.forEach(function(b){ popularGrid.appendChild(bzMakeBrandCard(b,!!followedSet[b.id])); }); }
-    if (sugSection&&sugGrid){ sugSection.style.display=suggested.length?'block':'none'; sugGrid.innerHTML=''; suggested.forEach(function(b){ sugGrid.appendChild(bzMakeBrandCard(b,!!followedSet[b.id])); }); }
-    if (othSection&&otherGrid){ othSection.style.display=rest.length?'block':'none'; otherGrid.innerHTML=''; rest.forEach(function(b){ otherGrid.appendChild(bzMakeBrandCard(b,!!followedSet[b.id])); }); }
+    function fillGrid(section,grid,arr){
+      if(!section||!grid) return;
+      if(!arr.length){section.style.display='none';return;}
+      section.style.display='block';
+      grid.innerHTML='';
+      var frag=document.createDocumentFragment();
+      arr.forEach(function(b){frag.appendChild(bzMakeBrandCard(b,!!followedSet[b.id]));});
+      grid.appendChild(frag);
+    }
+    fillGrid(popSection,popularGrid,popular);
+    fillGrid(sugSection,sugGrid,suggested);
+    fillGrid(othSection,otherGrid,rest);
   }
+
 
   // Override global openers
   window._openBrandsPage = function() {
