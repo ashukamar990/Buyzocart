@@ -6449,11 +6449,21 @@
             + '<button onclick="window.showBrandProducts(\'' + brandId + '\',\'' + safeName + '\')" style="padding:10px 20px;border-radius:50px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;background:#fff;color:#0f172a;margin-left:8px;">Shop Now</button>'
           : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="padding:10px 28px;border-radius:50px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:700;">Login to Follow</button>';
 
-        // Banner: check all possible Firebase field names for brand banner
-        var bannerUrl = bd.banner || bd.bannerUrl || bd.bannerImage || bd.coverImage || bd.cover || bd.headerImage || '';
-        var bannerStyle = bannerUrl
-          ? 'background:url(' + JSON.stringify(bannerUrl) + ') center/cover no-repeat;'
-          : 'background:linear-gradient(135deg,' + color + ',' + color + 'aa);';
+        // Banner: check all possible Firebase field names
+        var bannerUrl = bd.banner || bd.bannerUrl || bd.bannerImage || bd.coverImage || bd.cover || bd.headerImage || bd.brandBanner || bd.brandCover || '';
+        var bannerStyle;
+        if (bannerUrl) {
+          // Real banner image
+          bannerStyle = 'background:url(' + JSON.stringify(bannerUrl) + ') center/cover no-repeat;';
+        } else if (logo) {
+          // Auto-generate: blurred logo as banner background
+          bannerStyle = 'background:url(' + JSON.stringify(logo) + ') center/cover no-repeat;position:relative;';
+        } else {
+          // Fallback: color gradient
+          bannerStyle = 'background:linear-gradient(135deg,' + color + 'ee,' + color + '88);';
+        }
+        // Add blur overlay for logo-as-banner
+        var bannerOverlay = (!bannerUrl && logo) ? '<div style="position:absolute;inset:0;backdrop-filter:blur(18px) brightness(.7);-webkit-backdrop-filter:blur(18px) brightness(.7);border-radius:0;"></div>' : '';
 
         page.innerHTML =
           '<div style="max-width:640px;margin:0 auto;">'
@@ -6466,7 +6476,8 @@
             + '</div>'
             // Banner (no overflow hidden) + logo overlapping at bottom
             + '<div style="position:relative;padding-bottom:36px;">'
-              + '<div style="height:130px;' + bannerStyle + 'border-radius:0;">'
+              + '<div style="height:130px;' + bannerStyle + 'border-radius:0;position:relative;overflow:hidden;">'
+              + bannerOverlay
               + '</div>'
               + '<div id="bpLogoHolder" style="position:absolute;bottom:0;left:18px;width:68px;height:68px;border-radius:18px;border:3.5px solid #fff;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.18);cursor:pointer;z-index:5;">'
                 + logoHtml
@@ -6636,22 +6647,61 @@
       }).catch(function(err) { showToast('Error: ' + err.message, 'error'); });
     }
 
-    // ══════ Following Products (Home Page) ══════
+    // ══════ Following Brands (Home Page) — ONLY brand circles, NO products ══════
     function loadFollowingProducts() {
       if (!currentUser) return;
       var uid = currentUser.uid;
-      window.firebase.get(window.firebase.ref(window.firebase.database, 'brandFollowers')).then(function(snap) {
+      var fb = window.firebase;
+      if (!fb) return;
+      fb.get(fb.ref(fb.database, 'brandFollowers')).then(function(snap) {
         if (!snap.exists()) return;
-        var followed = [];
-        snap.forEach(function(c) { if (c.val() && c.val()[uid]) followed.push(c.key); });
-        if (!followed.length) return;
-        var prods = products.filter(function(p) {
-          var bid = p.brandId || (p.brand || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
-          return followed.indexOf(bid) !== -1;
-        });
-        if (!prods.length) return;
+        var followedIds = [];
+        snap.forEach(function(c) { if (c.val() && c.val()[uid]) followedIds.push(c.key); });
+        if (!followedIds.length) return;
+
         var sec = document.getElementById('followingProductsSection');
-        if (sec) { sec.style.display = 'block'; renderProducts(prods.slice(0, 10), 'followingProductsGrid'); }
+        if (!sec) return;
+        sec.style.display = 'block';
+
+        // Hide products grid — we only show brand circles
+        var pg = document.getElementById('followingProductsGrid');
+        if (pg) pg.style.display = 'none';
+
+        // Build brand circles
+        var iconsRow = document.getElementById('bzFollowingBrandsIcons');
+        if (!iconsRow) return;
+        iconsRow.innerHTML = '';
+
+        var allBrands = window.__bzBrandsCache || [];
+        var followed = allBrands.filter(function(b){ return followedIds.indexOf(b.id) !== -1; });
+        // fallback: if cache not ready, build minimal list from ids
+        if (!followed.length) {
+          followed = followedIds.map(function(id){ return {id:id, name:id, logo:'', blueTickAdmin:false}; });
+        }
+
+        var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+        var BZ_BT = window.__BZ_BLUE_TICK || '';
+
+        followed.forEach(function(b) {
+          var col = cs[(b.name||'A').charCodeAt(0) % cs.length];
+          var ini = (b.name||'B').slice(0,2).toUpperCase();
+          var lInner = b.logo
+            ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
+            : '<span style="font-size:15px;font-weight:800;color:#fff;">'+ini+'</span>';
+          var tick = b.blueTickAdmin
+            ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BZ_BT.replace(/width="15"/g,'width="11"').replace(/height="15"/g,'height="11"')+'</div>'
+            : '';
+          var item = document.createElement('div');
+          item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:58px;';
+          item.innerHTML = '<div style="position:relative;width:54px;height:54px;">'
+            + '<div style="width:54px;height:54px;border-radius:50%;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick
+            + '</div>'
+            + '<span style="font-size:10px;font-weight:700;max-width:64px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
+          item.addEventListener('click', function(){
+            if (typeof window.showBrandProfile === 'function') window.showBrandProfile(b.id, b.name);
+          });
+          iconsRow.appendChild(item);
+        });
       }).catch(function() {});
     }
 
@@ -6707,13 +6757,18 @@
     return cs[(name||'A').charCodeAt(0) % cs.length];
   }
 
-  // ── Full brand loader (professional, instant skeleton) ──
+  // ── Full brand loader (instant, professional) ──
+  var BZ_BRAND_COLORS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+
+  function _bzColor(name) {
+    return BZ_BRAND_COLORS[(name||'A').charCodeAt(0) % BZ_BRAND_COLORS.length];
+  }
+
   function bzLoadBrandsPageFixed() {
     var fb = window.firebase;
-    if (!fb || !fb.database) { setTimeout(bzLoadBrandsPageFixed, 600); return; }
-    var get = fb.get, ref = fb.ref, db = fb.database;
+    if (!fb || !fb.database) { setTimeout(bzLoadBrandsPageFixed, 500); return; }
 
-    // Add shimmer keyframe
+    // Add shimmer style once
     if (!document.getElementById('bzShimmerStyle')) {
       var st = document.createElement('style');
       st.id = 'bzShimmerStyle';
@@ -6721,188 +6776,238 @@
       document.head.appendChild(st);
     }
 
-    // Hide spinner, show skeleton grids immediately
+    // Hide spinner immediately, show skeleton cards
     var sp = document.getElementById('brandsLoadingSpinner');
     if (sp) sp.style.display = 'none';
-    ['suggestedBrandsSection','otherBrandsSection','followingBrandsSection','brandsEmptyState'].forEach(function(id){
-      var el=document.getElementById(id); if(el) el.style.display='none';
-    });
-    var popSec = document.getElementById('popularBrandsSection');
+
+    // Show skeleton in popular grid while loading
+    var popSec  = document.getElementById('popularBrandsSection');
     var popGrid = document.getElementById('popularBrandsGrid');
-    if (popSec && popGrid) {
+    if (popSec && popGrid && !popGrid.querySelector('[data-brand]')) {
       popSec.style.display = 'block';
-      popGrid.innerHTML = '';
       var skFrag = document.createDocumentFragment();
-      for (var si=0; si<4; si++) {
+      for (var si = 0; si < 4; si++) {
         var sk = document.createElement('div');
-        sk.style.cssText = 'border-radius:16px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;height:120px;';
+        sk.style.cssText = 'border-radius:16px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;height:116px;';
         skFrag.appendChild(sk);
       }
       popGrid.appendChild(skFrag);
     }
 
-    // Use cache if valid
+    // If cache valid, render immediately
     if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
       bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
       return;
     }
 
     var uid = window.currentUser ? window.currentUser.uid : null;
+    var get = fb.get, ref = fb.ref, db = fb.database;
     Promise.all([
-      get(ref(db, 'products')),
       get(ref(db, 'brands')),
+      get(ref(db, 'products')),
       uid ? get(ref(db, 'brandFollowers')) : Promise.resolve(null)
     ]).then(function(res) {
-      var prodSnap=res[0], brandSnap=res[1], followSnap=res[2];
-      var brandMap={};
+      var brandSnap = res[0], prodSnap = res[1], followSnap = res[2];
+      var brandMap = {};
+
+      // Load from brands node first
       if (brandSnap && brandSnap.exists()) {
         brandSnap.forEach(function(c) {
-          var b=c.val();
-          if (b && b.name) brandMap[c.key]={
-            id:c.key, name:b.name, logo:b.logo||'', banner:b.banner||'',
-            description:b.description||'', blueTickAdmin:!!b.blueTickAdmin,
-            verificationLevel:b.verificationLevel||'normal',
-            followers:b.followersCount||b.followers||0, rating:b.rating||0,
-            totalReviews:b.totalReviews||0, products:[]
-          };
+          var b = c.val();
+          if (b && b.name) {
+            brandMap[c.key] = {
+              id: c.key,
+              name: b.name,
+              logo: b.logo || '',
+              banner: b.banner || b.bannerUrl || b.bannerImage || b.coverImage || b.cover || b.brandBanner || '',
+              description: b.description || '',
+              blueTickAdmin: !!b.blueTickAdmin,
+              verificationLevel: b.verificationLevel || 'normal',
+              followers: b.followersCount || b.followers || 0,
+              rating: b.rating || 0,
+              totalReviews: b.totalReviews || 0,
+              products: []
+            };
+          }
         });
       }
+
+      // Merge products data
       if (prodSnap && prodSnap.exists()) {
         prodSnap.forEach(function(c) {
-          var p=c.val(); if(!p||!p.brand) return;
-          var bid=p.brandId||(p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
-          if(!brandMap[bid]) brandMap[bid]={id:bid,name:p.brandName||p.brand,logo:p.brandLogo||'',banner:'',description:'',blueTickAdmin:false,verificationLevel:'normal',followers:0,rating:0,totalReviews:0,products:[]};
+          var p = c.val();
+          if (!p || !p.brand) return;
+          var bid = p.brandId || (p.brand || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+          if (!brandMap[bid]) {
+            brandMap[bid] = {
+              id: bid, name: p.brandName || p.brand,
+              logo: p.brandLogo || '', banner: '', description: '',
+              blueTickAdmin: false, verificationLevel: 'normal',
+              followers: 0, rating: 0, totalReviews: 0, products: []
+            };
+          }
           brandMap[bid].products.push(c.key);
         });
       }
-      var followedSet={};
+
+      // Build followed set
+      var followedSet = {};
       if (followSnap && followSnap.exists && followSnap.exists() && uid) {
-        followSnap.forEach(function(c){ if(c.val()&&c.val()[uid]) followedSet[c.key]=true; });
+        followSnap.forEach(function(c) {
+          if (c.val() && c.val()[uid]) followedSet[c.key] = true;
+        });
       }
-      var arr=Object.values(brandMap).filter(function(b){ return b.products.length>0||b.blueTickAdmin; });
-      arr.sort(function(a,b2){
-        return ((b2.followers||0)+(b2.rating||0)*100+b2.products.length*10+(b2.blueTickAdmin?5000:0))
-             - ((a.followers||0)+(a.rating||0)*100+a.products.length*10+(a.blueTickAdmin?5000:0));
+
+      var arr = Object.values(brandMap).filter(function(b) {
+        return b.products.length > 0 || b.blueTickAdmin;
       });
-      window.__bzBrandsCache=arr;
-      window.__bzFollowedSet=followedSet;
+      arr.sort(function(a, b2) {
+        var sa = (a.followers||0) + (a.rating||0)*100 + a.products.length*10 + (a.blueTickAdmin ? 5000 : 0);
+        var sb = (b2.followers||0) + (b2.rating||0)*100 + b2.products.length*10 + (b2.blueTickAdmin ? 5000 : 0);
+        return sb - sa;
+      });
+
+      window.__bzBrandsCache = arr;
+      window.__bzFollowedSet = followedSet;
       bzRenderBrandsFixed(arr, followedSet);
-      if (typeof renderFollowingBrandsHomeStrip==='function') renderFollowingBrandsHomeStrip();
+
+      // Also refresh following strip on home
+      if (typeof loadFollowingProducts === 'function' && window.currentUser) {
+        loadFollowingProducts();
+      }
     }).catch(function(err) {
-      console.error('Brand load error:',err);
-      var g=document.getElementById('popularBrandsGrid');
-      if(g) g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:24px;color:#ef4444;font-size:13px;">Failed to load.<br><button onclick="window.__bzBrandsCache=[];bzLoadBrandsPageFixed()" style="margin-top:8px;padding:8px 20px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></div>';
+      console.error('Brands load error:', err);
+      var g = document.getElementById('popularBrandsGrid');
+      if (g) g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:#ef4444;font-size:13px;">Failed to load brands.<br><button onclick="window.__bzBrandsCache=[];bzLoadBrandsPageFixed()" style="margin-top:8px;padding:8px 20px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;font-family:inherit;">Retry</button></div>';
     });
   }
   window.bzLoadBrandsPageFixed = bzLoadBrandsPageFixed;
 
-  // ── Make brand card (professional) ──
+  // ── Brand card ──
   function bzMakeBrandCard(b, isFollowing) {
-    var col=brandColor(b.name);
-    var initials=(b.name||'B').slice(0,2).toUpperCase();
-    var BZ_BT=window.__BZ_BLUE_TICK||'';
-    var logoInner=b.logo
-      ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
-      : '<span style="font-size:17px;font-weight:800;color:#fff;">'+initials+'</span>';
-    var safeName=(b.name||'').replace(/'/g,'').replace(/"/g,'');
-    var followBtn=window.currentUser
-      ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\"'+b.id+'\",\"'+safeName+'\",this)" style="margin-top:9px;width:100%;padding:7px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:all .15s;'
-        +(isFollowing?'background:#f1f5f9;color:#64748b;':'background:#2563eb;color:#fff;')+'">'
-        +(isFollowing?'✓ Following':'+ Follow')+'</button>'
-      :'';
-    var bannerTop=b.banner
-      ? '<div style="height:42px;margin:-14px -14px 10px;background:url('+JSON.stringify(b.banner)+') center/cover no-repeat;border-radius:14px 14px 0 0;"></div>'
-      :'';
-    var el=document.createElement('div');
-    el.style.cssText='background:var(--surface,#fff);border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;cursor:pointer;transition:all .2s;';
-    el.innerHTML=bannerTop
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
-        +'<div style="width:46px;height:46px;border-radius:12px;background:'+col+';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #f1f5f9;">'+logoInner+'</div>'
-        +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px;">'+(b.name||'')+( b.blueTickAdmin?'&nbsp;'+BZ_BT:'')+( b.verificationLevel==='premium'?'<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;font-weight:800;margin-left:3px;">PRO</span>':'')+' </div>'
-          +(b.description?'<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+b.description+'</div>':'')
-        +'</div>'
-      +'</div>'
-      +'<div style="font-size:11px;color:#64748b;display:flex;gap:10px;">'
-        +'<span>📦 '+b.products.length+'</span>'
-        +(b.followers?'<span>❤️ '+b.followers+'</span>':'')
-        +(b.rating?'<span>⭐ '+b.rating+'</span>':'')
-      +'</div>'+followBtn;
-    el.addEventListener('mouseenter',function(){this.style.borderColor='#2563eb';this.style.boxShadow='0 6px 20px rgba(37,99,235,.14)';this.style.transform='translateY(-1px)';});
-    el.addEventListener('mouseleave',function(){this.style.borderColor='#e2e8f0';this.style.boxShadow='none';this.style.transform='';});
-    el.addEventListener('click',function(e){
-      if(e.target.tagName==='BUTTON'||e.target.closest('button')) return;
-      if(typeof window.showBrandProfile==='function') window.showBrandProfile(b.id,b.name);
+    var col = _bzColor(b.name);
+    var ini = (b.name || 'B').slice(0, 2).toUpperCase();
+    var BZ_BT = window.__BZ_BLUE_TICK || '';
+
+    var logoInner = b.logo
+      ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:18px;font-weight:800;color:#fff;">' + ini + '</span>';
+
+    var safeName = (b.name || '').replace(/'/g, '').replace(/"/g, '');
+
+    var followBtn = window.currentUser
+      ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\'' + b.id + '\',\'' + safeName + '\',this)" '
+          + 'style="margin-top:9px;width:100%;padding:7px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:all .15s;'
+          + (isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:#2563eb;color:#fff;') + '">'
+          + (isFollowing ? '✓ Following' : '+ Follow')
+        + '</button>'
+      : '';
+
+    // Mini banner top (if brand has banner)
+    var bannerTop = b.banner
+      ? '<div style="height:44px;margin:-14px -14px 10px;background:url(' + JSON.stringify(b.banner) + ') center/cover no-repeat;border-radius:14px 14px 0 0;"></div>'
+      : '';
+
+    var el = document.createElement('div');
+    el.setAttribute('data-brand', b.id);
+    el.style.cssText = 'background:var(--surface,#fff);border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;cursor:pointer;transition:all .2s;';
+    el.innerHTML = bannerTop
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+        + '<div style="width:46px;height:46px;border-radius:12px;background:' + col + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #f1f5f9;">' + logoInner + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-wrap:nowrap;">'
+            + (b.name || '')
+            + (b.blueTickAdmin ? '&nbsp;' + BZ_BT : '')
+            + (b.verificationLevel === 'premium' ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;font-weight:800;margin-left:3px;flex-shrink:0;">PRO</span>' : '')
+          + '</div>'
+          + (b.description ? '<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + b.description + '</div>' : '')
+        + '</div>'
+      + '</div>'
+      + '<div style="font-size:11px;color:#64748b;display:flex;gap:10px;">'
+        + '<span>📦 ' + b.products.length + '</span>'
+        + (b.followers ? '<span>❤️ ' + b.followers + '</span>' : '')
+        + (b.rating ? '<span>⭐ ' + b.rating + '</span>' : '')
+      + '</div>'
+      + followBtn;
+
+    el.addEventListener('mouseenter', function () { this.style.borderColor = '#2563eb'; this.style.boxShadow = '0 6px 20px rgba(37,99,235,.14)'; this.style.transform = 'translateY(-1px)'; });
+    el.addEventListener('mouseleave', function () { this.style.borderColor = '#e2e8f0'; this.style.boxShadow = 'none'; this.style.transform = ''; });
+    el.addEventListener('click', function (e) {
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+      if (typeof window.showBrandProfile === 'function') window.showBrandProfile(b.id, b.name);
     });
     return el;
   }
 
-  // ── Render brand sections (no flash, category-style following strip) ──
+  // ── Render all brand sections ──
   function bzRenderBrandsFixed(brands, followedSet) {
-    followedSet=followedSet||{};
-    var popularGrid=document.getElementById('popularBrandsGrid');
-    var sugGrid=document.getElementById('suggestedBrandsGrid');
-    var otherGrid=document.getElementById('otherBrandsGrid');
-    var followingRow=document.getElementById('followingBrandsRow');
-    var emptyEl=document.getElementById('brandsEmptyState');
-    var popSection=document.getElementById('popularBrandsSection');
-    var sugSection=document.getElementById('suggestedBrandsSection');
-    var othSection=document.getElementById('otherBrandsSection');
-    var followingSec=document.getElementById('followingBrandsSection');
-    var BZ_BT=window.__BZ_BLUE_TICK||'';
-    var cs=['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+    followedSet = followedSet || {};
+    var popSection   = document.getElementById('popularBrandsSection');
+    var sugSection   = document.getElementById('suggestedBrandsSection');
+    var othSection   = document.getElementById('otherBrandsSection');
+    var followingSec = document.getElementById('followingBrandsSection');
+    var popularGrid  = document.getElementById('popularBrandsGrid');
+    var sugGrid      = document.getElementById('suggestedBrandsGrid');
+    var otherGrid    = document.getElementById('otherBrandsGrid');
+    var followingRow = document.getElementById('followingBrandsRow');
+    var emptyEl      = document.getElementById('brandsEmptyState');
+    var BZ_BT        = window.__BZ_BLUE_TICK || '';
+    var cs           = BZ_BRAND_COLORS;
 
     if (!brands.length) {
-      if(emptyEl) emptyEl.style.display='block';
-      [popSection,sugSection,othSection,followingSec].forEach(function(s){if(s)s.style.display='none';});
+      if (emptyEl) emptyEl.style.display = 'block';
+      [popSection, sugSection, othSection, followingSec].forEach(function (s) { if (s) s.style.display = 'none'; });
       return;
     }
-    if(emptyEl) emptyEl.style.display='none';
+    if (emptyEl) emptyEl.style.display = 'none';
 
-    // Following strip — category-style circles
-    var followed=brands.filter(function(b){return !!followedSet[b.id];});
+    // ── Following brands — category-style circles ──
+    var followed = brands.filter(function (b) { return !!followedSet[b.id]; });
     if (followed.length && followingSec && followingRow) {
-      followingSec.style.display='block';
-      followingRow.innerHTML='';
-      followed.forEach(function(b) {
-        var col=cs[(b.name||'A').charCodeAt(0)%cs.length];
-        var ini=(b.name||'B').slice(0,2).toUpperCase();
-        var lInner=b.logo
-          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
-          : '<span style="font-size:15px;font-weight:800;color:#fff;">'+ini+'</span>';
-        var tick=b.blueTickAdmin
-          ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BZ_BT.replace(/width="15"/g,'width="12"').replace(/height="15"/g,'height="12"')+'</div>'
+      followingSec.style.display = 'block';
+      followingRow.innerHTML = '';
+      followed.forEach(function (b) {
+        var col = _bzColor(b.name);
+        var ini = (b.name || 'B').slice(0, 2).toUpperCase();
+        var lInner = b.logo
+          ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
+          : '<span style="font-size:15px;font-weight:800;color:#fff;">' + ini + '</span>';
+        var tick = b.blueTickAdmin
+          ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">' + BZ_BT.replace(/width="15"/g, 'width="12"').replace(/height="15"/g, 'height="12"') + '</div>'
           : '';
-        var item=document.createElement('div');
-        item.style.cssText='flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:60px;';
-        item.innerHTML='<div style="position:relative;width:56px;height:56px;">'
-          +'<div style="width:56px;height:56px;border-radius:50%;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick
-          +'</div>'
-          +'<span style="font-size:10px;font-weight:700;max-width:62px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
-        item.addEventListener('click',function(){window.showBrandProfile(b.id,b.name);});
+        var item = document.createElement('div');
+        item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:60px;';
+        item.innerHTML = '<div style="position:relative;width:56px;height:56px;">'
+          + '<div style="width:56px;height:56px;border-radius:50%;border:2.5px solid #2563eb;background:' + col + ';display:flex;align-items:center;justify-content:center;overflow:hidden;">' + lInner + '</div>' + tick
+          + '</div>'
+          + '<span style="font-size:10px;font-weight:700;max-width:62px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (b.name || '') + '</span>';
+        item.addEventListener('click', function () { window.showBrandProfile(b.id, b.name); });
         followingRow.appendChild(item);
       });
-    } else if(followingSec) followingSec.style.display='none';
+    } else if (followingSec) {
+      followingSec.style.display = 'none';
+    }
 
-    var popular=brands.filter(function(b){return b.blueTickAdmin||b.verificationLevel==='premium'||((b.followers||0)+(b.rating||0)*100+b.products.length*10)>50;});
-    var nonPop=brands.filter(function(b){return popular.indexOf(b)===-1;});
-    var suggested=nonPop.filter(function(b){return !followedSet[b.id];}).slice(0,6);
-    var rest=nonPop.filter(function(b){return suggested.indexOf(b)===-1;});
+    // Categorize
+    var popular   = brands.filter(function (b) { return b.blueTickAdmin || b.verificationLevel === 'premium' || ((b.followers || 0) + (b.rating || 0) * 100 + b.products.length * 10) > 50; });
+    var nonPop    = brands.filter(function (b) { return popular.indexOf(b) === -1; });
+    var suggested = nonPop.filter(function (b) { return !followedSet[b.id]; }).slice(0, 6);
+    var rest      = nonPop.filter(function (b) { return suggested.indexOf(b) === -1; });
 
-    function fillGrid(section,grid,arr){
-      if(!section||!grid) return;
-      if(!arr.length){section.style.display='none';return;}
-      section.style.display='block';
-      grid.innerHTML='';
-      var frag=document.createDocumentFragment();
-      arr.forEach(function(b){frag.appendChild(bzMakeBrandCard(b,!!followedSet[b.id]));});
+    function fillGrid(section, grid, arr) {
+      if (!section || !grid) return;
+      if (!arr.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      grid.innerHTML = '';
+      var frag = document.createDocumentFragment();
+      arr.forEach(function (b) { frag.appendChild(bzMakeBrandCard(b, !!followedSet[b.id])); });
       grid.appendChild(frag);
     }
-    fillGrid(popSection,popularGrid,popular);
-    fillGrid(sugSection,sugGrid,suggested);
-    fillGrid(othSection,otherGrid,rest);
-  }
 
+    fillGrid(popSection, popularGrid, popular);
+    fillGrid(sugSection, sugGrid, suggested);
+    fillGrid(othSection, otherGrid, rest);
+  }
 
   // Override global openers
   window._openBrandsPage = function() {
