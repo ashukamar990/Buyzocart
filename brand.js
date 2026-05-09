@@ -25,6 +25,8 @@
     + '<path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/>'
     + '<polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>'
     + '</svg>';
+  // Signal to main.js that brand system is active
+  window.__BZ_BRAND_SYSTEM = true;
   window.__BZ_BLUE_TICK = BT;
 
   var BZ_COLORS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
@@ -117,7 +119,9 @@
   // ════════════════════════════════════════════════
   function bzLoadBrandsPage() {
     var fb = _fb();
-    if (!fb || !fb.database) { setTimeout(bzLoadBrandsPage, 500); return; }
+    if (!fb || !fb.database || !fb.get || !fb.ref) { setTimeout(bzLoadBrandsPage, 500); return; }
+    // Also wait for Firebase auth to settle
+    if (typeof window.firebase === 'undefined') { setTimeout(bzLoadBrandsPage, 500); return; }
     // Shimmer style
     if (!document.getElementById('bzShimmerStyle')) {
       var st = document.createElement('style');
@@ -388,7 +392,7 @@
 
       page.innerHTML='<div style="max-width:640px;margin:0 auto;">'
         +'<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,.06);">'
-          +'<button onclick="history.length>1?history.back():showPage('brandsPage');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
+          +'<button onclick="history.length>1?history.back():showPage(\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
           +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
         +'</div>'
         // Banner + logo wrapper
@@ -650,43 +654,85 @@
   // INIT — runs after DOM + Firebase ready
   // ════════════════════════════════════════════════
   function bzBrandInit(){
+    // Set system flag immediately
+    window.__BZ_BRAND_SYSTEM = true;
+
     injectBrandsPageHTML();
     injectBrandsMenuItem();
     injectFollowingStripSlot();
+
+    // Hook showPage immediately
+    bzHookShowPage();
+
+    // Prefetch brand cache — then re-render visible cards
     prefetchBrandsCache();
-    // Patch search after main.js loads
-    setTimeout(patchSearchSuggestions, 800);
-    setTimeout(patchProductCardBrand, 800);
-    // Auth watcher
-    var iv=setInterval(function(){
-      if(window.currentUser){
-        clearInterval(iv);
-        setTimeout(bzRenderFollowingStrip,2000);
-        setTimeout(checkSellerApproval,2500);
+
+    // After cache loads, refresh visible product cards (brand names + blue ticks)
+    var cacheWatcher = setInterval(function() {
+      if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
+        clearInterval(cacheWatcher);
+        // Re-render home page products with brand info
+        if (typeof renderProducts === 'function' && window.products && window.products.length) {
+          var homeGrid = document.getElementById('homeProductGrid');
+          if (homeGrid && homeGrid.children.length > 0) {
+            renderProducts(window.products.slice(0, 20), 'homeProductGrid');
+          }
+        }
       }
-    },600);
+    }, 500);
+    setTimeout(function(){ clearInterval(cacheWatcher); }, 10000);
+
+    // Patch search
+    setTimeout(patchSearchSuggestions, 600);
+    setTimeout(patchProductCardBrand, 600);
+
+    // Auth watcher
+    var iv = setInterval(function(){
+      if (window.currentUser) {
+        clearInterval(iv);
+        setTimeout(bzRenderFollowingStrip, 1500);
+        setTimeout(checkSellerApproval, 2000);
+      }
+    }, 600);
+
+    // Refresh following strip when products load
+    var prodsWatcher = setInterval(function(){
+      if (window.products && window.products.length && window.currentUser) {
+        clearInterval(prodsWatcher);
+        setTimeout(bzRenderFollowingStrip, 500);
+      }
+    }, 800);
+    setTimeout(function(){ clearInterval(prodsWatcher); }, 15000);
   }
 
   if(document.readyState!=='loading') bzBrandInit();
   else document.addEventListener('DOMContentLoaded', bzBrandInit);
 
-  // showPage hook — load brands when brandsPage opens
-  var _origSP = null;
-  var spHookInterval = setInterval(function(){
-    if(typeof window.showPage==='function' && !window.showPage._bzBrandHooked){
-      clearInterval(spHookInterval);
-      _origSP = window.showPage;
-      window.showPage = function(pageId){
-        _origSP(pageId);
-        if(pageId==='brandsPage'){
-          setTimeout(function(){
-            if(window.__bzBrandsCache&&window.__bzBrandsCache.length) bzRenderBrands(window.__bzBrandsCache,window.__bzFollowedSet||{});
-            else bzLoadBrandsPage();
-          },40);
-        }
-      };
-      window.showPage._bzBrandHooked = true;
-    }
-  },300);
+  // showPage hook — intercept to load brands page
+  function bzHookShowPage() {
+    if (typeof window.showPage !== 'function' || window.showPage._bzBrandHooked) return;
+    var _origSP = window.showPage;
+    window.showPage = function(pageId) {
+      _origSP(pageId);
+      if (pageId === 'brandsPage') {
+        setTimeout(function() {
+          if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
+            bzRenderBrands(window.__bzBrandsCache, window.__bzFollowedSet || {});
+          } else {
+            bzLoadBrandsPage();
+          }
+        }, 50);
+      }
+    };
+    window.showPage._bzBrandHooked = true;
+  }
+
+  // Try hooking immediately, and also after delays
+  bzHookShowPage();
+  setTimeout(bzHookShowPage, 500);
+  setTimeout(bzHookShowPage, 1500);
+
+  // Also override _openBrandsPage directly
+  window._openBrandsPage = window.bzOpenBrandsPage;
 
 })();

@@ -949,7 +949,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand && typeof window.showBrandProfile === 'function' ? `<div onclick="event.stopPropagation();window.showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span></div>` : ''}
+          ${product.brand && window.__BZ_BRAND_SYSTEM === true ? `<div onclick="event.stopPropagation();window.showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span></div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -1163,34 +1163,26 @@
       if (elements.detailSku) elements.detailSku.textContent = 'SKU: ' + productSku;
       if (elements.breadcrumbProductName) elements.breadcrumbProductName.textContent = productName;
 
-      // ── Brand name in detail ──
-      var brandBadgeEl = document.getElementById('detailBrandBadge');
-      if (!brandBadgeEl) {
-        brandBadgeEl = document.createElement('div');
-        brandBadgeEl.id = 'detailBrandBadge';
-        var titleEl = elements.detailTitle;
-        if (titleEl && titleEl.parentNode) titleEl.parentNode.insertBefore(brandBadgeEl, titleEl.nextSibling);
-      }
-      if (freshProduct.brand) {
-        var bBrandId = freshProduct.brandId || freshProduct.brand.toLowerCase().replace(/[^a-z0-9]/g,'_');
-        var bData = (window._brandsData||{})[bBrandId] || {};
-        var blueTick = '';
-        if (typeof window.__BZ_BLUE_TICK !== 'undefined') {
-          var cB = (window.__bzBrandsCache||[]).find(function(x){ return x.id===bBrandId||x.name===freshProduct.brand; });
-          if (cB && cB.blueTickAdmin) blueTick = window.__BZ_BLUE_TICK;
-        }
-        brandBadgeEl.innerHTML = typeof window.showBrandProfile === 'function'
-          ? '<div onclick="window.showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
-          : '<div style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+'</div>'
-          + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
-          + '<span>Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11px;">'+(freshProduct.id||'').toUpperCase()+'</code></span>'
-          + '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+freshProduct.id+'\').then(function(){showToast(\'Product ID copied!\',\'success\')})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:0;" title="Copy">📋</button>'
-          + '</div>';
-        brandBadgeEl.style.display = 'block';
-      } else {
-        brandBadgeEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">'+(freshProduct.id||'').toUpperCase()+'</code></div>';
-        brandBadgeEl.style.display = 'block';
-      }
+       // ── Brand badge: only if brand.js loaded ──
+       var brandBadgeEl = document.getElementById('detailBrandBadge');
+       if (!brandBadgeEl) {
+         brandBadgeEl = document.createElement('div');
+         brandBadgeEl.id = 'detailBrandBadge';
+         var titleEl = elements.detailTitle;
+         if (titleEl && titleEl.parentNode) titleEl.parentNode.insertBefore(brandBadgeEl, titleEl.nextSibling);
+       }
+       if (freshProduct.brand && window.__BZ_BRAND_SYSTEM === true) {
+         var bBrandId = freshProduct.brandId || freshProduct.brand.toLowerCase().replace(/[^a-z0-9]/g,'_');
+         var blueTick = '';
+         var cBrand = (window.__bzBrandsCache||[]).find(function(x){ return x.id===bBrandId||x.name===freshProduct.brand; });
+         if (cBrand && cBrand.blueTickAdmin && window.__BZ_BLUE_TICK) blueTick = window.__BZ_BLUE_TICK;
+         brandBadgeEl.innerHTML = '<div onclick="window.showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'\')+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
+         brandBadgeEl.style.display = 'block';
+       } else {
+         brandBadgeEl.innerHTML = '';
+         brandBadgeEl.style.display = 'none';
+       }
+
       if (elements.mainProductImage && currentProductImages.length > 0) {
         elements.mainProductImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
       }
@@ -4133,15 +4125,7 @@
           if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
         } else banners = [];
       });
-      // Load brands for blue tick display on cards
-      onValue(ref(database, 'brands'), snapshot => {
-        window._brandsData = {};
-        if (snapshot.exists()) {
-          snapshot.forEach(child => {
-            window._brandsData[child.key] = child.val();
-          });
-        }
-      });
+      // Brands data loaded by brand.js (if hosted)
 
       onValue(ref(database, 'adminSettings'), snapshot => {
         const settingsObj = snapshot.val();
