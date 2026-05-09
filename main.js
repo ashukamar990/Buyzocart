@@ -1176,7 +1176,7 @@
          var blueTick = '';
          var cBrand = (window.__bzBrandsCache||[]).find(function(x){ return x.id===bBrandId||x.name===freshProduct.brand; });
          if (cBrand && cBrand.blueTickAdmin && window.__BZ_BLUE_TICK) blueTick = window.__BZ_BLUE_TICK;
-         brandBadgeEl.innerHTML = '<div onclick="window.showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'\')+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
+        brandBadgeEl.innerHTML = '<div onclick="window.showBrandProfile(\"'+bBrandId+'\",\"'+(freshProduct.brand||'').replace(/"/g,'')+'\")" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
          brandBadgeEl.style.display = 'block';
        } else {
          brandBadgeEl.innerHTML = '';
@@ -6079,9 +6079,7 @@
 
 
     // ══════════════════════════════════════
-    // Brand system handled by brand.js
-
-  }); // end auth / init callback
+    // Brand system handled by brand.js (load brand.js to enable)
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyReplacements);

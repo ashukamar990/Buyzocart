@@ -89,13 +89,24 @@
   }
 
   function injectBrandsMenuItem() {
-    // Find menu list and add Brands option if not already there
-    var menuList = document.querySelector('.mobile-menu ul, #mobileMenu ul, nav ul');
-    if (!menuList || document.getElementById('bzBrandsMenuItem')) return;
-    var li = document.createElement('li');
-    li.id = 'bzBrandsMenuItem';
-    li.innerHTML = '<a onclick="window.bzOpenBrandsPage()">🏷️ Brands</a>';
-    menuList.appendChild(li);
+    if (document.getElementById('bzBrandsMenuItem')) return;
+    // Use div.menu-items (real menu structure)
+    var menuItems = document.querySelector('.menu-items, #mobileMenu .menu-items');
+    if (!menuItems) return;
+    var el = document.createElement('div');
+    el.id = 'bzBrandsMenuItem';
+    el.className = 'menu-item';
+    el.style.cssText = 'cursor:pointer;';
+    el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent,#2563eb)"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
+      + '<span style="color:var(--accent,#2563eb);font-weight:600;">Brands</span>';
+    el.addEventListener('click', function() {
+      if (typeof closeMenu === 'function') closeMenu();
+      window.bzOpenBrandsPage();
+    });
+    // Insert before Sell Product item (or at end)
+    var sellItem = document.getElementById('menuSellProductItem');
+    if (sellItem) menuItems.insertBefore(el, sellItem);
+    else menuItems.appendChild(el);
   }
 
   function injectFollowingStripSlot() {
@@ -707,6 +718,33 @@
 
   if(document.readyState!=='loading') bzBrandInit();
   else document.addEventListener('DOMContentLoaded', bzBrandInit);
+
+  // Re-render product grids after brand.js loads so badges appear
+  // Products may have rendered before brand.js was loaded
+  function bzReRenderProductsForBrands() {
+    var grids = [
+      document.getElementById('homeProductGrid'),
+      document.getElementById('productGrid'),
+      document.getElementById('searchResultsGrid'),
+    ];
+    if (typeof window.products === 'undefined' || !window.products.length) return;
+    grids.forEach(function(g) {
+      if (!g || !g.children.length) return;
+      // Only re-render if there are products but no brand badges
+      var hasBadge = g.querySelector('[title="View Brand"]');
+      if (!hasBadge && typeof renderProducts === 'function') {
+        var gridId = g.id;
+        var prods = window.products;
+        // For product grid respect current filter
+        if (gridId === 'productGrid' && window.currentCategoryFilter) {
+          prods = prods.filter(function(p){ return p.category === window.currentCategoryFilter; });
+        }
+        renderProducts(prods, gridId);
+      }
+    });
+  }
+  // Small delay to let main.js finish rendering first
+  setTimeout(bzReRenderProductsForBrands, 1200);
 
   // showPage hook — intercept to load brands page
   function bzHookShowPage() {
