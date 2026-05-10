@@ -4893,6 +4893,8 @@
             setupOrdersRealtimeListener(user);
             // Load following brands products
             setTimeout(() => { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
+            // Check username setup
+            setTimeout(function() { var fb2=window.firebase; if(!fb2||!currentUser) return; fb2.get(fb2.ref(fb2.database,'users/'+currentUser.uid+'/username')).then(function(s){if(!s.exists()||!s.val()) bzShowUsernamePopup(currentUser.uid);}).catch(function(){}); }, 2500);
 
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
@@ -6132,6 +6134,84 @@
     }
 
 
+
+    // ══════ Username Setup Popup ══════
+    function bzShowUsernamePopup(uid) {
+      if (document.getElementById('bzUsernamePopup')) return;
+      var overlay = document.createElement('div');
+      overlay.id = 'bzUsernamePopup';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s;';
+      overlay.innerHTML =
+        '<div style="background:#fff;border-radius:24px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);">'
+        + '<div style="text-align:center;margin-bottom:20px;">'
+          + '<div style="font-size:40px;margin-bottom:8px;">👤</div>'
+          + '<div style="font-size:1.1rem;font-weight:800;color:#0f172a;margin-bottom:4px;">Choose your username</div>'
+          + '<div style="font-size:13px;color:#64748b;">Your unique identity on Buyzo Cart</div>'
+        + '</div>'
+        + '<div style="position:relative;margin-bottom:12px;">'
+          + '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:#94a3b8;">@</span>'
+          + '<input id="bzUsernameInput" type="text" placeholder="yourname" maxlength="30" oninput="bzCheckUsernameAvail(this.value)" style="width:100%;padding:12px 14px 12px 28px;border:2px solid #e2e8f0;border-radius:14px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .2s;">'
+        + '</div>'
+        + '<div id="bzUnameStatus" style="font-size:12px;min-height:18px;margin-bottom:14px;padding-left:4px;"></div>'
+        + '<button onclick="bzSaveUsername()" id="bzUsernameSaveBtn" style="width:100%;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:800;font-family:inherit;transition:opacity .2s;">Save Username</button>'
+        + '<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;">You can only set this once. Choose wisely!</p>'
+      + '</div>';
+      document.body.appendChild(overlay);
+
+      // Focus input
+      setTimeout(function(){ var inp=document.getElementById('bzUsernameInput'); if(inp) inp.focus(); }, 200);
+    }
+
+    var _bzUnameTimer;
+    function bzCheckUsernameAvail(val) {
+      var status = document.getElementById('bzUnameStatus');
+      var btn = document.getElementById('bzUsernameSaveBtn');
+      val = val.toLowerCase().replace(/[^a-z0-9_.]/g,'');
+      var inp = document.getElementById('bzUsernameInput');
+      if (inp) inp.value = val;
+      if (!val || val.length < 3) {
+        if (status) { status.textContent = val.length ? 'Min 3 characters' : ''; status.style.color='#ef4444'; }
+        if (btn) btn.style.opacity='0.5';
+        return;
+      }
+      clearTimeout(_bzUnameTimer);
+      if (status) { status.textContent = 'Checking...'; status.style.color='#94a3b8'; }
+      _bzUnameTimer = setTimeout(function() {
+        var fb2 = window.firebase;
+        if (!fb2) return;
+        fb2.get(fb2.ref(fb2.database, 'usernames/' + val)).then(function(snap) {
+          if (snap.exists()) {
+            if (status) { status.textContent = '❌ @'+val+' is taken'; status.style.color='#ef4444'; }
+            if (btn) btn.style.opacity='0.5';
+          } else {
+            if (status) { status.textContent = '✅ @'+val+' is available!'; status.style.color='#16a34a'; }
+            if (btn) btn.style.opacity='1';
+          }
+        }).catch(function(){});
+      }, 500);
+    }
+
+    async function bzSaveUsername() {
+      var uid = currentUser ? currentUser.uid : null; if (!uid) return;
+      var val = (inp ? inp.value : '').toLowerCase().trim();
+      if (!val || val.length < 3) { if(typeof showToast==='function') showToast('Min 3 characters','error'); return; }
+      var fb2 = window.firebase;
+      if (!fb2) return;
+      // Double-check availability
+      var taken = await fb2.get(fb2.ref(fb2.database, 'usernames/' + val));
+      if (taken.exists()) { if(typeof showToast==='function') showToast('@'+val+' is already taken!','error'); return; }
+      // Save username → users/uid/username AND usernames/username = uid (unique index)
+      await fb2.set(fb2.ref(fb2.database, 'users/' + uid + '/username'), val);
+      await fb2.set(fb2.ref(fb2.database, 'usernames/' + val), uid);
+      // Remove popup
+      var popup = document.getElementById('bzUsernamePopup');
+      if (popup) document.body.removeChild(popup);
+      if(typeof showToast==='function') showToast('Username @'+val+' saved! 🎉','success');
+    }
+    window.bzShowUsernamePopup = bzShowUsernamePopup;
+    window.bzCheckUsernameAvail = bzCheckUsernameAvail;
+    window.bzSaveUsername = bzSaveUsername;
+
     // ══════════════════════════════════════
     //  BRANDS PAGE SYSTEM
     // ══════════════════════════════════════
@@ -6478,7 +6558,12 @@
         var totalReviews = bd.totalReviews || brandReviews.length;
 
         // Trending / Latest / Popular
-        var trending = brandProds.slice().sort(function(a,b){ return ((b.views||0)+(b.orders||0)*3)-((a.views||0)+(a.orders||0)*3); }).slice(0,6);
+        // Trending = highest (orders*5 + views + rating*20) score
+        var trending = brandProds.slice().sort(function(a,b){
+          var sa=(a.orders||a.orderCount||0)*5+(a.views||a.viewCount||0)+(parseFloat(a.rating)||0)*20;
+          var sb=(b.orders||b.orderCount||0)*5+(b.views||b.viewCount||0)+(parseFloat(b.rating)||0)*20;
+          return sb-sa;
+        }).slice(0,6);
         var latest   = brandProds.slice().sort(function(a,b){ return ((b.addedAt||b.createdAt||0)-(a.addedAt||a.createdAt||0)); }).slice(0,6);
 
         // Blue tick SVG
@@ -6582,7 +6667,7 @@
             + logoHtml
           +'</div>'
           // Verified badge on logo (small)
-          +(isVerified?'<div style="position:absolute;bottom:-20px;left:74px;z-index:6;background:#fff;border-radius:50%;padding:2px;box-shadow:0 2px 6px rgba(0,0,0,.15);">'+BTSMALL+'</div>':'')
+          // Verified badge shown beside name only
         +'</div>'
 
         // ── BRAND IDENTITY ──
@@ -6621,13 +6706,7 @@
         // ── OFFERS ──
         +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
 
-        // ── SEARCH BAR ──
-        +'<div style="max-width:640px;margin:0 auto;padding:12px 16px 0;background:#fff;">'
-          +'<div style="position:relative;">'
-            +'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-            +'<input id="bpSearchInput" type="text" placeholder="Search '+safeName+' products..." oninput="window._bpFilter(this.value)" style="width:100%;padding:10px 14px 10px 36px;border:1.5px solid #e2e8f0;border-radius:24px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;background:#f8fafc;transition:border-color .2s;" onfocus="this.style.borderColor=\''+themeColor+'\'" onblur="this.style.borderColor=\'#e2e8f0\'">'
-          +'</div>'
-        +'</div>'
+        // Search bar removed per user request
 
         // ── TABS ──
         +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
@@ -6644,25 +6723,19 @@
           // Products tab
           +'<div id="bpTabContentProducts" style="padding:16px;">'
             +(brandProds.length
-              ? '<div id="bpProductGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
-                + brandProds.slice(0,12).map(bpProductCard).join('')
-                +'</div>'
-                +(brandProds.length>12?'<div style="text-align:center;padding:20px 0;"><button onclick="window._bpLoadMore()" id="bpLoadMoreBtn" style="padding:10px 28px;border-radius:24px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:#475569;">Load More Products</button></div>':'')
-              : '<div style="text-align:center;padding:48px 20px;">'
+             +(brandProds.length
+               ? '<div class="product-grid" id="bpProductGrid"></div>'
                   +'<div style="font-size:56px;margin-bottom:14px;filter:grayscale(1);opacity:.35;">🛍️</div>'
                   +'<div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">No products yet</div>'
                   +'<div style="font-size:13px;color:#94a3b8;margin-bottom:18px;">This brand hasn\'t listed any products.</div>'
                   +'<button onclick="showPage(\'homePage\')" style="padding:10px 24px;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">Explore Other Brands</button>'
-                +'</div>')
-          +'</div>'
+                   +'<button onclick="showPage(\'homePage\')" style="padding:10px 24px;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">Explore Other Brands</button>'
+                 +'</div>')
 
           // Trending tab
           +'<div id="bpTabContentTrending" style="display:none;padding:16px;">'
-            +(trending.length
-              ? '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
-                  + trending.map(bpProductCard).join('')
-                +'</div>'
-              : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No trending products yet</div>')
+           +'<div id="bpTabContentTrending" style="display:none;padding:16px;">'
+               ? '<div class="product-grid" id="bpTrendingGrid"></div>'
           +'</div>'
 
           // Reviews tab
@@ -6732,6 +6805,16 @@
           +'</div>'
         +'</div>';
 
+        // ── Render real products ──
+        if (brandProds.length) {
+          setTimeout(function() {
+            if (typeof renderProducts === 'function') {
+              renderProducts(brandProds, 'bpProductGrid');
+              if (trending.length) renderProducts(trending, 'bpTrendingGrid');
+            }
+          }, 80);
+        }
+
         // ── Tab switch logic ──
         window._bpTab = function(tab) {
           ['Products','Trending','Reviews','About'].forEach(function(t) {
@@ -6745,25 +6828,7 @@
           });
         };
 
-        // ── Search filter ──
-        var _bpAllProds = brandProds;
-        var _bpShown = 12;
-        window._bpFilter = function(q) {
-          var grid = document.getElementById('bpProductGrid');
-          if (!grid) return;
-          var filtered = q ? _bpAllProds.filter(function(p){ return (p.name||'').toLowerCase().indexOf(q.toLowerCase())!==-1; }) : _bpAllProds;
-          grid.innerHTML = filtered.slice(0,_bpShown).map(bpProductCard).join('');
-        };
-
-        // ── Load more ──
-        window._bpLoadMore = function() {
-          var grid = document.getElementById('bpProductGrid');
-          var btn  = document.getElementById('bpLoadMoreBtn');
-          if (!grid) return;
-          _bpShown += 12;
-          grid.innerHTML = _bpAllProds.slice(0,_bpShown).map(bpProductCard).join('');
-          if (_bpShown >= _bpAllProds.length && btn) btn.style.display='none';
-        };
+        // Product filtering handled by real renderProducts
 
         // ── Sticky follow on scroll ──
         var bpActionTop = 0;
