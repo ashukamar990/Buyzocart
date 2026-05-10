@@ -948,7 +948,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${(product.brand && window.__BZ_BRAND_SYSTEM) ? `<div onclick="event.stopPropagation();window.showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var cB=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});return cB&&cB.blueTickAdmin&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
+          ${product.brand ? `<div class="bz-brand-tag" onclick="event.stopPropagation();if(window.showBrandProfile)window.showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="display:none;font-size:11px;color:#2563eb;margin:-2px 0 5px;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span></div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -1170,11 +1170,11 @@
         var titleEl = elements.detailTitle;
         if (titleEl && titleEl.parentNode) titleEl.parentNode.insertBefore(brandBadgeEl, titleEl.nextSibling);
       }
-      if (freshProduct.brand && window.__BZ_BRAND_SYSTEM) {
+      if (freshProduct.brand) {
         var bBrandId = freshProduct.brandId || freshProduct.brand.toLowerCase().replace(/[^a-z0-9]/g,'_');
         var blueTick = '';
         try { var cB2=(window.__bzBrandsCache||[]).find(function(x){return x.id===bBrandId||x.name===freshProduct.brand;}); if(cB2&&cB2.blueTickAdmin&&window.__BZ_BLUE_TICK) blueTick=window.__BZ_BLUE_TICK; } catch(e){}
-        brandBadgeEl.innerHTML = '<div onclick="window.showBrandProfile(\"'+bBrandId+'\",\"'+freshProduct.brand.replace(/"/g,'')+'\");" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
+        brandBadgeEl.innerHTML = '<div onclick="if(window.showBrandProfile)window.showBrandProfile(\"'+bBrandId+'\",\"'+freshProduct.brand.replace(/"/g,'')+'\");" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
           + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
           + '<span>Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11px;">'+(freshProduct.id||'').toUpperCase()+'</code></span>'
           + '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+freshProduct.id+'\').then(function(){showToast(\'Product ID copied!\',\'success\')})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:0;" title="Copy">📋</button>'

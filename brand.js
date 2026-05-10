@@ -411,4 +411,44 @@
   if(document.readyState!=='loading') init();
   else document.addEventListener('DOMContentLoaded',init);
 
+  // ── Show brand tags on all existing product cards ──
+  // Cards rendered before brand.js loaded have display:none brand divs
+  function bzShowBrandTags() {
+    document.querySelectorAll('.bz-brand-tag').forEach(function(el) {
+      el.style.display = 'inline-flex';
+      // Add blue tick if brand is verified
+      var card = el.closest('[data-product-id], .product-card, [class*="product"]');
+      var brandName = el.querySelector('span') ? el.querySelector('span').textContent : '';
+      if (!brandName || el.querySelector('svg')) return; // already has tick
+      var cB = (window.__bzBrandsCache||[]).find(function(x){ return x.name === brandName; });
+      if (cB && cB.blueTickAdmin) {
+        el.insertAdjacentHTML('beforeend', window.__BZ_BLUE_TICK||'');
+      }
+    });
+  }
+
+  // Run after cache loads and also observe DOM for new cards
+  function bzStartBrandTagObserver() {
+    bzShowBrandTags();
+    // MutationObserver for dynamically added cards
+    var obs = new MutationObserver(function(mutations) {
+      var hasNew = false;
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(n) {
+          if (n.nodeType === 1 && n.querySelector && n.querySelector('.bz-brand-tag')) hasNew = true;
+        });
+      });
+      if (hasNew) bzShowBrandTags();
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // Trigger after brand cache is ready
+  var _bzTagIv = setInterval(function() {
+    if (window.__bzBrandsCache || document.querySelector('.bz-brand-tag')) {
+      clearInterval(_bzTagIv);
+      bzStartBrandTagObserver();
+    }
+  }, 300);
+
 })();
