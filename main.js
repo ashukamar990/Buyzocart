@@ -6384,241 +6384,464 @@
 
     function showBrandProfile(brandId, brandName) {
       window._currentBrandId = brandId;
-      var main = document.querySelector('main') || document.body;
+      var mainEl = document.querySelector('main') || document.body;
       var page = document.getElementById('brandProfilePage');
       if (!page) {
         page = document.createElement('section');
         page.id = 'brandProfilePage';
         page.className = 'page';
-        page.style.cssText = 'min-height:100vh;background:#f8fafc;padding-bottom:80px;';
-        main.appendChild(page);
+        mainEl.appendChild(page);
+      }
+      page.style.cssText = 'min-height:100vh;background:#f8fafc;padding-bottom:100px;';
+
+      // ── Skeleton loading state ──
+      page.innerHTML = `
+        <div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;border-bottom:1px solid #f1f5f9;">
+          <button onclick="history.back()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <div style="height:18px;width:120px;background:#f1f5f9;border-radius:6px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div>
+        </div>
+        <div style="height:180px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:bpShim 1.4s infinite;"></div>
+        <div style="background:#fff;padding:20px 18px 16px;border-bottom:1px solid #f1f5f9;">
+          <div style="display:flex;gap:16px;margin-bottom:16px;">
+            <div style="flex:1;"><div style="height:20px;background:#f1f5f9;border-radius:6px;margin-bottom:8px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div><div style="height:14px;width:60%;background:#f1f5f9;border-radius:6px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div></div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div style="height:40px;flex:1;background:#f1f5f9;border-radius:20px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div>
+            <div style="height:40px;width:80px;background:#f1f5f9;border-radius:20px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div>
+          </div>
+        </div>`;
+
+      // Inject shimmer keyframes once
+      if (!document.getElementById('bpShimStyle')) {
+        var ss = document.createElement('style'); ss.id = 'bpShimStyle';
+        ss.textContent = '@keyframes bpShim{0%{background-position:200% 0}100%{background-position:-200% 0}} @keyframes bpFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}} @keyframes bpPop{0%{transform:scale(.94)}60%{transform:scale(1.04)}100%{transform:scale(1)}}';
+        document.head.appendChild(ss);
       }
 
-      // Instant loading state — page visible immediately
-      page.innerHTML =
-        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:14px;">'
-          + '<div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div>'
-          + '<p style="color:#94a3b8;font-size:13px;font-weight:600;">Loading brand...</p>'
-        + '</div>';
       showPage('brandProfilePage');
       window.scrollTo(0, 0);
 
       var _fb = window.firebase;
       Promise.all([
         _fb.get(_fb.ref(_fb.database, 'brands/' + brandId)),
-        _fb.get(_fb.ref(_fb.database, 'brandFollowers/' + brandId))
+        _fb.get(_fb.ref(_fb.database, 'brandFollowers/' + brandId)),
+        _fb.get(_fb.ref(_fb.database, 'reviews')).catch(function(){ return null; })
       ]).then(function(res) {
         var bd         = res[0].exists() ? res[0].val() : {};
         var followSnap = res[1];
-        var name       = bd.name || brandName;
+        var reviewsSnap= res[2];
+        var name       = bd.name || brandName || 'Brand';
         var isVerified = !!bd.blueTickAdmin;
         var level      = bd.verificationLevel || 'normal';
         var desc       = bd.description || '';
         var logo       = bd.logo || '';
-        var color      = _brandColor(name);
+        var website    = bd.website || bd.link || '';
+        var username   = bd.username || bd.handle || ('@' + name.toLowerCase().replace(/\s+/g,'_'));
+        var themeColor = bd.themeColor || bd.brandColor || _brandColor(name);
         var initials   = name.slice(0, 2).toUpperCase();
+        var offers     = bd.offers || bd.coupon || '';
 
+        // Followers
         var followers = 0;
         if (followSnap.exists() && followSnap.val()) {
-          followers = Object.keys(followSnap.val()).filter(function(k) { return !!followSnap.val()[k]; }).length;
+          followers = Object.keys(followSnap.val()).filter(function(k){ return !!followSnap.val()[k]; }).length;
         }
         var isFollowing = !!(currentUser && followSnap.exists() && followSnap.val() && followSnap.val()[currentUser.uid]);
 
+        // Products
         var brandProds = products.filter(function(p) {
-          var bid = p.brandId || (p.brand || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
-          return bid === brandId || (p.brand || '').toLowerCase() === name.toLowerCase();
+          var bid = p.brandId || (p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+          return bid === brandId || (p.brand||'').toLowerCase() === name.toLowerCase();
         });
 
-        var _bzBlueTick2 = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;" aria-label="Verified"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        var verBadgeInline = level === 'premium'
-          ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:1px 8px;border-radius:12px;font-size:11px;font-weight:800;"> ⭐ Premium</span>'
-          : isVerified
-            ? _bzBlueTick2
-            : '';
-
-        var logoHtml = logo
-          ? '<img src="' + logo + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
-          : '<span style="font-size:26px;font-weight:800;color:#fff;">' + initials + '</span>';
-
-        var safeName = name.replace(/'/g, '').replace(/"/g, '');
-        var followBtnHtml = currentUser
-          ? '<button id="brandFollowBtn" onclick="window.toggleBrandFollow(\'' + brandId + '\',\'' + safeName + '\',this)" style="padding:10px 28px;border-radius:50px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;'
-              + (isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:#2563eb;color:#fff;') + '">'
-              + (isFollowing ? '✓ Following' : '+ Follow')
-            + '</button>'
-            + '<button onclick="window.showBrandProducts(\'' + brandId + '\',\'' + safeName + '\')" style="padding:10px 20px;border-radius:50px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;background:#fff;color:#0f172a;margin-left:8px;">Shop Now</button>'
-          : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="padding:10px 28px;border-radius:50px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:700;">Login to Follow</button>';
-
-        // Banner: check all possible Firebase field names
-        var bannerUrl = bd.banner || bd.bannerUrl || bd.bannerImage || bd.coverImage || bd.cover || bd.headerImage || bd.brandBanner || bd.brandCover || '';
-        var bannerStyle;
-        if (bannerUrl) {
-          // Real banner image
-          bannerStyle = 'background:url(' + JSON.stringify(bannerUrl) + ') center/cover no-repeat;';
-        } else if (logo) {
-          // Auto-generate: blurred logo as banner background
-          bannerStyle = 'background:url(' + JSON.stringify(logo) + ') center/cover no-repeat;position:relative;';
-        } else {
-          // Fallback: color gradient
-          bannerStyle = 'background:linear-gradient(135deg,' + color + 'ee,' + color + '88);';
+        // Reviews
+        var brandReviews = [];
+        if (reviewsSnap && reviewsSnap.exists()) {
+          reviewsSnap.forEach(function(c) {
+            var r = c.val();
+            if (r && (r.brandId === brandId || (r.brand||'').toLowerCase() === name.toLowerCase())) {
+              brandReviews.push(Object.assign({id:c.key}, r));
+            }
+          });
         }
-        // Add blur overlay for logo-as-banner
-        var bannerOverlay = (!bannerUrl && logo) ? '<div style="position:absolute;inset:0;backdrop-filter:blur(18px) brightness(.7);-webkit-backdrop-filter:blur(18px) brightness(.7);border-radius:0;"></div>' : '';
+        // Also pull reviews from products
+        brandProds.forEach(function(p) {
+          if (p.reviews) {
+            Object.values(p.reviews).forEach(function(r) { if (r) brandReviews.push(r); });
+          }
+        });
+        var avgRating = bd.rating || (brandReviews.length
+          ? (brandReviews.reduce(function(s,r){return s+(r.rating||0);},0)/brandReviews.length).toFixed(1)
+          : 0);
+        var totalReviews = bd.totalReviews || brandReviews.length;
 
+        // Trending / Latest / Popular
+        var trending = brandProds.slice().sort(function(a,b){ return ((b.views||0)+(b.orders||0)*3)-((a.views||0)+(a.orders||0)*3); }).slice(0,6);
+        var latest   = brandProds.slice().sort(function(a,b){ return ((b.addedAt||b.createdAt||0)-(a.addedAt||a.createdAt||0)); }).slice(0,6);
+
+        // Blue tick SVG
+        var BT = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;flex-shrink:0;" title="Verified Brand"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        var BTSMALL = BT.replace('width="18" height="18"','width="12" height="12"');
+
+        var verBadge = level === 'premium'
+          ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800;"> ⭐ Premium</span>'
+          : isVerified ? BT : '';
+
+        // Banner
+        var bannerUrl = bd.banner||bd.bannerUrl||bd.bannerImage||bd.coverImage||bd.cover||bd.headerImage||bd.brandBanner||'';
+        var bannerBg, bannerOverlay = '';
+        if (bannerUrl) {
+          bannerBg = 'background:url('+JSON.stringify(bannerUrl)+') center/cover no-repeat;';
+        } else if (logo) {
+          bannerBg = 'background:url('+JSON.stringify(logo)+') center/cover no-repeat;';
+          bannerOverlay = '<div style="position:absolute;inset:0;backdrop-filter:blur(20px) brightness(.6);-webkit-backdrop-filter:blur(20px) brightness(.6);"></div>';
+        } else {
+          bannerBg = 'background:linear-gradient(135deg,'+themeColor+'ff 0%,'+themeColor+'99 50%,'+themeColor+'55 100%);';
+        }
+
+        // Logo HTML
+        var logoHtml = logo
+          ? '<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+          : '<span style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px;">'+initials+'</span>';
+
+        // Safe name for onclick attrs
+        var safeName = name.replace(/'/g,'').replace(/"/g,'');
+
+        // Follow button
+        var followBtn = currentUser
+          ? '<button id="brandFollowBtn" onclick="window.toggleBrandFollow(\''+brandId+'\',\''+safeName+'\',this)" style="flex:1;padding:11px 0;border-radius:24px;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;transition:all .2s;'+(isFollowing?'background:#f1f5f9;color:#64748b;':'background:'+themeColor+';color:#fff;')+'">'+(isFollowing?'✓ Following':'+ Follow')+'</button>'
+          : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="flex:1;padding:11px 0;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">+ Follow</button>';
+
+        // Share button
+        var shareBtn = '<button onclick="if(navigator.share){navigator.share({title:\''+safeName+'\',url:window.location.href})}else{navigator.clipboard&&navigator.clipboard.writeText(window.location.href);if(typeof showToast===\'function\')showToast(\'Link copied!\',\'success\');}" style="width:44px;height:44px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
+
+        // Stats
+        function fmtNum(n) { n=parseInt(n)||0; return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'K':n+''; }
+        function statCard(val,label,color2) {
+          return '<div style="flex:1;text-align:center;padding:12px 8px;background:#fff;border-radius:14px;border:1px solid #f1f5f9;min-width:0;">'
+            +'<div style="font-size:1.15rem;font-weight:900;color:'+(color2||'#0f172a')+';line-height:1.2;">'+val+'</div>'
+            +'<div style="font-size:10px;color:#94a3b8;font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.04em;">'+label+'</div>'
+          +'</div>';
+        }
+
+        // Stars
+        function stars(rating) {
+          var r = parseFloat(rating)||0, s='';
+          for(var i=1;i<=5;i++) s+='<span style="color:'+(i<=r?'#f59e0b':'#e2e8f0');s+='">★</span>';
+          return s;
+        }
+
+        // Product card for brand grid
+        function bpProductCard(p) {
+          var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
+          var img = (p.images&&p.images[0]) || p.image || p.thumbnail || '';
+          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
+          var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
+          return '<div onclick="showProductDetail(\''+p.id+'\')" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
+            +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
+              +(img?'<img src="'+img+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display=\'none\'">':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
+              +'<div style="position:absolute;top:8px;right:8px;">'
+                +'<button onclick="event.stopPropagation();typeof toggleWishlist===\'function\'&&toggleWishlist(\''+p.id+'\')" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);">'
+                  +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(wlActive?'#ef4444':'none')+'" stroke="'+(wlActive?'#ef4444':'#94a3b8')+'" stroke-width="2.2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+                +'</button>'
+              +'</div>'
+              +(p.trending||p.isTrending?'<div style="position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;">🔥 HOT</div>':'')
+            +'</div>'
+            +'<div style="padding:10px 10px 12px;">'
+              +'<div style="font-size:12px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;">'+( p.name||'Product')+'</div>'
+              +(pRating?'<div style="font-size:10px;color:#f59e0b;margin-bottom:4px;">'+stars(pRating)+'<span style="color:#94a3b8;margin-left:2px;">('+pRating+')</span></div>':'')
+              +'<div style="font-size:13px;font-weight:900;color:'+themeColor+';">'+price+'</div>'
+            +'</div>'
+          +'</div>';
+        }
+
+        // ─────────────── RENDER PAGE ───────────────
+        page.style.animation = 'bpFadeIn .35s ease';
         page.innerHTML =
-          '<div style="max-width:640px;margin:0 auto;">'
-            // Sticky top bar
-            + '<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,.06);">'
-              + '<button onclick="history.length>1?history.back():showPage(\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-                + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>'
-              + '</button>'
-              + '<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</span>'
-            + '</div>'
-            // Banner (no overflow hidden) + logo overlapping at bottom
-            + '<div style="position:relative;padding-bottom:36px;">'
-              + '<div style="height:130px;' + bannerStyle + 'border-radius:0;position:relative;overflow:hidden;">'
-              + bannerOverlay
-              + '</div>'
-              + '<div id="bpLogoHolder" style="position:absolute;bottom:0;left:18px;width:68px;height:68px;border-radius:18px;border:3.5px solid #fff;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.18);cursor:pointer;z-index:5;">'
-                + logoHtml
-              + '</div>'
-            + '</div>'
-            // Profile info
-            + '<div style="background:#fff;padding:10px 18px 16px;border-bottom:1px solid #e2e8f0;">'
-              + '<div style="font-size:1.1rem;font-weight:800;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'
-                + name + (verBadgeInline ? ('&ensp;' + verBadgeInline) : '')
-              + '</div>'
-              + (desc ? '<p style="font-size:13px;color:#64748b;margin:6px 0 10px;max-width:380px;line-height:1.5;">' + desc + '</p>' : '')
-              + '<div style="display:flex;gap:24px;margin:12px 0 16px;">'
-                + '<div style="text-align:center;"><div style="font-size:1.15rem;font-weight:800;" id="brandFollowerCount">' + followers + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">Followers</div></div>'
-                + '<div style="text-align:center;"><div style="font-size:1.15rem;font-weight:800;">' + brandProds.length + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">Products</div></div>'
-                + (bd.rating ? '<div style="text-align:center;"><div style="font-size:1.15rem;font-weight:800;">\u2b50 ' + bd.rating + '</div><div style="font-size:11px;color:#64748b;font-weight:600;">' + (bd.totalReviews || 0) + ' Reviews</div></div>' : '')
-              + '</div>'
-              + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + followBtnHtml + '</div>'
-            + '</div>'
-            // Also Following section
-            + '<div id="bpFollowingSection" style="display:none;padding:14px 16px;background:#fafafa;border-bottom:1px solid #f1f5f9;">'
-              + '<div style="font-weight:800;font-size:12px;margin-bottom:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Also Following</div>'
-              + '<div id="bpFollowingRow" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;"></div>'
-            + '</div>'
-            // Products
-            + '<div style="padding:16px;">'
-              + '<div style="font-weight:800;font-size:14px;margin-bottom:12px;">\ud83d\udecd\ufe0f ' + brandProds.length + ' Products</div>'
-              + (brandProds.length
-                  ? '<div class="product-grid" id="brandProductsGrid"></div>'
-                  : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No products listed yet</div>')
-            + '</div>'
-          + '</div>';
 
-        // Logo hold/long-press → full-screen preview
+        // ── STICKY TOP BAR ──
+        '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">'
+          +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
+            +'<button onclick="history.length>1?history.back():showPage(\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
+            +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
+            + shareBtn
+          +'</div>'
+        +'</div>'
+
+        // ── HERO BANNER ──
+        +'<div style="position:relative;max-width:640px;margin:0 auto;">'
+          +'<div style="height:190px;'+bannerBg+'position:relative;overflow:hidden;">'
+            + bannerOverlay
+            // Decorative circles when no banner
+            +(!bannerUrl?'<div style="position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.1);"></div><div style="position:absolute;right:40px;bottom:-60px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08);"></div>':'')
+          +'</div>'
+          // Logo
+          +'<div id="bpLogoHolder" style="position:absolute;bottom:-36px;left:18px;width:80px;height:80px;border-radius:22px;border:4px solid #fff;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.22);cursor:pointer;z-index:5;">'
+            + logoHtml
+          +'</div>'
+          // Verified badge on logo (small)
+          +(isVerified?'<div style="position:absolute;bottom:-20px;left:74px;z-index:6;background:#fff;border-radius:50%;padding:2px;box-shadow:0 2px 6px rgba(0,0,0,.15);">'+BTSMALL+'</div>':'')
+        +'</div>'
+
+        // ── BRAND IDENTITY ──
+        +'<div style="max-width:640px;margin:0 auto;background:#fff;padding:46px 18px 16px;border-bottom:1px solid #f1f5f9;">'
+          +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;">'
+            +'<div style="flex:1;min-width:0;">'
+              +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+                +'<span style="font-size:1.2rem;font-weight:900;color:#0f172a;">'+name+'</span>'
+                +(isVerified?'<span title="Verified Brand" style="cursor:pointer;">'+BT+'</span>':'')
+                +(level==='premium'?'<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:800;">PRO</span>':'')
+              +'</div>'
+              +'<div style="font-size:12px;color:#94a3b8;font-weight:600;margin-top:1px;">'+username+'</div>'
+              +(desc?'<p style="font-size:13px;color:#475569;margin:8px 0 0;line-height:1.6;max-width:380px;">'+desc+'</p>':'')
+              +(website?'<a href="'+website+'" target="_blank" style="font-size:12px;color:'+themeColor+';font-weight:700;text-decoration:none;margin-top:4px;display:inline-block;">🔗 '+website.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>':'')
+            +'</div>'
+          +'</div>'
+        +'</div>'
+
+        // ── STATS ROW ──
+        +'<div style="max-width:640px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
+          +'<div style="display:flex;gap:8px;">'
+            + statCard('<span id="brandFollowerCount">'+fmtNum(followers)+'</span>','Followers', themeColor)
+            + statCard(fmtNum(brandProds.length),'Products','#0f172a')
+            +(avgRating?statCard('<span style="color:#f59e0b;">★</span>'+avgRating,'Rating','#f59e0b'):'')
+            +(totalReviews?statCard(fmtNum(totalReviews),'Reviews','#7c3aed'):'')
+          +'</div>'
+        +'</div>'
+
+        // ── ACTION BUTTONS ──
+        +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
+          + followBtn
+          +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;transition:all .2s;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
+          + shareBtn
+        +'</div>'
+
+        // ── OFFERS ──
+        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
+
+        // ── SEARCH BAR ──
+        +'<div style="max-width:640px;margin:0 auto;padding:12px 16px 0;background:#fff;">'
+          +'<div style="position:relative;">'
+            +'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+            +'<input id="bpSearchInput" type="text" placeholder="Search '+safeName+' products..." oninput="window._bpFilter(this.value)" style="width:100%;padding:10px 14px 10px 36px;border:1.5px solid #e2e8f0;border-radius:24px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;background:#f8fafc;transition:border-color .2s;" onfocus="this.style.borderColor=\''+themeColor+'\'" onblur="this.style.borderColor=\'#e2e8f0\'">'
+          +'</div>'
+        +'</div>'
+
+        // ── TABS ──
+        +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
+          +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
+            +['Products','Trending','Reviews','About'].map(function(t,i){
+              return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:12px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
+            }).join('')
+          +'</div>'
+        +'</div>'
+
+        // ── TAB CONTENTS ──
+        +'<div style="max-width:640px;margin:0 auto;">'
+
+          // Products tab
+          +'<div id="bpTabContentProducts" style="padding:16px;">'
+            +(brandProds.length
+              ? '<div id="bpProductGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
+                + brandProds.slice(0,12).map(bpProductCard).join('')
+                +'</div>'
+                +(brandProds.length>12?'<div style="text-align:center;padding:20px 0;"><button onclick="window._bpLoadMore()" id="bpLoadMoreBtn" style="padding:10px 28px;border-radius:24px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:#475569;">Load More Products</button></div>':'')
+              : '<div style="text-align:center;padding:48px 20px;">'
+                  +'<div style="font-size:56px;margin-bottom:14px;filter:grayscale(1);opacity:.35;">🛍️</div>'
+                  +'<div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">No products yet</div>'
+                  +'<div style="font-size:13px;color:#94a3b8;margin-bottom:18px;">This brand hasn\'t listed any products.</div>'
+                  +'<button onclick="showPage(\'homePage\')" style="padding:10px 24px;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">Explore Other Brands</button>'
+                +'</div>')
+          +'</div>'
+
+          // Trending tab
+          +'<div id="bpTabContentTrending" style="display:none;padding:16px;">'
+            +(trending.length
+              ? '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
+                  + trending.map(bpProductCard).join('')
+                +'</div>'
+              : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No trending products yet</div>')
+          +'</div>'
+
+          // Reviews tab
+          +'<div id="bpTabContentReviews" style="display:none;padding:16px;">'
+            +(avgRating && totalReviews
+              ? '<div style="background:#fff;border-radius:16px;padding:18px;border:1px solid #f1f5f9;margin-bottom:14px;">'
+                  +'<div style="display:flex;align-items:center;gap:16px;">'
+                    +'<div style="text-align:center;">'
+                      +'<div style="font-size:2.4rem;font-weight:900;color:#0f172a;line-height:1;">'+avgRating+'</div>'
+                      +'<div style="font-size:16px;color:#f59e0b;margin:4px 0;">'+stars(avgRating)+'</div>'
+                      +'<div style="font-size:11px;color:#94a3b8;font-weight:600;">'+totalReviews+' Reviews</div>'
+                    +'</div>'
+                    +'<div style="flex:1;">'
+                      +[5,4,3,2,1].map(function(n){
+                        var cnt=brandReviews.filter(function(r){return Math.round(r.rating||0)===n;}).length;
+                        var pct=totalReviews?Math.round(cnt/totalReviews*100):0;
+                        return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
+                          +'<span style="font-size:10px;color:#64748b;width:8px;">'+n+'</span>'
+                          +'<div style="flex:1;height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#f59e0b;width:'+pct+'%;border-radius:3px;transition:width .6s;"></div></div>'
+                          +'<span style="font-size:10px;color:#94a3b8;width:24px;text-align:right;">'+pct+'%</span>'
+                        +'</div>';
+                      }).join('')
+                    +'</div>'
+                  +'</div>'
+                +'</div>'
+              : '')
+            +(brandReviews.length
+              ? brandReviews.slice(0,5).map(function(r){
+                  var ava=r.userPhoto?'<img src="'+r.userPhoto+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">':'<div style="width:36px;height:36px;border-radius:50%;background:'+themeColor+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">'+(r.userName||'U').slice(0,1)+'</div>';
+                  var d=r.createdAt?new Date(r.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
+                  return '<div style="background:#fff;border-radius:14px;padding:14px;border:1px solid #f1f5f9;margin-bottom:10px;">'
+                    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+ava
+                    +'<div><div style="font-weight:700;font-size:13px;">'+(r.userName||'Customer')+'</div>'
+                    +(d?'<div style="font-size:10px;color:#94a3b8;">'+d+'</div>':'')+'</div>'
+                    +'<div style="margin-left:auto;font-size:13px;color:#f59e0b;">'+stars(r.rating||0)+'</div></div>'
+                    +(r.comment||r.text?'<p style="font-size:13px;color:#475569;margin:0;line-height:1.5;">'+(r.comment||r.text)+'</p>':'')
+                  +'</div>';
+                }).join('')
+              : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No reviews yet</div>')
+          +'</div>'
+
+          // About tab
+          +'<div id="bpTabContentAbout" style="display:none;padding:16px;">'
+            +'<div style="background:#fff;border-radius:16px;padding:18px;border:1px solid #f1f5f9;">'
+              +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">'
+                +'<div style="width:64px;height:64px;border-radius:16px;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">'+(logo?'<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;">':'<span style="font-size:24px;font-weight:800;color:#fff;">'+initials+'</span>')+'</div>'
+                +'<div><div style="font-weight:800;font-size:16px;">'+name+'</div><div style="font-size:12px;color:#94a3b8;margin-top:1px;">'+username+'</div>'+(isVerified?'<div style="display:flex;align-items:center;gap:4px;margin-top:4px;font-size:11px;color:#1DA1F2;font-weight:700;">'+BTSMALL+' Verified Brand</div>':'')+'</div>'
+              +'</div>'
+              +(desc?'<p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 14px;">'+desc+'</p>':'')
+              +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+                +'<div style="background:#f8fafc;border-radius:12px;padding:12px;"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Followers</div><div style="font-weight:800;font-size:1.1rem;color:'+themeColor+';" id="brandFollowerCount2">'+fmtNum(followers)+'</div></div>'
+                +'<div style="background:#f8fafc;border-radius:12px;padding:12px;"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Products</div><div style="font-weight:800;font-size:1.1rem;">'+fmtNum(brandProds.length)+'</div></div>'
+                +(avgRating?'<div style="background:#f8fafc;border-radius:12px;padding:12px;"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Rating</div><div style="font-weight:800;font-size:1.1rem;color:#f59e0b;">★ '+avgRating+'</div></div>':'')
+                +(website?'<div style="background:#f8fafc;border-radius:12px;padding:12px;"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Website</div><a href="'+website+'" target="_blank" style="font-weight:700;font-size:12px;color:'+themeColor+';text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">'+website.replace(/^https?:\/\//,'')+'</a></div>':'')
+              +'</div>'
+            +'</div>'
+          +'</div>'
+
+        +'</div>' // end tab contents
+
+        // ── STICKY FOLLOW BAR (mobile, shown when scrolled past buttons) ──
+        +'<div id="bpStickyFollow" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#fff;border-top:1px solid #f1f5f9;z-index:40;box-shadow:0 -4px 16px rgba(0,0,0,.08);">'
+          +'<div style="max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center;">'
+            +'<div style="width:36px;height:36px;border-radius:10px;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">'+(logo?'<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;">':'<span style="font-size:14px;font-weight:800;color:#fff;">'+initials+'</span>')+'</div>'
+            +'<span style="font-weight:800;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
+            +'<button id="bpStickyFollowBtn" onclick="window.toggleBrandFollow(\''+brandId+'\',\''+safeName+'\',this)" style="padding:9px 22px;border-radius:24px;border:none;cursor:pointer;font-size:13px;font-weight:800;font-family:inherit;'+(isFollowing?'background:#f1f5f9;color:#64748b;':'background:'+themeColor+';color:#fff;')+'">'+(isFollowing?'✓ Following':'+ Follow')+'</button>'
+          +'</div>'
+        +'</div>';
+
+        // ── Tab switch logic ──
+        window._bpTab = function(tab) {
+          ['Products','Trending','Reviews','About'].forEach(function(t) {
+            var el = document.getElementById('bpTabContent'+t);
+            var btn = document.getElementById('bpTab'+t);
+            if (el) el.style.display = t===tab?'block':'none';
+            if (btn) {
+              btn.style.color = t===tab?themeColor:'#94a3b8';
+              btn.style.borderBottom = t===tab?'2.5px solid '+themeColor:'2.5px solid transparent';
+            }
+          });
+        };
+
+        // ── Search filter ──
+        var _bpAllProds = brandProds;
+        var _bpShown = 12;
+        window._bpFilter = function(q) {
+          var grid = document.getElementById('bpProductGrid');
+          if (!grid) return;
+          var filtered = q ? _bpAllProds.filter(function(p){ return (p.name||'').toLowerCase().indexOf(q.toLowerCase())!==-1; }) : _bpAllProds;
+          grid.innerHTML = filtered.slice(0,_bpShown).map(bpProductCard).join('');
+        };
+
+        // ── Load more ──
+        window._bpLoadMore = function() {
+          var grid = document.getElementById('bpProductGrid');
+          var btn  = document.getElementById('bpLoadMoreBtn');
+          if (!grid) return;
+          _bpShown += 12;
+          grid.innerHTML = _bpAllProds.slice(0,_bpShown).map(bpProductCard).join('');
+          if (_bpShown >= _bpAllProds.length && btn) btn.style.display='none';
+        };
+
+        // ── Sticky follow on scroll ──
+        var bpActionTop = 0;
+        setTimeout(function(){
+          var actBtn = document.getElementById('brandFollowBtn');
+          if (actBtn) bpActionTop = actBtn.getBoundingClientRect().top + window.scrollY;
+          var stickyBar = document.getElementById('bpStickyFollow');
+          function onScroll() {
+            if (!stickyBar) return;
+            stickyBar.style.display = window.scrollY > bpActionTop + 60 ? 'block' : 'none';
+          }
+          window.addEventListener('scroll', onScroll, {passive:true});
+          // Clean up on page change
+          page._bpScrollCb = onScroll;
+        }, 400);
+
+        // ── Logo hold → full preview ──
         setTimeout(function() {
-          var holder = document.getElementById('bpLogoHolder');
-          if (!holder) return;
-          var holdTimer;
-          function openLogoPreview() {
+          var holder = document.getElementById('bpLogoHolder'); if (!holder) return;
+          var ht;
+          function openPrev() {
             var ov = document.createElement('div');
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s;';
-            ov.innerHTML = logo
-              ? '<img src="' + logo + '" style="max-width:88vw;max-height:88vh;border-radius:20px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.5);">'
-              : '<div style="width:200px;height:200px;border-radius:32px;background:' + color + ';display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:800;color:#fff;">' + initials + '</div>';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;animation:bpFadeIn .2s;';
+            ov.innerHTML = logo?'<img src="'+logo+'" style="max-width:88vw;max-height:88vh;border-radius:24px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.5);">'
+              : '<div style="width:200px;height:200px;border-radius:40px;background:'+themeColor+';display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:900;color:#fff;">'+initials+'</div>';
             ov.addEventListener('click', function(){ document.body.removeChild(ov); });
             document.body.appendChild(ov);
           }
-          holder.addEventListener('mousedown', function(){ holdTimer = setTimeout(openLogoPreview, 500); });
-          holder.addEventListener('mouseup', function(){ clearTimeout(holdTimer); });
-          holder.addEventListener('mouseleave', function(){ clearTimeout(holdTimer); });
-          holder.addEventListener('touchstart', function(){ holdTimer = setTimeout(openLogoPreview, 500); }, { passive: true });
-          holder.addEventListener('touchend', function(){ clearTimeout(holdTimer); });
-          holder.addEventListener('touchmove', function(){ clearTimeout(holdTimer); }, { passive: true });
-          holder.addEventListener('contextmenu', function(e){ e.preventDefault(); openLogoPreview(); });
+          holder.addEventListener('mousedown',function(){ht=setTimeout(openPrev,500);});
+          holder.addEventListener('mouseup',function(){clearTimeout(ht);});
+          holder.addEventListener('mouseleave',function(){clearTimeout(ht);});
+          holder.addEventListener('touchstart',function(){ht=setTimeout(openPrev,500);},{passive:true});
+          holder.addEventListener('touchend',function(){clearTimeout(ht);});
+          holder.addEventListener('touchmove',function(){clearTimeout(ht);},{passive:true});
+          holder.addEventListener('contextmenu',function(e){e.preventDefault();openPrev();});
         }, 200);
 
-        // Load "Also Following" brands for this brand
+        // ── Also Following brands ──
         setTimeout(function() {
-          var _fb4 = window.firebase;
-          if (!_fb4) return;
-          _fb4.get(_fb4.ref(_fb4.database, 'brandFollowers')).then(function(allFollowSnap) {
-            var followingIds = [];
-            if (allFollowSnap.exists()) {
-              allFollowSnap.forEach(function(c) {
-                var val = c.val();
-                if (val && val[brandId] && c.key !== brandId) followingIds.push(c.key);
-              });
-            }
-            if (!followingIds.length) return;
-            var allBrands = window.__bzBrandsCache || [];
-            var followingBrands = allBrands.filter(function(b){ return followingIds.indexOf(b.id) !== -1; });
-            followingBrands.sort(function(a,b){ return ((b.followers||0)+(b.blueTickAdmin?10000:0)) - ((a.followers||0)+(a.blueTickAdmin?10000:0)); });
-            followingBrands = followingBrands.slice(0,20);
-            if (!followingBrands.length) return;
-            var sec = document.getElementById('bpFollowingSection');
-            var row = document.getElementById('bpFollowingRow');
-            if (!sec || !row) return;
-            sec.style.display = 'block';
-            var BZ_BT2 = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 100 100"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-            var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-            followingBrands.forEach(function(b) {
-              var bc = cs[(b.name||'A').charCodeAt(0) % cs.length];
-              var ini = (b.name||'B').slice(0,2).toUpperCase();
-              var lInner = b.logo
-                ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'" >'
-                : '<span style="font-size:13px;font-weight:800;color:#fff;">' + ini + '</span>';
-              var item = document.createElement('div');
-              item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;';
-              item.innerHTML = '<div style="width:46px;height:46px;border-radius:12px;border:2px solid #e2e8f0;background:' + bc + ';display:flex;align-items:center;justify-content:center;overflow:hidden;">' + lInner + '</div>'
-                + '<span style="font-size:9px;font-weight:700;max-width:54px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (b.name||'').slice(0,10) + (b.blueTickAdmin ? BZ_BT2 : '') + '</span>';
-              item.addEventListener('click', function(){ window.showBrandProfile(b.id, b.name); });
-              row.appendChild(item);
-            });
+          var _fb4 = window.firebase; if (!_fb4) return;
+          _fb4.get(_fb4.ref(_fb4.database, 'brandFollowers')).then(function(allSnap) {
+            var ids = [];
+            if (allSnap.exists()) allSnap.forEach(function(c){ var v=c.val(); if(v&&v[brandId]&&c.key!==brandId) ids.push(c.key); });
+            if (!ids.length) return;
+            var list = (window.__bzBrandsCache||[]).filter(function(b){ return ids.indexOf(b.id)!==-1; }).slice(0,20);
+            if (!list.length) return;
+            // Inject after about section
+            var aboutTab = document.getElementById('bpTabContentAbout');
+            if (!aboutTab) return;
+            var alsoDiv = document.createElement('div');
+            alsoDiv.style.cssText = 'padding:0 16px 16px;';
+            alsoDiv.innerHTML = '<div style="font-weight:800;font-size:13px;color:#0f172a;margin-bottom:12px;">Also Following</div>'
+              +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;">'
+              + list.map(function(b){
+                  var bc=_brandColor(b.name),bi=(b.name||'B').slice(0,1);
+                  var li2=b.logo?'<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'<span style="font-size:14px;font-weight:800;color:#fff;">'+bi+'</span>';
+                  return '<div onclick="window.showBrandProfile(\''+b.id+'\',\''+b.name.replace(/'/g,'')+'\')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;min-width:54px;">'
+                    +'<div style="width:48px;height:48px;border-radius:14px;background:'+bc+';display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #f1f5f9;">'+li2+'</div>'
+                    +'<span style="font-size:9px;font-weight:700;max-width:54px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'').slice(0,10)+'</span>'
+                  +'</div>';
+                }).join('')
+              +'</div>';
+            aboutTab.appendChild(alsoDiv);
           }).catch(function(){});
-        }, 500);
+        }, 600);
 
-        if (brandProds.length) {
-          setTimeout(function() { renderProducts(brandProds, 'brandProductsGrid'); }, 30);
-          // Add Trending / Most Popular / Latest sections
-          setTimeout(function() {
-            var extraWrap = document.createElement('div');
-            extraWrap.id = 'bzBrandExtras';
-            function addBrandSection(emoji, title, prods) {
-              if (!prods.length) return;
-              var gridId = 'bzBrandMini_' + title.replace(/\W/g, '');
-              var sec = document.createElement('div');
-              sec.style.cssText = 'padding:0 16px 20px;';
-              sec.innerHTML = '<div style="font-weight:800;font-size:14px;margin-bottom:10px;">' + emoji + ' ' + title + '</div>'
-                + '<div id="' + gridId + '" class="product-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>';
-              extraWrap.appendChild(sec);
-              setTimeout(function() { renderProducts(prods, gridId); }, 60);
-            }
-            var trending = brandProds.slice().sort(function(a,b) {
-              return ((b.views||0)+(b.orders||0)*2) - ((a.views||0)+(a.orders||0)*2);
-            }).slice(0, 4);
-            var popular = brandProds.slice().sort(function(a,b) {
-              var ra = typeof calculateProductRating==='function'?calculateProductRating(a.id):(a.rating||0);
-              var rb = typeof calculateProductRating==='function'?calculateProductRating(b.id):(b.rating||0);
-              return rb - ra;
-            }).slice(0, 4);
-            var latest = brandProds.slice().sort(function(a,b) {
-              return ((b.addedAt||b.createdAt||0) - (a.addedAt||a.createdAt||0));
-            }).slice(0, 4);
-            if (brandProds.length >= 2) {
-              addBrandSection('🔥', 'Trending', trending);
-              addBrandSection('⭐', 'Most Popular', popular);
-              addBrandSection('🆕', 'Latest', latest);
-            }
-            var pgDiv = page.querySelector('#brandProductsGrid');
-            if (pgDiv && pgDiv.parentElement) pgDiv.parentElement.appendChild(extraWrap);
-          }, 200);
-        }
         window.scrollTo(0, 0);
       }).catch(function(err) {
         console.error('Brand profile error:', err);
-        page.innerHTML =
-          '<div style="text-align:center;padding:60px 20px;">'
-            + '<p style="color:#ef4444;font-weight:700;margin-bottom:12px;">Could not load brand profile</p>'
-            + '<button onclick="showPage(\'brandsPage\')" style="padding:8px 20px;border-radius:20px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-weight:700;">← Back to Brands</button>'
-          + '</div>';
+        page.innerHTML = '<div style="text-align:center;padding:60px 20px;">'
+          +'<div style="font-size:48px;margin-bottom:14px;">😕</div>'
+          +'<p style="color:#ef4444;font-weight:700;margin-bottom:12px;">Could not load brand profile</p>'
+          +'<button onclick="showPage(\'brandsPage\')" style="padding:10px 24px;border-radius:24px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-weight:700;">← Back to Brands</button>'
+        +'</div>';
       });
     }
+
+
 
     // ══════ Follow / Unfollow Brand ══════
     function toggleBrandFollow(brandId, brandName, btnEl) {
