@@ -628,7 +628,7 @@
         </svg>
         Help & Support
       </div>
-      <div class="menu-item" id="bzBrandsMenuItem" style="display:none;" onclick="window._openBrandsPage(); closeMenu();">
+      <div class="menu-item" onclick="window._openBrandsPage(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
           <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
         </svg>
@@ -811,14 +811,16 @@
         </div>
       </div>
 
-      <!-- ══ FOLLOWING BRANDS PRODUCTS ══ -->
+      <!-- ══ FOLLOWING BRANDS ══ -->
       <div id="followingProductsSection" style="display:none;padding:0 0 8px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 6px;">
           <h2 style="margin:0;font-size:1.05rem;font-weight:800;">❤️ Following Brands</h2>
-          <a onclick="window.bzOpenBrandsPage&&window.bzOpenBrandsPage()" style="font-size:12px;color:var(--primary);cursor:pointer;font-weight:600;">Manage →</a>
+          <a onclick="window._openBrandsPage&&window._openBrandsPage()" style="font-size:12px;color:var(--primary);cursor:pointer;font-weight:600;">Manage →</a>
         </div>
-        <div id="bzFollowingBrandsIcons" style="display:flex;gap:14px;overflow-x:auto;padding:0 4px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;"></div>
-        <div class="product-grid" id="followingProductsGrid" style="display:none;"></div>
+        <!-- Brand icon circles (like categories) -->
+        <div id="bzFollowingBrandsIcons" style="display:flex;gap:14px;overflow-x:auto;padding:4px 4px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;"></div>
+        <!-- Brand products grid -->
+        <div class="product-grid" id="followingProductsGrid"></div>
       </div>
 
       <div class="category-circles">
@@ -1547,64 +1549,64 @@
 
 
   <!-- ══════════ BRANDS PAGE ══════════ -->
-  <section class="page" id="brandsPage">
-    <div style="max-width:960px;margin:0 auto;padding:1rem 1rem 5rem;">
+  <section class="page" id="brandsPage" style="background:#f8fafc;min-height:100vh;">
 
-      <!-- Header -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;padding-top:4px;">
-        <button onclick="showPage('homePage')" style="width:38px;height:38px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;flex-shrink:0;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <!-- ── Sticky header ── -->
+    <div style="background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <div style="max-width:720px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;gap:10px;">
+        <button onclick="showPage('homePage')" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
-        <div>
-          <h1 style="font-size:1.15rem;font-weight:800;margin:0;">🏷️ Brands</h1>
-          <p style="font-size:.75rem;color:#64748b;margin:2px 0 0;">Discover & follow your favourite brands</p>
+        <div style="flex:1;">
+          <div style="font-size:1.05rem;font-weight:800;line-height:1.2;">🏷️ Brands</div>
+          <div style="font-size:.72rem;color:#94a3b8;">Discover &amp; follow your favourite brands</div>
         </div>
+        <button onclick="window.__bzBrandsCache=[];window.__bzFollowedSet={};bzLoadBrandsPageFixed();"
+          style="width:34px;height:34px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Refresh">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
       </div>
+    </div>
 
-      <!-- Search -->
-      <div style="position:relative;margin-bottom:1.25rem;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);pointer-events:none;">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" id="brandSearchSite" placeholder="Search brands..." oninput="window._filterSiteBrands()" style="width:100%;padding:11px 16px 11px 38px;border:1.5px solid #e2e8f0;border-radius:50px;font-size:14px;font-family:inherit;outline:none;background:#f8fafc;box-sizing:border-box;">
-      </div>
+    <div style="max-width:720px;margin:0 auto;padding:.75rem 1rem 5rem;">
 
-      <!-- Initial Loading Spinner (shown before JS loads brands) -->
-      <div id="brandsLoadingSpinner" style="text-align:center;padding:3rem 1rem;">
-        <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;"></div>
+      <!-- Loading spinner -->
+      <div id="brandsLoadingSpinner" style="display:none;text-align:center;padding:3rem 1rem;">
+        <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;"></div>
         <p style="color:#94a3b8;font-size:13px;font-weight:600;">Loading brands...</p>
       </div>
 
-      <!-- Following Brands Strip -->
-      <div id="followingBrandsSection" style="display:none;margin-bottom:1.5rem;">
-        <div style="font-size:.95rem;font-weight:800;margin-bottom:10px;">❤️ Following</div>
-        <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;" id="followingBrandsRow"></div>
+      <!-- ❤️ Following — circles like categories -->
+      <div id="followingBrandsSection" style="display:none;margin-bottom:1.1rem;background:#fff;border-radius:16px;padding:14px 16px;border:1px solid #f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+        <div style="font-size:.82rem;font-weight:800;margin-bottom:12px;color:#0f172a;">❤️ Following</div>
+        <div id="followingBrandsRow" style="display:flex;gap:16px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;"></div>
       </div>
 
-      <!-- Popular Brands -->
-      <div id="popularBrandsSection" style="display:none;margin-bottom:1.75rem;">
-        <div style="font-size:.95rem;font-weight:800;margin-bottom:10px;">🔥 Popular Brands</div>
+      <!-- 🔥 Popular -->
+      <div id="popularBrandsSection" style="display:none;margin-bottom:1.1rem;">
+        <div style="font-size:.82rem;font-weight:800;margin-bottom:10px;padding:0 2px;color:#0f172a;">🔥 Popular Brands</div>
         <div id="popularBrandsGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>
       </div>
 
-      <!-- Suggested Brands -->
-      <div id="suggestedBrandsSection" style="display:none;margin-bottom:1.75rem;">
-        <div style="font-size:.95rem;font-weight:800;margin-bottom:10px;">⭐ Suggested for You</div>
+      <!-- ⭐ Suggested -->
+      <div id="suggestedBrandsSection" style="display:none;margin-bottom:1.1rem;">
+        <div style="font-size:.82rem;font-weight:800;margin-bottom:10px;padding:0 2px;color:#0f172a;">⭐ Suggested for You</div>
         <div id="suggestedBrandsGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>
       </div>
 
-      <!-- All Brands -->
-      <div id="otherBrandsSection" style="display:none;">
-        <div style="font-size:.95rem;font-weight:800;margin-bottom:10px;">📦 All Brands</div>
+      <!-- 📦 All Brands -->
+      <div id="otherBrandsSection" style="display:none;margin-bottom:1.1rem;">
+        <div style="font-size:.82rem;font-weight:800;margin-bottom:10px;padding:0 2px;color:#0f172a;">📦 All Brands</div>
         <div id="otherBrandsGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>
       </div>
 
       <!-- Empty State -->
-      <div id="brandsEmptyState" style="display:none;text-align:center;padding:3rem 1rem;">
-        <div style="font-size:3rem;margin-bottom:1rem;">🏷️</div>
-        <div style="font-weight:700;margin-bottom:.5rem;">No brands found</div>
-        <div style="color:#64748b;font-size:.875rem;">Try a different search term</div>
+      <div id="brandsEmptyState" style="display:none;text-align:center;padding:4rem 1rem;">
+        <div style="font-size:3.5rem;margin-bottom:1rem;opacity:.35;">🏷️</div>
+        <div style="font-weight:800;font-size:1rem;margin-bottom:.5rem;">No brands yet</div>
+        <div style="color:#94a3b8;font-size:.85rem;">Brands will appear once sellers list products</div>
       </div>
+
     </div>
   </section>
 
@@ -1919,8 +1921,7 @@
   <script src="security.js" defer></script>
 
   <script src="main.js" defer></script>
-  <!-- Brand system: remove this line to disable ALL brand features -->
-  <script src="brand.js" defer></script>
+
 
   <div id="progressBar"></div>
 
