@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-11 - Global Keyboard Accessibility & Semantic Buttons
+**Learning:** Converting generic divs to semantic buttons with explicit types and adding :focus-visible indicators significantly improves the out-of-the-box accessibility (a11y) of static web applications. Using :focus-visible instead of :focus ensures that mouse users don't see distracting rings while keyboard users maintain clear orientation.
+**Action:** Always prefer <button type="button"> for interactive icons and use :focus-visible with var(--ring) for a consistent, high-contrast focus state.
