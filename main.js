@@ -6979,25 +6979,46 @@
   window.bzCheckUsername = function(val) {
     val = (val||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
     var inp=document.getElementById('bzUnameInput'); if(inp&&inp.value!==val) inp.value=val;
-    var status=document.getElementById('bzUnameStatus'); var btn=document.getElementById('bzUnameSaveBtn');
-    if (!val||val.length<3) {
-      if(status){status.textContent=val.length?'Min 3 characters':'';status.style.color='#ef4444';}
-      if(btn) btn.style.opacity='0.5'; return;
-    }
+    var status=document.getElementById('bzUnameStatus');
+    var btn=document.getElementById('bzUnameSaveBtn');
+    var inpEl=document.getElementById('bzUnameInput');
+
+    // Clear previous timer immediately
     clearTimeout(_uTimer);
-    if(status){status.textContent='Checking...';status.style.color='#94a3b8';} if(btn) btn.style.opacity='0.5';
+
+    if (!val || val.length < 3) {
+      if(status){ status.textContent = val.length ? '⚠️ Min 3 characters required' : ''; status.style.color='#f59e0b'; }
+      if(btn) btn.style.opacity='0.5';
+      if(inpEl) inpEl.style.borderColor='#e2e8f0';
+      return;
+    }
+
+    // Show instant "checking" feedback
+    if(status){ status.textContent='⏳ Checking @'+val+'...'; status.style.color='#94a3b8'; }
+    if(btn) btn.style.opacity='0.5';
+    if(inpEl) inpEl.style.borderColor='#94a3b8';
+
+    // 300ms debounce — fast enough to feel instant
     _uTimer = setTimeout(function(){
-      var fb=window.firebase; if(!fb) return;
-      fb.get(fb.ref(fb.database,'usernames/'+val)).then(function(snap){
+      var fb = window.firebase; if(!fb) return;
+      var checkVal = val; // capture current value
+      fb.get(fb.ref(fb.database, 'usernames/' + checkVal)).then(function(snap){
+        // Make sure user hasn't typed something else already
+        var currentVal = (document.getElementById('bzUnameInput')||{}).value || '';
+        if (currentVal !== checkVal) return;
         if(snap.exists()){
-          if(status){status.textContent='\u274C @'+val+' is already taken';status.style.color='#ef4444';}
+          if(status){ status.textContent='❌ @'+checkVal+' is already taken'; status.style.color='#ef4444'; }
           if(btn) btn.style.opacity='0.5';
+          if(inpEl) inpEl.style.borderColor='#ef4444';
         } else {
-          if(status){status.textContent='\u2705 @'+val+' is available!';status.style.color='#16a34a';}
+          if(status){ status.textContent='✅ @'+checkVal+' is available!'; status.style.color='#16a34a'; }
           if(btn) btn.style.opacity='1';
+          if(inpEl) inpEl.style.borderColor='#16a34a';
         }
-      }).catch(function(){});
-    }, 500);
+      }).catch(function(){
+        if(status){ status.textContent='⚠️ Could not check, try again'; status.style.color='#f59e0b'; }
+      });
+    }, 300);
   };
 
   window.bzSaveUsername = function() {
