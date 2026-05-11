@@ -492,40 +492,29 @@
         viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
-      // ── Brand results ──
-      const allBrandsForSearch = window.__bzBrandsCache || [];
-      if (allBrandsForSearch.length) {
-        const qLower = query.toLowerCase().trim();
-        const matchedBrands = allBrandsForSearch.filter(b =>
-          (b.name||'').toLowerCase().includes(qLower) || (b.description||'').toLowerCase().includes(qLower)
-        ).slice(0, 3);
-        if (matchedBrands.length) {
-          const hdr = document.createElement('div');
-          hdr.style.cssText = 'padding:5px 12px 3px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #f1f5f9;background:var(--surface,#fff);';
+      // Brand suggestions
+      var allBrandsQ = window.__bzBrandsCache || [];
+      if (allBrandsQ.length && query.length >= 1) {
+        var qL = query.toLowerCase();
+        var mBrands = allBrandsQ.filter(function(b){ return (b.name||'').toLowerCase().indexOf(qL) !== -1; }).slice(0, 3);
+        if (mBrands.length) {
+          var hdr = document.createElement('div');
+          hdr.style.cssText = 'padding:5px 12px 3px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;border-top:1px solid #f1f5f9;';
           hdr.textContent = '🏷️  Brands';
           suggestionsContainer.appendChild(hdr);
-          const brandColors = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-          const BT = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-          matchedBrands.forEach(b => {
-            const col = brandColors[(b.name||'A').charCodeAt(0) % brandColors.length];
-            const initials = (b.name||'B').slice(0,2).toUpperCase();
-            const logoHtml = b.logo
-              ? `<img src="${b.logo}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">`
-              : `<div style="width:38px;height:38px;border-radius:8px;background:${col};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">${initials}</div>`;
-            const verBadge = b.blueTickAdmin ? BT : '';
-            const row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;transition:background .15s;';
-            row.innerHTML = logoHtml
-              + `<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:3px;">${b.name||''}${verBadge}</div>`
-              + `<div style="font-size:11px;color:#64748b;">📦 ${b.products?b.products.length:0} products${b.followers?' &nbsp;❤️ '+b.followers:''}</div></div>`
-              + '<span style="font-size:10px;background:#eff6ff;color:#2563eb;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Brand</span>';
-            row.addEventListener('mouseenter', function(){this.style.background='#f8fafc';});
-            row.addEventListener('mouseleave', function(){this.style.background='';});
-            row.addEventListener('click', () => {
-              closeSearchPanel();
-              if (typeof window.showBrandProfile === 'function') window.showBrandProfile(b.id, b.name);
-            });
-            suggestionsContainer.appendChild(row);
+          var BCOLS2 = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+          mBrands.forEach(function(b) {
+            var bc2 = BCOLS2[(b.name||'A').charCodeAt(0) % BCOLS2.length];
+            var ini2 = (b.name||'B').slice(0,2).toUpperCase();
+            var bLogoH = b.logo ? '<img src="'+b.logo+'" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+              : '<div style="width:38px;height:38px;border-radius:8px;background:'+bc2+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">'+ini2+'</div>';
+            var bRow = document.createElement('div');
+            bRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;transition:background .15s;';
+            bRow.innerHTML = bLogoH+'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">'+(b.name||'')+(b.blueTickAdmin&&window.__BZ_BLUE_TICK?'&nbsp;'+window.__BZ_BLUE_TICK:'')+'</div><div style="font-size:11px;color:#64748b;">📦 '+(b.products?b.products.length:0)+' products</div></div><span style="font-size:10px;background:#eff6ff;color:#2563eb;padding:2px 7px;border-radius:10px;font-weight:700;">Brand</span>';
+            bRow.addEventListener('mouseenter', function(){ this.style.background='#f8fafc'; });
+            bRow.addEventListener('mouseleave', function(){ this.style.background=''; });
+            bRow.addEventListener('click', function(){ closeSearchPanel(); showBrandProfile(b.id, b.name); });
+            suggestionsContainer.appendChild(bRow);
           });
         }
       }
@@ -723,15 +712,6 @@
           break;
         case 'categoryPage':
           setTimeout(function() { bzRenderOrbit(); }, 100);
-          break;
-        case 'brandsPage':
-          setTimeout(function() {
-            if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
-              bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
-            } else {
-              bzLoadBrandsPageFixed();
-            }
-          }, 40);
           break;
       }
     }
@@ -994,7 +974,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var cacheB=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.id===(product.brandId||(product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_'))||x.name===(product.brand||'');});return cacheB&&cacheB.blueTickAdmin?'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 100 100\" style=\"display:inline-block;vertical-align:middle;margin-left:2px;\"><path d=\"M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z\" fill=\"#1DA1F2\"/><polyline points=\"31,50 44,63 69,36\" fill=\"none\" stroke=\"white\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>':'';}catch(e){return '';}})()}</div>` : ''}
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var cB=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});return cB&&cB.blueTickAdmin&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -4499,42 +4479,6 @@
         setTimeout(function() {
           var r2 = document.getElementById('bzOrbitRing');
           if (r2) r2.classList.add('bz-spinning');
-          // Swipe speed control
-          var stg = document.getElementById('bzOrbitStage');
-          if (stg && !stg._bzSpeedInited) {
-            stg._bzSpeedInited = true;
-            var curDur = 22;
-            function applyOrbitSpeed(dur) {
-              curDur = Math.max(3, Math.min(80, dur));
-              var rng = document.getElementById('bzOrbitRing');
-              if (!rng) return;
-              rng.style.animationDuration = curDur + 's';
-              rng.querySelectorAll('.bz-cat-item').forEach(function(it) {
-                it.style.animationDuration = curDur + 's';
-              });
-            }
-            var ts = {x:0, y:0, t:0};
-            stg.addEventListener('touchstart', function(e) {
-              ts.x = e.touches[0].clientX; ts.y = e.touches[0].clientY; ts.t = Date.now();
-            }, { passive: true });
-            stg.addEventListener('touchend', function(e) {
-              var dx = e.changedTouches[0].clientX - ts.x;
-              var dy = e.changedTouches[0].clientY - ts.y;
-              var dt = Math.max(1, Date.now() - ts.t);
-              if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-              if (Math.abs(dy) > Math.abs(dx) * 1.5) return;
-              var vel = Math.abs(dx) / dt;
-              applyOrbitSpeed(curDur + (dx > 0 ? 5 : -5) * (1 + vel * 8));
-            }, { passive: true });
-            var ms2 = {x:0, t:0, dn:false};
-            stg.addEventListener('mousedown', function(e) { ms2.x=e.clientX; ms2.t=Date.now(); ms2.dn=true; });
-            stg.addEventListener('mouseup', function(e) {
-              if (!ms2.dn) return; ms2.dn = false;
-              var dx2 = e.clientX - ms2.x; var dt2 = Math.max(1, Date.now() - ms2.t);
-              if (Math.abs(dx2) < 10) return;
-              applyOrbitSpeed(curDur + (dx2 > 0 ? 5 : -5) * (1 + Math.abs(dx2)/dt2 * 8));
-            });
-          }
         }, 600);
       } else {
         // LINE MODE — too many categories for circle
@@ -4567,26 +4511,18 @@
       var container = document.getElementById('bzCatTags');
       if (!container) return;
       container.innerHTML = '';
-      var tags = (typeof searchTags !== 'undefined' && searchTags && searchTags.length)
+      var tags = (typeof searchTags !== 'undefined' && searchTags.length)
         ? searchTags : cats.map(function(c) { return c.name || ''; }).filter(Boolean);
       tags.forEach(function(tag) {
         var chip = document.createElement('button');
         chip.textContent = tag;
-        chip.type = 'button';
-        chip.style.cssText = 'padding:7px 15px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;'
-          + 'color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;'
-          + '-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;';
+        chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
-        function doTagFilter(e) {
-          e.preventDefault(); e.stopPropagation();
+        chip.addEventListener('click', function() {
           var cat = categories && categories.find(function(c) { return c.name === tag; });
-          if (cat && typeof filterByCategory === 'function') { filterByCategory(cat.id); }
-          else if (typeof filterProductsByTag === 'function') { filterProductsByTag(tag); }
-          else if (typeof performSearch === 'function') { performSearch(tag); }
-        }
-        chip.addEventListener('click', doTagFilter);
-        chip.addEventListener('touchend', function(e) { e.preventDefault(); doTagFilter(e); }, { passive: false });
+          if (cat) filterByCategory(cat.id);
+        });
         container.appendChild(chip);
       });
     }
@@ -4892,9 +4828,7 @@
             setupAccountRealtimeSync(user.uid);
             setupOrdersRealtimeListener(user);
             // Load following brands products
-            setTimeout(() => { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
-            // Check username setup
-            setTimeout(function() { var fb2=window.firebase; if(!fb2||!currentUser) return; fb2.get(fb2.ref(fb2.database,'users/'+currentUser.uid+'/username')).then(function(s){if(!s.exists()||!s.val()) bzShowUsernamePopup(currentUser.uid);}).catch(function(){}); }, 2500);
+            setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
 
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
@@ -6134,84 +6068,6 @@
     }
 
 
-
-    // ══════ Username Setup Popup ══════
-    function bzShowUsernamePopup(uid) {
-      if (document.getElementById('bzUsernamePopup')) return;
-      var overlay = document.createElement('div');
-      overlay.id = 'bzUsernamePopup';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s;';
-      overlay.innerHTML =
-        '<div style="background:#fff;border-radius:24px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);">'
-        + '<div style="text-align:center;margin-bottom:20px;">'
-          + '<div style="font-size:40px;margin-bottom:8px;">👤</div>'
-          + '<div style="font-size:1.1rem;font-weight:800;color:#0f172a;margin-bottom:4px;">Choose your username</div>'
-          + '<div style="font-size:13px;color:#64748b;">Your unique identity on Buyzo Cart</div>'
-        + '</div>'
-        + '<div style="position:relative;margin-bottom:12px;">'
-          + '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:#94a3b8;">@</span>'
-          + '<input id="bzUsernameInput" type="text" placeholder="yourname" maxlength="30" oninput="bzCheckUsernameAvail(this.value)" style="width:100%;padding:12px 14px 12px 28px;border:2px solid #e2e8f0;border-radius:14px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .2s;">'
-        + '</div>'
-        + '<div id="bzUnameStatus" style="font-size:12px;min-height:18px;margin-bottom:14px;padding-left:4px;"></div>'
-        + '<button onclick="bzSaveUsername()" id="bzUsernameSaveBtn" style="width:100%;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:800;font-family:inherit;transition:opacity .2s;">Save Username</button>'
-        + '<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;">You can only set this once. Choose wisely!</p>'
-      + '</div>';
-      document.body.appendChild(overlay);
-
-      // Focus input
-      setTimeout(function(){ var inp=document.getElementById('bzUsernameInput'); if(inp) inp.focus(); }, 200);
-    }
-
-    var _bzUnameTimer;
-    function bzCheckUsernameAvail(val) {
-      var status = document.getElementById('bzUnameStatus');
-      var btn = document.getElementById('bzUsernameSaveBtn');
-      val = val.toLowerCase().replace(/[^a-z0-9_.]/g,'');
-      var inp = document.getElementById('bzUsernameInput');
-      if (inp) inp.value = val;
-      if (!val || val.length < 3) {
-        if (status) { status.textContent = val.length ? 'Min 3 characters' : ''; status.style.color='#ef4444'; }
-        if (btn) btn.style.opacity='0.5';
-        return;
-      }
-      clearTimeout(_bzUnameTimer);
-      if (status) { status.textContent = 'Checking...'; status.style.color='#94a3b8'; }
-      _bzUnameTimer = setTimeout(function() {
-        var fb2 = window.firebase;
-        if (!fb2) return;
-        fb2.get(fb2.ref(fb2.database, 'usernames/' + val)).then(function(snap) {
-          if (snap.exists()) {
-            if (status) { status.textContent = '❌ @'+val+' is taken'; status.style.color='#ef4444'; }
-            if (btn) btn.style.opacity='0.5';
-          } else {
-            if (status) { status.textContent = '✅ @'+val+' is available!'; status.style.color='#16a34a'; }
-            if (btn) btn.style.opacity='1';
-          }
-        }).catch(function(){});
-      }, 500);
-    }
-
-    async function bzSaveUsername() {
-      var uid = currentUser ? currentUser.uid : null; if (!uid) return;
-      var val = (inp ? inp.value : '').toLowerCase().trim();
-      if (!val || val.length < 3) { if(typeof showToast==='function') showToast('Min 3 characters','error'); return; }
-      var fb2 = window.firebase;
-      if (!fb2) return;
-      // Double-check availability
-      var taken = await fb2.get(fb2.ref(fb2.database, 'usernames/' + val));
-      if (taken.exists()) { if(typeof showToast==='function') showToast('@'+val+' is already taken!','error'); return; }
-      // Save username → users/uid/username AND usernames/username = uid (unique index)
-      await fb2.set(fb2.ref(fb2.database, 'users/' + uid + '/username'), val);
-      await fb2.set(fb2.ref(fb2.database, 'usernames/' + val), uid);
-      // Remove popup
-      var popup = document.getElementById('bzUsernamePopup');
-      if (popup) document.body.removeChild(popup);
-      if(typeof showToast==='function') showToast('Username @'+val+' saved! 🎉','success');
-    }
-    window.bzShowUsernamePopup = bzShowUsernamePopup;
-    window.bzCheckUsernameAvail = bzCheckUsernameAvail;
-    window.bzSaveUsername = bzSaveUsername;
-
     // ══════════════════════════════════════
     //  BRANDS PAGE SYSTEM
     // ══════════════════════════════════════
@@ -6249,11 +6105,10 @@
         return;
       }
 
-      var _fb3 = window.firebase;
       Promise.all([
-        _fb3.get(_fb3.ref(_fb3.database, 'products')),
-        _fb3.get(_fb3.ref(_fb3.database, 'brands')),
-        currentUser ? _fb3.get(_fb3.ref(_fb3.database, 'brandFollowers')) : Promise.resolve(null)
+        get(ref(database, 'products')),
+        get(ref(database, 'brands')),
+        currentUser ? get(ref(database, 'brandFollowers')) : Promise.resolve(null)
       ]).then(function(res) {
         var prodSnap  = res[0];
         var brandSnap = res[1];
@@ -6307,6 +6162,10 @@
           .filter(function(b) { return b.products.length > 0 || b.blueTickAdmin; });
         _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
         _siteBrandsAll._followedSet = followedSet;
+        // Cache for search suggestions & following strip
+        window.__bzBrandsCache = _siteBrandsAll.map(function(b) {
+          return { id: b.id||'', name: b.name||'', logo: b.logo||'', banner: b.banner||b.bannerUrl||b.bannerImage||b.coverImage||b.cover||'', description: b.description||'', blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel||'normal', followers: b.followers||b.followersCount||0, rating: b.rating||0, products: b.products||[] };
+        });
 
         if (sp) sp.style.display = 'none';
         _renderBrands(_siteBrandsAll, followedSet);
@@ -6334,11 +6193,10 @@
       var color = _brandColor(b.name);
       var initials = b.name.slice(0, 2).toUpperCase();
 
-      var _bzBlueTick = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;" aria-label="Verified"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       var badge = b.verificationLevel === 'premium'
         ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;white-space:nowrap;">⭐ Premium</span>'
         : b.blueTickAdmin
-          ? _bzBlueTick
+          ? '<span style="background:#eff6ff;color:#2563eb;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;">✓</span>'
           : '';
 
       var logoInner = b.logo
@@ -6558,12 +6416,7 @@
         var totalReviews = bd.totalReviews || brandReviews.length;
 
         // Trending / Latest / Popular
-        // Trending = highest (orders*5 + views + rating*20) score
-        var trending = brandProds.slice().sort(function(a,b){
-          var sa=(a.orders||a.orderCount||0)*5+(a.views||a.viewCount||0)+(parseFloat(a.rating)||0)*20;
-          var sb=(b.orders||b.orderCount||0)*5+(b.views||b.viewCount||0)+(parseFloat(b.rating)||0)*20;
-          return sb-sa;
-        }).slice(0,6);
+        var trending = brandProds.slice().sort(function(a,b){ return ((b.views||0)+(b.orders||0)*3)-((a.views||0)+(a.orders||0)*3); }).slice(0,6);
         var latest   = brandProds.slice().sort(function(a,b){ return ((b.addedAt||b.createdAt||0)-(a.addedAt||a.createdAt||0)); }).slice(0,6);
 
         // Blue tick SVG
@@ -6667,7 +6520,7 @@
             + logoHtml
           +'</div>'
           // Verified badge on logo (small)
-          // Verified badge shown beside name only
+          // Verified badge shown beside name only (no duplicate on logo)
         +'</div>'
 
         // ── BRAND IDENTITY ──
@@ -6706,9 +6559,7 @@
         // ── OFFERS ──
         +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
 
-        // Search bar removed per user request
-
-        // ── TABS ──
+        // Search bar removed
         +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
           +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
             +['Products','Trending','Reviews','About'].map(function(t,i){
@@ -6723,19 +6574,25 @@
           // Products tab
           +'<div id="bpTabContentProducts" style="padding:16px;">'
             +(brandProds.length
-             +(brandProds.length
-               ? '<div class="product-grid" id="bpProductGrid"></div>'
+              ? '<div id="bpProductGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
+                + brandProds.slice(0,12).map(bpProductCard).join('')
+                +'</div>'
+                +(brandProds.length>12?'<div style="text-align:center;padding:20px 0;"><button onclick="window._bpLoadMore()" id="bpLoadMoreBtn" style="padding:10px 28px;border-radius:24px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:#475569;">Load More Products</button></div>':'')
+              : '<div style="text-align:center;padding:48px 20px;">'
                   +'<div style="font-size:56px;margin-bottom:14px;filter:grayscale(1);opacity:.35;">🛍️</div>'
                   +'<div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">No products yet</div>'
                   +'<div style="font-size:13px;color:#94a3b8;margin-bottom:18px;">This brand hasn\'t listed any products.</div>'
                   +'<button onclick="showPage(\'homePage\')" style="padding:10px 24px;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">Explore Other Brands</button>'
-                   +'<button onclick="showPage(\'homePage\')" style="padding:10px 24px;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">Explore Other Brands</button>'
-                 +'</div>')
+                +'</div>')
+          +'</div>'
 
           // Trending tab
           +'<div id="bpTabContentTrending" style="display:none;padding:16px;">'
-           +'<div id="bpTabContentTrending" style="display:none;padding:16px;">'
-               ? '<div class="product-grid" id="bpTrendingGrid"></div>'
+            +(trending.length
+              ? '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
+                  + trending.map(bpProductCard).join('')
+                +'</div>'
+              : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No trending products yet</div>')
           +'</div>'
 
           // Reviews tab
@@ -6805,13 +6662,11 @@
           +'</div>'
         +'</div>';
 
-        // ── Render real products ──
-        if (brandProds.length) {
+        // ── Render real products using renderProducts ──
+        if (brandProds.length && typeof renderProducts === 'function') {
           setTimeout(function() {
-            if (typeof renderProducts === 'function') {
-              renderProducts(brandProds, 'bpProductGrid');
-              if (trending.length) renderProducts(trending, 'bpTrendingGrid');
-            }
+            renderProducts(brandProds, 'bpProductGrid');
+            if (trending.length) renderProducts(trending, 'bpTrendingGrid');
           }, 80);
         }
 
@@ -6828,7 +6683,25 @@
           });
         };
 
-        // Product filtering handled by real renderProducts
+        // ── Search filter ──
+        var _bpAllProds = brandProds;
+        var _bpShown = 12;
+        window._bpFilter = function(q) {
+          var grid = document.getElementById('bpProductGrid');
+          if (!grid) return;
+          var filtered = q ? _bpAllProds.filter(function(p){ return (p.name||'').toLowerCase().indexOf(q.toLowerCase())!==-1; }) : _bpAllProds;
+          grid.innerHTML = filtered.slice(0,_bpShown).map(bpProductCard).join('');
+        };
+
+        // ── Load more ──
+        window._bpLoadMore = function() {
+          var grid = document.getElementById('bpProductGrid');
+          var btn  = document.getElementById('bpLoadMoreBtn');
+          if (!grid) return;
+          _bpShown += 12;
+          grid.innerHTML = _bpAllProds.slice(0,_bpShown).map(bpProductCard).join('');
+          if (_bpShown >= _bpAllProds.length && btn) btn.style.display='none';
+        };
 
         // ── Sticky follow on scroll ──
         var bpActionTop = 0;
@@ -6908,24 +6781,25 @@
 
 
 
+
+
     // ══════ Follow / Unfollow Brand ══════
     function toggleBrandFollow(brandId, brandName, btnEl) {
       if (!currentUser) { showToast('Please login to follow brands', 'error'); return; }
       var uid = currentUser.uid;
-      var _fb2 = window.firebase;
-      var followRef = _fb2.ref(_fb2.database, 'brandFollowers/' + brandId + '/' + uid);
+      var followRef = ref(database, 'brandFollowers/' + brandId + '/' + uid);
       var btn = btnEl || document.getElementById('brandFollowBtn');
 
-      _fb2.get(followRef).then(function(snap) {
+      get(followRef).then(function(snap) {
         if (snap.exists()) {
-          return _fb2.remove(followRef).then(function() {
+          return remove(followRef).then(function() {
             if (btn) { btn.textContent = '+ Follow'; btn.style.background = '#2563eb'; btn.style.color = '#fff'; }
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') - 1);
             showToast('Unfollowed ' + brandName);
           });
         } else {
-          return _fb2.set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
+          return set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
             if (btn) { btn.textContent = '✓ Following'; btn.style.background = '#f1f5f9'; btn.style.color = '#64748b'; }
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = parseInt(cnt.textContent || '0') + 1;
@@ -6935,60 +6809,43 @@
       }).catch(function(err) { showToast('Error: ' + err.message, 'error'); });
     }
 
-    // ══════ Following Brands (Home Page) — ONLY brand circles, NO products ══════
+    // ══════ Following Products (Home Page) ══════
+    // ══════ Following Brands Strip — circles only ══════
     function loadFollowingProducts() {
       if (!currentUser) return;
       var uid = currentUser.uid;
-      var fb = window.firebase;
-      if (!fb) return;
-      fb.get(fb.ref(fb.database, 'brandFollowers')).then(function(snap) {
+      var BCOLORS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+      get(ref(database, 'brandFollowers')).then(function(snap) {
         if (!snap.exists()) return;
         var followedIds = [];
         snap.forEach(function(c) { if (c.val() && c.val()[uid]) followedIds.push(c.key); });
         if (!followedIds.length) return;
-
         var sec = document.getElementById('followingProductsSection');
         if (!sec) return;
         sec.style.display = 'block';
-
-        // Hide products grid — we only show brand circles
         var pg = document.getElementById('followingProductsGrid');
         if (pg) pg.style.display = 'none';
-
-        // Build brand circles
-        var iconsRow = document.getElementById('bzFollowingBrandsIcons');
-        if (!iconsRow) return;
-        iconsRow.innerHTML = '';
-
+        var row = document.getElementById('bzFollowingBrandsIcons');
+        if (!row) return;
+        row.innerHTML = '';
         var allBrands = window.__bzBrandsCache || [];
-        var followed = allBrands.filter(function(b){ return followedIds.indexOf(b.id) !== -1; });
-        // fallback: if cache not ready, build minimal list from ids
-        if (!followed.length) {
-          followed = followedIds.map(function(id){ return {id:id, name:id, logo:'', blueTickAdmin:false}; });
-        }
-
-        var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-        var BZ_BT = window.__BZ_BLUE_TICK || '';
-
-        followed.forEach(function(b) {
-          var col = cs[(b.name||'A').charCodeAt(0) % cs.length];
+        var list = followedIds.map(function(id) {
+          return allBrands.find(function(b){ return b.id === id; }) || { id:id, name:id, logo:'', blueTickAdmin:false };
+        });
+        list.forEach(function(b) {
+          var bc = BCOLORS[(b.name||'A').charCodeAt(0) % BCOLORS.length];
           var ini = (b.name||'B').slice(0,2).toUpperCase();
           var lInner = b.logo
             ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
-            : '<span style="font-size:15px;font-weight:800;color:#fff;">'+ini+'</span>';
-          var tick = b.blueTickAdmin
-            ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BZ_BT.replace(/width="15"/g,'width="11"').replace(/height="15"/g,'height="11"')+'</div>'
-            : '';
+            : '<span style="font-size:14px;font-weight:800;color:#fff;">'+ini+'</span>';
+          var BT_S = window.__BZ_BLUE_TICK || '';
+          var tick = b.blueTickAdmin && BT_S ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BT_S+'</div>' : '';
           var item = document.createElement('div');
           item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:58px;';
-          item.innerHTML = '<div style="position:relative;width:54px;height:54px;">'
-            + '<div style="width:54px;height:54px;border-radius:50%;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick
-            + '</div>'
-            + '<span style="font-size:10px;font-weight:700;max-width:64px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
-          item.addEventListener('click', function(){
-            if (typeof window.showBrandProfile === 'function') window.showBrandProfile(b.id, b.name);
-          });
-          iconsRow.appendChild(item);
+          item.innerHTML = '<div style="position:relative;width:54px;height:54px;"><div style="width:54px;height:54px;border-radius:50%;border:2.5px solid #2563eb;background:'+bc+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick+'</div>'
+            + '<span style="font-size:10px;font-weight:700;max-width:62px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
+          item.addEventListener('click', function(){ showBrandProfile(b.id, b.name); });
+          row.appendChild(item);
         });
       }).catch(function() {});
     }
@@ -6996,7 +6853,9 @@
     // ══════════════════════════════════════
     //  EXPOSE TO WINDOW
     // ══════════════════════════════════════
-    window.loadBrandsPage        = loadBrandsPage;
+    // Global brand helpers
+    window.__BZ_BLUE_TICK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    window.loadBrandsPage = loadBrandsPage;
     window.filterSiteBrands      = filterSiteBrands;
     window.showBrandProfile      = showBrandProfile;
     window.showBrandProducts     = showBrandProducts;
@@ -7006,434 +6865,13 @@
     // Menu onclick handler — safe wrapper
     window._openBrandsPage = function() {
       showPage('brandsPage');
-      // Reset cache so fresh load happens
-      window._siteBrandsAll = [];
-      window.__bzBrandsCache = [];
-      setTimeout(function() {
-        if (typeof bzLoadBrandsPageFixed === 'function') bzLoadBrandsPageFixed();
-        else loadBrandsPage();
-      }, 80);
+      setTimeout(function() { loadBrandsPage(); }, 80);
     };
 
     // oninput handler for search input
     window._filterSiteBrands = function() { filterSiteBrands(); };
 
-    // ─── Cache brands for search suggestions ───
-    (function bzCacheBrandsForSearch() {
-      var _orig = window.loadBrandsPage;
-      window.loadBrandsPage = function() {
-        if (typeof _orig === 'function') _orig();
-      };
-    })();
-
   });
-})();
-
-/* ══════════════════════════════════════════════════════════
-   BUYZO — BRAND FULL LOADER (Firebase-scoped fixed version)
-   Loads brands with correct Firebase references.
-   Also caches brands for search suggestions.
-   ══════════════════════════════════════════════════════════ */
-(function bzBrandLoader() {
-  'use strict';
-
-  var BT = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;margin-left:2px;" aria-label="Verified"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  window.__BZ_BLUE_TICK = BT;
-
-  function brandColor(name) {
-    var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-    return cs[(name||'A').charCodeAt(0) % cs.length];
-  }
-
-  // ── Full brand loader (instant, professional) ──
-  var BZ_BRAND_COLORS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-
-  function _bzColor(name) {
-    return BZ_BRAND_COLORS[(name||'A').charCodeAt(0) % BZ_BRAND_COLORS.length];
-  }
-
-  function bzLoadBrandsPageFixed() {
-    var fb = window.firebase;
-    if (!fb || !fb.database) { setTimeout(bzLoadBrandsPageFixed, 500); return; }
-
-    // Add shimmer style once
-    if (!document.getElementById('bzShimmerStyle')) {
-      var st = document.createElement('style');
-      st.id = 'bzShimmerStyle';
-      st.textContent = '@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
-      document.head.appendChild(st);
-    }
-
-    // Hide spinner immediately, show skeleton cards
-    var sp = document.getElementById('brandsLoadingSpinner');
-    if (sp) sp.style.display = 'none';
-
-    // Show skeleton in popular grid while loading
-    var popSec  = document.getElementById('popularBrandsSection');
-    var popGrid = document.getElementById('popularBrandsGrid');
-    if (popSec && popGrid && !popGrid.querySelector('[data-brand]')) {
-      popSec.style.display = 'block';
-      var skFrag = document.createDocumentFragment();
-      for (var si = 0; si < 4; si++) {
-        var sk = document.createElement('div');
-        sk.style.cssText = 'border-radius:16px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;height:116px;';
-        skFrag.appendChild(sk);
-      }
-      popGrid.appendChild(skFrag);
-    }
-
-    // If cache valid, render immediately
-    if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
-      bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
-      return;
-    }
-
-    var uid = window.currentUser ? window.currentUser.uid : null;
-    var get = fb.get, ref = fb.ref, db = fb.database;
-    Promise.all([
-      get(ref(db, 'brands')),
-      get(ref(db, 'products')),
-      uid ? get(ref(db, 'brandFollowers')) : Promise.resolve(null)
-    ]).then(function(res) {
-      var brandSnap = res[0], prodSnap = res[1], followSnap = res[2];
-      var brandMap = {};
-
-      // Load from brands node first
-      if (brandSnap && brandSnap.exists()) {
-        brandSnap.forEach(function(c) {
-          var b = c.val();
-          if (b && b.name) {
-            brandMap[c.key] = {
-              id: c.key,
-              name: b.name,
-              logo: b.logo || '',
-              banner: b.banner || b.bannerUrl || b.bannerImage || b.coverImage || b.cover || b.brandBanner || '',
-              description: b.description || '',
-              blueTickAdmin: !!b.blueTickAdmin,
-              verificationLevel: b.verificationLevel || 'normal',
-              followers: b.followersCount || b.followers || 0,
-              rating: b.rating || 0,
-              totalReviews: b.totalReviews || 0,
-              products: []
-            };
-          }
-        });
-      }
-
-      // Merge products data
-      if (prodSnap && prodSnap.exists()) {
-        prodSnap.forEach(function(c) {
-          var p = c.val();
-          if (!p || !p.brand) return;
-          var bid = p.brandId || (p.brand || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
-          if (!brandMap[bid]) {
-            brandMap[bid] = {
-              id: bid, name: p.brandName || p.brand,
-              logo: p.brandLogo || '', banner: '', description: '',
-              blueTickAdmin: false, verificationLevel: 'normal',
-              followers: 0, rating: 0, totalReviews: 0, products: []
-            };
-          }
-          brandMap[bid].products.push(c.key);
-        });
-      }
-
-      // Build followed set
-      var followedSet = {};
-      if (followSnap && followSnap.exists && followSnap.exists() && uid) {
-        followSnap.forEach(function(c) {
-          if (c.val() && c.val()[uid]) followedSet[c.key] = true;
-        });
-      }
-
-      var arr = Object.values(brandMap).filter(function(b) {
-        return b.products.length > 0 || b.blueTickAdmin;
-      });
-      arr.sort(function(a, b2) {
-        var sa = (a.followers||0) + (a.rating||0)*100 + a.products.length*10 + (a.blueTickAdmin ? 5000 : 0);
-        var sb = (b2.followers||0) + (b2.rating||0)*100 + b2.products.length*10 + (b2.blueTickAdmin ? 5000 : 0);
-        return sb - sa;
-      });
-
-      window.__bzBrandsCache = arr;
-      window.__bzFollowedSet = followedSet;
-      bzRenderBrandsFixed(arr, followedSet);
-
-      // Also refresh following strip on home
-      if (typeof loadFollowingProducts === 'function' && window.currentUser) {
-        loadFollowingProducts();
-      }
-    }).catch(function(err) {
-      console.error('Brands load error:', err);
-      var g = document.getElementById('popularBrandsGrid');
-      if (g) g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:#ef4444;font-size:13px;">Failed to load brands.<br><button onclick="window.__bzBrandsCache=[];bzLoadBrandsPageFixed()" style="margin-top:8px;padding:8px 20px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;font-family:inherit;">Retry</button></div>';
-    });
-  }
-  window.bzLoadBrandsPageFixed = bzLoadBrandsPageFixed;
-
-  // ── Brand card ──
-  function bzMakeBrandCard(b, isFollowing) {
-    var col = _bzColor(b.name);
-    var ini = (b.name || 'B').slice(0, 2).toUpperCase();
-    var BZ_BT = window.__BZ_BLUE_TICK || '';
-
-    var logoInner = b.logo
-      ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
-      : '<span style="font-size:18px;font-weight:800;color:#fff;">' + ini + '</span>';
-
-    var safeName = (b.name || '').replace(/'/g, '').replace(/"/g, '');
-
-    var followBtn = window.currentUser
-      ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\'' + b.id + '\',\'' + safeName + '\',this)" '
-          + 'style="margin-top:9px;width:100%;padding:7px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:all .15s;'
-          + (isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:#2563eb;color:#fff;') + '">'
-          + (isFollowing ? '✓ Following' : '+ Follow')
-        + '</button>'
-      : '';
-
-    // Mini banner top (if brand has banner)
-    var bannerTop = b.banner
-      ? '<div style="height:44px;margin:-14px -14px 10px;background:url(' + JSON.stringify(b.banner) + ') center/cover no-repeat;border-radius:14px 14px 0 0;"></div>'
-      : '';
-
-    var el = document.createElement('div');
-    el.setAttribute('data-brand', b.id);
-    el.style.cssText = 'background:var(--surface,#fff);border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;cursor:pointer;transition:all .2s;';
-    el.innerHTML = bannerTop
-      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
-        + '<div style="width:46px;height:46px;border-radius:12px;background:' + col + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #f1f5f9;">' + logoInner + '</div>'
-        + '<div style="flex:1;min-width:0;">'
-          + '<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-wrap:nowrap;">'
-            + (b.name || '')
-            + (b.blueTickAdmin ? '&nbsp;' + BZ_BT : '')
-            + (b.verificationLevel === 'premium' ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;font-weight:800;margin-left:3px;flex-shrink:0;">PRO</span>' : '')
-          + '</div>'
-          + (b.description ? '<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + b.description + '</div>' : '')
-        + '</div>'
-      + '</div>'
-      + '<div style="font-size:11px;color:#64748b;display:flex;gap:10px;">'
-        + '<span>📦 ' + b.products.length + '</span>'
-        + (b.followers ? '<span>❤️ ' + b.followers + '</span>' : '')
-        + (b.rating ? '<span>⭐ ' + b.rating + '</span>' : '')
-      + '</div>'
-      + followBtn;
-
-    el.addEventListener('mouseenter', function () { this.style.borderColor = '#2563eb'; this.style.boxShadow = '0 6px 20px rgba(37,99,235,.14)'; this.style.transform = 'translateY(-1px)'; });
-    el.addEventListener('mouseleave', function () { this.style.borderColor = '#e2e8f0'; this.style.boxShadow = 'none'; this.style.transform = ''; });
-    el.addEventListener('click', function (e) {
-      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-      if (typeof window.showBrandProfile === 'function') window.showBrandProfile(b.id, b.name);
-    });
-    return el;
-  }
-
-  // ── Render all brand sections ──
-  function bzRenderBrandsFixed(brands, followedSet) {
-    followedSet = followedSet || {};
-    var popSection   = document.getElementById('popularBrandsSection');
-    var sugSection   = document.getElementById('suggestedBrandsSection');
-    var othSection   = document.getElementById('otherBrandsSection');
-    var followingSec = document.getElementById('followingBrandsSection');
-    var popularGrid  = document.getElementById('popularBrandsGrid');
-    var sugGrid      = document.getElementById('suggestedBrandsGrid');
-    var otherGrid    = document.getElementById('otherBrandsGrid');
-    var followingRow = document.getElementById('followingBrandsRow');
-    var emptyEl      = document.getElementById('brandsEmptyState');
-    var BZ_BT        = window.__BZ_BLUE_TICK || '';
-    var cs           = BZ_BRAND_COLORS;
-
-    if (!brands.length) {
-      if (emptyEl) emptyEl.style.display = 'block';
-      [popSection, sugSection, othSection, followingSec].forEach(function (s) { if (s) s.style.display = 'none'; });
-      return;
-    }
-    if (emptyEl) emptyEl.style.display = 'none';
-
-    // ── Following brands — category-style circles ──
-    var followed = brands.filter(function (b) { return !!followedSet[b.id]; });
-    if (followed.length && followingSec && followingRow) {
-      followingSec.style.display = 'block';
-      followingRow.innerHTML = '';
-      followed.forEach(function (b) {
-        var col = _bzColor(b.name);
-        var ini = (b.name || 'B').slice(0, 2).toUpperCase();
-        var lInner = b.logo
-          ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
-          : '<span style="font-size:15px;font-weight:800;color:#fff;">' + ini + '</span>';
-        var tick = b.blueTickAdmin
-          ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">' + BZ_BT.replace(/width="15"/g, 'width="12"').replace(/height="15"/g, 'height="12"') + '</div>'
-          : '';
-        var item = document.createElement('div');
-        item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:60px;';
-        item.innerHTML = '<div style="position:relative;width:56px;height:56px;">'
-          + '<div style="width:56px;height:56px;border-radius:50%;border:2.5px solid #2563eb;background:' + col + ';display:flex;align-items:center;justify-content:center;overflow:hidden;">' + lInner + '</div>' + tick
-          + '</div>'
-          + '<span style="font-size:10px;font-weight:700;max-width:62px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (b.name || '') + '</span>';
-        item.addEventListener('click', function () { window.showBrandProfile(b.id, b.name); });
-        followingRow.appendChild(item);
-      });
-    } else if (followingSec) {
-      followingSec.style.display = 'none';
-    }
-
-    // Categorize
-    var popular   = brands.filter(function (b) { return b.blueTickAdmin || b.verificationLevel === 'premium' || ((b.followers || 0) + (b.rating || 0) * 100 + b.products.length * 10) > 50; });
-    var nonPop    = brands.filter(function (b) { return popular.indexOf(b) === -1; });
-    var suggested = nonPop.filter(function (b) { return !followedSet[b.id]; }).slice(0, 6);
-    var rest      = nonPop.filter(function (b) { return suggested.indexOf(b) === -1; });
-
-    function fillGrid(section, grid, arr) {
-      if (!section || !grid) return;
-      if (!arr.length) { section.style.display = 'none'; return; }
-      section.style.display = 'block';
-      grid.innerHTML = '';
-      var frag = document.createDocumentFragment();
-      arr.forEach(function (b) { frag.appendChild(bzMakeBrandCard(b, !!followedSet[b.id])); });
-      grid.appendChild(frag);
-    }
-
-    fillGrid(popSection, popularGrid, popular);
-    fillGrid(sugSection, sugGrid, suggested);
-    fillGrid(othSection, otherGrid, rest);
-  }
-
-  // Override global openers
-  window._openBrandsPage = function() {
-    if (typeof showPage==='function') showPage('brandsPage');
-    // Load immediately — show skeleton then data
-    setTimeout(function() {
-      if (window.__bzBrandsCache && window.__bzBrandsCache.length) {
-        // Cache available — render right away, no white space
-        bzRenderBrandsFixed(window.__bzBrandsCache, window.__bzFollowedSet || {});
-      } else {
-        bzLoadBrandsPageFixed();
-      }
-    }, 50);
-  };
-  window.loadBrandsPage = bzLoadBrandsPageFixed;
-  window._filterSiteBrands = function() {
-    var inp = document.getElementById('brandSearchSite');
-    var q = inp ? inp.value.toLowerCase().trim() : '';
-    var all = window.__bzBrandsCache || [];
-    if (!q) { bzRenderBrandsFixed(all, window.__bzFollowedSet||{}); return; }
-    bzRenderBrandsFixed(all.filter(function(b){ return (b.name||'').toLowerCase().includes(q); }), window.__bzFollowedSet||{});
-  };
-
-  // ── Following Brands Strip on Home page ──
-  function renderFollowingBrandsHomeStrip() {
-    if (!window.currentUser) return;
-    var uid = window.currentUser.uid;
-    var fb = window.firebase;
-    if (!fb || !fb.database) return;
-    var allBrands = window.__bzBrandsCache || [];
-
-    fb.get(fb.ref(fb.database, 'brandFollowers')).then(function(snap) {
-      var followedIds = [];
-      if (snap.exists()) snap.forEach(function(c){ if(c.val()&&c.val()[uid]) followedIds.push(c.key); });
-      if (!followedIds.length) return;
-
-      // Get followed brands from cache or build list from ids
-      var followed = allBrands.filter(function(b){ return followedIds.indexOf(b.id) !== -1; });
-
-      // Also show section with just ids if cache empty
-      var sec = document.getElementById('followingProductsSection');
-      if (!sec) return;
-      sec.style.display = 'block';
-
-      // ── Fill brand icon circles ──
-      var iconsRow = document.getElementById('bzFollowingBrandsIcons');
-      if (iconsRow) {
-        iconsRow.innerHTML = '';
-        var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-        var BZ_BT = window.__BZ_BLUE_TICK || '';
-        var renderList = followed.length ? followed : followedIds.map(function(id){ return {id:id, name:id, logo:'', blueTickAdmin:false}; });
-        renderList.forEach(function(b) {
-          var col = cs[(b.name||'A').charCodeAt(0) % cs.length];
-          var ini = (b.name||'B').slice(0,2).toUpperCase();
-          var lInner = b.logo
-            ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display=\'none\'">'
-            : '<span style="font-size:14px;font-weight:800;color:#fff;">'+ini+'</span>';
-          var tick = b.blueTickAdmin
-            ? '<div style="position:absolute;bottom:-2px;right:-2px;background:#fff;border-radius:50%;padding:1px;">'+BZ_BT.replace(/width="15"/,'width="11"').replace(/height="15"/,'height="11"')+'</div>'
-            : '';
-          var item = document.createElement('div');
-          item.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:58px;';
-          item.innerHTML = '<div style="position:relative;width:54px;height:54px;">'
-            +'<div style="width:54px;height:54px;border-radius:50%;border:2.5px solid #2563eb;background:'+col+';display:flex;align-items:center;justify-content:center;overflow:hidden;">'+lInner+'</div>'+tick
-            +'</div>'
-            +'<span style="font-size:10px;font-weight:700;max-width:64px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(b.name||'')+'</span>';
-          item.addEventListener('click', function(){ if(typeof window.showBrandProfile==='function') window.showBrandProfile(b.id, b.name); });
-          iconsRow.appendChild(item);
-        });
-      }
-
-      // Hide followingProductsGrid — only brand circles shown, not products
-      var fg = document.getElementById('followingProductsGrid');
-      if (fg) fg.style.display = 'none';
-    }).catch(function(){});
-  }
-  window.renderFollowingBrandsHomeStrip = renderFollowingBrandsHomeStrip;
-
-  // ── Sell Product → My Shop ──
-  function checkSellerApproval() {
-    var user = window.currentUser;
-    if (!user) return;
-    var fb = window.firebase;
-    if (!fb || !fb.database) return;
-    var uid = user.uid;
-    if (localStorage.getItem('bz_seller_approved_'+uid)==='1') { applyMyShopMenu(); return; }
-    function applyMyShopMenu() {
-      var txt = document.getElementById('menuSellProductText');
-      if (txt) { txt.textContent = 'My Shop'; txt.style.color = '#7c3aed'; }
-      var item = document.getElementById('menuSellProductItem');
-      if (item) { var svg = item.querySelector('svg'); if(svg) svg.style.color='#7c3aed'; }
-      document.querySelectorAll('footer a').forEach(function(a){
-        if((a.textContent||'').trim()==='Sell Product') a.textContent='My Shop 🏪';
-      });
-      localStorage.setItem('bz_seller_approved_'+uid,'1');
-    }
-    fb.get(fb.ref(fb.database,'sellers/'+uid)).then(function(snap) {
-      if (snap.exists()) {
-        var d=snap.val();
-        if (d.approved===true||d.status==='approved'||d.verified===true) { applyMyShopMenu(); return; }
-      }
-      return fb.get(fb.ref(fb.database,'sellerRequests/'+uid));
-    }).then(function(snap2) {
-      if (!snap2||!snap2.exists||!snap2.exists()) return;
-      var d2=snap2.val();
-      if (d2&&(d2.approved===true||d2.status==='approved')) applyMyShopMenu();
-    }).catch(function(){});
-  }
-  window.checkSellerApproval = checkSellerApproval;
-
-  // ── Auth watchers ──
-  var _bld_iv = setInterval(function() {
-    if (window.currentUser) {
-      clearInterval(_bld_iv);
-      setTimeout(renderFollowingBrandsHomeStrip, 3000);
-      setTimeout(checkSellerApproval, 2000);
-    }
-  }, 700);
-
-  // Auto-load brands cache silently when Firebase is ready (for search)
-  (function prefetchBrandsCache() {
-    var fb = window.firebase;
-    if (!fb || !fb.database) { setTimeout(prefetchBrandsCache, 1200); return; }
-    if (window.__bzBrandsCache && window.__bzBrandsCache.length) return;
-    var get=fb.get, ref=fb.ref, db=fb.database;
-    Promise.all([get(ref(db,'products')), get(ref(db,'brands'))]).then(function(res) {
-      var prodSnap=res[0], brandSnap=res[1];
-      var brandMap={};
-      if (brandSnap&&brandSnap.exists()) {
-        brandSnap.forEach(function(c){ var b=c.val(); if(b&&b.name) brandMap[c.key]={ id:c.key,name:b.name,logo:b.logo||'',description:b.description||'',blueTickAdmin:!!b.blueTickAdmin,verificationLevel:b.verificationLevel||'normal',followers:b.followersCount||b.followers||0,rating:b.rating||0,products:[] }; });
-      }
-      if (prodSnap&&prodSnap.exists()) {
-        prodSnap.forEach(function(c){ var p=c.val(); if(!p||!p.brand) return; var bid=p.brandId||(p.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_'); if(!brandMap[bid]) brandMap[bid]={id:bid,name:p.brandName||p.brand,logo:p.brandLogo||'',description:'',blueTickAdmin:false,verificationLevel:'normal',followers:0,rating:0,products:[]}; brandMap[bid].products.push(c.key); });
-      }
-      window.__bzBrandsCache = Object.values(brandMap).filter(function(b){ return b.products.length>0||b.blueTickAdmin; });
-    }).catch(function(){});
-  })();
-
 })();
 
 
@@ -7502,6 +6940,106 @@
   } else {
     applyReplacements();
   }
+})();
+
+
+
+/* ===========================================================
+   BUYZO — USERNAME SYSTEM
+   =========================================================== */
+(function bzUsernameSystem() {
+  'use strict';
+  var _uTimer;
+
+  function bzShowUsernamePopup(uid) {
+    if (document.getElementById('bzUnameOverlay')) return;
+    var ov = document.createElement('div');
+    ov.id = 'bzUnameOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:24px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+      +'<div style="text-align:center;margin-bottom:22px;">'
+        +'<div style="font-size:40px;margin-bottom:8px;">\u{1F464}</div>'
+        +'<div style="font-size:1.15rem;font-weight:800;color:#0f172a;margin-bottom:4px;">Choose your username</div>'
+        +'<div style="font-size:13px;color:#64748b;">Your unique identity. Set once only.</div>'
+      +'</div>'
+      +'<div style="position:relative;margin-bottom:8px;">'
+        +'<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;font-weight:700;color:#94a3b8;pointer-events:none;">@</span>'
+        +'<input id="bzUnameInput" type="text" placeholder="yourname" maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="window.bzCheckUsername(this.value)" style="width:100%;padding:13px 14px 13px 30px;border:2px solid #e2e8f0;border-radius:14px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .2s;">'
+      +'</div>'
+      +'<div id="bzUnameStatus" style="font-size:12px;min-height:18px;margin-bottom:14px;padding-left:4px;color:#94a3b8;"></div>'
+      +'<button onclick="window.bzSaveUsername()" id="bzUnameSaveBtn" style="width:100%;padding:14px;border-radius:14px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:800;font-family:inherit;opacity:.5;">Save Username</button>'
+      +'<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;margin-bottom:0;">Cannot be changed after saving</p>'
+      +'</div>';
+    document.body.appendChild(ov);
+    setTimeout(function(){ var i=document.getElementById('bzUnameInput'); if(i) i.focus(); }, 200);
+  }
+  window.bzShowUsernamePopup = bzShowUsernamePopup;
+
+  window.bzCheckUsername = function(val) {
+    val = (val||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
+    var inp=document.getElementById('bzUnameInput'); if(inp&&inp.value!==val) inp.value=val;
+    var status=document.getElementById('bzUnameStatus'); var btn=document.getElementById('bzUnameSaveBtn');
+    if (!val||val.length<3) {
+      if(status){status.textContent=val.length?'Min 3 characters':'';status.style.color='#ef4444';}
+      if(btn) btn.style.opacity='0.5'; return;
+    }
+    clearTimeout(_uTimer);
+    if(status){status.textContent='Checking...';status.style.color='#94a3b8';} if(btn) btn.style.opacity='0.5';
+    _uTimer = setTimeout(function(){
+      var fb=window.firebase; if(!fb) return;
+      fb.get(fb.ref(fb.database,'usernames/'+val)).then(function(snap){
+        if(snap.exists()){
+          if(status){status.textContent='\u274C @'+val+' is already taken';status.style.color='#ef4444';}
+          if(btn) btn.style.opacity='0.5';
+        } else {
+          if(status){status.textContent='\u2705 @'+val+' is available!';status.style.color='#16a34a';}
+          if(btn) btn.style.opacity='1';
+        }
+      }).catch(function(){});
+    }, 500);
+  };
+
+  window.bzSaveUsername = function() {
+    var inp=document.getElementById('bzUnameInput');
+    var val=(inp?inp.value:'').toLowerCase().trim();
+    if(!val||val.length<3) return;
+    var uid=window.currentUser?window.currentUser.uid:null; if(!uid) return;
+    var fb=window.firebase; if(!fb) return;
+    var btn=document.getElementById('bzUnameSaveBtn');
+    if(btn){btn.disabled=true;btn.textContent='Saving...';}
+    fb.get(fb.ref(fb.database,'usernames/'+val)).then(function(snap){
+      if(snap.exists()){
+        if(typeof showToast==='function') showToast('@'+val+' is already taken!','error');
+        if(btn){btn.disabled=false;btn.textContent='Save Username';} return;
+      }
+      return fb.set(fb.ref(fb.database,'users/'+uid+'/username'),val)
+        .then(function(){ return fb.set(fb.ref(fb.database,'usernames/'+val),uid); })
+        .then(function(){
+          var ov=document.getElementById('bzUnameOverlay'); if(ov) document.body.removeChild(ov);
+          if(typeof showToast==='function') showToast('Welcome @'+val+'! \uD83C\uDF89','success');
+        });
+    }).catch(function(err){
+      if(typeof showToast==='function') showToast('Error: '+err.message,'error');
+      if(btn){btn.disabled=false;btn.textContent='Save Username';}
+    });
+  };
+
+  // Hook auth
+  var _iv=setInterval(function(){
+    var fb=window.firebase;
+    if(!fb||typeof fb.onAuthStateChanged!=='function') return;
+    clearInterval(_iv);
+    fb.onAuthStateChanged(fb.auth,function(user){
+      if(!user) return;
+      setTimeout(function(){
+        fb.get(fb.ref(fb.database,'users/'+user.uid+'/username')).then(function(snap){
+          if(!snap.exists()||!snap.val()) bzShowUsernamePopup(user.uid);
+        }).catch(function(){});
+      },2500);
+    });
+  },800);
+
 })();
 
 // End of main-patch.js
