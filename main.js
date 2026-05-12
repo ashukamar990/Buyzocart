@@ -219,6 +219,12 @@
       };
     }
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      const chars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return String(str).replace(/[&<>"']/g, m => chars[m]);
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -966,15 +972,15 @@
       } else if (isTrending) {
         badgeHtml = `<div class="professional-badge">TRENDING</div>`;
       } else if (productBadge) {
-        badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
+        badgeHtml = `<div class="product-card-badge">${escapeHTML(productBadge)}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image" style="background-image: url('${escapeHTML(productImage)}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
-          <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var cB=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});return cB&&cB.blueTickAdmin&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
+          <div class="product-card-title">${escapeHTML(productName)}</div>
+          ${product.brand ? `<div class="brand-link-trigger" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${escapeHTML(product.brand)}</span>${(function(){try{var cB=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});return cB&&cB.blueTickAdmin&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -984,13 +990,13 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${escapeHTML(productId)}" title="Wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
+            <button class="action-btn share-btn" data-product-id="${escapeHTML(productId)}" title="Share">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -1019,6 +1025,14 @@
         e.stopPropagation();
         shareProduct(product);
       });
+      const brandLink = card.querySelector('.brand-link-trigger');
+      if (brandLink) {
+        brandLink.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const bid = product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+          showBrandProfile(bid, product.brand);
+        });
+      }
       return card;
     }
 
@@ -2252,34 +2266,36 @@
 
         let mediaHtml = '';
         if (review.fileUrl && review.fileType === 'image') {
-          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
+          mediaHtml = `<div class="review-file-preview"><img src="${escapeHTML(review.fileUrl)}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" class="review-img-trigger"></div>`;
         } else if (review.fileUrl && review.fileType === 'video') {
-          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
+          mediaHtml = `<div class="review-file-preview"><video controls src="${escapeHTML(review.fileUrl)}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
         if (review.youtubeUrl) {
           const ytId = extractYouTubeId(review.youtubeUrl);
-          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${escapeHTML(review.youtubeUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
         }
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${escapeHTML(review.userPhoto)}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${escapeHTML((review.userName||'?')[0].toUpperCase())}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${escapeHTML(review.userName || 'Customer')}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
-              <button class="review-delete-btn" data-review-id="${review.id}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
+              <button class="review-delete-btn" data-review-id="${escapeHTML(review.id)}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
             </div>` : ''}
         `;
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
         if (deleteBtn) deleteBtn.addEventListener('click', () => deleteReview(review.id));
+        const imgTrigger = reviewItem.querySelector('.review-img-trigger');
+        if (imgTrigger) imgTrigger.addEventListener('click', () => window.open(review.fileUrl, '_blank'));
         reviewsList.appendChild(reviewItem);
       });
     }
