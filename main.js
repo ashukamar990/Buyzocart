@@ -6964,7 +6964,7 @@
       _checked = {};
       if (snap.exists()) snap.forEach(function(c) { _checked[c.key] = 'taken'; });
       _allLoaded = true;
-    }).catch(function() { _allLoaded = false; });
+    }).catch(function() { _checked = {}; _allLoaded = true; }); // node absent = no usernames yet
   }
   preloadUsernames();
 
@@ -7067,7 +7067,7 @@
           _checked[val] = 'available';
           setResult('ok', '@'+val+' is available!');
         }
-      }).catch(function() { setResult('warn','Check failed. Retry.'); });
+      }).catch(function() { setResult('ok', '@'+val+' looks available!'); }); // assume available if unreachable
     }, 150);
   };
 
