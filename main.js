@@ -6949,118 +6949,175 @@
    =========================================================== */
 (function bzUsernameSystem() {
   'use strict';
-  var _uTimer;
 
+  var _checked = {};   // local cache: username -> 'taken'|'available'
+  var _uTimer;
+  var _currentCheck = '';
+  var _allLoaded = false;
+
+  // ── Preload ALL existing usernames once into memory ──
+  // After this, every check is INSTANT — no Firebase call needed
+  function preloadUsernames() {
+    var fb = window.firebase;
+    if (!fb || !fb.database) { setTimeout(preloadUsernames, 800); return; }
+    fb.get(fb.ref(fb.database, 'usernames')).then(function(snap) {
+      _checked = {};
+      if (snap.exists()) snap.forEach(function(c) { _checked[c.key] = 'taken'; });
+      _allLoaded = true;
+    }).catch(function() { _allLoaded = false; });
+  }
+  preloadUsernames();
+
+  // ── Popup ──
   function bzShowUsernamePopup(uid) {
     if (document.getElementById('bzUnameOverlay')) return;
+    if (!_allLoaded) preloadUsernames();
     var ov = document.createElement('div');
     ov.id = 'bzUnameOverlay';
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
     ov.innerHTML =
       '<div style="background:#fff;border-radius:24px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
       +'<div style="text-align:center;margin-bottom:22px;">'
-        +'<div style="font-size:40px;margin-bottom:8px;">\u{1F464}</div>'
+        +'<div style="font-size:40px;margin-bottom:8px;">&#128100;</div>'
         +'<div style="font-size:1.15rem;font-weight:800;color:#0f172a;margin-bottom:4px;">Choose your username</div>'
-        +'<div style="font-size:13px;color:#64748b;">Your unique identity. Set once only.</div>'
+        +'<div style="font-size:13px;color:#64748b;">Your unique identity on Buyzo Cart.<br>You can only set this once.</div>'
       +'</div>'
       +'<div style="position:relative;margin-bottom:8px;">'
         +'<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;font-weight:700;color:#94a3b8;pointer-events:none;">@</span>'
-        +'<input id="bzUnameInput" type="text" placeholder="yourname" maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="window.bzCheckUsername(this.value)" style="width:100%;padding:13px 14px 13px 30px;border:2px solid #e2e8f0;border-radius:14px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .2s;">'
+        +'<input id="bzUnameInput" type="text" placeholder="yourname" maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"'
+          +' oninput="window.bzCheckUsername(this.value)"'
+          +' style="width:100%;padding:13px 14px 13px 30px;border:2.5px solid #e2e8f0;border-radius:14px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;">'
       +'</div>'
-      +'<div id="bzUnameStatus" style="font-size:12px;min-height:18px;margin-bottom:14px;padding-left:4px;color:#94a3b8;"></div>'
-      +'<button onclick="window.bzSaveUsername()" id="bzUnameSaveBtn" style="width:100%;padding:14px;border-radius:14px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:800;font-family:inherit;opacity:.5;">Save Username</button>'
-      +'<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;margin-bottom:0;">Cannot be changed after saving</p>'
+      +'<div id="bzUnameStatus" style="font-size:13px;min-height:20px;margin-bottom:14px;padding-left:2px;font-weight:600;"></div>'
+      +'<button onclick="window.bzSaveUsername()" id="bzUnameSaveBtn"'
+        +' style="width:100%;padding:14px;border-radius:14px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:800;font-family:inherit;opacity:.45;transition:opacity .15s;">Save Username</button>'
+      +'<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;margin-bottom:0;">Username cannot be changed after saving</p>'
       +'</div>';
     document.body.appendChild(ov);
-    setTimeout(function(){ var i=document.getElementById('bzUnameInput'); if(i) i.focus(); }, 200);
+    setTimeout(function(){ var i=document.getElementById('bzUnameInput'); if(i) i.focus(); }, 150);
   }
   window.bzShowUsernamePopup = bzShowUsernamePopup;
 
-  window.bzCheckUsername = function(val) {
-    val = (val||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
-    var inp=document.getElementById('bzUnameInput'); if(inp&&inp.value!==val) inp.value=val;
-    var status=document.getElementById('bzUnameStatus');
-    var btn=document.getElementById('bzUnameSaveBtn');
-    var inpEl=document.getElementById('bzUnameInput');
+  // ── Helper to update UI ──
+  function setResult(type, msg) {
+    var st  = document.getElementById('bzUnameStatus');
+    var btn = document.getElementById('bzUnameSaveBtn');
+    var inp = document.getElementById('bzUnameInput');
+    if (!st) return;
+    if (type === 'ok') {
+      st.innerHTML = '&#9989; ' + msg; st.style.color = '#16a34a';
+      if (inp) { inp.style.borderColor='#16a34a'; inp.style.boxShadow='0 0 0 3px #dcfce7'; }
+      if (btn) { btn.style.opacity='1'; btn.disabled=false; }
+    } else if (type === 'err') {
+      st.innerHTML = '&#10060; ' + msg; st.style.color = '#ef4444';
+      if (inp) { inp.style.borderColor='#ef4444'; inp.style.boxShadow='0 0 0 3px #fee2e2'; }
+      if (btn) { btn.style.opacity='0.45'; btn.disabled=true; }
+    } else if (type === 'warn') {
+      st.innerHTML = '&#9888; ' + msg; st.style.color = '#f59e0b';
+      if (inp) { inp.style.borderColor='#fbbf24'; inp.style.boxShadow='0 0 0 3px #fef3c7'; }
+      if (btn) { btn.style.opacity='0.45'; btn.disabled=true; }
+    } else {
+      st.textContent = msg; st.style.color = '#94a3b8';
+      if (inp) { inp.style.borderColor='#94a3b8'; inp.style.boxShadow='none'; }
+      if (btn) { btn.style.opacity='0.45'; btn.disabled=true; }
+    }
+  }
 
-    // Clear previous timer immediately
+  // ── Check username — INSTANT from cache ──
+  window.bzCheckUsername = function(raw) {
+    var val = (raw||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
+    var inp = document.getElementById('bzUnameInput');
+    if (inp && inp.value !== val) inp.value = val;
     clearTimeout(_uTimer);
+    _currentCheck = val;
 
-    if (!val || val.length < 3) {
-      if(status){ status.textContent = val.length ? '⚠️ Min 3 characters required' : ''; status.style.color='#f59e0b'; }
-      if(btn) btn.style.opacity='0.5';
-      if(inpEl) inpEl.style.borderColor='#e2e8f0';
+    if (!val) {
+      var st2=document.getElementById('bzUnameStatus'); if(st2) st2.textContent='';
+      if (inp) { inp.style.borderColor='#e2e8f0'; inp.style.boxShadow='none'; }
+      var btn2=document.getElementById('bzUnameSaveBtn'); if(btn2){btn2.style.opacity='0.45';btn2.disabled=true;}
+      return;
+    }
+    if (val.length < 3) { setResult('warn', 'Min 3 characters required'); return; }
+
+    // INSTANT: preloaded cache has all usernames
+    if (_allLoaded) {
+      if (_checked[val] === 'taken') setResult('err', '@'+val+' is already taken');
+      else setResult('ok', '@'+val+' is available!');
       return;
     }
 
-    // Show instant "checking" feedback
-    if(status){ status.textContent='⏳ Checking @'+val+'...'; status.style.color='#94a3b8'; }
-    if(btn) btn.style.opacity='0.5';
-    if(inpEl) inpEl.style.borderColor='#94a3b8';
+    // Session cache (same username checked earlier this session)
+    if (_checked[val]) {
+      if (_checked[val] === 'taken') setResult('err', '@'+val+' is already taken');
+      else setResult('ok', '@'+val+' is available!');
+      return;
+    }
 
-    // 300ms debounce — fast enough to feel instant
-    _uTimer = setTimeout(function(){
-      var fb = window.firebase; if(!fb) return;
-      var checkVal = val; // capture current value
-      fb.get(fb.ref(fb.database, 'usernames/' + checkVal)).then(function(snap){
-        // Make sure user hasn't typed something else already
-        var currentVal = (document.getElementById('bzUnameInput')||{}).value || '';
-        if (currentVal !== checkVal) return;
-        if(snap.exists()){
-          if(status){ status.textContent='❌ @'+checkVal+' is already taken'; status.style.color='#ef4444'; }
-          if(btn) btn.style.opacity='0.5';
-          if(inpEl) inpEl.style.borderColor='#ef4444';
+    // Fallback: Firebase with 150ms debounce
+    setResult('', 'Checking...');
+    _uTimer = setTimeout(function() {
+      if (_currentCheck !== val) return;
+      var fb = window.firebase; if (!fb) { setResult('warn','Not connected'); return; }
+      fb.get(fb.ref(fb.database, 'usernames/'+val)).then(function(snap) {
+        if (_currentCheck !== val) return;
+        if (snap.exists()) {
+          _checked[val] = 'taken';
+          setResult('err', '@'+val+' is already taken');
         } else {
-          if(status){ status.textContent='✅ @'+checkVal+' is available!'; status.style.color='#16a34a'; }
-          if(btn) btn.style.opacity='1';
-          if(inpEl) inpEl.style.borderColor='#16a34a';
+          _checked[val] = 'available';
+          setResult('ok', '@'+val+' is available!');
         }
-      }).catch(function(){
-        if(status){ status.textContent='⚠️ Could not check, try again'; status.style.color='#f59e0b'; }
-      });
-    }, 300);
+      }).catch(function() { setResult('warn','Check failed. Retry.'); });
+    }, 150);
   };
 
+  // ── Save username ──
   window.bzSaveUsername = function() {
-    var inp=document.getElementById('bzUnameInput');
-    var val=(inp?inp.value:'').toLowerCase().trim();
-    if(!val||val.length<3) return;
-    var uid=window.currentUser?window.currentUser.uid:null; if(!uid) return;
-    var fb=window.firebase; if(!fb) return;
-    var btn=document.getElementById('bzUnameSaveBtn');
-    if(btn){btn.disabled=true;btn.textContent='Saving...';}
-    fb.get(fb.ref(fb.database,'usernames/'+val)).then(function(snap){
-      if(snap.exists()){
-        if(typeof showToast==='function') showToast('@'+val+' is already taken!','error');
-        if(btn){btn.disabled=false;btn.textContent='Save Username';} return;
+    var inp = document.getElementById('bzUnameInput');
+    var val = (inp ? inp.value : '').toLowerCase().trim();
+    if (!val || val.length < 3) return;
+    var uid = window.currentUser ? window.currentUser.uid : null; if (!uid) return;
+    var fb = window.firebase; if (!fb) return;
+    var btn = document.getElementById('bzUnameSaveBtn');
+    if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
+    fb.get(fb.ref(fb.database,'usernames/'+val)).then(function(snap) {
+      if (snap.exists()) {
+        _checked[val] = 'taken';
+        if (typeof showToast==='function') showToast('@'+val+' was just taken! Pick another.','error');
+        if (btn) { btn.disabled=false; btn.textContent='Save Username'; }
+        setResult('err','@'+val+' is already taken');
+        return;
       }
-      return fb.set(fb.ref(fb.database,'users/'+uid+'/username'),val)
-        .then(function(){ return fb.set(fb.ref(fb.database,'usernames/'+val),uid); })
+      return fb.set(fb.ref(fb.database,'users/'+uid+'/username'), val)
+        .then(function(){ return fb.set(fb.ref(fb.database,'usernames/'+val), uid); })
         .then(function(){
-          var ov=document.getElementById('bzUnameOverlay'); if(ov) document.body.removeChild(ov);
-          if(typeof showToast==='function') showToast('Welcome @'+val+'! \uD83C\uDF89','success');
+          _checked[val] = 'taken';
+          var ov = document.getElementById('bzUnameOverlay');
+          if (ov) document.body.removeChild(ov);
+          if (typeof showToast==='function') showToast('Welcome @'+val+'! &#127881;','success');
         });
     }).catch(function(err){
-      if(typeof showToast==='function') showToast('Error: '+err.message,'error');
-      if(btn){btn.disabled=false;btn.textContent='Save Username';}
+      if (typeof showToast==='function') showToast('Error: '+err.message,'error');
+      if (btn) { btn.disabled=false; btn.textContent='Save Username'; }
     });
   };
 
-  // Hook auth
-  var _iv=setInterval(function(){
-    var fb=window.firebase;
-    if(!fb||typeof fb.onAuthStateChanged!=='function') return;
+  // ── Auth hook — show popup if no username set ──
+  var _iv = setInterval(function() {
+    var fb = window.firebase;
+    if (!fb || typeof fb.onAuthStateChanged !== 'function') return;
     clearInterval(_iv);
-    fb.onAuthStateChanged(fb.auth,function(user){
-      if(!user) return;
-      setTimeout(function(){
-        fb.get(fb.ref(fb.database,'users/'+user.uid+'/username')).then(function(snap){
-          if(!snap.exists()||!snap.val()) bzShowUsernamePopup(user.uid);
+    fb.onAuthStateChanged(fb.auth, function(user) {
+      if (!user) return;
+      setTimeout(function() {
+        fb.get(fb.ref(fb.database,'users/'+user.uid+'/username')).then(function(snap) {
+          if (!snap.exists() || !snap.val()) bzShowUsernamePopup(user.uid);
         }).catch(function(){});
-      },2500);
+      }, 2500);
     });
-  },800);
+  }, 800);
 
 })();
+
 
 // End of main-patch.js
