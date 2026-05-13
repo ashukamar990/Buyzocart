@@ -7055,9 +7055,11 @@
     var inp=document.getElementById('bzUnameInput');
     var val=(inp?inp.value:'').toLowerCase().trim();
     if(!val||val.length<3) return;
-    var uid=window.currentUser?window.currentUser.uid:null;
-    if(!uid){ if(typeof showToast==='function') showToast('Please login first','error'); return; }
     var fb=window.firebase; if(!fb) return;
+    // Use Firebase auth directly so it works even if window.currentUser is not set
+    var firebaseUser=(fb.auth&&fb.auth.currentUser)?fb.auth.currentUser:null;
+    var uid=firebaseUser?firebaseUser.uid:null;
+    if(!uid){ if(typeof showToast==='function') showToast('Please login first','error'); return; }
     var btn=document.getElementById('bzUnameSaveBtn');
     if(btn){btn.disabled=true;btn.textContent='Saving...';}
     if(_checked[val]==='taken'){
@@ -7092,6 +7094,7 @@
     if(!fb||typeof fb.onAuthStateChanged!=='function') return;
     clearInterval(_iv);
     fb.onAuthStateChanged(fb.auth,function(user){
+      window.currentUser=user;
       if(!user) return;
       setTimeout(function(){
         fb.get(fb.ref(fb.database,'users/'+user.uid+'/username')).then(function(snap){
