@@ -1206,7 +1206,7 @@
         var bData = (window._brandsData||{})[bBrandId] || {};
         var _bSys = window.BZ_BRANDS && window.BZ_BRANDS.find(function(x){return x.name===(freshProduct.brand||'');});
         var _isVerified = bData.blueTickAdmin || (_bSys && _bSys.verified);
-        var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox='0 0 24 24' fill='none' width='9' height='9'><path d='M20 6L9 17l-5-5' stroke='#fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg></span>') : '';
+        var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="9" height="9"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>') : '';
         brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
           + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
           + '<span>Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11px;">'+(freshProduct.id||'').toUpperCase()+'</code></span>'
@@ -6219,7 +6219,7 @@
       var color = _brandColor(b.name);
       var initials = b.name.slice(0, 2).toUpperCase();
 
-      var _BT = window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox='0 0 24 24' fill='none' width='8' height='8'><path d='M20 6L9 17l-5-5' stroke='#fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg></span>';
+      var _BT = window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="8" height="8"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
       var badge = b.verificationLevel === 'premium'
         ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;white-space:nowrap;">⭐ Premium</span>' + _BT
         : b.blueTickAdmin
