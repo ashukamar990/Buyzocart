@@ -410,10 +410,11 @@
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
+      const ratingMap = getRatingMap(reviews);
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
+        const rA = calculateProductRating(a.product.id, ratingMap);
+        const rB = calculateProductRating(b.product.id, ratingMap);
         return rB - rA;
       });
       return scored.map(s => s.product);
@@ -448,7 +449,8 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       const results = searchProducts(query);
-      const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
+      const ratingMap = getRatingMap(reviews);
+      const topThree = [...results].sort((a,b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
       if (topThree.length === 0) {
         suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted);padding:12px;">No matching products found</div>';
@@ -459,7 +461,7 @@
       topThree.forEach(product => {
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
-        const ratingVal = calculateProductRating(product.id);
+        const ratingVal = calculateProductRating(product.id, ratingMap);
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
           <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
@@ -933,14 +935,31 @@
 
     let reviews = [];
 
-    function calculateProductRating(productId) {
+    function getRatingMap(reviewsList) {
+      const map = {};
+      const stats = {};
+      reviewsList.forEach(r => {
+        if (!stats[r.productId]) {
+          stats[r.productId] = { sum: 0, count: 0 };
+        }
+        stats[r.productId].sum += r.rating;
+        stats[r.productId].count += 1;
+      });
+      for (const id in stats) {
+        map[id] = stats[id].sum / stats[id].count;
+      }
+      return map;
+    }
+
+    function calculateProductRating(productId, ratingMap = null) {
+      if (ratingMap) return ratingMap[productId] ?? 0;
       const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, preCalculatedRating = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -953,7 +972,7 @@
       })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = preCalculatedRating !== null ? preCalculatedRating : calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -1708,16 +1727,7 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
+      const ratingMap = getRatingMap(reviews);
       similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
@@ -2848,14 +2858,7 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
@@ -2875,14 +2878,7 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
@@ -2973,9 +2969,8 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+    function getProductScore(product, ratingMap = null) {
+      const rating = (ratingMap && product.id in ratingMap) ? ratingMap[product.id] : calculateProductRating(product.id);
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
@@ -2984,15 +2979,8 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+      const ratingMap = getRatingMap(reviews);
+      const sorted = [...productsToRender].sort((a, b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         // productGrid and searchResultsGrid have their own HTML empty-state elements
@@ -3002,7 +2990,7 @@
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap[product.id] ?? 0)); });
       container.appendChild(fragment);
     }
 
