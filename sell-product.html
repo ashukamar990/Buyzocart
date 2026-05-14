@@ -533,19 +533,26 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Price (₹) <span class="required">*</span></label>
+                        <label class="form-label">Selling Price (₹) <span class="required">*</span></label>
                         <input type="number" class="form-control" id="prodPrice" placeholder="Enter price" min="0">
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">MRP / Original Price (₹)</label>
+                        <input type="number" class="form-control" id="prodMrp" placeholder="For discount display" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Stock Quantity <span class="required">*</span></label>
                         <input type="number" class="form-control" id="prodStock" placeholder="Enter stock" min="0">
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Category <span class="required">*</span></label>
+                        <select class="form-control" id="prodCategory">
+                            <option value="">-- Select Category --</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Category <span class="required">*</span></label>
-                    <select class="form-control" id="prodCategory">
-                        <option value="">-- Select Category --</option>
-                    </select>
                 </div>
                 <!-- Seller ID Banner -->
                 <div class="sid-banner" id="sellerIdBanner">
@@ -598,10 +605,24 @@
                     <input type="text" class="form-control" id="prodSizes" placeholder="S, M, L, XL">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Product Images <span class="required">*</span></label>
-                    <input type="file" id="prodImages" class="form-control" multiple accept="image/*" onchange="handleImageUpload(event)">
-                    <div class="img-preview-container" id="imgPreviews"></div>
-                    <small class="text-muted">Images auto-upload ho rahi hain. File select karte hi upload start.</small>
+                    <label class="form-label">Colors (comma separated)</label>
+                    <input type="text" class="form-control" id="prodColors" placeholder="Red, Blue, Black, White">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Images <span class="required">*</span> <span style="font-weight:400;font-size:11px;color:#94a3b8;">Max 6 images</span></label>
+                    <!-- Hidden real file input -->
+                    <input type="file" id="prodImages" style="display:none;" multiple accept="image/*" onchange="handleImageUpload(event)">
+                    <!-- Premium gallery picker button -->
+                    <div id="imgPickerBtn" onclick="document.getElementById('prodImages').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s;margin-bottom:10px;" onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
+                        <div style="font-size:2rem;margin-bottom:8px;">🖼️</div>
+                        <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">Tap to Select Images</div>
+                        <div style="font-size:12px;color:#64748b;">Gallery se photos chunein · Max 6 · JPG/PNG/WEBP</div>
+                        <div style="margin-top:10px;display:inline-flex;gap:8px;">
+                            <span style="background:#2563eb;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">📷 Gallery</span>
+                        </div>
+                    </div>
+                    <div class="img-preview-container" id="imgPreviews" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    <div id="imgUploadStatus" style="font-size:12px;color:#64748b;margin-top:6px;display:none;"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Search Tags / Collections <span style="color:#94a3b8;font-weight:400;font-size:12px;">(Optional)</span></label>
@@ -682,6 +703,22 @@
         window._onValue = onValue;
 
         window._imgbbKey = 'YOUR_IMGBB_API_KEY_HERE';
+
+        // Auto-load imgbb key from Firebase adminSettings
+        (function loadImgbbKey() {
+            try {
+                var _db2 = window._db || (window.firebase && window.firebase.database);
+                var _ref2 = window._ref || (window.firebase && window.firebase.ref);
+                var _get2 = window._get || (window.firebase && window.firebase.get);
+                if (_db2 && _ref2 && _get2) {
+                    _get2(_ref2(_db2, 'adminSettings/imgbbKey')).then(function(snap) {
+                        if (snap && snap.exists() && snap.val()) {
+                            window._imgbbKey = snap.val();
+                        }
+                    }).catch(function(){});
+                }
+            } catch(e) {}
+        })();
 
         window._state = {
             user: null,
@@ -1007,39 +1044,100 @@
 
         // ============ IMAGE HANDLING ============
         async function handleImageUpload(e) {
-            var files = Array.from(e.target.files);
-            var preview = document.getElementById('imgPreviews');
-            preview.innerHTML = '';
-            window._state.uploadedImages = [];
-            if (!files.length) return;
+            var MAX_IMAGES = 6;
+            var newFiles = Array.from(e.target.files);
+            if (!newFiles.length) return;
 
-            files.forEach(function(file) {
+            var existing = window._state.uploadedImages || [];
+            var remaining = MAX_IMAGES - existing.length;
+            if (remaining <= 0) { showToast('Max ' + MAX_IMAGES + ' images allowed. Remove some first.', 'error'); e.target.value = ''; return; }
+            if (newFiles.length > remaining) {
+                showToast('Only ' + remaining + ' more image(s) allowed. First ' + remaining + ' selected.', 'error');
+                newFiles = newFiles.slice(0, remaining);
+            }
+
+            var preview = document.getElementById('imgPreviews');
+            var statusEl = document.getElementById('imgUploadStatus');
+            var btn = document.getElementById('prodSaveBtn');
+            var pickerBtn = document.getElementById('imgPickerBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
+            if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '⏳ Uploading 0/' + newFiles.length + '...'; }
+
+            // Show local previews immediately
+            var localDivs = [];
+            newFiles.forEach(function(file, idx) {
                 var localUrl = URL.createObjectURL(file);
                 var div = document.createElement('div');
                 div.className = 'img-preview-item';
-                div.innerHTML = '<img src="' + localUrl + '"><div class="upload-progress" style="width:0%;"></div>';
+                div.style.cssText = 'position:relative;width:80px;height:80px;border-radius:10px;overflow:visible;flex-shrink:0;';
+                div.innerHTML =
+                    '<img src="' + localUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;">'
+                    + '<div class="upload-progress" style="position:absolute;bottom:0;left:0;right:0;height:4px;background:#e2e8f0;border-radius:0 0 10px 10px;overflow:hidden;"><div style="height:100%;width:0%;background:#2563eb;transition:width .4s;"></div></div>'
+                    + '<div class="upload-spinner" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.45);border-radius:10px;"><div style="width:20px;height:20px;border:2.5px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div></div>';
                 preview.appendChild(div);
+                localDivs.push(div);
             });
+            if (pickerBtn) pickerBtn.style.display = (existing.length + newFiles.length >= MAX_IMAGES) ? 'none' : '';
 
-            document.getElementById('prodSaveBtn').disabled = true;
-            document.getElementById('prodSaveBtn').textContent = 'Uploading Images...';
+            // Upload one by one with progress
+            var uploadedUrls = [];
+            for (var i = 0; i < newFiles.length; i++) {
+                var div = localDivs[i];
+                var progressBar = div ? div.querySelector('.upload-progress div') : null;
+                if (progressBar) progressBar.style.width = '40%';
+                if (statusEl) statusEl.textContent = '⏳ Uploading ' + (i+1) + '/' + newFiles.length + '...';
+                try {
+                    var url = await uploadImageToImgBB(newFiles[i]);
+                    uploadedUrls.push(url);
+                    if (progressBar) progressBar.style.width = '100%';
+                    var spinner = div ? div.querySelector('.upload-spinner') : null;
+                    if (spinner) spinner.remove();
+                    if (div) {
+                        var bar = div.querySelector('.upload-progress');
+                        if (bar) bar.remove();
+                        // Done badge
+                        var badge = document.createElement('div');
+                        badge.className = 'upload-done';
+                        badge.textContent = '✓';
+                        div.appendChild(badge);
+                        // Delete button
+                        var delBtn = document.createElement('button');
+                        delBtn.style.cssText = 'position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:10;line-height:1;';
+                        delBtn.textContent = '×';
+                        (function(urlVal, divEl) {
+                            delBtn.onclick = function() {
+                                window._state.uploadedImages = window._state.uploadedImages.filter(function(u){ return u !== urlVal; });
+                                divEl.remove();
+                                var pickerB = document.getElementById('imgPickerBtn');
+                                if (pickerB) pickerB.style.display = '';
+                                updateImgStatus();
+                            };
+                        })(url, div);
+                        div.appendChild(delBtn);
+                    }
+                } catch(err) {
+                    if (div) { div.style.border = '2px solid #ef4444'; var sp = div.querySelector('.upload-spinner'); if(sp) sp.remove(); }
+                }
+            }
 
-            var urls = await uploadMultipleImages(files);
-            window._state.uploadedImages = urls;
+            window._state.uploadedImages = (window._state.uploadedImages || []).concat(uploadedUrls);
+            // reset file input so same files can be re-selected
+            e.target.value = '';
+            if (btn) { btn.disabled = false; btn.textContent = 'Save Product'; }
+            if (statusEl) {
+                statusEl.textContent = '✅ ' + window._state.uploadedImages.length + ' image(s) ready';
+                setTimeout(function(){ statusEl.style.display='none'; }, 2500);
+            }
+            showToast('✅ ' + uploadedUrls.length + ' image(s) uploaded!', 'success');
+        }
 
-            var items = preview.querySelectorAll('.img-preview-item');
-            items.forEach(function(item) {
-                var progress = item.querySelector('.upload-progress');
-                if (progress) progress.style.width = '100%';
-                var doneBadge = document.createElement('div');
-                doneBadge.className = 'upload-done';
-                doneBadge.textContent = '✓';
-                item.appendChild(doneBadge);
-            });
-
-            document.getElementById('prodSaveBtn').disabled = false;
-            document.getElementById('prodSaveBtn').textContent = 'Save Product';
-            showToast('✅ ' + urls.length + ' images uploaded!', 'success');
+        function updateImgStatus() {
+            var statusEl = document.getElementById('imgUploadStatus');
+            var cnt = (window._state.uploadedImages || []).length;
+            if (statusEl && cnt > 0) {
+                statusEl.style.display = 'block';
+                statusEl.textContent = cnt + ' image(s) ready';
+            }
         }
 
         // ============ TAG DROPDOWN ============
@@ -1982,13 +2080,17 @@
             window._state.editingId = null;
             window._state.selectedTagIds = new Set();
             document.getElementById('prodModalTitle').textContent = 'Add Product';
-            ['prodName', 'prodPrice', 'prodStock', 'prodCategory', 'prodDesc', 'prodFullDesc', 'prodSizes', 'prodTags'].forEach(function(id) {
+            ['prodName', 'prodPrice', 'prodMrp', 'prodStock', 'prodCategory', 'prodDesc', 'prodFullDesc', 'prodSizes', 'prodColors', 'prodTags'].forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.value = '';
             });
             document.getElementById('prodActive').checked = true;
             document.getElementById('imgPreviews').innerHTML = '';
             window._state.uploadedImages = [];
+            var _pickerBtn = document.getElementById('imgPickerBtn');
+            if (_pickerBtn) _pickerBtn.style.display = '';
+            var _statusEl = document.getElementById('imgUploadStatus');
+            if (_statusEl) { _statusEl.style.display = 'none'; _statusEl.textContent = ''; }
             document.getElementById('tagPlaceholder').style.display = 'inline';
             document.getElementById('selectedTagsDisplay').innerHTML = '';
             document.getElementById('prodSaveBtn').disabled = false;
@@ -1997,7 +2099,7 @@
             _populateProdCategory();
             loadTagsForDropdown();
             // Show Seller ID (custom, not just UID)
-            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || uid || 'N/A';
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || (window._state.user && window._state.user.uid) || 'N/A';
             var sidEl = document.getElementById('modalSellerId');
             if (sidEl) sidEl.textContent = customSid;
             // Reset brand dropdown
@@ -2024,6 +2126,8 @@
             document.getElementById('prodDesc').value = p.desc || '';
             document.getElementById('prodFullDesc').value = p.fullDesc || '';
             document.getElementById('prodSizes').value = (p.sizes || []).join(', ');
+            if (document.getElementById('prodMrp')) document.getElementById('prodMrp').value = p.mrp || p.originalPrice || '';
+            if (document.getElementById('prodColors')) document.getElementById('prodColors').value = (p.colors || []).join(', ');
             document.getElementById('prodTags').value = (p.tags || []).join(', ');
             document.getElementById('prodActive').checked = p.status !== 'inactive';
             window._state.uploadedImages = p.images || [];
@@ -2092,15 +2196,23 @@
             })();
             var sellerName = (window._state.sellerData && window._state.sellerData.businessName) || window._state.user.displayName || window._state.user.email || 'Seller';
 
+            var mrp = parseFloat(document.getElementById('prodMrp') ? document.getElementById('prodMrp').value : 0) || 0;
+            var colors = (document.getElementById('prodColors') ? document.getElementById('prodColors').value : '').split(',').map(function(c){ return c.trim(); }).filter(Boolean);
+            var selBrand = (window._state.brands || []).find(function(b){ return b.id === brandId; });
+            var brandBlueTickAdmin = selBrand ? !!selBrand.blueTickAdmin : false;
+
             var data = {
                 title: name,
                 name: name,
                 price: price,
+                mrp: mrp > 0 ? mrp : price,
+                originalPrice: mrp > 0 ? mrp : price,
                 stock: stock,
                 category: category,
                 desc: desc,
                 fullDesc: fullDesc,
                 sizes: sizes,
+                colors: colors,
                 tags: tags,
                 images: window._state.uploadedImages,
                 image: window._state.uploadedImages[0] || '',
@@ -2112,6 +2224,7 @@
                 brandId: brandId,
                 brandName: brandName,
                 brandLogo: brandLogo,
+                blueTickAdmin: brandBlueTickAdmin,
                 productCode: productCode,
                 sellerEmail: window._state.user.email || '',
                 updatedAt: Date.now()
@@ -2153,7 +2266,13 @@
                     sellerName: window._state.user.displayName || window._state.user.email,
                     source: 'seller',
                     brand: brandName,
-                    brandId: brandName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                    brandId: brandId,
+                    brandLogo: brandLogo,
+                    blueTickAdmin: brandBlueTickAdmin,
+                    mrp: mrp > 0 ? mrp : price,
+                    originalPrice: mrp > 0 ? mrp : price,
+                    colors: colors,
+                    sizes: sizes,
                     sellerEmail: window._state.user.email || '',
                     createdAt: data.createdAt || Date.now(),
                     updatedAt: Date.now()
@@ -2756,6 +2875,19 @@
             el.addEventListener('click',function(e){if(e.target===el)closeSDM();});
             document.body.appendChild(el);
         }
+
+        // ══════════════════════════════════════════
+        // FIX: closeBrandProfile was missing — caused
+        // brand profile overlay X / backdrop click to crash
+        // ══════════════════════════════════════════
+        function closeBrandProfile() {
+            var overlay = document.getElementById('brandProfileOverlay');
+            if (overlay) overlay.style.display = 'none';
+            var box = document.getElementById('brandProfileBox');
+            if (box) box.innerHTML = '';
+        }
+        window.closeBrandProfile = closeBrandProfile;
+
     </script>
 
     <!-- ══ BRAND REQUEST MODAL ══ -->
