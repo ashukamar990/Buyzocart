@@ -714,6 +714,7 @@
           setTimeout(function() { bzRenderOrbit(); }, 100);
           break;
         case 'brandsPage':
+          window.scrollTo({ top: 0, behavior: 'instant' });
           setTimeout(function() {
             if (typeof loadBrandsPage === 'function') loadBrandsPage();
           }, 80);
@@ -979,7 +980,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var sysB=window.BZ_BRANDS&&window.BZ_BRANDS.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&bCache.blueTickAdmin)||(sysB&&sysB.verified);return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&bCache.blueTickAdmin);return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -1204,8 +1205,7 @@
       if (freshProduct.brand) {
         var bBrandId = freshProduct.brandId || freshProduct.brand.toLowerCase().replace(/[^a-z0-9]/g,'_');
         var bData = (window._brandsData||{})[bBrandId] || {};
-        var _bSys = window.BZ_BRANDS && window.BZ_BRANDS.find(function(x){return x.name===(freshProduct.brand||'');});
-        var _isVerified = bData.blueTickAdmin || (_bSys && _bSys.verified);
+        var _isVerified = bData.blueTickAdmin;
         var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="9" height="9"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>') : '';
         brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
           + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
@@ -6122,6 +6122,7 @@
         if (sp) sp.style.display = 'none';
         _renderBrands(_siteBrandsAll);
         bzWireHeroSearch();
+        bzRenderHomePopularBrands();
         return;
       }
 
@@ -6190,6 +6191,7 @@
         if (sp) sp.style.display = 'none';
         _renderBrands(_siteBrandsAll, followedSet);
         bzWireHeroSearch();
+        bzRenderHomePopularBrands();
       }).catch(function(err) {
         console.error('Brand load error:', err);
         if (sp) {
@@ -6888,8 +6890,33 @@
     window.toggleBrandFollow     = toggleBrandFollow;
     window.loadFollowingProducts = loadFollowingProducts;
 
+    // ── Home Page Popular Brands Renderer ──
+    function bzRenderHomePopularBrands() {
+      var sec = document.getElementById('homePopularBrandsSection');
+      var grid = document.getElementById('homePopularBrandsGrid');
+      if (!sec || !grid) return;
+      var BT = window.__BZ_BLUE_TICK || '';
+      var list = (_siteBrandsAll || []).slice(0, 8);
+      if (!list.length) { sec.style.display = 'none'; return; }
+      sec.style.display = 'block';
+      grid.innerHTML = list.map(function(b) {
+        var color = _brandColor(b.name);
+        var initial = (b.name || 'B').slice(0,1).toUpperCase();
+        var logo = b.logo
+          ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\';this.nextElementSibling&&(this.nextElementSibling.style.display=\'flex\')">'
+            + '<span style="display:none;font-weight:800;font-size:18px;color:#fff;align-items:center;justify-content:center;">' + initial + '</span>'
+          : '<span style="font-weight:800;font-size:18px;color:#fff;">' + initial + '</span>';
+        var prodCount = Array.isArray(b.products) ? b.products.length : (b.productCount || 0);
+        return '<div onclick="showPage(\'brandsPage\');setTimeout(function(){loadBrandsPage();},80);" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;min-width:72px;max-width:80px;">'
+          + '<div style="width:60px;height:60px;border-radius:14px;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.13);border:2.5px solid #fff;">' + logo + '</div>'
+          + '<div style="font-size:10.5px;font-weight:700;color:var(--text,#0f172a);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:2px;">' + (b.name||'') + (b.blueTickAdmin ? BT : '') + '</div>'
+          + (prodCount ? '<div style="font-size:9.5px;color:var(--muted,#64748b);">' + prodCount + ' items</div>' : '')
+          + '</div>';
+      }).join('');
+    }
+    window.bzRenderHomePopularBrands = bzRenderHomePopularBrands;
+
     // ── Global Verified Tick Injector ──
-    // Runs after products render; injects .bz-tick next to verified brand names
     function bzInjectVerifiedTicks() {
       var BT = window.__BZ_BLUE_TICK;
       if (!BT) return;
@@ -6897,7 +6924,7 @@
       // Build from Firebase brands cache
       (_siteBrandsAll || []).forEach(function(b) { if (b.blueTickAdmin) verifiedSet[b.name.toLowerCase()] = true; });
       // Merge with static BZ_BRANDS
-      (window.BZ_BRANDS || []).forEach(function(b) { if (b.verified) verifiedSet[b.name.toLowerCase()] = true; });
+      // Only Firebase brands used for verified ticks
 
       var sels = ['.product-brand', '.product-card-brand', '.detail-brand', '.brand-name-text', '.bz-prod-brand'];
       sels.forEach(function(sel) {
@@ -6929,7 +6956,7 @@
         if (!sec || !cont) return;
         var qL = (q || '').toLowerCase().trim();
         if (!qL) { sec.style.display = 'none'; return; }
-        var pool = (_siteBrandsAll.length ? _siteBrandsAll : (window.BZ_BRANDS || []));
+        var pool = _siteBrandsAll; // only real Firebase brands
         var hits = pool.filter(function(b) {
           return (b.name||'').toLowerCase().indexOf(qL) > -1 ||
                  (b.handle||b.description||'').toLowerCase().indexOf(qL) > -1 ||

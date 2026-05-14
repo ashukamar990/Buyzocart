@@ -871,15 +871,28 @@
         </div>
       </div>
 
+      <!-- ══ POPULAR BRANDS (from Firebase) ══ -->
+      <div id="homePopularBrandsSection" style="display:none;padding:0 0 4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 4px 10px;">
+          <h2 style="margin:0;font-size:1.05rem;font-weight:800;">🔥 Popular Brands</h2>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button id="homePopularBrandsToggle" onclick="bzToggleHomeSection('homePopularBrandsGrid','homePopularBrandsToggle')" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff4ff;border:none;border-radius:20px;padding:4px 10px;cursor:pointer;">Hide</button>
+            <a onclick="showPage('brandsPage');setTimeout(function(){loadBrandsPage&&loadBrandsPage();},80);" style="font-size:12px;color:var(--primary,#2563eb);cursor:pointer;font-weight:600;">See all →</a>
+          </div>
+        </div>
+        <div id="homePopularBrandsGrid" style="display:flex;gap:12px;overflow-x:auto;padding:0 4px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;"></div>
+      </div>
+
       <!-- ══ FOLLOWING BRANDS ══ -->
       <div id="followingProductsSection" style="display:none;padding:0 0 8px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px;">
           <h2 style="margin:0;font-size:1.05rem;font-weight:800;">❤️ Following Brands</h2>
-          <a onclick="showPage('brandsPage');setTimeout(function(){bzLoadBrandsIntoPage&&bzLoadBrandsIntoPage();},80);" style="font-size:12px;color:var(--primary);cursor:pointer;font-weight:600;">Manage →</a>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button id="homeFollowingBrandsToggle" onclick="bzToggleHomeSection('bzFollowingBrandsIcons','homeFollowingBrandsToggle')" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff4ff;border:none;border-radius:20px;padding:4px 10px;cursor:pointer;">Hide</button>
+            <a onclick="showPage('brandsPage');setTimeout(function(){loadBrandsPage&&loadBrandsPage();},80);" style="font-size:12px;color:var(--primary,#2563eb);cursor:pointer;font-weight:600;">Manage →</a>
+          </div>
         </div>
-        <!-- Brand icon circles (like categories) -->
-        <div id="bzFollowingBrandsIcons" style="display:flex;gap:14px;overflow-x:auto;padding:4px 4px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;"></div>
-        <!-- Brand products grid -->
+        <div id="bzFollowingBrandsIcons" style="display:flex;gap:14px;overflow-x:auto;padding:0 4px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;"></div>
         <div class="product-grid" id="followingProductsGrid"></div>
       </div>
 
@@ -2099,6 +2112,16 @@
   </button>
 
   <script>
+    // hide/show toggle for home page brand sections
+    window.bzToggleHomeSection = function(gridId, btnId) {
+      var grid = document.getElementById(gridId);
+      var btn  = document.getElementById(btnId);
+      if (!grid || !btn) return;
+      var hidden = grid.style.display === 'none';
+      grid.style.display = hidden ? '' : 'none';
+      btn.textContent = hidden ? 'Hide' : 'Show';
+    };
+
     (function(){
       var saved = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', saved);
