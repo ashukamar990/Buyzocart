@@ -954,6 +954,21 @@
 
     let reviews = [];
 
+    function getRatingMap(reviewsList) {
+      const map = {};
+      (reviewsList || []).forEach(r => {
+        const id = r.productId;
+        if (!id) return;
+        if (!map[id]) map[id] = { sum: 0, count: 0 };
+        map[id].sum += r.rating || 0;
+        map[id].count += 1;
+      });
+      Object.keys(map).forEach(id => {
+        map[id].average = map[id].sum / map[id].count;
+      });
+      return map;
+    }
+
     function calculateProductRating(productId) {
       const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
@@ -961,7 +976,7 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, preCalculatedRating = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -974,7 +989,7 @@
       })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = preCalculatedRating !== null ? preCalculatedRating : calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -990,7 +1005,8 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image">
+          <img src="${productImage}" alt="${productName}" loading="lazy" decoding="async">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
@@ -2995,10 +3011,16 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
-      const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
+    function getProductScore(product, ratingMap = null) {
+      const productId = product.id || product.productId || product._id;
+      let rating = 0;
+      if (ratingMap && ratingMap[productId]) {
+        rating = ratingMap[productId].average;
+      } else {
+        const rs = reviews.filter(r => r.productId === productId);
+        rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+      }
+      const orderCount = (window._productStats && window._productStats[productId]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
     }
@@ -3006,15 +3028,8 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+      const ratingMap = getRatingMap(reviews);
+      const sorted = [...productsToRender].sort((a, b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         // productGrid and searchResultsGrid have their own HTML empty-state elements
@@ -3024,7 +3039,13 @@
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          const productId = product.id || product.productId || product._id;
+          const preRating = (ratingMap[productId] && ratingMap[productId].average) || 0;
+          fragment.appendChild(createProductCard(product, preRating));
+        }
+      });
       container.appendChild(fragment);
     }
 
