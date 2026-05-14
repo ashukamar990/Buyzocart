@@ -1,3 +1,10 @@
+/* ── Global overflow lock — prevents horizontal scroll on all devices ── */
+html {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
 :root {
       --bg: #ffffff;
       --card: #ffffff;
@@ -53,6 +60,11 @@
       user-select: none;
       transition: var(--transition);
       padding-bottom: 70px;
+      /* FIX 1,4,13: Prevent horizontal scroll, anchor layout */
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100%;
+      position: relative;
     }
 
     a {
@@ -70,6 +82,10 @@
       z-index: 50;
       border-bottom: 1px solid var(--border);
       transition: var(--transition);
+      /* FIX 7: Header always full width, no overflow */
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .header-inner {
@@ -79,6 +95,9 @@
       align-items: center;
       gap: 12px;
       justify-content: space-between;
+      /* FIX 7: Ensure inner stays contained */
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .brand {
@@ -106,7 +125,7 @@
       display: flex;
       max-width: 500px;
       margin: 0;
-      margin-right: 10px;
+      /* FIX 4,7: margin-right removed — was causing header overflow on mobile */
     }
 
     .search-wrap input {
@@ -239,10 +258,13 @@
 
     /* Container */
     .container {
+      /* FIX 5,7: Always full viewport width, never bleeds */
+      width: 100%;
       max-width: 1100px;
       margin: 20px auto;
       padding: 0 16px;
       min-height: 70vh;
+      box-sizing: border-box;
     }
 
     /* Hero */
@@ -491,7 +513,12 @@
       font-weight: 600;
       margin-bottom: 6px;
       font-size: 15px;
-      white-space: nowrap;
+      /* FIX 6,11: nowrap removed — was causing text overflow on narrow cards */
+      white-space: normal;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -720,13 +747,17 @@
     
     .product-detail-gallery {
       flex: 1;
-      min-width: 300px;
+      /* FIX 11: min-width 300px removed — caused horizontal overflow on <360px phones */
+      min-width: 0;
+      width: 100%;
       position: relative;
     }
     
     .product-detail-info {
       flex: 1;
-      min-width: 300px;
+      /* FIX 11: min-width 300px removed — caused horizontal overflow on <360px phones */
+      min-width: 0;
+      width: 100%;
     }
     
     .product-detail-main-image {
@@ -1670,6 +1701,9 @@
       z-index: 1000;
       transition: left 0.3s ease;
       overflow-y: auto;
+      /* FIX 3,10,14: Pure overlay — must NEVER push or shift main content */
+      transform: none !important;
+      margin: 0 !important;
     }
     
     .mobile-menu.active {
@@ -3914,7 +3948,7 @@
 
     @media (max-width: 480px) {
       .container {
-        padding: 0 12px;
+        padding: 0 10px;   /* FIX 5,8: Tighter gutters on very small screens */
       }
       
       .product-detail-main-image {
@@ -4021,6 +4055,7 @@
     .main-product-image {
       width: 100%;
       height: 500px;
+      max-width: 100%;          /* FIX 11: never wider than parent */
       background-size: contain;
       background-position: center;
       background-repeat: no-repeat;
@@ -4029,6 +4064,7 @@
       margin-bottom: 16px;
       cursor: zoom-in;
       transition: all 0.3s ease;
+      box-sizing: border-box;
     }
 
     .product-thumbnails {
@@ -4755,6 +4791,8 @@ html {
 body {
   margin: 0;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -4916,6 +4954,19 @@ img {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+
+/* FIX 6: 3-col too cramped on mobile */
+@media (max-width: 600px) {
+  .similar-products-slider {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+@media (max-width: 360px) {
+  .similar-products-slider {
+    grid-template-columns: 1fr;
+  }
 }
 
 .similar-product-small {
@@ -5416,4 +5467,286 @@ img {
   .featured-offer {
     grid-column: 1;
   }
+}
+
+/* ============================================================
+   ✅ RESPONSIVE LAYOUT MASTER FIXES
+   All 15 mobile layout problems — consolidated patch block.
+   Applied at bottom so specificity always wins.
+   ============================================================ */
+
+/* ── FIX 3, 10, 14: Main content wrappers — zero sidebar conflict ── */
+/* If JS adds margin-left to any of these when sidebar opens,
+   this hard-resets it the moment sidebar closes.               */
+.main-content,
+.main-wrapper,
+.page-content,
+.page-wrapper,
+.content-wrapper,
+#main-content,
+#pageContent,
+#mainContent {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  transform: translateX(0) !important; /* Some libs use translateX instead */
+  overflow-x: hidden;
+}
+
+/* When menu overlay is active — lock body scroll, never shift content */
+body.menu-open,
+body.sidebar-open,
+body.drawer-open {
+  overflow: hidden;
+}
+
+body.menu-open .container,
+body.sidebar-open .container {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/* ── FIX 12: Eliminate UI jank during layout / page transitions ── */
+.page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* ── FIX 4, 11: Global image / media overflow guard ── */
+img,
+video,
+iframe,
+embed,
+object {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── FIX 6, 11: Product cards — very small screens (≤ 359px) ── */
+@media (max-width: 359px) {
+  .product-grid,
+  #homeSearchResults {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+}
+
+/* Tighter card body on small phones */
+@media (max-width: 380px) {
+  .product-card-body {
+    padding: 10px 8px;
+  }
+  .product-card-image {
+    height: 130px;
+  }
+  .product-card-current-price {
+    font-size: 14px;
+  }
+  .product-card-original-price {
+    font-size: 12px;
+  }
+}
+
+/* ── FIX 6: Brand / category cards — responsive grid ── */
+.brand-grid,
+.brands-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .brand-grid,
+  .brands-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── FIX 8: Sections — max-width guard + box-sizing ── */
+.hero,
+.banner-carousel,
+.steps,
+.categories,
+.product-slider,
+.trending-section,
+.category-circles,
+.recently-viewed,
+.newsletter-section,
+.about-us,
+.similar-products,
+.review-section,
+.footer-container,
+.offers-countdown-banner {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.hero-inner {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.hero-stats-row {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 360px) {
+  .hero-inner {
+    padding: 14px 10px 10px;
+  }
+  .hero-text-block h1 {
+    font-size: 18px;
+  }
+}
+
+/* ── FIX 5: Offers grid — 1-col on smallest screens ── */
+@media (max-width: 480px) {
+  .offers-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+  .featured-offer {
+    grid-column: 1 !important;
+  }
+  .timer-block {
+    padding: 6px 10px;
+    min-width: 44px;
+  }
+  .timer-block span {
+    font-size: 18px;
+  }
+}
+
+/* ── FIX 9, 15: Newsletter form — stack on mobile ── */
+@media (max-width: 560px) {
+  .newsletter-form {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .newsletter-btn {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
+/* ── FIX 9: Row/col — fully stacked on narrow screens ── */
+@media (max-width: 600px) {
+  .row {
+    flex-direction: column !important;
+    gap: 10px;
+  }
+}
+
+/* ── FIX 5, 11: Slider track — contained, no viewport bleed ── */
+.slider-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.slider-track {
+  width: max-content; /* Scroll inside container, not viewport */
+}
+
+/* ── FIX 15: Bottom nav — guaranteed full width ── */
+.bottom-nav {
+  width: 100%;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+}
+
+/* ── FIX 15: Product detail actions — stack on mobile ── */
+@media (max-width: 600px) {
+  .product-detail-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .product-detail-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ── FIX 5: Footer — full width on all small screens ── */
+@media (max-width: 600px) {
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* ── FIX 9, 15: Order actions — no overflow on very small phones ── */
+@media (max-width: 400px) {
+  .order-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .order-action-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ── FIX 9: Modals — full-width buttons on mobile ── */
+@media (max-width: 480px) {
+  .cancellation-actions,
+  .cancel-confirm-actions,
+  .alert-modal-buttons {
+    flex-direction: column;
+  }
+  .cancellation-actions .btn,
+  .cancel-confirm-actions .btn,
+  .alert-modal-buttons .btn {
+    width: 100%;
+  }
+}
+
+/* ── FIX 15: Prevent iOS zoom on focused inputs (font-size < 16px) ── */
+.search-panel-input,
+.search-wrap input,
+.newsletter-input,
+.header-search-wrap input {
+  font-size: 16px !important;
+}
+
+/* ── FIX 15: Fast-tap — remove 300ms delay on interactive elements ── */
+.btn,
+.bottom-nav-item,
+.category-pill,
+.step-pill,
+.product-card,
+.slider-item,
+.menu-item {
+  touch-action: manipulation;
+}
+
+/* ── FIX 11: Main product image — too tall on phones ── */
+@media (max-width: 480px) {
+  .main-product-image {
+    height: 260px !important;
+  }
+}
+
+/* ── FIX 8: Section headers — box-sizing guard ── */
+.slider-header,
+.trending-header,
+.recently-viewed-title,
+.similar-title {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ── FIX 7: Consistent page alignment ── */
+.product-detail-page,
+.policy-page,
+.orders-container {
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden;
 }
