@@ -6106,6 +6106,121 @@
       });
     }
 
+    // ════════════════════════════════════════════════
+    //  BRAND PRELOADER — Runs on startup automatically
+    //  Populates _siteBrandsAll & __bzBrandsCache so
+    //  search, blue ticks & home sections work without
+    //  the user ever visiting the Brands page first.
+    // ════════════════════════════════════════════════
+    function bzPreloadBrands() {
+      if (_siteBrandsAll.length) {
+        // Already loaded — just refresh home sections
+        bzRenderHomePopularBrands();
+        if (typeof loadFollowingProducts === 'function') loadFollowingProducts();
+        bzInjectVerifiedTicks();
+        return;
+      }
+      var fb = window.firebase;
+      if (!fb || !fb.database) { setTimeout(bzPreloadBrands, 1200); return; }
+      var database = fb.database;
+      var ref      = fb.ref;
+      var get      = fb.get;
+      var currentUser = fb.auth && fb.auth.currentUser;
+
+      Promise.all([
+        get(ref(database, 'products')),
+        get(ref(database, 'brands')),
+        currentUser ? get(ref(database, 'brandFollowers')) : Promise.resolve(null)
+      ]).then(function(results) {
+        var prodSnap  = results[0];
+        var brandSnap = results[1];
+        var follSnap  = results[2];
+
+        // Build product count per brand
+        var prodMap = {};
+        if (prodSnap && prodSnap.exists()) {
+          prodSnap.forEach(function(c) {
+            var v = c.val();
+            var bn = (v && (v.brand || v.brandName || '')).trim();
+            if (bn) { prodMap[bn] = (prodMap[bn] || 0) + 1; }
+          });
+        }
+
+        // Build followedSet
+        var followedSet = {};
+        if (follSnap && follSnap.exists() && currentUser) {
+          var fd = follSnap.val() || {};
+          Object.keys(fd).forEach(function(bid) {
+            if (fd[bid] && fd[bid][currentUser.uid]) followedSet[bid] = true;
+          });
+        }
+
+        // Build brand list from Firebase brands node
+        var brandMap = {};
+        if (brandSnap && brandSnap.exists()) {
+          brandSnap.forEach(function(c) {
+            var v = c.val();
+            if (!v || !v.name) return;
+            var pid = prodMap[v.name] || 0;
+            brandMap[c.key] = {
+              id: c.key, name: v.name || '', logo: v.logo || '',
+              description: v.description || '', blueTickAdmin: !!v.blueTickAdmin,
+              verificationLevel: v.verificationLevel || 'normal',
+              followers: v.followers || v.followersCount || 0,
+              rating: v.rating || 0,
+              productCount: pid, products: Array(pid),
+              followed: !!followedSet[c.key]
+            };
+          });
+        }
+        // Also create entries from product brand names (if not already in brands node)
+        Object.keys(prodMap).forEach(function(bn) {
+          if (!Object.values(brandMap).find(function(b) { return b.name === bn; })) {
+            var fakeId = bn.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            if (!brandMap[fakeId]) {
+              brandMap[fakeId] = {
+                id: fakeId, name: bn, logo: '', description: '',
+                blueTickAdmin: false, verificationLevel: 'normal',
+                followers: 0, rating: 0,
+                productCount: prodMap[bn], products: Array(prodMap[bn]),
+                followed: false
+              };
+            }
+          }
+        });
+
+        _siteBrandsAll = Object.values(brandMap).filter(function(b) { return b.productCount > 0 || b.blueTickAdmin; });
+        _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
+        _siteBrandsAll._followedSet = followedSet;
+
+        // Populate global cache used by search & tick injector
+        window.__bzBrandsCache = _siteBrandsAll.map(function(b) {
+          return { id: b.id, name: b.name, logo: b.logo, blueTickAdmin: b.blueTickAdmin,
+                   products: b.products, followers: b.followers, rating: b.rating };
+        });
+
+        // Now render home sections & inject ticks
+        bzRenderHomePopularBrands();
+        if (typeof loadFollowingProducts === 'function') loadFollowingProducts();
+        bzInjectVerifiedTicks();
+      }).catch(function(e) {
+        console.warn('bzPreloadBrands error:', e);
+      });
+    }
+    window.bzPreloadBrands = bzPreloadBrands;
+
+    // Run preloader: once after auth resolves, and once after a short delay as fallback
+    (function schedulePreload() {
+      var fb = window.firebase;
+      if (fb && fb.auth && typeof fb.onAuthStateChanged === 'function') {
+        fb.onAuthStateChanged(fb.auth, function() {
+          setTimeout(bzPreloadBrands, 300);
+        });
+      }
+      // Fallback — always run after 2s regardless of auth
+      setTimeout(bzPreloadBrands, 2000);
+    })();
+
     // ── Brands Page Loader ──
     function loadBrandsPage() {
       // Show spinner, hide sections
@@ -6825,6 +6940,9 @@
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') - 1);
             showToast('Unfollowed ' + brandName);
+            var sb = document.getElementById('bpStickyFollowBtn');
+            if (sb && sb !== btn) { sb.textContent = '+ Follow'; sb.style.background = '#2563eb'; sb.style.color = '#fff'; }
+            setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
           });
         } else {
           return set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
@@ -6832,6 +6950,10 @@
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = parseInt(cnt.textContent || '0') + 1;
             showToast('Following ' + brandName + '! 🎉', 'success');
+            // Update sticky button too
+            var sb = document.getElementById('bpStickyFollowBtn');
+            if (sb && sb !== btn) { sb.textContent = '✓ Following'; sb.style.background = '#f1f5f9'; sb.style.color = '#64748b'; }
+            setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
           });
         }
       }).catch(function(err) { showToast('Error: ' + err.message, 'error'); });
