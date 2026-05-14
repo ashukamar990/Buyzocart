@@ -951,29 +951,70 @@ html {
       right: 10px;
     }
 
+    /* ── Gallery dots INSIDE image (old style — kept as fallback) ── */
     .detail-carousel-dots {
       position: absolute;
-      bottom: 12px;
+      bottom: 10px;
       left: 0;
       right: 0;
       display: flex;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
       z-index: 10;
     }
 
     .detail-carousel-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.6);
+      background: rgba(255,255,255,0.55);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
+      flex-shrink: 0;
     }
 
     .detail-carousel-dot.active {
-      background: rgba(255, 255, 255, 1);
-      transform: scale(1.3);
+      background: #fff;
+      width: 20px;
+      border-radius: 3px;
+      transform: none;
+    }
+
+    /* ── Gallery dots BELOW image (new premium style) ── */
+    .gallery-dots-row,
+    .image-dots-below,
+    .swipe-dots,
+    .product-dots-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 0 4px;
+      width: 100%;
+    }
+
+    .gallery-dot-pill,
+    .swipe-dot,
+    .gallery-dots-row .dot,
+    .image-dots-below .dot,
+    .product-dots-row .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.35s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    .gallery-dot-pill.active,
+    .swipe-dot.active,
+    .gallery-dots-row .dot.active,
+    .image-dots-below .dot.active,
+    .product-dots-row .dot.active {
+      width: 24px;
+      border-radius: 4px;
+      background: var(--accent);
     }
 
     /* Category Navigation */
@@ -1044,27 +1085,29 @@ html {
 
     .carousel-dots {
       position: absolute;
-      bottom: 12px;
+      bottom: 10px;
       left: 0;
       right: 0;
       display: flex;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
       z-index: 10;
     }
 
     .carousel-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.6);
+      background: rgba(255,255,255,0.5);
       cursor: pointer;
-      transition: all 0.2s ease;
+      flex-shrink: 0;
+      transition: all 0.35s cubic-bezier(0.22,1,0.36,1);
     }
 
     .carousel-dot.active {
-      background: rgba(255, 255, 255, 1);
-      transform: scale(1.3);
+      background: #fff;
+      width: 20px;
+      border-radius: 3px;
     }
 
     /* About Us Section */
@@ -3331,15 +3374,18 @@ html {
 
     /* NEW: Sticky Product Detail Buttons */
     .product-detail-actions {
-      position: sticky;
-      bottom: 70px;
+      position: fixed;
+      bottom: 62px;              /* Just above bottom nav */
+      left: 0;
+      right: 0;
       background: var(--card);
-      padding: 14px;
+      padding: 10px 16px;
       border-top: 1px solid var(--border);
       display: flex;
       gap: 10px;
-      z-index: 100;
-      margin-top: 20px;
+      z-index: 150;
+      box-shadow: 0 -4px 18px rgba(0,0,0,0.10);
+      box-sizing: border-box;
     }
 
     /* NEW: Password Reset Modal Styles */
@@ -3933,7 +3979,9 @@ html {
       }
 
       .product-detail-actions {
-        bottom: 60px;
+        bottom: 58px;
+        padding: 8px 12px;
+        gap: 8px;
       }
     }
 
@@ -5877,4 +5925,187 @@ img {
 }
 [data-theme="dark"] .brand-logo-wrapper {
   background: linear-gradient(135deg, #1e293b, #0f172a);
+}
+
+
+/* ============================================================
+   ✅ PATCH v3 — 3 Issues Fixed
+   1. Sticky buttons — always visible at bottom
+   2. Image dots — pill-shaped, below image
+   3. Brand cards — forced visible, empty space fixed
+   ============================================================ */
+
+/* ─────────────────────────────────────────────
+   FIX 1-A: Order page "Continue / Back" buttons
+   — fixed at bottom, always visible on scroll
+───────────────────────────────────────────── */
+.order-step-actions,
+.step-nav-actions,
+.order-nav-buttons,
+.order-footer-actions,
+#orderPage .action-buttons,
+#orderPage .form-actions,
+#orderPage .step-buttons,
+#orderPage .order-cta,
+#orderPage [class*="step-action"],
+#orderPage [class*="nav-btn"],
+#orderPage [class*="action-row"] {
+  position: fixed !important;
+  bottom: 62px !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: var(--card) !important;
+  padding: 10px 16px !important;
+  border-top: 1px solid var(--border) !important;
+  display: flex !important;
+  gap: 10px !important;
+  z-index: 150 !important;
+  box-shadow: 0 -4px 18px rgba(0,0,0,0.10) !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+}
+
+/* Ensure both buttons fill the bar evenly */
+.order-step-actions .btn,
+.step-nav-actions .btn,
+.order-nav-buttons .btn,
+.order-footer-actions .btn,
+#orderPage .action-buttons .btn,
+#orderPage .form-actions .btn,
+#orderPage .step-buttons .btn,
+#orderPage .order-cta .btn {
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding: 12px 8px !important;
+  font-size: 13px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Add bottom padding to order page content so buttons don't cover it */
+#orderPage .container,
+#orderPage .page-content,
+#orderPage .card-panel:last-of-type {
+  padding-bottom: 80px !important;
+}
+
+/* ─────────────────────────────────────────────
+   FIX 1-B: Product detail page extra spacing
+   — content doesn't hide behind fixed buttons
+───────────────────────────────────────────── */
+.product-detail-page .product-detail-info,
+.product-detail-page .similar-products,
+.product-detail-page .review-section {
+  padding-bottom: 90px;
+}
+
+/* ─────────────────────────────────────────────
+   FIX 2: Image dots — below the image
+   Add class "gallery-dots-row" to a <div>
+   placed BELOW your image container in HTML.
+   Each dot: <span class="gallery-dot-pill"></span>
+   Active dot gets class: "active"
+───────────────────────────────────────────── */
+
+/* Dark-mode dot colors */
+[data-theme="dark"] .gallery-dot-pill,
+[data-theme="dark"] .swipe-dot,
+[data-theme="dark"] .gallery-dots-row .dot {
+  background: #334155;
+}
+
+[data-theme="dark"] .gallery-dot-pill.active,
+[data-theme="dark"] .swipe-dot.active,
+[data-theme="dark"] .gallery-dots-row .dot.active {
+  background: var(--accent);
+}
+
+/* ─────────────────────────────────────────────
+   FIX 3: Brand cards — AGGRESSIVE fix for
+   empty white space / invisible card bug.
+   Covers every possible class name.
+───────────────────────────────────────────── */
+
+/* Force brand page container to be visible */
+#brandsPage,
+#brandsPage.active {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  min-height: 200px;
+}
+
+/* Force any grid/list inside brands page visible */
+#brandsPage > *,
+#brandsPage .brands-grid > *,
+#brandsPage .brand-grid > *,
+#brandsPage [class*="grid"] > *,
+#brandsPage [class*="list"] > *,
+#brandsPage [class*="container"] > * {
+  opacity: 1 !important;
+  visibility: visible !important;
+  animation: none !important;       /* Kill any stuck animation */
+  transform: none !important;
+  display: flex !important;
+}
+
+/* Brand card reset — nuclear option for visibility */
+#brandsPage .brand-card,
+#brandsPage .brand-item,
+#brandsPage .brand-box,
+#brandsPage [class*="brand-card"],
+#brandsPage [class*="brand-item"],
+#brandsPage [class*="brandCard"],
+#brandsPage [class*="brand_card"],
+.brand-card,
+.brand-item {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+  animation: bz-brandReveal 0.4s cubic-bezier(0.22,1,0.36,1) forwards !important;
+  /* Override any JS inline styles */
+  transform: none !important;
+}
+
+/* Re-allow stagger on first 10 cards only */
+#brandsPage .brand-card:nth-child(1)  { animation-delay: 0.03s !important; }
+#brandsPage .brand-card:nth-child(2)  { animation-delay: 0.06s !important; }
+#brandsPage .brand-card:nth-child(3)  { animation-delay: 0.09s !important; }
+#brandsPage .brand-card:nth-child(4)  { animation-delay: 0.12s !important; }
+#brandsPage .brand-card:nth-child(5)  { animation-delay: 0.15s !important; }
+#brandsPage .brand-card:nth-child(6)  { animation-delay: 0.18s !important; }
+#brandsPage .brand-card:nth-child(7)  { animation-delay: 0.21s !important; }
+#brandsPage .brand-card:nth-child(8)  { animation-delay: 0.24s !important; }
+#brandsPage .brand-card:nth-child(n+9) { animation-delay: 0.27s !important; }
+
+/* Brand images — never 0 height */
+#brandsPage img,
+.brand-card img,
+.brand-logo,
+.brand-logo-img {
+  min-height: 40px;
+  object-fit: contain;
+}
+
+/* Brand grid — always visible, never collapses */
+#brandsPage .brands-grid,
+#brandsPage .brand-grid,
+#brandsPage [class*="grid"],
+#brandsPage [class*="brands"] {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  min-height: 120px;
+}
+
+@media (min-width: 480px) {
+  #brandsPage .brands-grid,
+  #brandsPage .brand-grid,
+  #brandsPage [class*="grid"] {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+  }
 }
