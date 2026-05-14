@@ -1,4 +1,4 @@
-/* ── Global overflow lock — prevents horizontal scroll on all devices ── */
+/* FIX: Root overflow lock */
 html {
   overflow-x: hidden;
   width: 100%;
@@ -60,7 +60,6 @@ html {
       user-select: none;
       transition: var(--transition);
       padding-bottom: 70px;
-      /* FIX 1,4,13: Prevent horizontal scroll, anchor layout */
       overflow-x: hidden;
       width: 100%;
       max-width: 100%;
@@ -82,7 +81,6 @@ html {
       z-index: 50;
       border-bottom: 1px solid var(--border);
       transition: var(--transition);
-      /* FIX 7: Header always full width, no overflow */
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
@@ -95,7 +93,6 @@ html {
       align-items: center;
       gap: 12px;
       justify-content: space-between;
-      /* FIX 7: Ensure inner stays contained */
       width: 100%;
       box-sizing: border-box;
     }
@@ -125,7 +122,6 @@ html {
       display: flex;
       max-width: 500px;
       margin: 0;
-      /* FIX 4,7: margin-right removed — was causing header overflow on mobile */
     }
 
     .search-wrap input {
@@ -258,7 +254,6 @@ html {
 
     /* Container */
     .container {
-      /* FIX 5,7: Always full viewport width, never bleeds */
       width: 100%;
       max-width: 1100px;
       margin: 20px auto;
@@ -513,7 +508,6 @@ html {
       font-weight: 600;
       margin-bottom: 6px;
       font-size: 15px;
-      /* FIX 6,11: nowrap removed — was causing text overflow on narrow cards */
       white-space: normal;
       word-break: break-word;
       display: -webkit-box;
@@ -747,7 +741,6 @@ html {
     
     .product-detail-gallery {
       flex: 1;
-      /* FIX 11: min-width 300px removed — caused horizontal overflow on <360px phones */
       min-width: 0;
       width: 100%;
       position: relative;
@@ -755,7 +748,6 @@ html {
     
     .product-detail-info {
       flex: 1;
-      /* FIX 11: min-width 300px removed — caused horizontal overflow on <360px phones */
       min-width: 0;
       width: 100%;
     }
@@ -1701,7 +1693,6 @@ html {
       z-index: 1000;
       transition: left 0.3s ease;
       overflow-y: auto;
-      /* FIX 3,10,14: Pure overlay — must NEVER push or shift main content */
       transform: none !important;
       margin: 0 !important;
     }
@@ -3948,9 +3939,14 @@ html {
 
     @media (max-width: 480px) {
       .container {
-        padding: 0 10px;   /* FIX 5,8: Tighter gutters on very small screens */
+        padding: 0 10px;
+        box-sizing: border-box;
       }
       
+      .main-product-image {
+        height: 260px !important;
+      }
+
       .product-detail-main-image {
         height: 40vh;
         max-height: 300px;
@@ -4055,7 +4051,7 @@ html {
     .main-product-image {
       width: 100%;
       height: 500px;
-      max-width: 100%;          /* FIX 11: never wider than parent */
+      max-width: 100%;
       background-size: contain;
       background-position: center;
       background-repeat: no-repeat;
@@ -4955,8 +4951,6 @@ img {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
-
-/* FIX 6: 3-col too cramped on mobile */
 @media (max-width: 600px) {
   .similar-products-slider {
     grid-template-columns: repeat(2, 1fr);
@@ -5470,309 +5464,19 @@ img {
 }
 
 /* ============================================================
-   ✅ RESPONSIVE LAYOUT MASTER FIXES
-   All 15 mobile layout problems — consolidated patch block.
-   Applied at bottom so specificity always wins.
-   ============================================================ */
-
-/* ── FIX 3, 10, 14: Main content wrappers — zero sidebar conflict ── */
-/* If JS adds margin-left to any of these when sidebar opens,
-   this hard-resets it the moment sidebar closes.               */
-.main-content,
-.main-wrapper,
-.page-content,
-.page-wrapper,
-.content-wrapper,
-#main-content,
-#pageContent,
-#mainContent {
-  margin-left: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  transform: translateX(0) !important; /* Some libs use translateX instead */
-  overflow-x: hidden;
-}
-
-/* When menu overlay is active — lock body scroll, never shift content */
-body.menu-open,
-body.sidebar-open,
-body.drawer-open {
-  overflow: hidden;
-}
-
-body.menu-open .container,
-body.sidebar-open .container {
-  margin-left: 0 !important;
-  width: 100% !important;
-}
-
-/* ── FIX 12: Eliminate UI jank during layout / page transitions ── */
-.page {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  box-sizing: border-box;
-}
-
-/* ── FIX 4, 11: Global image / media overflow guard ── */
-img,
-video,
-iframe,
-embed,
-object {
-  max-width: 100%;
-  height: auto;
-}
-
-/* ── FIX 6, 11: Product cards — very small screens (≤ 359px) ── */
-@media (max-width: 359px) {
-  .product-grid,
-  #homeSearchResults {
-    grid-template-columns: 1fr !important;
-    gap: 8px;
-  }
-}
-
-/* Tighter card body on small phones */
-@media (max-width: 380px) {
-  .product-card-body {
-    padding: 10px 8px;
-  }
-  .product-card-image {
-    height: 130px;
-  }
-  .product-card-current-price {
-    font-size: 14px;
-  }
-  .product-card-original-price {
-    font-size: 12px;
-  }
-}
-
-/* ── FIX 6: Brand / category cards — responsive grid ── */
-.brand-grid,
-.brands-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 12px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-@media (max-width: 480px) {
-  .brand-grid,
-  .brands-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* ── FIX 8: Sections — max-width guard + box-sizing ── */
-.hero,
-.banner-carousel,
-.steps,
-.categories,
-.product-slider,
-.trending-section,
-.category-circles,
-.recently-viewed,
-.newsletter-section,
-.about-us,
-.similar-products,
-.review-section,
-.footer-container,
-.offers-countdown-banner {
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.hero-inner {
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.hero-stats-row {
-  flex-wrap: wrap;
-}
-
-@media (max-width: 360px) {
-  .hero-inner {
-    padding: 14px 10px 10px;
-  }
-  .hero-text-block h1 {
-    font-size: 18px;
-  }
-}
-
-/* ── FIX 5: Offers grid — 1-col on smallest screens ── */
-@media (max-width: 480px) {
-  .offers-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px;
-  }
-  .featured-offer {
-    grid-column: 1 !important;
-  }
-  .timer-block {
-    padding: 6px 10px;
-    min-width: 44px;
-  }
-  .timer-block span {
-    font-size: 18px;
-  }
-}
-
-/* ── FIX 9, 15: Newsletter form — stack on mobile ── */
-@media (max-width: 560px) {
-  .newsletter-form {
-    flex-direction: column;
-    gap: 10px;
-  }
-  .newsletter-btn {
-    width: 100%;
-    padding: 12px;
-  }
-}
-
-/* ── FIX 9: Row/col — fully stacked on narrow screens ── */
-@media (max-width: 600px) {
-  .row {
-    flex-direction: column !important;
-    gap: 10px;
-  }
-}
-
-/* ── FIX 5, 11: Slider track — contained, no viewport bleed ── */
-.slider-container {
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.slider-track {
-  width: max-content; /* Scroll inside container, not viewport */
-}
-
-/* ── FIX 15: Bottom nav — guaranteed full width ── */
-.bottom-nav {
-  width: 100%;
-  left: 0;
-  right: 0;
-  box-sizing: border-box;
-}
-
-/* ── FIX 15: Product detail actions — stack on mobile ── */
-@media (max-width: 600px) {
-  .product-detail-actions {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .product-detail-actions .btn {
-    width: 100%;
-  }
-}
-
-/* ── FIX 5: Footer — full width on all small screens ── */
-@media (max-width: 600px) {
-  .footer-content {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-}
-
-/* ── FIX 9, 15: Order actions — no overflow on very small phones ── */
-@media (max-width: 400px) {
-  .order-actions {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .order-action-btn {
-    width: 100%;
-    text-align: center;
-  }
-}
-
-/* ── FIX 9: Modals — full-width buttons on mobile ── */
-@media (max-width: 480px) {
-  .cancellation-actions,
-  .cancel-confirm-actions,
-  .alert-modal-buttons {
-    flex-direction: column;
-  }
-  .cancellation-actions .btn,
-  .cancel-confirm-actions .btn,
-  .alert-modal-buttons .btn {
-    width: 100%;
-  }
-}
-
-/* ── FIX 15: Prevent iOS zoom on focused inputs (font-size < 16px) ── */
-.search-panel-input,
-.search-wrap input,
-.newsletter-input,
-.header-search-wrap input {
-  font-size: 16px !important;
-}
-
-/* ── FIX 15: Fast-tap — remove 300ms delay on interactive elements ── */
-.btn,
-.bottom-nav-item,
-.category-pill,
-.step-pill,
-.product-card,
-.slider-item,
-.menu-item {
-  touch-action: manipulation;
-}
-
-/* ── FIX 11: Main product image — too tall on phones ── */
-@media (max-width: 480px) {
-  .main-product-image {
-    height: 260px !important;
-  }
-}
-
-/* ── FIX 8: Section headers — box-sizing guard ── */
-.slider-header,
-.trending-header,
-.recently-viewed-title,
-.similar-title {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-}
-
-/* ── FIX 7: Consistent page alignment ── */
-.product-detail-page,
-.policy-page,
-.orders-container {
-  box-sizing: border-box;
-  width: 100%;
-  overflow-x: hidden;
-}
-
-
-/* ============================================================
    🏷️  EXPLORE BRANDS PAGE — PREMIUM ANIMATED REDESIGN
-   ============================================================
-   Fixes:
-   • Empty white space (animation fill-mode stuck)
-   • Invisible brand cards after page switch
-   • Full premium look with glassmorphism + animations
+   SAFE VERSION: Only brand-specific selectors used.
+   No .btn / .page / .row / .bottom-nav overrides here.
    ============================================================ */
 
 /* ── Keyframes ── */
 @keyframes bz-brandReveal {
-  from { opacity: 0; transform: translateY(24px) scale(0.94); }
+  from { opacity: 0; transform: translateY(22px) scale(0.95); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 @keyframes bz-brandShimmer {
   0%   { background-position: -400px 0; }
   100% { background-position:  400px 0; }
-}
-@keyframes bz-brandGlow {
-  0%,100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
-  50%     { box-shadow: 0 0 20px 4px rgba(37,99,235,0.18); }
 }
 @keyframes bz-followPop {
   0%   { transform: scale(1);    }
@@ -5781,244 +5485,56 @@ object {
   100% { transform: scale(1);    }
 }
 @keyframes bz-headerSlide {
-  from { opacity: 0; transform: translateY(-18px); }
+  from { opacity: 0; transform: translateY(-16px); }
   to   { opacity: 1; transform: translateY(0);     }
 }
 @keyframes bz-tagFloat {
   0%,100% { transform: translateY(0); }
-  50%     { transform: translateY(-4px); }
-}
-@keyframes bz-countUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  50%     { transform: translateY(-5px); }
 }
 
-/* ══════════════════════════════════════════
-   BRANDS PAGE WRAPPER
-══════════════════════════════════════════ */
-#brandsPage,
-.brands-page,
-[id*="brand"][class*="page"],
-[id*="Brand"][class*="page"] {
+/* ── ROOT FIX: Brands page container ── */
+#brandsPage {
   width: 100%;
-  min-height: 60vh;
   box-sizing: border-box;
   overflow-x: hidden;
 }
 
-/* ── FIX: Animation stuck — reset on page activate ── */
-/* When the brands page becomes .active, force all brand cards
-   to run their entrance animation fresh every time.           */
-#brandsPage.active .brand-card,
-#brandsPage.active .brand-item,
-#brandsPage.active .brand-box,
-.brands-page.active .brand-card,
-.brands-page.active .brand-item {
-  animation: bz-brandReveal 0.44s cubic-bezier(0.22,1,0.36,1) both !important;
-  opacity: 1 !important;                /* Force visible — overrides stuck state */
+/* ── CORE FIX: Invisible card bug ──
+   animation fill-mode "both" keeps cards at opacity:0
+   when navigating back. Force them visible always.     */
+#brandsPage .brand-card,
+#brandsPage .brand-item,
+#brandsPage .brand-box {
+  opacity: 1 !important;
   visibility: visible !important;
+  animation: bz-brandReveal 0.42s cubic-bezier(0.22,1,0.36,1) both !important;
 }
 
-/* ══════════════════════════════════════════
-   BRANDS PAGE — PREMIUM HEADER BANNER
-══════════════════════════════════════════ */
-.brands-page-header,
-.explore-brands-header,
-#brandsPage .page-header,
-#brandsPage > .professional-header {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
-  border-radius: var(--radius);
-  padding: 22px 20px 18px;
-  margin-bottom: 20px;
-  position: relative;
-  overflow: hidden;
-  animation: bz-headerSlide 0.5s cubic-bezier(0.22,1,0.36,1) both;
-}
-
-.brands-page-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg,
-    transparent 30%,
-    rgba(255,255,255,0.12) 50%,
-    transparent 70%);
-  animation: bz-brandShimmer 3s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.brands-page-header::after {
-  content: '🏷️';
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 52px;
-  opacity: 0.18;
-  animation: bz-tagFloat 3s ease-in-out infinite;
-}
-
-.brands-page-title {
-  color: #fff;
-  font-size: 22px;
-  font-weight: 800;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.3px;
-}
-
-.brands-page-subtitle {
-  color: rgba(255,255,255,0.82);
-  font-size: 13px;
-  margin: 0;
-}
-
-/* Stats row below header */
-.brands-stats-row {
-  display: flex;
-  gap: 0;
-  background: rgba(255,255,255,0.13);
-  border-radius: 10px;
-  margin-top: 14px;
-  overflow: hidden;
-}
-
-.brands-stat {
-  flex: 1;
-  padding: 10px 6px;
-  text-align: center;
-  border-right: 1px solid rgba(255,255,255,0.15);
-  animation: bz-countUp 0.5s 0.25s ease both;
-}
-
-.brands-stat:last-child {
-  border-right: none;
-}
-
-.brands-stat-num {
-  font-size: 18px;
-  font-weight: 800;
-  color: #fff;
-  display: block;
-  line-height: 1;
-}
-
-.brands-stat-label {
-  font-size: 10px;
-  color: rgba(255,255,255,0.75);
-  font-weight: 500;
-  margin-top: 2px;
-}
-
-/* ══════════════════════════════════════════
-   SEARCH / FILTER BAR
-══════════════════════════════════════════ */
-.brands-search-bar,
-.brands-filter-row,
-#brandsPage .search-bar,
-#brandsPage .filter-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.brands-search-input {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 14px 10px 38px;
-  border-radius: 30px;
-  border: 1.5px solid var(--border);
-  font-size: 14px;
-  background: var(--card);
-  color: var(--ink);
-  font-family: inherit;
-  outline: none;
-  transition: all 0.25s ease;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2394a3b8' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 12px center;
-}
-
-.brands-search-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-/* ══════════════════════════════════════════
-   CATEGORY FILTER PILLS (A-Z / by industry)
-══════════════════════════════════════════ */
-.brands-filter-pills {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-}
-.brands-filter-pills::-webkit-scrollbar { display: none; }
-
-.brand-filter-pill {
-  flex-shrink: 0;
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1.5px solid var(--border);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--ink-2);
-  background: var(--card);
-  transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
-  touch-action: manipulation;
-}
-
-.brand-filter-pill:hover,
-.brand-filter-pill.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37,99,235,0.25);
-}
-
-/* ══════════════════════════════════════════
-   BRANDS GRID — PREMIUM LAYOUT
-══════════════════════════════════════════ */
+/* ── BRANDS GRID ── */
+#brandsPage .brands-grid,
+#brandsPage .brand-grid,
 .brands-grid,
-.brand-grid,
-#brandsPage .brands-container,
-#brandsPage .grid {
+.brand-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 14px;
   width: 100%;
   box-sizing: border-box;
-  /* FIX: Ensure grid never collapses to 0 height */
-  min-height: 100px;
+  min-height: 80px;
 }
 
 @media (max-width: 480px) {
+  #brandsPage .brands-grid,
+  #brandsPage .brand-grid,
   .brands-grid,
-  .brand-grid,
-  #brandsPage .brands-container,
-  #brandsPage .grid {
+  .brand-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
 }
 
-@media (max-width: 340px) {
-  .brands-grid,
-  .brand-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-}
-
-/* ══════════════════════════════════════════
-   BRAND CARD — PREMIUM GLASSMORPHISM DESIGN
-══════════════════════════════════════════ */
+/* ── BRAND CARD — Premium design ── */
 .brand-card,
 .brand-item,
 .brand-box {
@@ -6033,42 +5549,31 @@ object {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition:
-    transform 0.28s cubic-bezier(0.22,1,0.36,1),
-    box-shadow 0.28s ease,
-    border-color 0.2s ease;
-  /* FIX: Explicit opacity + visibility — overrides any stuck animation state */
-  opacity: 1 !important;
-  visibility: visible !important;
-  animation: bz-brandReveal 0.44s cubic-bezier(0.22,1,0.36,1) both;
-  touch-action: manipulation;
+  transition: transform 0.28s cubic-bezier(0.22,1,0.36,1),
+              box-shadow 0.28s ease,
+              border-color 0.2s ease;
   box-sizing: border-box;
   width: 100%;
+  touch-action: manipulation;
 }
 
-/* Shimmer overlay on the card */
+/* Shimmer line on hover */
 .brand-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    105deg,
+  background: linear-gradient(105deg,
     transparent 30%,
     rgba(255,255,255,0.18) 50%,
-    transparent 70%
-  );
+    transparent 70%);
   background-size: 400px 100%;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s;
   pointer-events: none;
 }
+.brand-card:hover::before { opacity: 1; animation: bz-brandShimmer 0.75s ease; }
 
-.brand-card:hover::before {
-  opacity: 1;
-  animation: bz-brandShimmer 0.8s ease;
-}
-
-/* Accent top border on hover */
+/* Top accent bar on hover */
 .brand-card::after {
   content: '';
   position: absolute;
@@ -6080,10 +5585,7 @@ object {
   transform-origin: left;
   transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
 }
-
-.brand-card:hover::after {
-  transform: scaleX(1);
-}
+.brand-card:hover::after { transform: scaleX(1); }
 
 .brand-card:hover {
   transform: translateY(-6px) scale(1.02);
@@ -6091,28 +5593,26 @@ object {
   border-color: var(--accent);
 }
 
-/* Staggered entrance animations */
-.brand-card:nth-child(1)  { animation-delay: 0.04s; }
-.brand-card:nth-child(2)  { animation-delay: 0.08s; }
-.brand-card:nth-child(3)  { animation-delay: 0.12s; }
-.brand-card:nth-child(4)  { animation-delay: 0.16s; }
-.brand-card:nth-child(5)  { animation-delay: 0.20s; }
-.brand-card:nth-child(6)  { animation-delay: 0.24s; }
-.brand-card:nth-child(7)  { animation-delay: 0.28s; }
-.brand-card:nth-child(8)  { animation-delay: 0.32s; }
-.brand-card:nth-child(9)  { animation-delay: 0.36s; }
-.brand-card:nth-child(10) { animation-delay: 0.40s; }
-.brand-card:nth-child(11) { animation-delay: 0.44s; }
-.brand-card:nth-child(12) { animation-delay: 0.48s; }
-.brand-card:nth-child(n+13) { animation-delay: 0.50s; }
+/* Staggered entrance delays */
+.brand-card:nth-child(1)  { animation-delay: 0.04s !important; }
+.brand-card:nth-child(2)  { animation-delay: 0.08s !important; }
+.brand-card:nth-child(3)  { animation-delay: 0.12s !important; }
+.brand-card:nth-child(4)  { animation-delay: 0.16s !important; }
+.brand-card:nth-child(5)  { animation-delay: 0.20s !important; }
+.brand-card:nth-child(6)  { animation-delay: 0.24s !important; }
+.brand-card:nth-child(7)  { animation-delay: 0.28s !important; }
+.brand-card:nth-child(8)  { animation-delay: 0.32s !important; }
+.brand-card:nth-child(9)  { animation-delay: 0.36s !important; }
+.brand-card:nth-child(10) { animation-delay: 0.40s !important; }
+.brand-card:nth-child(n+11) { animation-delay: 0.44s !important; }
 
-/* ── Brand Logo Container ── */
+/* ── Brand Logo Box ── */
 .brand-logo-wrapper,
 .brand-logo-container {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   border: 1.5px solid var(--border);
   display: flex;
   align-items: center;
@@ -6122,12 +5622,10 @@ object {
   transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
   flex-shrink: 0;
 }
-
 [data-theme="dark"] .brand-logo-wrapper,
 [data-theme="dark"] .brand-logo-container {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
 }
-
 .brand-card:hover .brand-logo-wrapper,
 .brand-card:hover .brand-logo-container {
   border-color: var(--accent);
@@ -6136,29 +5634,29 @@ object {
 }
 
 /* ── Brand Logo Image ── */
-.brand-logo,
-.brand-logo-img,
 .brand-logo-wrapper img,
-.brand-logo-container img {
+.brand-logo-container img,
+.brand-logo-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   padding: 8px;
+  box-sizing: border-box;
   transition: transform 0.3s ease;
 }
-
-.brand-card:hover .brand-logo,
+.brand-card:hover .brand-logo-wrapper img,
+.brand-card:hover .brand-logo-container img,
 .brand-card:hover .brand-logo-img {
   transform: scale(1.1);
 }
 
-/* ── Brand Logo Fallback (letter avatar) ── */
+/* ── Letter Avatar fallback ── */
 .brand-logo-placeholder,
 .brand-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 100%);
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent), #3b82f6);
   color: #fff;
   font-size: 26px;
   font-weight: 800;
@@ -6167,10 +5665,9 @@ object {
   justify-content: center;
   margin-bottom: 12px;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.28);
   transition: transform 0.3s ease;
 }
-
 .brand-card:hover .brand-logo-placeholder,
 .brand-card:hover .brand-avatar {
   transform: scale(1.08) rotate(-2deg);
@@ -6178,9 +5675,7 @@ object {
 
 /* ── Brand Name ── */
 .brand-name,
-.brand-title,
-.brand-card h3,
-.brand-card h4 {
+.brand-title {
   font-size: 13px;
   font-weight: 700;
   text-align: center;
@@ -6193,7 +5688,7 @@ object {
   max-width: 100%;
 }
 
-/* ── Brand Product Count ── */
+/* ── Product count text ── */
 .brand-product-count,
 .brand-count,
 .brand-meta {
@@ -6204,10 +5699,8 @@ object {
   font-weight: 500;
 }
 
-/* ── Follow Button ── */
-.brand-follow-btn,
-.brand-btn,
-.follow-btn {
+/* ── Follow Button (brand-specific only) ── */
+.brand-follow-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6225,51 +5718,42 @@ object {
   white-space: nowrap;
   font-family: inherit;
 }
-
-.brand-follow-btn:hover,
-.brand-btn:hover {
+.brand-follow-btn:hover {
   background: var(--accent);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+  box-shadow: 0 4px 12px rgba(37,99,235,0.28);
 }
-
-.brand-follow-btn.following,
-.brand-btn.following,
-.follow-btn.following {
+.brand-follow-btn.following {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
   animation: bz-followPop 0.4s cubic-bezier(0.22,1,0.36,1);
 }
-
 .brand-follow-btn.following:hover {
   background: #dc2626;
   border-color: #dc2626;
 }
 
-/* ── Verified Badge on Card ── */
+/* ── Verified badge ── */
 .brand-verified-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 10px; right: 10px;
   background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;
   font-size: 9px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 20px;
-  letter-spacing: 0.3px;
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-/* ── Popular/Hot Badge ── */
+/* ── Hot badge ── */
 .brand-hot-badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 10px; left: 10px;
   background: linear-gradient(135deg, #ff6b35, #f7931e);
   color: #fff;
   font-size: 9px;
@@ -6279,237 +5763,118 @@ object {
   animation: bz-tagFloat 2.5s ease-in-out infinite;
 }
 
-/* ══════════════════════════════════════════
-   FEATURED / HERO BRAND CARD (span 2 cols)
-══════════════════════════════════════════ */
-.brand-card.featured,
-.brand-featured {
-  grid-column: span 2;
-  flex-direction: row;
-  padding: 20px;
-  gap: 16px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  border: none;
-  color: #fff;
-  animation: bz-brandReveal 0.5s cubic-bezier(0.22,1,0.36,1) both;
+/* ── Brands page header banner ── */
+.brands-page-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  border-radius: var(--radius);
+  padding: 22px 20px 18px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  animation: bz-headerSlide 0.45s cubic-bezier(0.22,1,0.36,1) both;
 }
-
-.brand-card.featured .brand-logo-wrapper {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  background: rgba(255,255,255,0.15);
-  border-color: rgba(255,255,255,0.3);
-}
-
-.brand-card.featured .brand-name {
-  color: #fff;
-  font-size: 16px;
-  text-align: left;
-}
-
-.brand-card.featured .brand-product-count {
-  color: rgba(255,255,255,0.75);
-  text-align: left;
-}
-
-.brand-card.featured .brand-follow-btn {
-  border-color: rgba(255,255,255,0.6);
-  color: #fff;
-}
-
-.brand-card.featured .brand-follow-btn:hover,
-.brand-card.featured .brand-follow-btn.following {
-  background: rgba(255,255,255,0.25);
-  border-color: #fff;
-}
-
-/* ══════════════════════════════════════════
-   SECTION DIVIDERS (A-Z / Category headers)
-══════════════════════════════════════════ */
-.brands-section-label,
-.brand-section-header {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 6px 10px;
-  background: linear-gradient(90deg, var(--border) 0%, transparent 100%);
-  border-radius: 4px;
-  margin: 16px 0 8px;
-  grid-column: 1 / -1;
-}
-
-/* ══════════════════════════════════════════
-   EMPTY STATE — if no brands found
-══════════════════════════════════════════ */
-.brands-empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-  animation: bz-brandReveal 0.4s ease both;
-}
-
-.brands-empty-state svg {
-  opacity: 0.4;
-  margin-bottom: 16px;
-}
-
-.brands-empty-state h3 {
-  font-size: 18px;
-  color: var(--ink);
-  margin-bottom: 8px;
-}
-
-/* ══════════════════════════════════════════
-   SKELETON LOADERS — while brands load
-══════════════════════════════════════════ */
-.brand-card.skeleton {
-  animation: none !important;
-  opacity: 1 !important;
+.brands-page-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%,
+    rgba(255,255,255,0.12) 50%, transparent 70%);
+  background-size: 400px 100%;
+  animation: bz-brandShimmer 3s ease-in-out infinite;
   pointer-events: none;
 }
-
-.brand-card.skeleton .brand-logo-wrapper,
-.brand-card.skeleton .brand-logo-placeholder {
-  background: linear-gradient(90deg,
-    var(--border) 25%, rgba(255,255,255,0.5) 50%, var(--border) 75%);
-  background-size: 400px 100%;
-  animation: bz-brandShimmer 1.4s ease-in-out infinite !important;
+.brands-page-header::after {
+  content: '🏷️';
+  position: absolute;
+  right: 20px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 50px;
+  opacity: 0.2;
+  animation: bz-tagFloat 3s ease-in-out infinite;
+}
+.brands-page-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.3px;
+}
+.brands-page-subtitle {
+  color: rgba(255,255,255,0.8);
+  font-size: 13px;
+  margin: 0;
 }
 
+/* ── Category filter pills ── */
+.brands-filter-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+  scrollbar-width: none;
+}
+.brands-filter-pills::-webkit-scrollbar { display: none; }
+
+.brand-filter-pill {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink-2);
+  background: var(--card);
+  transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
+  touch-action: manipulation;
+  font-family: inherit;
+}
+.brand-filter-pill:hover,
+.brand-filter-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+}
+
+/* ── Skeleton loaders ── */
+.brand-card.skeleton { animation: none !important; pointer-events: none; }
+.brand-card.skeleton .brand-logo-wrapper,
+.brand-card.skeleton .brand-logo-placeholder,
 .brand-card.skeleton .brand-name,
 .brand-card.skeleton .brand-product-count,
 .brand-card.skeleton .brand-follow-btn {
   background: linear-gradient(90deg,
-    var(--border) 25%, rgba(255,255,255,0.5) 50%, var(--border) 75%);
+    var(--border) 25%, rgba(255,255,255,0.55) 50%, var(--border) 75%);
   background-size: 400px 100%;
   animation: bz-brandShimmer 1.4s ease-in-out infinite !important;
-  border-radius: 6px;
   color: transparent !important;
   border-color: transparent !important;
+  border-radius: 6px;
 }
 
-[data-theme="dark"] .brand-card.skeleton .brand-logo-wrapper,
-[data-theme="dark"] .brand-card.skeleton .brand-name,
-[data-theme="dark"] .brand-card.skeleton .brand-product-count {
-  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-  background-size: 400px 100%;
-}
-
-/* ══════════════════════════════════════════
-   BOTTOM STICKY REFRESH BAR
-   (The blue bar you see at page bottom)
-══════════════════════════════════════════ */
-.brands-sticky-bar,
-.explore-brands-bar,
-#brandsStickyBar {
-  position: fixed;
-  bottom: 68px;              /* Above bottom nav */
-  left: 0;
-  right: 0;
-  background: linear-gradient(90deg, #1e3a8a, #2563eb);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  z-index: 200;
-  box-shadow: 0 -4px 20px rgba(37,99,235,0.3);
-  animation: bz-headerSlide 0.4s cubic-bezier(0.22,1,0.36,1) both;
-}
-
-.brands-sticky-icon {
-  font-size: 22px;
-  animation: bz-tagFloat 2.5s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.brands-sticky-text {
-  flex: 1;
-}
-
-.brands-sticky-title {
-  font-size: 14px;
-  font-weight: 700;
-  display: block;
-}
-
-.brands-sticky-sub {
-  font-size: 11px;
-  opacity: 0.8;
-  display: block;
-}
-
-.brands-sticky-refresh {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.25s ease;
-  flex-shrink: 0;
-  touch-action: manipulation;
-}
-
-.brands-sticky-refresh:hover,
-.brands-sticky-refresh:active {
-  background: rgba(255,255,255,0.35);
-  transform: rotate(180deg);
-}
-
-/* ══════════════════════════════════════════
-   DARK MODE OVERRIDES
-══════════════════════════════════════════ */
-[data-theme="dark"] .brand-card {
-  background: var(--card);
-  border-color: var(--border);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-}
-
-[data-theme="dark"] .brand-card:hover {
-  box-shadow: 0 12px 32px rgba(37,99,235,0.25);
-}
-
-[data-theme="dark"] .brand-logo-wrapper {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-}
-
-[data-theme="dark"] .brand-filter-pill {
-  background: #1e293b;
-  color: var(--ink);
-}
-
-[data-theme="dark"] .brands-search-input {
-  background: var(--card);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 12px center;
-}
-
-/* ══════════════════════════════════════════
-   REDUCED MOTION RESPECT
-══════════════════════════════════════════ */
+/* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .brand-card,
-  .brands-page-header,
-  .brands-sticky-bar,
+  .brand-follow-btn,
   .brand-filter-pill,
-  .brand-follow-btn {
+  .brands-page-header {
     animation: none !important;
     transition: none !important;
   }
-  .brand-card {
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: none !important;
-  }
+  .brand-card { opacity: 1 !important; visibility: visible !important; }
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .brand-card {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .brand-card:hover {
+  box-shadow: 0 12px 32px rgba(37,99,235,0.25);
+}
+[data-theme="dark"] .brand-logo-wrapper {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
 }
