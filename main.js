@@ -450,8 +450,49 @@
       const results = searchProducts(query);
       const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
+
+      // ── Brand results first (always show if brands match) ──
+      var allBrandsQ = window.__bzBrandsCache || [];
+      var qL2 = query.toLowerCase();
+      var mBrands = allBrandsQ.length ? allBrandsQ.filter(function(b){
+        return (b.name||'').toLowerCase().indexOf(qL2) !== -1 ||
+               (b.description||'').toLowerCase().indexOf(qL2) !== -1;
+      }).slice(0, 5) : [];
+
+      if (mBrands.length) {
+        var BT2 = window.__BZ_BLUE_TICK || '';
+        var BCOLS2 = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
+        // Brand section header
+        var bhdr = document.createElement('div');
+        bhdr.style.cssText = 'padding:8px 12px 4px;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;';
+        bhdr.textContent = '🏷️  Brands';
+        suggestionsContainer.appendChild(bhdr);
+        // Horizontal brand icons strip
+        var brandStrip = document.createElement('div');
+        brandStrip.style.cssText = 'display:flex;gap:14px;padding:6px 12px 12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f1f5f9;';
+        mBrands.forEach(function(b) {
+          var bc2 = BCOLS2[(b.name||'A').charCodeAt(0) % BCOLS2.length];
+          var ini2 = (b.name||'B').slice(0,1).toUpperCase();
+          var lInner2 = b.logo
+            ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
+            : '<span style="font-weight:800;font-size:18px;color:#fff;">'+ini2+'</span>';
+          var brandItem = document.createElement('div');
+          brandItem.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;width:64px;';
+          brandItem.innerHTML = '<div style="width:54px;height:54px;border-radius:13px;background:'+bc2
+            +';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12);border:2px solid #fff;">'+lInner2+'</div>'
+            +'<span style="font-size:10px;font-weight:700;text-align:center;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:2px;">'
+            +(b.name||'')+(b.blueTickAdmin ? BT2 : '')+'</span>'
+            +(b.products&&b.products.length ? '<span style="font-size:9px;color:#94a3b8;">'+b.products.length+' items</span>' : '');
+          brandItem.addEventListener('click', function(){ closeSearchPanel(); showBrandProfile(b.id, b.name); });
+          brandStrip.appendChild(brandItem);
+        });
+        suggestionsContainer.appendChild(brandStrip);
+      }
+
       if (topThree.length === 0) {
-        suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted);padding:12px;">No matching products found</div>';
+        if (!mBrands.length) {
+          suggestionsContainer.innerHTML = '<div class="search-suggestion" style="justify-content:center;color:var(--muted);padding:12px;">No matching products found</div>';
+        }
         return;
       }
       const imageRow = document.createElement('div');
@@ -491,32 +532,6 @@
         viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
         viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
-      }
-      // Brand suggestions
-      var allBrandsQ = window.__bzBrandsCache || [];
-      if (allBrandsQ.length && query.length >= 1) {
-        var qL = query.toLowerCase();
-        var mBrands = allBrandsQ.filter(function(b){ return (b.name||'').toLowerCase().indexOf(qL) !== -1; }).slice(0, 3);
-        if (mBrands.length) {
-          var hdr = document.createElement('div');
-          hdr.style.cssText = 'padding:5px 12px 3px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;border-top:1px solid #f1f5f9;';
-          hdr.textContent = '🏷️  Brands';
-          suggestionsContainer.appendChild(hdr);
-          var BCOLS2 = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-          mBrands.forEach(function(b) {
-            var bc2 = BCOLS2[(b.name||'A').charCodeAt(0) % BCOLS2.length];
-            var ini2 = (b.name||'B').slice(0,2).toUpperCase();
-            var bLogoH = b.logo ? '<img src="'+b.logo+'" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">'
-              : '<div style="width:38px;height:38px;border-radius:8px;background:'+bc2+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">'+ini2+'</div>';
-            var bRow = document.createElement('div');
-            bRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;transition:background .15s;';
-            bRow.innerHTML = bLogoH+'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">'+(b.name||'')+(b.blueTickAdmin&&window.__BZ_BLUE_TICK?'&nbsp;'+window.__BZ_BLUE_TICK:'')+'</div><div style="font-size:11px;color:#64748b;">📦 '+(b.products?b.products.length:0)+' products</div></div><span style="font-size:10px;background:#eff6ff;color:#2563eb;padding:2px 7px;border-radius:10px;font-weight:700;">Brand</span>';
-            bRow.addEventListener('mouseenter', function(){ this.style.background='#f8fafc'; });
-            bRow.addEventListener('mouseleave', function(){ this.style.background=''; });
-            bRow.addEventListener('click', function(){ closeSearchPanel(); showBrandProfile(b.id, b.name); });
-            suggestionsContainer.appendChild(bRow);
-          });
-        }
       }
     }
 
@@ -6928,14 +6943,23 @@
 
     // ══════ Follow / Unfollow Brand ══════
     function toggleBrandFollow(brandId, brandName, btnEl) {
-      if (!currentUser) { showToast('Please login to follow brands', 'error'); return; }
-      var uid = currentUser.uid;
-      var followRef = ref(database, 'brandFollowers/' + brandId + '/' + uid);
+      // Always get fresh currentUser from firebase auth
+      var fb = window.firebase;
+      var _cu = (fb && fb.auth && fb.auth.currentUser) ? fb.auth.currentUser : currentUser;
+      if (!_cu) { showToast('Please login to follow brands', 'error'); return; }
+      var uid = _cu.uid;
+      if (!fb || !fb.database) { showToast('Connection error. Try again.', 'error'); return; }
+      var _db  = fb.database;
+      var _ref = fb.ref;
+      var _get = fb.get;
+      var _set = fb.set;
+      var _rem = fb.remove;
+      var followRef = _ref(_db, 'brandFollowers/' + brandId + '/' + uid);
       var btn = btnEl || document.getElementById('brandFollowBtn');
 
-      get(followRef).then(function(snap) {
+      _get(followRef).then(function(snap) {
         if (snap.exists()) {
-          return remove(followRef).then(function() {
+          return _rem(followRef).then(function() {
             if (btn) { btn.textContent = '+ Follow'; btn.style.background = '#2563eb'; btn.style.color = '#fff'; }
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') - 1);
@@ -6945,18 +6969,17 @@
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
           });
         } else {
-          return set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
+          return _set(followRef, { userId: uid, brandId: brandId, brandName: brandName, followedAt: Date.now() }).then(function() {
             if (btn) { btn.textContent = '✓ Following'; btn.style.background = '#f1f5f9'; btn.style.color = '#64748b'; }
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = parseInt(cnt.textContent || '0') + 1;
             showToast('Following ' + brandName + '! 🎉', 'success');
-            // Update sticky button too
             var sb = document.getElementById('bpStickyFollowBtn');
             if (sb && sb !== btn) { sb.textContent = '✓ Following'; sb.style.background = '#f1f5f9'; sb.style.color = '#64748b'; }
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
           });
         }
-      }).catch(function(err) { showToast('Error: ' + err.message, 'error'); });
+      }).catch(function(err) { showToast('Error: ' + (err.message || 'Try again'), 'error'); console.error('toggleBrandFollow:', err); });
     }
 
     // ══════ Following Products (Home Page) ══════
@@ -7018,21 +7041,29 @@
       var grid = document.getElementById('homePopularBrandsGrid');
       if (!sec || !grid) return;
       var BT = window.__BZ_BLUE_TICK || '';
-      var list = (_siteBrandsAll || []).slice(0, 8);
+      var list = (_siteBrandsAll || []).slice(0, 10);
       if (!list.length) { sec.style.display = 'none'; return; }
       sec.style.display = 'block';
+      // Ensure grid is horizontal
+      grid.style.display = 'flex';
+      grid.style.flexDirection = 'row';
+      grid.style.flexWrap = 'nowrap';
+      grid.style.overflowX = 'auto';
       grid.innerHTML = list.map(function(b) {
         var color = _brandColor(b.name);
         var initial = (b.name || 'B').slice(0,1).toUpperCase();
-        var logo = b.logo
-          ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\';this.nextElementSibling&&(this.nextElementSibling.style.display=\'flex\')">'
-            + '<span style="display:none;font-weight:800;font-size:18px;color:#fff;align-items:center;justify-content:center;">' + initial + '</span>'
-          : '<span style="font-weight:800;font-size:18px;color:#fff;">' + initial + '</span>';
-        var prodCount = Array.isArray(b.products) ? b.products.length : (b.productCount || 0);
-        return '<div onclick="showPage(\'brandsPage\');setTimeout(function(){loadBrandsPage();},80);" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;min-width:72px;max-width:80px;">'
-          + '<div style="width:60px;height:60px;border-radius:14px;background:' + color + ';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.13);border:2.5px solid #fff;">' + logo + '</div>'
-          + '<div style="font-size:10.5px;font-weight:700;color:var(--text,#0f172a);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:2px;">' + (b.name||'') + (b.blueTickAdmin ? BT : '') + '</div>'
-          + (prodCount ? '<div style="font-size:9.5px;color:var(--muted,#64748b);">' + prodCount + ' items</div>' : '')
+        var logoInner = b.logo
+          ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:14px;" onerror="this.style.display=\'none\'">'
+          : '<span style="font-weight:800;font-size:20px;color:#fff;">' + initial + '</span>';
+        var prodCount = b.productCount || (Array.isArray(b.products) ? b.products.length : 0);
+        return '<div onclick="showBrandProfile(\'' + b.id + '\',\'' + (b.name||'').replace(/'/g,'') + '\')" '
+          + 'style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;width:72px;">'
+          + '<div style="width:60px;height:60px;border-radius:14px;background:' + color + ';display:flex;align-items:center;'
+          + 'justify-content:center;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,.12);border:2.5px solid #fff;flex-shrink:0;">'
+          + logoInner + '</div>'
+          + '<div style="font-size:10.5px;font-weight:700;color:var(--text,#0f172a);text-align:center;width:72px;'
+          + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (b.name||'') + (b.blueTickAdmin ? BT : '') + '</div>'
+          + (prodCount ? '<div style="font-size:9px;color:var(--muted,#64748b);margin-top:-3px;">' + prodCount + ' items</div>' : '')
           + '</div>';
       }).join('');
     }
