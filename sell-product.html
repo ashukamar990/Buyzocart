@@ -89,6 +89,19 @@
         .sidebar-nav a i { width: 18px; text-align: center; font-size: 0.9rem; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid #1e293b; }
         @keyframes fadeInUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        
+        @keyframes anim-up-kf {
+            from { opacity:0; transform:translateY(22px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .anim-up {
+            opacity:0;
+            animation: anim-up-kf .45s cubic-bezier(.4,0,.2,1) both;
+        }
+        @keyframes popIn {
+            from { opacity:0; transform:scale(.88); }
+            to   { opacity:1; transform:scale(1); }
+        }
         @keyframes popIn { from { opacity:0; transform:scale(.93); } to { opacity:1; transform:scale(1); } }
         @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .anim-up { animation: fadeInUp .35s ease both; }
@@ -1285,10 +1298,16 @@
             if (!q) {
                 filtered = ALL_BANKS; // Show all when empty
             } else {
+                // Sort: exact match → starts with → contains → rest
                 var exact    = ALL_BANKS.filter(function(b){ return b.toLowerCase() === q; });
-                var starts   = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) === 0 && exact.indexOf(b) === -1; });
-                var contains = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) > 0 && starts.indexOf(b) === -1 && exact.indexOf(b) === -1; });
-                filtered = exact.concat(starts).concat(contains);
+                var starts   = ALL_BANKS.filter(function(b){ return b.toLowerCase().startsWith(q) && exact.indexOf(b) === -1; });
+                var contains = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) > 0 && exact.indexOf(b) === -1 && starts.indexOf(b) === -1; });
+                // Also include partial word matches (e.g. "hdfc" matches "HDFC Bank")
+                var words    = ALL_BANKS.filter(function(b){
+                    if (exact.indexOf(b)!==-1||starts.indexOf(b)!==-1||contains.indexOf(b)!==-1) return false;
+                    return b.toLowerCase().split(' ').some(function(w){ return w.startsWith(q); });
+                });
+                filtered = exact.concat(starts).concat(words).concat(contains);
             }
 
             if (!filtered.length) {
@@ -1333,42 +1352,76 @@
             document.querySelector('.sidebar-footer').style.display = 'none';
             document.getElementById('pageTitle').textContent = 'Become a Seller';
 
+            var steps = [
+                { n:'1', icon:'📝', color:'#f97316', title:'Fill Application Form',   desc:'Business name, phone number & bank details — takes 5 minutes.' },
+                { n:'2', icon:'🔍', color:'#2563eb', title:'Admin Review',            desc:'Our team verifies your details within 2–3 business days.' },
+                { n:'3', icon:'✅', color:'#7c3aed', title:'Get Approved',            desc:'Email confirmation sent. Seller dashboard unlocks instantly.' },
+                { n:'4', icon:'🚀', color:'#16a34a', title:'List Products & Earn',    desc:'Add products, manage orders, receive payments to your bank.' }
+            ];
+
             document.getElementById('contentArea').innerHTML =
-                '<div style="max-width:580px;margin:0 auto;padding:20px 0;">' +
-                    '<div style="text-align:center;margin-bottom:32px;">' +
-                        '<div style="width:72px;height:72px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px;">🛍️</div>' +
-                        '<h1 style="font-size:1.6rem;font-weight:800;color:#0f172a;margin-bottom:8px;">Start Selling on Buyzo Cart</h1>' +
-                        '<p style="color:#64748b;font-size:0.95rem;max-width:420px;margin:0 auto;">Reach thousands of customers across India. Setup takes just 5 minutes.</p>' +
+                '<div style="max-width:600px;margin:0 auto;padding:20px 0 40px;">' +
+
+                // ── Hero ──
+                '<div class="anim-up" style="text-align:center;margin-bottom:36px;animation-delay:.05s;">' +
+                    '<div style="width:88px;height:88px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;margin:0 auto 20px;box-shadow:0 8px 32px rgba(37,99,235,.3);animation:popIn .4s ease .1s both;">🛍️</div>' +
+                    '<h1 style="font-size:1.75rem;font-weight:900;background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;line-height:1.2;">Start Selling on<br>Buyzo Cart</h1>' +
+                    '<p style="color:#64748b;font-size:0.95rem;max-width:380px;margin:0 auto;line-height:1.6;">Reach thousands of customers across India. Free to join — no monthly fees.</p>' +
+                '</div>' +
+
+                // ── Stats strip ──
+                '<div class="anim-up" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;animation-delay:.1s;">' +
+                    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);">' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#2563eb;">0%</div>' +
+                        '<div style="font-size:11px;color:#64748b;font-weight:600;">Commission</div>' +
                     '</div>' +
-                    '<div class="card" style="margin-bottom:20px;">' +
-                        '<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>' +
-                        '<div class="card-body" style="padding:8px 20px;">' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f97316,#fb923c);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">1</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">📝 Fill Application Form</div><div style="font-size:0.82rem;color:#64748b;">Enter your business name, category, phone number and bank details.</div></div>' +
-                            '</div>' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">2</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">🔍 Admin Review</div><div style="font-size:0.82rem;color:#64748b;">Our team verifies your details. This takes 2–3 business days.</div></div>' +
-                            '</div>' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">3</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">✅ Get Approved</div><div style="font-size:0.82rem;color:#64748b;">You will receive an email once approved. Your seller dashboard will unlock instantly.</div></div>' +
-                            '</div>' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#4ade80);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">4</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">🚀 List Products & Earn</div><div style="font-size:0.82rem;color:#64748b;">Add your products, manage orders and receive payments directly to your bank account.</div></div>' +
-                            '</div>' +
-                        '</div>' +
+                    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);">' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#16a34a;">24h</div>' +
+                        '<div style="font-size:11px;color:#64748b;font-weight:600;">Setup Time</div>' +
                     '</div>' +
-                    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center;margin-bottom:20px;">' +
-                        '<div style="font-size:1.4rem;">🔒</div>' +
-                        '<div style="font-size:0.85rem;color:#15803d;"><strong>100% Secure.</strong> Your bank details are encrypted and only used for payment transfers.</div>' +
+                    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);">' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#7c3aed;">∞</div>' +
+                        '<div style="font-size:11px;color:#64748b;font-weight:600;">Products</div>' +
                     '</div>' +
-                    '<div style="text-align:center;">' +
-                        '<button onclick="showApplicationForm(1)" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:14px 36px;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,.35);">Get Started → Fill Form</button>' +
-                        '<div style="margin-top:12px;font-size:0.8rem;color:#94a3b8;">Takes less than 5 minutes · Free to join</div>' +
+                '</div>' +
+
+                // ── Steps card ──
+                '<div class="card anim-up" style="margin-bottom:20px;animation-delay:.15s;">' +
+                    '<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>' +
+                    '<div class="card-body" style="padding:4px 20px 8px;">' +
+                    steps.map(function(s, i) {
+                        return '<div class="anim-up" style="display:flex;gap:16px;padding:16px 0;'+(i<3?'border-bottom:1px solid var(--border);':'')+';align-items:flex-start;animation-delay:'+(0.18+i*0.08)+'s;">' +
+                            '<div style="width:42px;height:42px;border-radius:12px;background:'+s.color+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,.15);">'+s.icon+'</div>' +
+                            '<div style="flex:1;min-width:0;">' +
+                                '<div style="font-weight:800;font-size:0.9rem;margin-bottom:3px;display:flex;align-items:center;gap:8px;">' +
+                                    '<span style="background:#f1f5f9;color:#64748b;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;">Step '+s.n+'</span>'+s.title+
+                                '</div>' +
+                                '<div style="font-size:0.82rem;color:#64748b;line-height:1.5;">'+s.desc+'</div>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('') +
                     '</div>' +
+                '</div>' +
+
+                // ── Trust strip ──
+                '<div class="anim-up" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:28px;animation-delay:.5s;">' +
+                    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;">' +
+                        '<span style="font-size:1.2rem;">🔒</span>' +
+                        '<div style="font-size:12px;color:#15803d;font-weight:600;line-height:1.4;min-width:0;">Bank details encrypted & secure</div>' +
+                    '</div>' +
+                    '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;">' +
+                        '<span style="font-size:1.2rem;">💸</span>' +
+                        '<div style="font-size:12px;color:#1e40af;font-weight:600;line-height:1.4;min-width:0;">Direct payment to your bank</div>' +
+                    '</div>' +
+                '</div>' +
+
+                // ── CTA ──
+                '<div class="anim-up" style="text-align:center;animation-delay:.55s;">' +
+                    '<button onclick="showApplicationForm(1)" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:16px 44px;border-radius:16px;font-size:1.05rem;font-weight:800;cursor:pointer;box-shadow:0 6px 24px rgba(37,99,235,.4);letter-spacing:.01em;transition:transform .15s;width:100%;max-width:340px;">' +
+                        '🚀 Get Started — Fill Form' +
+                    '</button>' +
+                    '<div style="margin-top:12px;font-size:0.78rem;color:#94a3b8;">Free to join · Takes less than 5 minutes · No hidden charges</div>' +
+                '</div>' +
                 '</div>';
         }
 
@@ -1384,20 +1437,30 @@
         }
 
         function _stepBar(current) {
-            var steps = ['Business Info','Bank Details','Review & Submit'];
-            return '<div style="display:flex;align-items:center;margin-bottom:28px;">' +
-                steps.map(function(label, i) {
+            var steps = [
+                { label:'Business Info', short:'Info' },
+                { label:'Bank Details',  short:'Bank' },
+                { label:'Review',        short:'Review' }
+            ];
+            // Mobile: show number + short label; Desktop: full label
+            return '<div style="display:flex;align-items:center;margin-bottom:28px;gap:0;overflow:hidden;">' +
+                steps.map(function(s, i) {
                     var n = i + 1;
                     var done = n < current, active = n === current;
-                    var circStyle = done
-                        ? 'background:#22c55e;border-color:#22c55e;color:#fff;'
-                        : active ? 'background:#2563eb;border-color:#2563eb;color:#fff;'
-                        : 'background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8;';
-                    var labelStyle = done ? 'color:#22c55e;' : active ? 'color:#2563eb;' : 'color:#94a3b8;';
-                    var circle = '<div style="width:32px;height:32px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;'+circStyle+'">'+(done?'✓':n)+'</div>';
-                    var lbl = '<span style="font-size:0.75rem;font-weight:700;margin-left:8px;white-space:nowrap;'+labelStyle+'">'+label+'</span>';
-                    var line = n < steps.length ? '<div style="flex:1;height:2px;background:'+(done?'#22c55e':'#e2e8f0')+';margin:0 8px;min-width:20px;"></div>' : '';
-                    return '<div style="display:flex;align-items:center;flex:1;">'+circle+lbl+'</div>'+line;
+                    var circBg = done ? '#22c55e' : active ? '#2563eb' : '#f1f5f9';
+                    var circColor = (done || active) ? '#fff' : '#94a3b8';
+                    var circBorder = done ? '#22c55e' : active ? '#2563eb' : '#e2e8f0';
+                    var labelColor = done ? '#22c55e' : active ? '#2563eb' : '#94a3b8';
+                    var lineColor = done ? '#22c55e' : '#e2e8f0';
+                    var circle = '<div style="width:30px;height:30px;border-radius:50%;border:2px solid '+circBorder+';background:'+circBg+';color:'+circColor+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;">'+(done?'✓':n)+'</div>';
+                    var lbl = '<div style="margin-left:6px;min-width:0;">'
+                        + '<div style="font-size:11px;font-weight:700;color:'+labelColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;">'+s.label+'</div>'
+                        + (active ? '<div style="font-size:9px;color:#94a3b8;">Step '+n+' of 3</div>' : '')
+                        + '</div>';
+                    var line = n < steps.length
+                        ? '<div style="flex:1;height:2px;background:'+lineColor+';margin:0 4px;min-width:8px;"></div>'
+                        : '';
+                    return '<div style="display:flex;align-items:center;min-width:0;'+(n<steps.length?'flex:1;':'')+'">'+circle+lbl+'</div>'+line;
                 }).join('') +
             '</div>';
         }
@@ -1415,11 +1478,11 @@
             document.querySelector('.sidebar-footer').style.display = 'none';
             document.getElementById('pageTitle').textContent = 'Seller Application — Step ' + step + ' of 3';
 
-            var content = _stepBar(step);
+            var content = '<div class="anim-up" style="animation-delay:.02s;">' + _stepBar(step) + '</div>';
 
             if (step === 1) {
                 content +=
-                    '<div class="card"><div class="card-header"><h3 class="card-title">👤 Business Information</h3></div><div class="card-body">' +
+                    '<div class="card anim-up" style="animation-delay:.1s;"><div class="card-header"><h3 class="card-title">👤 Business Information</h3></div><div class="card-body">' +
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Full Name <span class="required">*</span></label>' +
@@ -1455,15 +1518,9 @@
                                 '<textarea class="form-control" id="appDesc" rows="2" placeholder="Describe what you sell...">'+((_appData.desc)||'')+'</textarea>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="form-group">' +
-                            '<label class="form-label">🆔 Seller ID <span class="required">*</span></label>' +
-                            '<input class="form-control" id="appSellerId" placeholder="e.g. rahul_shop, adidas524, sneaker_hub" value="'+((_appData.sellerId)||'')+'" oninput="onSellerIdInput(this.value)" style="border-color:var(--primary);font-family:monospace;font-weight:700;letter-spacing:0.5px;">' +
-                            '<div id="sellerIdPreview" class="sid-preview-box checking" style="display:none;"></div>' +
-                            '<div class="form-error" id="appSellerIdErr">⚠ Seller ID required (letters, numbers, - and _ only)</div>' +
-                            '<small class="text-muted" style="display:block;margin-top:4px;">Unique ID for your seller account. <strong>Cannot be changed later.</strong> Examples: rahul_shop · adidas524 · sneaker_hub_india</small>' +
-                        '</div>' +
+                        // Seller ID field removed
                     '</div></div>' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">' +
+                    '<div class="anim-up" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;animation-delay:.25s;">' +
                         '<button class="btn btn-outline" onclick="showSellerWelcome()">← Back</button>' +
                         '<button class="btn btn-primary" onclick="appNext(1)">Continue → Bank Details</button>' +
                     '</div>';
@@ -1476,7 +1533,7 @@
 
             } else if (step === 2) {
                 content +=
-                    '<div class="card"><div class="card-header"><h3 class="card-title">🏦 Bank Details <small class="text-muted" style="font-weight:400;">(for receiving payments)</small></h3></div><div class="card-body">' +
+                    '<div class="card anim-up" style="animation-delay:.1s;"><div class="card-header"><h3 class="card-title">🏦 Bank Details <small class="text-muted" style="font-weight:400;">(for receiving payments)</small></h3></div><div class="card-body">' +
                         '<div class="form-group bank-dropdown-wrapper">' +
                             '<label class="form-label">Bank Name <span class="required">*</span></label>' +
                             '<input class="form-control" id="appBankDisplay" placeholder="Search and select your bank..." autocomplete="off" value="'+((_appData.bank)||'')+'" onfocus="filterBankDropdown()" oninput="filterBankDropdown()" onclick="filterBankDropdown()">' +
@@ -1496,11 +1553,11 @@
                                 '<div class="form-error" id="appIFSCErr">⚠ Invalid IFSC (format: SBIN0001234)</div>' +
                             '</div>' +
                         '</div>' +
-                        '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:0.82rem;color:#1d4ed8;">' +
+                        '<div class="anim-up" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:0.82rem;color:#1d4ed8;animation-delay:.2s;">' +
                             '🔒 <strong>100% Secure.</strong> Bank details are encrypted and only used to transfer your earnings.' +
                         '</div>' +
                     '</div></div>' +
-                    '<div style="display:flex;justify-content:space-between;margin-top:4px;">' +
+                    '<div class="anim-up" style="display:flex;justify-content:space-between;margin-top:4px;animation-delay:.25s;">' +
                         '<button class="btn btn-outline" onclick="showApplicationForm(1)">← Edit Business Info</button>' +
                         '<button class="btn btn-primary" onclick="appNext(2)">Continue → Review</button>' +
                     '</div>';
@@ -1510,23 +1567,23 @@
             } else if (step === 3) {
                 var d = _appData;
                 content +=
-                    '<div class="card"><div class="card-header"><h3 class="card-title">📋 Review Your Application</h3><span style="font-size:0.8rem;color:#64748b;">Please verify all details before submitting</span></div><div class="card-body">' +
+                    '<div class="card anim-up" style="animation-delay:.1s;"><div class="card-header"><h3 class="card-title">📋 Review Your Application</h3><span style="font-size:0.8rem;color:#64748b;">Please verify all details before submitting</span></div><div class="card-body">' +
                         '<div style="display:grid;gap:0;">' +
                             _reviewRow('Full Name', d.name) +
                             _reviewRow('Phone', d.phone) +
                             _reviewRow('Business Name', d.biz) +
                             _reviewRow('Category', d.cat) +
-                            _reviewRow('🆔 Seller ID', d.sellerId || '—') +
+                            // Seller ID removed from review
                             (d.gst ? _reviewRow('GST Number', d.gst) : '') +
                             _reviewRow('Bank', d.bank) +
                             _reviewRow('Account Number', '****' + (d.acc || '').slice(-4)) +
                             _reviewRow('IFSC Code', d.ifsc, true) +
                         '</div>' +
                     '</div></div>' +
-                    '<div style="background:#fff8e6;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#92400e;font-size:0.85rem;">' +
+                    '<div class="anim-up" style="background:#fff8e6;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#92400e;font-size:0.85rem;animation-delay:.2s;">' +
                         '📋 <strong>Important:</strong> Double-check all details before submitting. Review takes 2–3 business days. You cannot edit after submitting.' +
                     '</div>' +
-                    '<div style="display:flex;justify-content:space-between;">' +
+                    '<div class="anim-up" style="display:flex;justify-content:space-between;animation-delay:.25s;">' +
                         '<button class="btn btn-outline" onclick="showApplicationForm(2)">← Edit Bank Details</button>' +
                         '<button class="btn btn-success" id="appBtn" onclick="submitApp()">✅ Submit Application</button>' +
                     '</div>';
@@ -1564,7 +1621,7 @@
                 var gst      = (document.getElementById('appGST')      ? document.getElementById('appGST').value      : '').trim().toUpperCase();
                 var cat      = document.getElementById('appCat') ? document.getElementById('appCat').value : '';
                 var desc     = (document.getElementById('appDesc')     ? document.getElementById('appDesc').value     : '').trim();
-                var sellerId = (document.getElementById('appSellerId') ? document.getElementById('appSellerId').value : '').trim().toLowerCase();
+                var sellerId = window._state.user ? window._state.user.uid.slice(0,8) : ('seller_' + Date.now().toString(36)); // auto-generated
                 var ok = true;
                 if (!name || name.length < 3)              { _fieldErr('appName','appNameErr',true);     ok = false; } else _fieldErr('appName','appNameErr',false);
                 if (!phone || !/^\d{10,15}$/.test(phone))  { _fieldErr('appPhone','appPhoneErr',true);   ok = false; } else _fieldErr('appPhone','appPhoneErr',false);
@@ -1572,23 +1629,7 @@
                 if (!cat)                                   { _fieldErr('appCat','appCatErr',true);       ok = false; } else _fieldErr('appCat','appCatErr',false);
                 if (gst && !validateGST(gst)) { showToast('Enter valid GST number or leave empty', 'error'); ok = false; }
 
-                // Seller ID validation
-                if (!sellerId || !/^[a-z0-9_-]{3,30}$/.test(sellerId)) {
-                    _fieldErr('appSellerId','appSellerIdErr',true);
-                    showToast('Seller ID must be 3–30 chars: letters, numbers, _ or -', 'error');
-                    ok = false;
-                } else {
-                    _fieldErr('appSellerId','appSellerIdErr',false);
-                    // Check if available (preview must show "available")
-                    var preview = document.getElementById('sellerIdPreview');
-                    if (preview && preview.classList.contains('taken')) {
-                        showToast('Seller ID already taken — choose another', 'error');
-                        ok = false;
-                    } else if (preview && preview.classList.contains('checking')) {
-                        showToast('Wait for Seller ID availability check to complete', 'warning');
-                        ok = false;
-                    }
-                }
+                // Seller ID is auto-generated from user uid
 
                 if (!ok) { showToast('Please fix the highlighted fields', 'error'); return; }
                 _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc, sellerId: sellerId });
@@ -2424,15 +2465,17 @@
             var norm = val.toLowerCase().replace(/[^a-z0-9]/g,'');
             var warn = document.getElementById('brandDupWarn');
             if (!warn || !norm) { if(warn) warn.style.display='none'; return; }
-            if (PROTECTED_BRANDS_SET.has(norm)) {
-                warn.style.display='block';
-                warn.textContent='⛔ "'+val+'" is a protected brand. Only admin can create it.';
-                return;
-            }
+            // Already exists in store — block
             var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
             if (dup) {
                 warn.style.display='block';
+                warn.style.background='#fee2e2'; warn.style.color='#991b1b';
                 warn.textContent='⚠️ Brand "'+dup.name+'" already exists — select it from the dropdown!';
+            } else if (PROTECTED_BRANDS_SET.has(norm)) {
+                // Famous brand — allow but warn, admin will verify
+                warn.style.display='block';
+                warn.style.background='#fef3c7'; warn.style.color='#92400e';
+                warn.innerHTML='ℹ️ "'+val+'" is a well-known brand. Request will go to admin for verification. <strong>Authorized resellers can apply.</strong>';
             } else {
                 warn.style.display='none';
             }
@@ -2445,7 +2488,7 @@
             var reason = (document.getElementById('reqBrandReason2').value||'').trim();
             if (!name || name.length < 2) { showToast('Brand name enter karo', 'error'); return; }
             var norm = name.toLowerCase().replace(/[^a-z0-9]/g,'');
-            if (PROTECTED_BRANDS_SET.has(norm)) { showToast('Protected brand — request nahi kar sakte', 'error'); return; }
+            // Protected brands allowed — admin will verify ownership
             var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
             if (dup) { showToast('Brand already exists — dropdown se select karo', 'error'); return; }
             var uid = window._state.user && window._state.user.uid;
@@ -2876,6 +2919,33 @@
             document.body.appendChild(el);
         }
 
+
+        // ── Brand Logo Gallery Upload ──
+        async function handleBrandLogoUpload(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            // Show local preview immediately
+            var previewBox = document.getElementById('brandLogoPreviewBox');
+            var previewImg = document.getElementById('brandLogoPreviewImg');
+            var label      = document.getElementById('brandLogoPickerLabel');
+            var localUrl   = URL.createObjectURL(file);
+            if (previewImg) { previewImg.src = localUrl; }
+            if (previewBox) { previewBox.style.display = 'block'; }
+            if (label)      { label.textContent = 'Uploading...'; }
+            // Upload to ImgBB
+            try {
+                var url = await uploadImageToImgBB(file);
+                document.getElementById('reqBrandLogo2').value = url;
+                if (previewImg) previewImg.src = url;
+                if (label) label.textContent = '✅ Logo uploaded — tap to change';
+                showToast('Logo uploaded!', 'success');
+            } catch(err) {
+                if (label) label.textContent = '❌ Upload failed — try URL instead';
+                showToast('Logo upload failed: ' + (err.message || 'Try again'), 'error');
+            }
+            e.target.value = '';
+        }
+
         // ══════════════════════════════════════════
         // FIX: closeBrandProfile was missing — caused
         // brand profile overlay X / backdrop click to crash
@@ -2907,8 +2977,24 @@
                     <div id="brandDupWarn" style="display:none;margin-top:6px;padding:8px 12px;background:#fee2e2;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600;"></div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Logo URL <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
-                    <input type="url" class="form-control" id="reqBrandLogo2" placeholder="https://...">
+                    <label class="form-label">Brand Logo <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
+                    <!-- Hidden file input -->
+                    <input type="file" id="reqBrandLogoFile" accept="image/*" style="display:none;" onchange="handleBrandLogoUpload(event)">
+                    <!-- Gallery picker button -->
+                    <div onclick="document.getElementById('reqBrandLogoFile').click()"
+                         style="border:2px dashed #cbd5e1;border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s;margin-bottom:8px;"
+                         onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';"
+                         onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
+                        <div id="brandLogoPreviewBox" style="display:none;margin-bottom:8px;">
+                            <img id="brandLogoPreviewImg" src="" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:2px solid #e2e8f0;">
+                        </div>
+                        <div style="font-size:1.4rem;margin-bottom:4px;">🖼️</div>
+                        <div style="font-size:13px;font-weight:600;color:#475569;" id="brandLogoPickerLabel">Tap to select logo from gallery</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">JPG / PNG / WEBP</div>
+                    </div>
+                    <!-- Fallback: URL input -->
+                    <input type="url" class="form-control" id="reqBrandLogo2" placeholder="Or paste image URL (https://...)"
+                           style="font-size:12px;" oninput="if(this.value){document.getElementById('brandLogoPreviewImg').src=this.value;document.getElementById('brandLogoPreviewBox').style.display='block';}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
