@@ -5466,126 +5466,52 @@ img {
 
 
 /* ============================================================
-   ✅ BRAND PAGE FIX — Root cause: animation fill-mode "both"
-   
-   Problem: bz-scaleIn/bz-fadeSlideUp use fill-mode "both"
-   which means cards START at opacity:0 before animation.
-   When page re-activates, animation doesn't replay →
-   cards stay invisible → empty white space.
-
-   Fix: Force opacity:1 + animation-fill-mode:forwards
-   on everything inside #brandsPage. Only targets opacity
-   and fill-mode — zero layout/display interference.
+   BRANDS PAGE — Correct CSS (targeting actual element IDs)
+   Brand cards have inline styles (no class), so we style
+   their parent containers and layout only.
    ============================================================ */
 
-/* Step 1: Override fill-mode for ALL elements in brands page.
-   "forwards" = start at natural opacity:1, end at to-state.
-   No more blank space before animation starts.              */
-#brandsPage *,
-#brandsPage .card-panel,
-#brandsPage [class*="card"],
-#brandsPage [class*="brand"],
-#brandsPage [class*="item"],
-#brandsPage [class*="grid"] > * {
-  animation-fill-mode: forwards !important;
-  opacity: 1 !important;
+/* Spinner — smaller padding so less empty space during load */
+#brandsLoadingSpinner {
+  padding: 1.5rem 1rem !important;
+  text-align: center;
 }
 
-/* Step 2: But let buttons/inputs keep their own appearance */
-#brandsPage button,
-#brandsPage input,
-#brandsPage select {
-  opacity: 1 !important;
-}
-
-/* Step 3: Brand page container always block, never hidden */
-#brandsPage {
-  display: block !important;
-  min-height: 50vh;
-}
-
-/* Step 4: If JS hides page with display:none, force show when .active */
-#brandsPage.active {
-  display: block !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-/* Step 5: Card-panel animation fix specifically —
-   This is the most likely class on brand cards         */
-#brandsPage .card-panel {
-  animation: none !important;  /* Kill stuck animation */
-  opacity: 1 !important;
-  transform: none !important;
-}
-
-/* Step 6: Brand grid layout */
-.brands-grid,
-.brand-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 14px;
-  width: 100%;
+/* Brand grids — correct columns on all screens */
+#popularBrandsGrid,
+#suggestedBrandsGrid,
+#otherBrandsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 10px !important;
   box-sizing: border-box;
 }
 
-@media (max-width: 480px) {
-  .brands-grid, .brand-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
+/* Section titles */
+#popularBrandsSection > div:first-child,
+#suggestedBrandsSection > div:first-child,
+#otherBrandsSectionTitle {
+  font-size: .85rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  padding: 0 2px;
+  color: var(--text, #0f172a);
 }
 
-/* Step 7: Brand card premium styling — works for any class name
-   inside brands page that renders as a card               */
-#brandsPage .card-panel,
-.brand-card, .brand-item, .brand-box {
-  background: var(--card);
-  border-radius: 16px;
-  border: 1.5px solid var(--border);
+/* Following strip */
+#followingBrandsSection {
+  box-sizing: border-box;
+}
+
+#followingBrandsRow {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 12px 14px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
-  transition: transform 0.28s cubic-bezier(0.22,1,0.36,1),
-              box-shadow 0.28s ease,
-              border-color 0.2s ease;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
+#followingBrandsRow::-webkit-scrollbar { display: none; }
 
-#brandsPage .card-panel:hover,
-.brand-card:hover,
-.brand-item:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 10px 28px rgba(37,99,235,0.13);
-  border-color: var(--accent);
-}
-
-/* Brand follow button */
-.brand-follow-btn {
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1.5px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
-  transition: all 0.22s ease;
-  font-family: inherit;
-}
-.brand-follow-btn:hover,
-.brand-follow-btn.following {
-  background: var(--accent);
-  color: #fff;
-}
-
-/* Dark mode */
-[data-theme="dark"] .brand-card,
-[data-theme="dark"] .brand-item,
-[data-theme="dark"] #brandsPage .card-panel {
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-}
+/* iOS search input zoom fix */
+#brandsPageSearch { font-size: 16px !important; }

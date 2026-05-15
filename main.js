@@ -6237,24 +6237,31 @@
     })();
 
     // ── Brands Page Loader ──
+    var _brandsLoading = false;   // prevent duplicate Firebase calls
+
     function loadBrandsPage() {
-      // Show spinner, hide sections
       var sp = document.getElementById('brandsLoadingSpinner');
+
+      // ── CACHE HIT: re-render instantly, never hide sections ──
+      if (_siteBrandsAll.length) {
+        if (sp) sp.style.display = 'none';
+        _renderBrands(_siteBrandsAll, _siteBrandsAll._followedSet);
+        bzWireHeroSearch();
+        bzRenderHomePopularBrands();
+        return;
+      }
+
+      // ── FRESH LOAD: prevent double Firebase call ──
+      if (_brandsLoading) return;
+      _brandsLoading = true;
+
+      // Show spinner, hide sections only on first real load
       if (sp) sp.style.display = 'block';
       ['popularBrandsSection','suggestedBrandsSection','otherBrandsSection',
        'followingBrandsSection','brandsEmptyState'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-
-      // Re-render from cache
-      if (_siteBrandsAll.length) {
-        if (sp) sp.style.display = 'none';
-        _renderBrands(_siteBrandsAll);
-        bzWireHeroSearch();
-        bzRenderHomePopularBrands();
-        return;
-      }
 
       Promise.all([
         get(ref(database, 'products')),
@@ -6318,14 +6325,16 @@
           return { id: b.id||'', name: b.name||'', logo: b.logo||'', banner: b.banner||b.bannerUrl||b.bannerImage||b.coverImage||b.cover||'', description: b.description||'', blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel||'normal', followers: b.followers||b.followersCount||0, rating: b.rating||0, products: b.products||[] };
         });
 
+        _brandsLoading = false;
         if (sp) sp.style.display = 'none';
         _renderBrands(_siteBrandsAll, followedSet);
         bzWireHeroSearch();
         bzRenderHomePopularBrands();
       }).catch(function(err) {
+        _brandsLoading = false;
         console.error('Brand load error:', err);
         if (sp) {
-          sp.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:20px;">Failed to load brands.<br><button onclick="loadBrandsPage()" style="margin-top:8px;padding:6px 16px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></p>';
+          sp.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:20px;">Failed to load brands.<br><button onclick="_brandsLoading=false;loadBrandsPage()" style="margin-top:8px;padding:6px 16px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></p>';
         }
       });
     }
