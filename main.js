@@ -410,10 +410,11 @@
         score = Math.max(score, fuzzyScore(combined, q) * 0.5);
         if (score > 25) scored.push({ product: p, score });
       });
+      const ratingMap = getRatingMap(reviews);
       scored.sort((a, b) => {
         if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
+        const rA = calculateProductRating(a.product.id, ratingMap);
+        const rB = calculateProductRating(b.product.id, ratingMap);
         return rB - rA;
       });
       return scored.map(s => s.product);
@@ -448,7 +449,8 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       const results = searchProducts(query);
-      const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
+      const ratingMap = getRatingMap(reviews);
+      const topThree = [...results].sort((a,b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
 
       // ── Brand results first (always show if brands match) ──
@@ -500,7 +502,7 @@
       topThree.forEach(product => {
         const card = document.createElement('div');
         card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
-        const ratingVal = calculateProductRating(product.id);
+        const ratingVal = calculateProductRating(product.id, ratingMap);
         card.innerHTML = `
           <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
           <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
@@ -954,14 +956,35 @@
 
     let reviews = [];
 
-    function calculateProductRating(productId) {
+    function getRatingMap(reviewsList) {
+      const map = {};
+      if (!reviewsList || !reviewsList.length) return map;
+      reviewsList.forEach(r => {
+        if (r.productId) {
+          if (!map[r.productId]) {
+            map[r.productId] = { sum: 0, count: 0 };
+          }
+          map[r.productId].sum += (r.rating || 0);
+          map[r.productId].count += 1;
+        }
+      });
+      Object.keys(map).forEach(id => {
+        map[id].rating = map[id].sum / map[id].count;
+      });
+      return map;
+    }
+
+    function calculateProductRating(productId, ratingMap = null) {
+      if (ratingMap) {
+        return ratingMap[productId]?.rating ?? 0;
+      }
       const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, preCalculatedRating = null, preCalculatedReviewCount = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -974,7 +997,8 @@
       })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = preCalculatedRating !== null ? preCalculatedRating : calculateProductRating(productId);
+      const reviewCount = preCalculatedReviewCount !== null ? preCalculatedReviewCount : (product.reviewCount || '0');
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -998,7 +1022,7 @@
           ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&bCache.blueTickAdmin);return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
-            <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
+            <div class="product-card-review-count">(${reviewCount})</div>
           </div>
           <div class="product-card-price">
             <div class="product-card-current-price">${productPrice}</div>
@@ -1730,17 +1754,12 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
+      const ratingMap = getRatingMap(reviews);
+      similarProducts.sort((a, b) => {
+        const rA = calculateProductRating(a.id, ratingMap);
+        const rB = calculateProductRating(b.id, ratingMap);
+        return rB - rA;
       });
-      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -2870,15 +2889,12 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
+      const ratingMap = getRatingMap(reviews);
+      filteredProducts.sort((a, b) => {
+        const rA = calculateProductRating(a.id, ratingMap);
+        const rB = calculateProductRating(b.id, ratingMap);
+        return rB - rA;
       });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('active');
@@ -2897,15 +2913,12 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
+      const ratingMap = getRatingMap(reviews);
+      filteredProducts.sort((a, b) => {
+        const rA = calculateProductRating(a.id, ratingMap);
+        const rB = calculateProductRating(b.id, ratingMap);
+        return rB - rA;
       });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
     }
@@ -2995,9 +3008,8 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+    function getProductScore(product, ratingMap = null) {
+      const rating = calculateProductRating(product.id, ratingMap);
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
@@ -3006,15 +3018,10 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+
+      const ratingMap = getRatingMap(reviews);
+      const sorted = [...productsToRender].sort((a, b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap));
+
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
         // productGrid and searchResultsGrid have their own HTML empty-state elements
@@ -3024,7 +3031,12 @@
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      sorted.forEach(product => {
+        if (product) {
+          const ratingData = ratingMap[product.id] || { rating: 0, count: 0 };
+          fragment.appendChild(createProductCard(product, ratingData.rating, ratingData.count));
+        }
+      });
       container.appendChild(fragment);
     }
 
@@ -4007,9 +4019,10 @@
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage') {
             renderProducts(products, 'homeProductGrid');
+            const ratingMap = getRatingMap(reviews);
             let trendingProducts = products.filter(p => p.isTrending || p.trending);
             if (!trendingProducts.length) {
-              trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+              trendingProducts = [...products].sort((a,b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap)).slice(0, 8);
             }
             if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
             else renderProductSlider(products.slice(0, 10), 'productSlider');
@@ -6639,10 +6652,11 @@
         }
 
         // Product card for brand grid
+        var brandRatingMap = getRatingMap(brandReviews);
         function bpProductCard(p) {
           var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
           var img = (p.images&&p.images[0]) || p.image || p.thumbnail || '';
-          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
+          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id, brandRatingMap) : (p.rating||0);
           var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
           return '<div onclick="showProductDetail(\''+p.id+'\')" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
             +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
