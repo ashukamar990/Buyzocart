@@ -1437,32 +1437,31 @@
         }
 
         function _stepBar(current) {
-            var steps = [
-                { label:'Business Info', short:'Info' },
-                { label:'Bank Details',  short:'Bank' },
-                { label:'Review',        short:'Review' }
-            ];
-            // Mobile: show number + short label; Desktop: full label
-            return '<div style="display:flex;align-items:center;margin-bottom:28px;gap:0;overflow:hidden;">' +
-                steps.map(function(s, i) {
-                    var n = i + 1;
-                    var done = n < current, active = n === current;
-                    var circBg = done ? '#22c55e' : active ? '#2563eb' : '#f1f5f9';
-                    var circColor = (done || active) ? '#fff' : '#94a3b8';
-                    var circBorder = done ? '#22c55e' : active ? '#2563eb' : '#e2e8f0';
-                    var labelColor = done ? '#22c55e' : active ? '#2563eb' : '#94a3b8';
-                    var lineColor = done ? '#22c55e' : '#e2e8f0';
-                    var circle = '<div style="width:30px;height:30px;border-radius:50%;border:2px solid '+circBorder+';background:'+circBg+';color:'+circColor+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;">'+(done?'✓':n)+'</div>';
-                    var lbl = '<div style="margin-left:6px;min-width:0;">'
-                        + '<div style="font-size:11px;font-weight:700;color:'+labelColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;">'+s.label+'</div>'
-                        + (active ? '<div style="font-size:9px;color:#94a3b8;">Step '+n+' of 3</div>' : '')
-                        + '</div>';
-                    var line = n < steps.length
-                        ? '<div style="flex:1;height:2px;background:'+lineColor+';margin:0 4px;min-width:8px;"></div>'
-                        : '';
-                    return '<div style="display:flex;align-items:center;min-width:0;'+(n<steps.length?'flex:1;':'')+'">'+circle+lbl+'</div>'+line;
-                }).join('') +
-            '</div>';
+            var labels = ['Business', 'Bank', 'Review'];
+            var icons  = ['👤', '🏦', '📋'];
+            var rows = labels.map(function(label, i) {
+                var n = i + 1;
+                var done   = n < current;
+                var active = n === current;
+                var bg     = done ? '#22c55e' : active ? '#2563eb' : '#e2e8f0';
+                var fg     = (done || active) ? '#fff' : '#94a3b8';
+                var txtCol = done ? '#22c55e' : active ? '#2563eb' : '#94a3b8';
+                var circle = '<div style="width:36px;height:36px;border-radius:50%;background:'+bg
+                           + ';color:'+fg+';display:flex;align-items:center;justify-content:center;'
+                           + 'font-size:14px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.1);">'
+                           + (done ? '✓' : icons[i]) + '</div>';
+                var txt = '<div style="font-size:11px;font-weight:700;color:'+txtCol
+                        + ';margin-top:5px;text-align:center;">' + label + '</div>';
+                var line = n < labels.length
+                    ? '<div style="flex:1;height:2px;background:'+(done?'#22c55e':'#e2e8f0')
+                      + ';margin:0 6px;margin-bottom:20px;border-radius:2px;"></div>'
+                    : '';
+                return '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">'
+                     + circle + txt + '</div>' + line;
+            }).join('');
+            return '<div style="display:flex;align-items:center;justify-content:space-between;'
+                 + 'margin-bottom:24px;padding:14px 16px;background:#f8fafc;border-radius:14px;'
+                 + 'border:1px solid #e2e8f0;overflow:visible;">' + rows + '</div>';
         }
 
         function _fieldErr(fieldId, errId, show) {
@@ -1743,23 +1742,14 @@
                 showApplicationForm(1);
                 return;
             }
+            // Auto-generate sellerId from uid (Seller ID field removed from UI)
             if (!d.sellerId || !/^[a-z0-9_-]{3,30}$/.test(d.sellerId)) {
-                showToast('Valid Seller ID required — go back to Step 1', 'error');
-                showApplicationForm(1);
-                return;
+                d.sellerId = user.uid.slice(0, 12).toLowerCase().replace(/[^a-z0-9]/g, '_');
             }
             var btn = document.getElementById('appBtn');
             if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting...'; }
             try {
-                // Check sellerId uniqueness one final time before saving
-                var sidCheck = await window._get(window._ref(window._db, 'sellerIds/' + d.sellerId));
-                if (sidCheck.exists() && sidCheck.val().uid !== user.uid) {
-                    showToast('Seller ID "' + d.sellerId + '" just got taken — please choose another', 'error');
-                    if (btn) { btn.disabled = false; btn.textContent = '✅ Submit Application'; }
-                    showApplicationForm(1);
-                    return;
-                }
-                // Reserve the Seller ID
+                // Reserve the Seller ID (uid-based, always unique)
                 await window._set(window._ref(window._db, 'sellerIds/' + d.sellerId), {
                     uid: user.uid, email: user.email, createdAt: Date.now()
                 });
