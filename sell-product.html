@@ -1437,33 +1437,41 @@
         }
 
         function _stepBar(current) {
-            var labels = ['Business', 'Bank', 'Review'];
-            var icons  = ['👤', '🏦', '📋'];
-            var rows = labels.map(function(label, i) {
+            var cfg = [
+                { label:'Business', icon:'👤' },
+                { label:'Bank',     icon:'🏦' },
+                { label:'Review',   icon:'📋' }
+            ];
+            var html = '<div style="display:flex;align-items:flex-start;justify-content:center;'
+                     + 'margin-bottom:24px;padding:16px 8px 12px;background:#f8fafc;'
+                     + 'border-radius:14px;border:1px solid #e2e8f0;width:100%;box-sizing:border-box;">';
+            cfg.forEach(function(s, i) {
                 var n = i + 1;
                 var done   = n < current;
                 var active = n === current;
                 var bg     = done ? '#22c55e' : active ? '#2563eb' : '#e2e8f0';
-                var fg     = (done || active) ? '#fff' : '#94a3b8';
-                var txtCol = done ? '#22c55e' : active ? '#2563eb' : '#94a3b8';
-                var circle = '<div style="width:36px;height:36px;border-radius:50%;background:'+bg
-                           + ';color:'+fg+';display:flex;align-items:center;justify-content:center;'
-                           + 'font-size:14px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.1);">'
-                           + (done ? '✓' : icons[i]) + '</div>';
-                var txt = '<div style="font-size:11px;font-weight:700;color:'+txtCol
-                        + ';margin-top:5px;text-align:center;">' + label + '</div>';
-                var line = n < labels.length
-                    ? '<div style="flex:1;height:2px;background:'+(done?'#22c55e':'#e2e8f0')
-                      + ';margin:0 6px;margin-bottom:20px;border-radius:2px;"></div>'
-                    : '';
-                return '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">'
-                     + circle + txt + '</div>' + line;
-            }).join('');
-            return '<div style="display:flex;align-items:center;justify-content:space-between;'
-                 + 'margin-bottom:24px;padding:14px 16px;background:#f8fafc;border-radius:14px;'
-                 + 'border:1px solid #e2e8f0;overflow:visible;">' + rows + '</div>';
+                var fg     = (done||active) ? '#fff' : '#94a3b8';
+                var col    = done ? '#22c55e' : active ? '#2563eb' : '#94a3b8';
+                var fw     = active ? '800' : '600';
+                // Circle
+                html += '<div style="display:flex;flex-direction:column;align-items:center;width:72px;flex-shrink:0;">';
+                html += '<div style="width:38px;height:38px;border-radius:50%;background:'+bg
+                      + ';color:'+fg+';display:flex;align-items:center;justify-content:center;'
+                      + 'font-size:15px;font-weight:800;flex-shrink:0;margin-bottom:6px;">'
+                      + (done ? '✓' : s.icon) + '</div>';
+                html += '<div style="font-size:11px;font-weight:'+fw+';color:'+col
+                      + ';text-align:center;line-height:1.2;word-break:keep-all;">'
+                      + s.label + '</div></div>';
+                // Connector line (between steps)
+                if (i < 2) {
+                    var lc = n < current ? '#22c55e' : '#e2e8f0';
+                    html += '<div style="flex:1;height:2px;background:'+lc
+                          + ';margin-top:19px;border-radius:2px;"></div>';
+                }
+            });
+            html += '</div>';
+            return html;
         }
-
         function _fieldErr(fieldId, errId, show) {
             var f=document.getElementById(fieldId), e=document.getElementById(errId);
             if(f){ f.classList.toggle('error', show); f.classList.toggle('valid', !show && f.value.trim().length > 0); }
@@ -1517,6 +1525,21 @@
                                 '<textarea class="form-control" id="appDesc" rows="2" placeholder="Describe what you sell...">'+((_appData.desc)||'')+'</textarea>' +
                             '</div>' +
                         '</div>' +
+                        '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:12px;">' +
+                            '🔐 <strong>KYC Required.</strong> Aadhaar & PAN are used only for identity verification and are stored securely. Never shared with third parties.' +
+                        '</div>' +
+                        '<div class="form-row">' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">Aadhaar Number <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appAadhaar" type="tel" maxlength="12" placeholder="12-digit Aadhaar" value="'+((_appData.aadhaar)||'')+'" oninput="validateAadhaarInput()" style="letter-spacing:2px;font-family:monospace;font-size:15px;">' +
+                                '<div class="form-error" id="appAadhaarErr">⚠ Enter valid 12-digit Aadhaar number</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label class="form-label">PAN Card Number <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appPAN" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase;letter-spacing:2px;font-family:monospace;font-size:15px;" value="'+((_appData.pan)||'')+'" oninput="validatePANInput()">' +
+                                '<div class="form-error" id="appPANErr">⚠ Enter valid PAN (e.g. ABCDE1234F)</div>' +
+                            '</div>' +
+                        '</div>' +
                         // Seller ID field removed
                     '</div></div>' +
                     '<div class="anim-up" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;animation-delay:.25s;">' +
@@ -1553,7 +1576,7 @@
                             '</div>' +
                         '</div>' +
                         '<div class="anim-up" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:0.82rem;color:#1d4ed8;animation-delay:.2s;">' +
-                            '🔒 <strong>100% Secure.</strong> Bank details are encrypted and only used to transfer your earnings.' +
+                            '🔒 <strong>Secure & Confidential.</strong> Bank details are used only for verifying your identity and matching account holder name with your submitted documents. Your data is fully encrypted.' +
                         '</div>' +
                     '</div></div>' +
                     '<div class="anim-up" style="display:flex;justify-content:space-between;margin-top:4px;animation-delay:.25s;">' +
@@ -1572,6 +1595,8 @@
                             _reviewRow('Phone', d.phone) +
                             _reviewRow('Business Name', d.biz) +
                             _reviewRow('Category', d.cat) +
+                            _reviewRow('Aadhaar', d.aadhaar ? '****' + d.aadhaar.slice(-4) : '—') +
+                            _reviewRow('PAN Card', d.pan || '—') +
                             // Seller ID removed from review
                             (d.gst ? _reviewRow('GST Number', d.gst) : '') +
                             _reviewRow('Bank', d.bank) +
@@ -1595,17 +1620,99 @@
             return '<div style="display:flex;justify-content:space-between;padding:11px 0;'+(isLast?'':'border-bottom:1px solid var(--border);')+'"><span style="color:#64748b;font-size:0.9rem;">'+label+'</span><strong style="font-size:0.9rem;">'+value+'</strong></div>';
         }
 
+        // Bank name → IFSC prefix mapping
+        var BANK_IFSC_PREFIX = {
+            'State Bank of India': 'SBIN', 'SBI': 'SBIN',
+            'HDFC Bank': 'HDFC',
+            'ICICI Bank': 'ICIC',
+            'Punjab National Bank': 'PUNB', 'PNB': 'PUNB',
+            'Bank of Baroda': 'BARB',
+            'Axis Bank': 'UTIB',
+            'Kotak Mahindra Bank': 'KKBK',
+            'Canara Bank': 'CNRB',
+            'Union Bank of India': 'UBIN',
+            'Bank of India': 'BKID',
+            'Indian Bank': 'IDIB',
+            'Central Bank of India': 'CBIN',
+            'Indian Overseas Bank': 'IOBA',
+            'UCO Bank': 'UCBA',
+            'Bank of Maharashtra': 'MAHB',
+            'Punjab & Sind Bank': 'PSIB',
+            'Federal Bank': 'FDRL',
+            'IDBI Bank': 'IBKL',
+            'IndusInd Bank': 'INDB',
+            'Yes Bank': 'YESB',
+            'RBL Bank': 'RATN',
+            'South Indian Bank': 'SIBL',
+            'Karur Vysya Bank': 'KVBL',
+            'Dhanlaxmi Bank': 'DLXB',
+            'Lakshmi Vilas Bank': 'LAVB',
+            'Jammu & Kashmir Bank': 'JAKA',
+            'Saraswat Bank': 'SRCB',
+            'Bandhan Bank': 'BDBL',
+            'IDFC First Bank': 'IDFB',
+            'AU Small Finance Bank': 'AUBL',
+            'Ujjivan Small Finance Bank': 'UJVN',
+            'Equitas Small Finance Bank': 'ESFB',
+            'Airtel Payments Bank': 'AIRP',
+            'Paytm Payments Bank': 'PYTM',
+            'India Post Payments Bank': 'IPOS',
+            'Fino Payments Bank': 'FINO',
+            'City Union Bank': 'CIUB',
+            'Tamilnad Mercantile Bank': 'TMBL',
+            'Nainital Bank': 'NTBL',
+            'Andhra Bank': 'ANDB',
+            'Corporation Bank': 'CORP',
+            'Syndicate Bank': 'SYNB',
+            'Allahabad Bank': 'ALLA',
+            'Dena Bank': 'BKDN',
+            'Vijaya Bank': 'VIJB',
+        };
+
+        function getExpectedIfscPrefix(bankName) {
+            if (!bankName) return null;
+            // Exact match
+            if (BANK_IFSC_PREFIX[bankName]) return BANK_IFSC_PREFIX[bankName];
+            // Partial match
+            var lc = bankName.toLowerCase();
+            for (var k in BANK_IFSC_PREFIX) {
+                if (lc.indexOf(k.toLowerCase()) !== -1 || k.toLowerCase().indexOf(lc) !== -1) {
+                    return BANK_IFSC_PREFIX[k];
+                }
+            }
+            return null;
+        }
+
         function appLiveValidate(el, type) {
             var v = el.value.trim();
-            var rules = {
-                name: function(v){ return v.length >= 3; },
-                phone: function(v){ return /^\d{10,15}$/.test(v); },
-                biz:  function(v){ return v.length > 0; },
-                cat:  function(v){ return v.length > 0; },
-                acc:  function(v){ return /^\d{6,}$/.test(v); },
-                ifsc: function(v){ return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.toUpperCase()); }
-            };
-            var valid = rules[type] ? rules[type](v) : v.length > 0;
+            var valid;
+            if (type === 'ifsc') {
+                var ifscVal = v.toUpperCase();
+                var basicOk = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscVal);
+                var bankName = document.getElementById('appBank') ? document.getElementById('appBank').value : '';
+                var expectedPrefix = getExpectedIfscPrefix(bankName);
+                var errEl = document.getElementById('appIFSCErr');
+                if (!basicOk) {
+                    valid = false;
+                    if (errEl) errEl.textContent = '⚠ Invalid IFSC format (e.g. PUNB0123456)';
+                } else if (expectedPrefix && !ifscVal.startsWith(expectedPrefix)) {
+                    valid = false;
+                    if (errEl) errEl.textContent = '⚠ ' + (bankName||'This bank') + ' IFSC starts with ' + expectedPrefix + ' (e.g. ' + expectedPrefix + '0123456)';
+                } else {
+                    valid = true;
+                    if (errEl) errEl.textContent = '⚠ Invalid IFSC (format: SBIN0001234)';
+                }
+                el.value = ifscVal; // auto-uppercase
+            } else {
+                var rules = {
+                    name: function(v){ return v.length >= 3; },
+                    phone: function(v){ return /^\d{10,15}$/.test(v); },
+                    biz:  function(v){ return v.length > 0; },
+                    cat:  function(v){ return v.length > 0; },
+                    acc:  function(v){ return /^\d{6,}$/.test(v); }
+                };
+                valid = rules[type] ? rules[type](v) : v.length > 0;
+            }
             el.classList.toggle('error', !valid);
             el.classList.toggle('valid', valid);
             var errId = { name:'appNameErr', phone:'appPhoneErr', biz:'appBizErr', cat:'appCatErr', acc:'appAccErr', ifsc:'appIFSCErr' }[type];
@@ -1630,8 +1737,18 @@
 
                 // Seller ID is auto-generated from user uid
 
+                var aadhaar = (document.getElementById('appAadhaar') ? document.getElementById('appAadhaar').value : '').replace(/\D/g,'');
+                var pan     = (document.getElementById('appPAN')     ? document.getElementById('appPAN').value     : '').toUpperCase().trim();
+                if (!aadhaar || !/^\d{12}$/.test(aadhaar)) {
+                    var ae = document.getElementById('appAadhaar'); if(ae){ae.classList.add('error');} var ae2=document.getElementById('appAadhaarErr'); if(ae2)ae2.classList.add('show');
+                    showToast('Enter valid 12-digit Aadhaar number', 'error'); ok = false;
+                }
+                if (!pan || !/^[A-Z]{5}\d{4}[A-Z]$/.test(pan)) {
+                    var pe = document.getElementById('appPAN'); if(pe){pe.classList.add('error');} var pe2=document.getElementById('appPANErr'); if(pe2)pe2.classList.add('show');
+                    showToast('Enter valid PAN number (e.g. ABCDE1234F)', 'error'); ok = false;
+                }
                 if (!ok) { showToast('Please fix the highlighted fields', 'error'); return; }
-                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc, sellerId: sellerId });
+                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc, sellerId: sellerId, aadhaar: aadhaar, pan: pan });
                 showApplicationForm(2);
             } else if (step === 2) {
                 var bank = (document.getElementById('appBank') ? document.getElementById('appBank').value : '').trim();
@@ -1645,6 +1762,30 @@
                 _appData = Object.assign(_appData, { bank: bank, acc: acc, ifsc: ifsc });
                 showApplicationForm(3);
             }
+        }
+
+        function validateAadhaarInput() {
+            var el = document.getElementById('appAadhaar');
+            var err = document.getElementById('appAadhaarErr');
+            if (!el) return;
+            var v = el.value.replace(/\D/g,''); // digits only
+            el.value = v;
+            var valid = /^\d{12}$/.test(v);
+            el.classList.toggle('error', !valid && v.length > 0);
+            el.classList.toggle('valid', valid);
+            if (err) err.classList.toggle('show', !valid && v.length > 0);
+        }
+
+        function validatePANInput() {
+            var el = document.getElementById('appPAN');
+            var err = document.getElementById('appPANErr');
+            if (!el) return;
+            el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+            var v = el.value;
+            var valid = /^[A-Z]{5}\d{4}[A-Z]$/.test(v);
+            el.classList.toggle('error', !valid && v.length > 0);
+            el.classList.toggle('valid', valid);
+            if (err) err.classList.toggle('show', !valid && v.length > 0);
         }
 
         function validateGSTInput() {
@@ -1755,7 +1896,7 @@
                 });
                 // Save seller request including sellerId
                 await window._set(window._ref(window._db, 'sellerRequests/' + user.uid), {
-                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '',
+                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '', aadhaar: d.aadhaar || '', pan: d.pan || '',
                     category: d.cat, description: d.desc || '',
                     bankName: d.bank, accountNumber: d.acc, ifsc: d.ifsc,
                     email: user.email, uid: user.uid,
