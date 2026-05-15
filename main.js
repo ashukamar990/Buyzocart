@@ -729,9 +729,14 @@
           setTimeout(function() { bzRenderOrbit(); }, 100);
           break;
         case 'brandsPage':
+          // Triple scroll reset — covers window, body and any inner container
           window.scrollTo({ top: 0, behavior: 'instant' });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
           setTimeout(function() {
             if (typeof loadBrandsPage === 'function') loadBrandsPage();
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
           }, 80);
           break;
       }
@@ -6096,307 +6101,7 @@
     // ================================================================
     //  BRAND SYSTEM — Complete Fixed Version
     // ================================================================
-    // ══════════════════════════════════════════════════════
-    //  NEW BRANDS PAGE — v2  (no empty-space bug)
-    //  Strategy: show skeleton cards IMMEDIATELY,
-    //  replace with real cards when Firebase resolves.
-    //  Single #bzb-grid container — no show/hide dance.
-    // ══════════════════════════════════════════════════════
-
-    var _siteBrandsAll   = [];
-    var _bzBrandsLoading = false;  // prevent duplicate Firebase calls
-    var _bzCurrentTab    = 'all';
-    var _bzCurrentQuery  = '';
-
-    // ── Skeleton card (shows instantly before data loads) ──
-    function _bzbSkeleton() {
-      var d = document.createElement('div');
-      d.className = 'bzb-card bzb-skeleton';
-      d.innerHTML =
-        '<div class="bzb-sk-logo"></div>'
-       +'<div class="bzb-sk-line" style="width:70%;margin-bottom:6px;"></div>'
-       +'<div class="bzb-sk-line" style="width:50%;margin-bottom:10px;"></div>'
-       +'<div class="bzb-sk-btn"></div>';
-      return d;
-    }
-
-    function _bzbShowSkeletons(n) {
-      var g = document.getElementById('bzb-grid');
-      if (!g) return;
-      g.innerHTML = '';
-      for (var i = 0; i < (n || 6); i++) g.appendChild(_bzbSkeleton());
-    }
-
-    // ── Build a real brand card ──
-    function _bzbCard(b, isFollowing) {
-      var color    = _brandColor(b.name);
-      var initials = (b.name || 'B').slice(0, 2).toUpperCase();
-      var _BT      = window.__BZ_BLUE_TICK || '';
-
-      var isPremium  = b.verificationLevel === 'premium';
-      var isVerified = b.blueTickAdmin || isPremium;
-
-      // Badge
-      var badgeHtml = isPremium
-        ? '<span style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:800;white-space:nowrap;">⭐ Premium</span>'
-        : isVerified
-          ? '<span style="position:absolute;top:8px;right:8px;background:#eff6ff;color:#2563eb;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:800;border:1px solid #bfdbfe;">✓ Verified</span>'
-          : '';
-
-      // Logo
-      var logoHtml = b.logo
-        ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">'
-         +'<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;">'+initials+'</span>'
-        : '<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;">'+initials+'</span>';
-
-      // Stats
-      var statsHtml = '';
-      if (b.products && b.products.length) statsHtml += '<span>📦 '+b.products.length+'</span>';
-      if (b.followers)                      statsHtml += '<span>❤️ '+b.followers+'</span>';
-      if (b.rating)                         statsHtml += '<span>⭐ '+b.rating+'</span>';
-
-      // Follow button
-      var followHtml = currentUser
-        ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\''+b.id+'\',\''+b.name.replace(/'/g,'').replace(/"/g,'')+'\',this)" class="bzb-follow-btn'+(isFollowing?' bzb-following':'')+'">'+(isFollowing ? '✓ Following' : '+ Follow')+'</button>'
-        : '';
-
-      var el = document.createElement('div');
-      el.className = 'bzb-card';
-      el.setAttribute('data-brand-id', b.id);
-      el.innerHTML =
-        '<div style="position:relative;">'
-         + badgeHtml
-         +'<div style="width:52px;height:52px;border-radius:12px;background:'+color+';overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:10px;flex-shrink:0;">'+logoHtml+'</div>'
-        +'</div>'
-        +'<div style="font-weight:800;font-size:13px;color:var(--text,#0f172a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:3px;margin-bottom:3px;">'
-         +b.name+(isVerified ? _BT : '')
-        +'</div>'
-        +(statsHtml ? '<div style="font-size:11px;color:#64748b;display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+statsHtml+'</div>' : '<div style="margin-bottom:8px;"></div>')
-        + followHtml;
-
-      el.addEventListener('click', function(e) {
-        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-        window.showBrandProfile(b.id, b.name);
-      });
-      return el;
-    }
-
-    // ── Render following strip ──
-    function _bzbRenderFollowingStrip(brands, followedSet) {
-      var strip   = document.getElementById('bzb-following-strip');
-      var row     = document.getElementById('bzb-following-row');
-      var countEl = document.getElementById('bzb-following-count');
-      if (!strip || !row) return;
-      var followed = brands.filter(function(b) { return !!followedSet[b.id]; });
-      if (!followed.length) { strip.style.display = 'none'; return; }
-      strip.style.display = 'block';
-      if (countEl) countEl.textContent = followed.length;
-      row.innerHTML = followed.map(function(b) {
-        var color = _brandColor(b.name);
-        var ini   = (b.name || 'B').slice(0, 2).toUpperCase();
-        var logo  = b.logo
-          ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
-          : '';
-        return '<div onclick="window.showBrandProfile(\''+b.id+'\',\''+b.name.replace(/'/g,'')+'\')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;">'
-          +'<div style="width:50px;height:50px;border-radius:12px;border:2px solid #2563eb;background:'+color+';overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;">'+logo+(logo?'':ini)+'</div>'
-          +'<span style="font-size:10px;font-weight:700;max-width:58px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text,#0f172a);">'+b.name+'</span>'
-        +'</div>';
-      }).join('');
-    }
-
-    // ── Update hero stats ──
-    function _bzbUpdateStats(brands, followedSet) {
-      var statsBox = document.getElementById('bzb-hero-stats');
-      var statLine = document.getElementById('bzb-stats-line');
-      if (statsBox) statsBox.style.display = 'block';
-      var total    = brands.length;
-      var verified = brands.filter(function(b) { return b.blueTickAdmin || b.verificationLevel === 'premium'; }).length;
-      var following = Object.keys(followedSet || {}).length;
-      var el1 = document.getElementById('bzb-stat-brands');
-      var el2 = document.getElementById('bzb-stat-verified');
-      var el3 = document.getElementById('bzb-stat-following');
-      if (el1) el1.textContent = total;
-      if (el2) el2.textContent = verified;
-      if (el3) el3.textContent = following;
-      if (statLine) statLine.textContent = total + ' brands · ' + verified + ' verified';
-    }
-
-    // ── Core render: filter + sort + paint grid ──
-    function _bzbPaint(brands, followedSet, tab, query) {
-      var grid  = document.getElementById('bzb-grid');
-      var empty = document.getElementById('bzb-empty');
-      if (!grid) return;
-
-      followedSet = followedSet || {};
-
-      // Filter by search query
-      var list = brands;
-      if (query) {
-        var q = query.toLowerCase();
-        list = brands.filter(function(b) {
-          return b.name.toLowerCase().indexOf(q) !== -1
-              || (b.description || '').toLowerCase().indexOf(q) !== -1;
-        });
-      }
-
-      // Filter by tab
-      if (tab === 'verified') {
-        list = list.filter(function(b) { return b.blueTickAdmin || b.verificationLevel === 'premium'; });
-      } else if (tab === 'popular') {
-        list = list.filter(function(b) { return _brandScore(b) > 50 || b.blueTickAdmin; });
-      } else if (tab === 'following') {
-        list = list.filter(function(b) { return !!followedSet[b.id]; });
-      } else if (tab === 'az') {
-        list = list.slice().sort(function(a, b) { return a.name.localeCompare(b.name); });
-      }
-
-      grid.innerHTML = '';
-
-      if (!list.length) {
-        if (empty) empty.style.display = 'block';
-        return;
-      }
-      if (empty) empty.style.display = 'none';
-
-      // Animate cards in staggered
-      list.forEach(function(b, i) {
-        var card = _bzbCard(b, !!followedSet[b.id]);
-        card.style.animationDelay = Math.min(i * 0.04, 0.4) + 's';
-        grid.appendChild(card);
-      });
-    }
-
-    // ── Main load function (no empty-space bug) ──
-    function loadBrandsPage() {
-      // CACHE HIT: render instantly, skeletons → real cards in one step
-      if (_siteBrandsAll.length && !window._bzBrandsForceRefresh) {
-        _bzbPaint(_siteBrandsAll, _siteBrandsAll._followedSet, _bzCurrentTab, _bzCurrentQuery);
-        _bzbRenderFollowingStrip(_siteBrandsAll, _siteBrandsAll._followedSet || {});
-        _bzbUpdateStats(_siteBrandsAll, _siteBrandsAll._followedSet || {});
-        bzWireHeroSearch();
-        bzRenderHomePopularBrands();
-        return;
-      }
-
-      // FRESH LOAD: show skeletons immediately (no empty space!)
-      if (_bzBrandsLoading) return;
-      _bzBrandsLoading = true;
-      window._bzBrandsForceRefresh = false;
-      _bzbShowSkeletons(6);
-
-      // Spin refresh icon
-      var ri = document.getElementById('bzb-refresh-icon');
-      if (ri) ri.style.animation = 'spin .7s linear infinite';
-
-      Promise.all([
-        get(ref(database, 'products')),
-        get(ref(database, 'brands')),
-        currentUser ? get(ref(database, 'brandFollowers')) : Promise.resolve(null)
-      ]).then(function(res) {
-        var prodSnap  = res[0];
-        var brandSnap = res[1];
-        var followSnap = res[2];
-        var brandMap  = {};
-
-        if (brandSnap && brandSnap.exists()) {
-          brandSnap.forEach(function(c) {
-            var b = c.val();
-            if (b && b.name) {
-              brandMap[c.key] = {
-                id: c.key, name: b.name,
-                logo: b.logo || '', description: b.description || '',
-                blueTickAdmin: !!b.blueTickAdmin,
-                verificationLevel: b.verificationLevel || 'normal',
-                followers: b.followersCount || b.followers || 0,
-                rating: b.rating || 0, products: []
-              };
-            }
-          });
-        }
-
-        if (prodSnap && prodSnap.exists()) {
-          prodSnap.forEach(function(c) {
-            var p = c.val();
-            if (!p || !p.brand) return;
-            var bid = p.brandId || (p.brand || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
-            if (!brandMap[bid]) {
-              brandMap[bid] = {
-                id: bid, name: p.brandName || p.brand,
-                logo: p.brandLogo || '', description: '',
-                blueTickAdmin: false, verificationLevel: 'normal',
-                followers: 0, rating: 0, products: []
-              };
-            }
-            brandMap[bid].products.push(c.key);
-          });
-        }
-
-        var followedSet = {};
-        if (followSnap && followSnap.exists() && currentUser) {
-          followSnap.forEach(function(c) {
-            if (c.val() && c.val()[currentUser.uid]) followedSet[c.key] = true;
-          });
-        }
-
-        _siteBrandsAll = Object.values(brandMap)
-          .filter(function(b) { return b.products.length > 0 || b.blueTickAdmin; });
-        _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
-        _siteBrandsAll._followedSet = followedSet;
-
-        window.__bzBrandsCache = _siteBrandsAll.map(function(b) {
-          return { id: b.id||'', name: b.name||'', logo: b.logo||'',
-                   banner: b.banner||b.bannerUrl||'', description: b.description||'',
-                   blueTickAdmin: !!b.blueTickAdmin,
-                   verificationLevel: b.verificationLevel||'normal',
-                   followers: b.followers||0, rating: b.rating||0, products: b.products||[] };
-        });
-
-        _bzBrandsLoading = false;
-        if (ri) ri.style.animation = '';
-        _bzbPaint(_siteBrandsAll, followedSet, _bzCurrentTab, _bzCurrentQuery);
-        _bzbRenderFollowingStrip(_siteBrandsAll, followedSet);
-        _bzbUpdateStats(_siteBrandsAll, followedSet);
-        bzWireHeroSearch();
-        bzRenderHomePopularBrands();
-
-      }).catch(function(err) {
-        _bzBrandsLoading = false;
-        if (ri) ri.style.animation = '';
-        console.error('Brand load error:', err);
-        var g = document.getElementById('bzb-grid');
-        if (g) g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem 1rem;"><div style="font-size:2rem;margin-bottom:10px;">⚠️</div><div style="font-weight:700;margin-bottom:8px;color:var(--text,#0f172a);">Failed to load brands</div><button onclick="window._bzBrandsForceRefresh=true;loadBrandsPage();" style="padding:8px 22px;border-radius:20px;background:#2563eb;color:#fff;border:none;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button></div>';
-      });
-    }
-
-    // ── Tab switching ──
-    window.bzBrandsSetTab = function(btnEl, tab) {
-      _bzCurrentTab = tab;
-      document.querySelectorAll('.bzb-tab').forEach(function(b) { b.classList.remove('bzb-tab-active'); });
-      if (btnEl) btnEl.classList.add('bzb-tab-active');
-      _bzbPaint(_siteBrandsAll, _siteBrandsAll._followedSet, tab, _bzCurrentQuery);
-    };
-
-    // ── Search filter ──
-    function filterSiteBrands(q) {
-      _bzCurrentQuery = (q || '').toLowerCase().trim();
-      _bzbPaint(_siteBrandsAll, _siteBrandsAll._followedSet, _bzCurrentTab, _bzCurrentQuery);
-    }
-
-    // ── Legacy aliases (kept for compatibility) ──
-    function _renderBrands(brands, followedSet) {
-      _siteBrandsAll = brands || _siteBrandsAll;
-      if (followedSet) _siteBrandsAll._followedSet = followedSet;
-      _bzbPaint(_siteBrandsAll, _siteBrandsAll._followedSet, _bzCurrentTab, _bzCurrentQuery);
-      _bzbRenderFollowingStrip(_siteBrandsAll, _siteBrandsAll._followedSet || {});
-      _bzbUpdateStats(_siteBrandsAll, _siteBrandsAll._followedSet || {});
-    }
-    function renderSiteBrands(brands) { _renderBrands(brands); }
-    function _makeBrandCard(b, isFollowing) { return _bzbCard(b, isFollowing); }
-
-    window.bzLoadBrandsIntoPage = function() {
-      window._bzBrandsForceRefresh = false;
-      loadBrandsPage();
-    };
+    var _siteBrandsAll = [];
 
     function _brandColor(name) {
       var cs = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
@@ -6536,6 +6241,231 @@
       setTimeout(bzPreloadBrands, 2000);
     })();
 
+    // ── Brands Page Loader ──
+    function loadBrandsPage() {
+      // Show spinner, hide sections
+      var sp = document.getElementById('brandsLoadingSpinner');
+      if (sp) sp.style.display = 'block';
+      ['popularBrandsSection','suggestedBrandsSection','otherBrandsSection',
+       'followingBrandsSection','brandsEmptyState'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+
+      // Re-render from cache
+      if (_siteBrandsAll.length) {
+        if (sp) sp.style.display = 'none';
+        _renderBrands(_siteBrandsAll);
+        bzWireHeroSearch();
+        bzRenderHomePopularBrands();
+        return;
+      }
+
+      Promise.all([
+        get(ref(database, 'products')),
+        get(ref(database, 'brands')),
+        currentUser ? get(ref(database, 'brandFollowers')) : Promise.resolve(null)
+      ]).then(function(res) {
+        var prodSnap  = res[0];
+        var brandSnap = res[1];
+        var followSnap = res[2];
+        var brandMap  = {};
+
+        // Admin-approved brands first
+        if (brandSnap && brandSnap.exists()) {
+          brandSnap.forEach(function(c) {
+            var b = c.val();
+            if (b && b.name) {
+              brandMap[c.key] = {
+                id: c.key, name: b.name,
+                logo: b.logo || '', description: b.description || '',
+                blueTickAdmin: !!b.blueTickAdmin,
+                verificationLevel: b.verificationLevel || 'normal',
+                followers: b.followersCount || b.followers || 0,
+                rating: b.rating || 0, products: []
+              };
+            }
+          });
+        }
+
+        // Attach products
+        if (prodSnap && prodSnap.exists()) {
+          prodSnap.forEach(function(c) {
+            var p = c.val();
+            if (!p || !p.brand) return;
+            var bid = p.brandId || (p.brand || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+            if (!brandMap[bid]) {
+              brandMap[bid] = {
+                id: bid, name: p.brandName || p.brand,
+                logo: p.brandLogo || '', description: '',
+                blueTickAdmin: false, verificationLevel: 'normal',
+                followers: 0, rating: 0, products: []
+              };
+            }
+            brandMap[bid].products.push(c.key);
+          });
+        }
+
+        // Build followed set
+        var followedSet = {};
+        if (followSnap && followSnap.exists() && currentUser) {
+          followSnap.forEach(function(c) {
+            if (c.val() && c.val()[currentUser.uid]) followedSet[c.key] = true;
+          });
+        }
+
+        _siteBrandsAll = Object.values(brandMap)
+          .filter(function(b) { return b.products.length > 0 || b.blueTickAdmin; });
+        _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
+        _siteBrandsAll._followedSet = followedSet;
+        // Cache for search suggestions & following strip
+        window.__bzBrandsCache = _siteBrandsAll.map(function(b) {
+          return { id: b.id||'', name: b.name||'', logo: b.logo||'', banner: b.banner||b.bannerUrl||b.bannerImage||b.coverImage||b.cover||'', description: b.description||'', blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel||'normal', followers: b.followers||b.followersCount||0, rating: b.rating||0, products: b.products||[] };
+        });
+
+        if (sp) sp.style.display = 'none';
+        _renderBrands(_siteBrandsAll, followedSet);
+        bzWireHeroSearch();
+        bzRenderHomePopularBrands();
+      }).catch(function(err) {
+        console.error('Brand load error:', err);
+        if (sp) {
+          sp.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:20px;">Failed to load brands.<br><button onclick="loadBrandsPage()" style="margin-top:8px;padding:6px 16px;border-radius:20px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;">Retry</button></p>';
+        }
+      });
+    }
+
+    // ── Filter handler (called by oninput or bzFilterBrandsPage) ──
+    function filterSiteBrands(forceQ) {
+      var q;
+      if (typeof forceQ === 'string') {
+        q = forceQ.toLowerCase().trim();
+      } else {
+        var inp = document.getElementById('brandSearchSite') || document.getElementById('brandsPageSearch');
+        q = inp ? inp.value.toLowerCase().trim() : '';
+      }
+      if (!q) { _renderBrands(_siteBrandsAll, _siteBrandsAll._followedSet); return; }
+      var filtered = _siteBrandsAll.filter(function(b) {
+        return b.name.toLowerCase().indexOf(q) !== -1 || (b.description||'').toLowerCase().indexOf(q) !== -1;
+      });
+      _renderBrands(filtered, _siteBrandsAll._followedSet);
+    }
+
+    // ── Build a brand card DOM element ──
+    function _makeBrandCard(b, isFollowing) {
+      var color = _brandColor(b.name);
+      var initials = b.name.slice(0, 2).toUpperCase();
+
+      var _BT = window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="8" height="8"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+      var badge = b.verificationLevel === 'premium'
+        ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:800;white-space:nowrap;">⭐ Premium</span>' + _BT
+        : b.blueTickAdmin
+          ? _BT
+          : '';
+
+      var logoInner = b.logo
+        ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\'none\'">'
+        : '<span style="font-size:17px;font-weight:800;color:#fff;">' + initials + '</span>';
+
+      var followBtn = currentUser
+        ? '<button onclick="event.stopPropagation();window.toggleBrandFollow(\'' + b.id + '\',\'' + b.name.replace(/'/g, '').replace(/"/g, '') + '\',this)" style="margin-top:8px;width:100%;padding:6px 0;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;'
+          + (isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:#2563eb;color:#fff;') + '">'
+          + (isFollowing ? '✓ Following' : '+ Follow') + '</button>'
+        : '';
+
+      var el = document.createElement('div');
+      el.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:12px;cursor:pointer;transition:border-color .18s,box-shadow .18s;';
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+          + '<div style="width:42px;height:42px;border-radius:10px;background:' + color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">' + logoInner + '</div>'
+          + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:2px;">' + b.name + (b.blueTickAdmin ? _BT : '') + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<div style="font-size:11px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;">'
+          + '<span>📦 ' + (b.products ? b.products.length : 0) + '</span>'
+          + (b.followers ? '<span>❤️ ' + b.followers + '</span>' : '')
+          + (b.rating ? '<span>⭐ ' + b.rating + '</span>' : '')
+        + '</div>'
+        + followBtn;
+
+      el.addEventListener('mouseenter', function() { this.style.borderColor = '#2563eb'; this.style.boxShadow = '0 4px 16px rgba(37,99,235,.12)'; });
+      el.addEventListener('mouseleave', function() { this.style.borderColor = '#e2e8f0'; this.style.boxShadow = 'none'; });
+      el.addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+        window.showBrandProfile(b.id, b.name);
+      });
+      return el;
+    }
+
+    // ── Render all brand sections ──
+    function _renderBrands(brands, followedSet) {
+      followedSet = followedSet || {};
+      var popularGrid  = document.getElementById('popularBrandsGrid');
+      var sugGrid      = document.getElementById('suggestedBrandsGrid');
+      var otherGrid    = document.getElementById('otherBrandsGrid');
+      var followingRow = document.getElementById('followingBrandsRow');
+      var emptyEl      = document.getElementById('brandsEmptyState');
+      var popSection   = document.getElementById('popularBrandsSection');
+      var sugSection   = document.getElementById('suggestedBrandsSection');
+      var othSection   = document.getElementById('otherBrandsSection');
+      var followingSec = document.getElementById('followingBrandsSection');
+
+      if (!brands.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        [popSection, sugSection, othSection, followingSec].forEach(function(s){ if (s) s.style.display = 'none'; });
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      // ── Following strip ──
+      var followed = brands.filter(function(b) { return !!followedSet[b.id]; });
+      if (followed.length && followingSec && followingRow) {
+        followingSec.style.display = 'block';
+        followingRow.innerHTML = followed.map(function(b) {
+          var color = _brandColor(b.name);
+          var initials = b.name.slice(0, 2).toUpperCase();
+          var logo = b.logo
+            ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\'none\'">'
+            : '<div style="width:52px;height:52px;border-radius:10px;background:' + color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;">' + initials + '</div>';
+          return '<div onclick="window.showBrandProfile(\'' + b.id + '\',\'' + b.name.replace(/'/g, '') + '\')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;">'
+            + '<div style="width:52px;height:52px;border-radius:10px;border:2px solid #2563eb;overflow:hidden;">' + logo + '</div>'
+            + '<span style="font-size:10px;font-weight:700;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + b.name + '</span>'
+            + '</div>';
+        }).join('');
+      } else if (followingSec) {
+        followingSec.style.display = 'none';
+      }
+
+      // ── Popular (verified or high score) ──
+      var popular  = brands.filter(function(b) { return b.blueTickAdmin || b.verificationLevel === 'premium' || _brandScore(b) > 50; });
+      var nonPop   = brands.filter(function(b) { return !b.blueTickAdmin && b.verificationLevel !== 'premium' && _brandScore(b) <= 50; });
+
+      // ── Suggested (top unverified not followed) ──
+      var suggested = nonPop.filter(function(b) { return !followedSet[b.id]; }).slice(0, 4);
+      var rest      = nonPop.filter(function(b) { return !suggested.includes(b); });
+
+      if (popSection && popularGrid) {
+        popSection.style.display = popular.length ? 'block' : 'none';
+        popularGrid.innerHTML = '';
+        popular.forEach(function(b) { popularGrid.appendChild(_makeBrandCard(b, !!followedSet[b.id])); });
+      }
+
+      if (sugSection && sugGrid) {
+        sugSection.style.display = suggested.length ? 'block' : 'none';
+        sugGrid.innerHTML = '';
+        suggested.forEach(function(b) { sugGrid.appendChild(_makeBrandCard(b, !!followedSet[b.id])); });
+      }
+
+      if (othSection && otherGrid) {
+        othSection.style.display = rest.length ? 'block' : 'none';
+        otherGrid.innerHTML = '';
+        rest.forEach(function(b) { otherGrid.appendChild(_makeBrandCard(b, !!followedSet[b.id])); });
+      }
+    }
+
+    // ── Legacy alias ──
+    function renderSiteBrands(brands) { _renderBrands(brands); }
 
     // ── Show products filtered by brand ──
     function showBrandProducts(brandId, brandName) {
@@ -6555,7 +6485,8 @@
 
     function showBrandProfile(brandId, brandName) {
       window._currentBrandId = brandId;
-      var mainEl = document.querySelector('main') || document.body;
+      // Append to body so it's not constrained by main.container on desktop
+      var mainEl = document.body;
       var page = document.getElementById('brandProfilePage');
       if (!page) {
         page = document.createElement('section');
@@ -6563,7 +6494,7 @@
         page.className = 'page';
         mainEl.appendChild(page);
       }
-      page.style.cssText = 'min-height:100vh;background:#f8fafc;padding-bottom:100px;';
+      page.style.cssText = 'min-height:auto;background:#f8fafc;padding-bottom:80px;width:100%;box-sizing:border-box;';
 
       // ── Skeleton loading state ──
       page.innerHTML = `
@@ -7173,6 +7104,7 @@
     // ── Global Verified Tick Injector ── end
 
     // ── Aliases used by index.html scripts ──
+    window.bzLoadBrandsIntoPage = function() { loadBrandsPage(); };
     window.bzFilterBrandsPage   = function(q) { filterSiteBrands(q); };
 
     // ── Brand results inside global search panel ──
