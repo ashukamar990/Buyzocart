@@ -703,7 +703,10 @@
           if (currentUser) loadSavedAddresses();
           break;
         case 'orderPage':
-          if (currentProduct) initOrderPageGallery();
+          if (currentProduct) {
+            initOrderPageGallery();
+            updateQuantityButtonsState();
+          }
           break;
         case 'productsPage':
           renderProducts(products, 'productGrid');
@@ -1968,6 +1971,7 @@
         sizeOptionsContainer.appendChild(opt);
       });
       document.getElementById('qtySelect').value = 1;
+      updateQuantityButtonsState();
       initOrderPageGallery();
       showPage('orderPage');
     }
@@ -2199,18 +2203,41 @@
       if (chargeNote) chargeNote.style.display = paymentMethod === 'prepaid' ? 'block' : 'none';
     }
 
+    function updateQuantityButtonsState() {
+      const qtyInput = document.getElementById('qtySelect');
+      const minusBtn = document.querySelector('.qty-minus');
+      const plusBtn = document.querySelector('.qty-plus');
+      if (!qtyInput || !minusBtn || !plusBtn) return;
+      const val = parseInt(qtyInput.value) || 1;
+      const min = parseInt(qtyInput.getAttribute('min')) || 1;
+      const max = parseInt(qtyInput.getAttribute('max')) || 3;
+      minusBtn.disabled = (val <= min);
+      plusBtn.disabled = (val >= max);
+    }
+
     function decreaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
+      if (!qtyInput) return;
       let value = parseInt(qtyInput.value);
-      if (value > 1) qtyInput.value = value - 1;
+      const min = parseInt(qtyInput.getAttribute('min')) || 1;
+      if (value > min) {
+        qtyInput.value = value - 1;
+        updateQuantityButtonsState();
+      }
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
     }
 
     function increaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
+      if (!qtyInput) return;
       let value = parseInt(qtyInput.value);
-      if (value < 3) qtyInput.value = value + 1;
-      else showToast('Maximum 3 units per order', 'error');
+      const max = parseInt(qtyInput.getAttribute('max')) || 3;
+      if (value < max) {
+        qtyInput.value = value + 1;
+        updateQuantityButtonsState();
+      } else {
+        showToast('Maximum ' + max + ' units per order', 'error');
+      }
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
     }
 
