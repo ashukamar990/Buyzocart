@@ -311,6 +311,24 @@
       }, 3000);
     }
 
+    function copyToClipboard(text, btnElement, originalContent) {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        if (btnElement) {
+          btnElement.innerHTML = 'Copied! ✓';
+          btnElement.classList.add('copied');
+          setTimeout(() => {
+            btnElement.innerHTML = originalContent || '📋 Copy';
+            btnElement.classList.remove('copied');
+          }, 2000);
+        }
+        showToast('Copied to clipboard!', 'success');
+      }).catch(err => {
+        console.error('Copy failed:', err);
+        showToast('Failed to copy', 'error');
+      });
+    }
+
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -2490,9 +2508,8 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const btn = document.getElementById('copyShareLink');
+      copyToClipboard(shareLink.value, btn, 'Copy Link');
     }
 
     // ===== REAL-TIME ORDERS LISTENER =====
@@ -4400,6 +4417,10 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay').textContent;
+        copyToClipboard(orderId, this, '📋 Copy');
+      });
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
@@ -4910,12 +4931,8 @@
       }
     }
 
-    function copyOfferCode(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        showToast('Offer code "' + code + '" copied!', 'success');
-      }).catch(() => {
-        showToast('Code: ' + code, 'success');
-      });
+    function copyOfferCode(code, btn) {
+      copyToClipboard(code, btn, '📋 Copy');
     }
 
     function loadOffersFromDB() {
@@ -4944,8 +4961,8 @@
             <p class="offer-desc">${offer.description || offer.message || ''}</p>
             ${code ? `<div class="offer-code-box">
               <span class="offer-code-label">Use Code:</span>
-              <span class="offer-code" onclick="copyOfferCode('${code}')">${code}</span>
-              <button class="offer-copy-btn" onclick="copyOfferCode('${code}')">📋 Copy</button>
+              <span class="offer-code" onclick="copyOfferCode('${code}', this)">${code}</span>
+              <button class="offer-copy-btn" onclick="copyOfferCode('${code}', this)">📋 Copy</button>
             </div>` : ''}
             ${offer.savings ? `<div class="offer-savings">${offer.savings}</div>` : ''}
             <button class="offer-shop-btn" onclick="showPage('productsPage');">Shop Now →</button>
