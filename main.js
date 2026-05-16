@@ -451,43 +451,13 @@
       const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
 
-      // ── Brand results first (always show if brands match) ──
+      // ── Brand results shown in searchBrandsSection below (not duplicated here) ──
       var allBrandsQ = window.__bzBrandsCache || [];
       var qL2 = query.toLowerCase();
       var mBrands = allBrandsQ.length ? allBrandsQ.filter(function(b){
         return (b.name||'').toLowerCase().indexOf(qL2) !== -1 ||
                (b.description||'').toLowerCase().indexOf(qL2) !== -1;
       }).slice(0, 5) : [];
-
-      if (mBrands.length) {
-        var BT2 = window.__BZ_BLUE_TICK || '';
-        var BCOLS2 = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669','#be185d','#0891b2'];
-        // Brand section header
-        var bhdr = document.createElement('div');
-        bhdr.style.cssText = 'padding:8px 12px 4px;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;';
-        bhdr.textContent = '🏷️  Brands';
-        suggestionsContainer.appendChild(bhdr);
-        // Horizontal brand icons strip
-        var brandStrip = document.createElement('div');
-        brandStrip.style.cssText = 'display:flex;gap:14px;padding:6px 12px 12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f1f5f9;';
-        mBrands.forEach(function(b) {
-          var bc2 = BCOLS2[(b.name||'A').charCodeAt(0) % BCOLS2.length];
-          var ini2 = (b.name||'B').slice(0,1).toUpperCase();
-          var lInner2 = b.logo
-            ? '<img src="'+b.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.style.display=\'none\'">'
-            : '<span style="font-weight:800;font-size:18px;color:#fff;">'+ini2+'</span>';
-          var brandItem = document.createElement('div');
-          brandItem.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;width:64px;';
-          brandItem.innerHTML = '<div style="width:54px;height:54px;border-radius:13px;background:'+bc2
-            +';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12);border:2px solid #fff;">'+lInner2+'</div>'
-            +'<span style="font-size:10px;font-weight:700;text-align:center;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:2px;">'
-            +(b.name||'')+(b.blueTickAdmin ? BT2 : '')+'</span>'
-            +(b.products&&b.products.length ? '<span style="font-size:9px;color:#94a3b8;">'+b.products.length+' items</span>' : '');
-          brandItem.addEventListener('click', function(){ closeSearchPanel(); showBrandProfile(b.id, b.name); });
-          brandStrip.appendChild(brandItem);
-        });
-        suggestionsContainer.appendChild(brandStrip);
-      }
 
       if (topThree.length === 0) {
         if (!mBrands.length) {
@@ -6486,6 +6456,15 @@
 
     function showBrandProfile(brandId, brandName) {
       window._currentBrandId = brandId;
+      // Remember which page opened the brand profile
+      var activePage = document.querySelector('.page.active');
+      window._brandProfileReturnPage = activePage ? activePage.id : 'homePage';
+      // If opened from search panel, close it first
+      var sp = document.getElementById('searchPanel');
+      if (sp && sp.classList.contains('active')) {
+        sp.classList.remove('active');
+        document.body.classList.remove('search-open');
+      }
       var mainEl = document.querySelector('main') || document.body;
       var page = document.getElementById('brandProfilePage');
       if (!page) {
@@ -6499,7 +6478,7 @@
       // ── Skeleton loading state ──
       page.innerHTML = `
         <div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;border-bottom:1px solid #f1f5f9;">
-          <button onclick="showPage('brandsPage')" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <button onclick="showPage(window._brandProfileReturnPage||'brandsPage')" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
           <div style="height:18px;width:120px;background:#f1f5f9;border-radius:6px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div>
@@ -6666,7 +6645,7 @@
         // ── STICKY TOP BAR ──
         '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">'
           +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
-            +'<button onclick="showPage(\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
+            +'<button onclick="showPage(window._brandProfileReturnPage||\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
             +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
             + shareBtn
           +'</div>'
