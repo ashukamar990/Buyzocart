@@ -729,7 +729,12 @@
           setTimeout(function() { bzRenderOrbit(); }, 100);
           break;
         case 'brandsPage':
-          window.scrollTo({ top: 0, behavior: 'instant' });
+          // Hide brand profile overlay if open (prevents white screen)
+          var bpp = document.getElementById('brandProfilePage');
+          if (bpp) { bpp.style.display = 'none'; bpp.classList.remove('active'); }
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
           setTimeout(function() {
             if (typeof loadBrandsPage === 'function') loadBrandsPage();
           }, 80);
@@ -6238,23 +6243,24 @@
 
     // ── Brands Page Loader ──
     function loadBrandsPage() {
-      // Show spinner, hide sections
       var sp = document.getElementById('brandsLoadingSpinner');
+
+      // ── Cache hit: render immediately, never flash blank ──
+      if (_siteBrandsAll.length) {
+        if (sp) sp.style.display = 'none';
+        _renderBrands(_siteBrandsAll, _siteBrandsAll._followedSet);
+        bzWireHeroSearch();
+        bzRenderHomePopularBrands();
+        return;
+      }
+
+      // ── Fresh load: show spinner, hide sections ──
       if (sp) sp.style.display = 'block';
       ['popularBrandsSection','suggestedBrandsSection','otherBrandsSection',
        'followingBrandsSection','brandsEmptyState'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-
-      // Re-render from cache
-      if (_siteBrandsAll.length) {
-        if (sp) sp.style.display = 'none';
-        _renderBrands(_siteBrandsAll);
-        bzWireHeroSearch();
-        bzRenderHomePopularBrands();
-        return;
-      }
 
       Promise.all([
         get(ref(database, 'products')),
