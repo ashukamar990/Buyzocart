@@ -970,7 +970,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span>${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&bCache.blueTickAdmin);return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span class="product-card-brand">${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&(bCache.blueTickAdmin||bCache.verificationLevel==='premium'));return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -7059,10 +7059,17 @@
       var BT = window.__BZ_BLUE_TICK;
       if (!BT) return;
       var verifiedSet = {};
-      // Build from Firebase brands cache
-      (_siteBrandsAll || []).forEach(function(b) { if (b.blueTickAdmin) verifiedSet[b.name.toLowerCase()] = true; });
-      // Merge with static BZ_BRANDS
-      // Only Firebase brands used for verified ticks
+      (_siteBrandsAll || []).forEach(function(b) {
+        if (b.blueTickAdmin || b.verificationLevel === 'premium') {
+          verifiedSet[b.name.toLowerCase()] = true;
+        }
+      });
+      // Also check brands cache
+      (window.__bzBrandsCache || []).forEach(function(b) {
+        if (b.blueTickAdmin || b.verificationLevel === 'premium') {
+          verifiedSet[(b.name||'').toLowerCase()] = true;
+        }
+      });
 
       var sels = ['.product-brand', '.product-card-brand', '.detail-brand', '.brand-name-text', '.bz-prod-brand'];
       sels.forEach(function(sel) {
