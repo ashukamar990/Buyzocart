@@ -5041,26 +5041,308 @@
     }
 
     /* ============================================================
-       BRANDS PAGE — FIXED (No empty space, no overflow)
+       BRANDS PAGE — COMPLETE REDESIGN
        ============================================================ */
+
+    /* Page wrapper — zero extra space, no overflow */
     #brandsPage {
+      display: block;
       margin: 0;
-      width: 100%;
       padding: 0;
-      background: var(--surface2);
+      width: 100%;
+      max-width: 100%;
       min-height: 100vh;
+      background: var(--surface2);
       box-sizing: border-box;
+      overflow-x: hidden;
     }
 
     [data-theme="dark"] #brandsPage {
       background: #0f172a;
     }
 
+    /* Inner scroll container */
+    #brandsPage .brands-page-inner {
+      padding: 16px 16px 90px 16px;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    /* ── Search Bar ── */
+    .brands-search-wrap {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .brands-search-input {
+      width: 100%;
+      padding: 12px 16px 12px 44px;
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      background: var(--card);
+      color: var(--ink);
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    .brands-search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .brands-search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* ── Section Title ── */
+    .brands-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Following Strip (horizontal scroll avatars) ── */
+    .brands-following-strip {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .brands-following-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .brands-following-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .brands-following-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      background: var(--card);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .brands-following-avatar:hover {
+      transform: scale(1.06);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    }
+
+    .brands-following-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 6px;
+    }
+
+    .brands-following-name {
+      font-size: 11px;
+      color: var(--ink-2);
+      text-align: center;
+      max-width: 64px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Brand Cards Grid ── */
     .brands-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
       margin-bottom: 24px;
+    }
+
+    .brand-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .brand-card:hover,
+    .brand-card:active {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    /* Top row: logo + verified badge */
+    .brand-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .brand-logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: white;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .brand-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 6px;
+    }
+
+    .brand-verified {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    /* Brand name */
+    .brand-card-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.3;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Product count */
+    .brand-card-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Follow / Following button */
+    .brand-follow-btn {
+      width: 100%;
+      padding: 8px 0;
+      border-radius: 50px;
+      border: 1.5px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    .brand-follow-btn.following {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .brand-follow-btn:hover:not(.following) {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* ── Empty State ── */
+    .brands-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .brands-empty-icon {
+      font-size: 52px;
+      margin-bottom: 12px;
+    }
+
+    .brands-empty-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink-2);
+      margin-bottom: 6px;
+    }
+
+    .brands-empty-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Dark mode card overrides ── */
+    [data-theme="dark"] .brand-card {
+      background: #1e293b;
+      border-color: #334155;
+    }
+
+    [data-theme="dark"] .brands-search-input {
+      background: #1e293b;
+      border-color: #334155;
+      color: #f1f5f9;
+    }
+
+    [data-theme="dark"] .brand-logo,
+    [data-theme="dark"] .brands-following-avatar {
+      background: #0f172a;
+      border-color: #334155;
+    }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 380px) {
+      .brands-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      #brandsPage .brands-page-inner {
+        padding: 12px 12px 90px 12px;
+      }
+    }
+
+    @media (min-width: 600px) {
+      .brands-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
 
     @media (max-width: 640px) {
