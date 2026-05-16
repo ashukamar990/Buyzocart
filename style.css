@@ -53,8 +53,6 @@
       user-select: none;
       transition: var(--transition);
       padding-bottom: 70px;
-      overflow-x: hidden;
-      width: 100%;
     }
 
     a {
@@ -108,7 +106,8 @@
       display: flex;
       max-width: 500px;
       margin: 0;
-    }  /* margin-right removed — caused header overflow */
+      margin-right: 10px;
+    }
 
     .search-wrap input {
       flex: 1;
@@ -492,11 +491,7 @@
       font-weight: 600;
       margin-bottom: 6px;
       font-size: 15px;
-      white-space: normal;
-      word-break: break-word;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -725,15 +720,13 @@
     
     .product-detail-gallery {
       flex: 1;
-      min-width: 0;
-      width: 100%;
+      min-width: 300px;
       position: relative;
     }
     
     .product-detail-info {
       flex: 1;
-      min-width: 0;
-      width: 100%;
+      min-width: 300px;
     }
     
     .product-detail-main-image {
@@ -3921,7 +3914,7 @@
 
     @media (max-width: 480px) {
       .container {
-        padding: 0 16px;
+        padding: 0 12px;
       }
       
       .product-detail-main-image {
@@ -3937,10 +3930,6 @@
       .product-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
-      }
-
-      .product-card-body {
-        padding: 10px;
       }
       
       .banner-carousel {
@@ -5429,299 +5418,21 @@ img {
   }
 }
 
-/* ============================================================
-   BRANDS PAGE v2 + LAYOUT FIXES
-   ============================================================ */
-
-/* ── Container: brands page cancels top margin ── */
-html { overflow-x: hidden; width: 100%; }
-body { overflow-x: hidden; width: 100%; max-width: 100%; }
-
-#brandsPage {
-  margin-top: -20px;
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  box-sizing: border-box;
-}
-
-/* ── Brand profile: no empty space at bottom ── */
-#brandProfilePage {
-  min-height: auto !important;
-}
-
-/* ── Filter tabs ── */
-.bzb-tab {
-  flex-shrink: 0;
-  padding: 10px 16px;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 700;
-  color: #64748b;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: color .2s, border-color .2s;
-  white-space: nowrap;
-  font-family: inherit;
-  touch-action: manipulation;
-}
-.bzb-tab:hover { color: #2563eb; }
-.bzb-tab-active { color: #2563eb !important; border-bottom-color: #2563eb !important; }
-#bzb-tabs::-webkit-scrollbar { display: none; }
-
-/* ── Brand card ── */
-.bzb-card {
-  background: var(--card, #fff);
-  border: 1.5px solid var(--border, #f1f5f9);
-  border-radius: 16px;
-  padding: 14px 12px;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: transform .25s cubic-bezier(.22,1,.36,1),
-              box-shadow .25s ease, border-color .2s;
-  box-sizing: border-box;
-  opacity: 1;
-  animation: bzb-cardIn .38s cubic-bezier(.22,1,.36,1) both;
-}
-.bzb-card:hover {
-  transform: translateY(-4px) scale(1.015);
-  box-shadow: 0 10px 28px rgba(37,99,235,.13);
-  border-color: #2563eb;
-}
-.bzb-card::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #2563eb, #60a5fa);
-  border-radius: 16px 16px 0 0;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform .3s cubic-bezier(.22,1,.36,1);
-}
-.bzb-card:hover::after { transform: scaleX(1); }
-
-@keyframes bzb-cardIn {
-  from { opacity: 0; transform: translateY(16px) scale(.95); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);   }
-}
-
-/* ── Follow button ── */
-.bzb-follow-btn {
-  margin-top: auto;
-  width: 100%;
-  padding: 7px 0;
-  border-radius: 20px;
-  border: 1.5px solid #2563eb;
-  background: transparent;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all .22s ease;
-  font-family: inherit;
-  touch-action: manipulation;
-}
-.bzb-follow-btn:hover  { background: #2563eb; color: #fff; }
-.bzb-follow-btn.bzb-following { background: #2563eb; color: #fff; }
-.bzb-follow-btn.bzb-following:hover { background: #dc2626; border-color: #dc2626; }
-
-/* ── Skeleton shimmer ── */
-@keyframes bzb-shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
-}
-.bzb-skeleton { pointer-events: none; animation: none !important; opacity: 1 !important; }
-.bzb-skeleton::after { display: none; }
-.bzb-sk-logo, .bzb-sk-line, .bzb-sk-btn {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 400px 100%;
-  animation: bzb-shimmer 1.4s ease-in-out infinite;
-  border-radius: 8px;
-}
-.bzb-sk-logo { width: 52px; height: 52px; border-radius: 12px; margin-bottom: 10px; }
-.bzb-sk-line { height: 11px; margin-bottom: 6px; }
-.bzb-sk-btn  { height: 30px; border-radius: 20px; margin-top: 8px; width: 100%; }
-
-[data-theme="dark"] .bzb-sk-logo,
-[data-theme="dark"] .bzb-sk-line,
-[data-theme="dark"] .bzb-sk-btn {
-  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-  background-size: 400px 100%;
-  animation: bzb-shimmer 1.4s ease-in-out infinite;
-}
-
-/* ── Following row ── */
-#bzb-following-row::-webkit-scrollbar { display: none; }
-#brandsPageSearch { font-size: 16px !important; }
-
-@media (prefers-reduced-motion: reduce) {
-  .bzb-card, .bzb-sk-logo, .bzb-sk-line, .bzb-sk-btn { animation: none !important; }
-}
-
-
-/* ============================================================
-   BRAND PROFILE — Full screen fixed overlay
-   ============================================================ */
-
-/* When on body as fixed overlay */
+/* ── Brand profile: full screen fixed overlay ── */
 body > #brandProfilePage {
   display: none;
 }
-
 body > #brandProfilePage.active {
   display: block !important;
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  top: 0 !important; left: 0 !important;
+  right: 0 !important; bottom: 0 !important;
   z-index: 500 !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
-  background: #f8fafc !important;
-  /* Override any container constraints */
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  padding: 0 !important;
-  min-height: 100% !important;
-}
-
-/* Content inside brand profile — max-width on desktop */
-@media (min-width: 720px) {
-  body > #brandProfilePage.active > * {
-    max-width: 680px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  /* Sticky header stays full width */
-  body > #brandProfilePage.active > div:first-child {
-    max-width: 100%;
-    margin: 0;
-  }
-}
-
-/* ── Brand page v2 CSS ── */
-.bzb-tab {
-  flex-shrink: 0;
-  padding: 10px 16px;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 700;
-  color: #64748b;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: color .2s, border-color .2s;
-  white-space: nowrap;
-  font-family: inherit;
-  touch-action: manipulation;
-}
-.bzb-tab:hover { color: #2563eb; }
-.bzb-tab-active { color: #2563eb !important; border-bottom-color: #2563eb !important; }
-#bzb-tabs::-webkit-scrollbar { display: none; }
-
-.bzb-card {
-  background: var(--card, #fff);
-  border: 1.5px solid var(--border, #f1f5f9);
-  border-radius: 16px;
-  padding: 14px 12px;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .2s;
-  box-sizing: border-box;
-  opacity: 1;
-  animation: bzb-cardIn .38s cubic-bezier(.22,1,.36,1) both;
-}
-.bzb-card:hover {
-  transform: translateY(-4px) scale(1.015);
-  box-shadow: 0 10px 28px rgba(37,99,235,.13);
-  border-color: #2563eb;
-}
-.bzb-card::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #2563eb, #60a5fa);
-  border-radius: 16px 16px 0 0;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform .3s cubic-bezier(.22,1,.36,1);
-}
-.bzb-card:hover::after { transform: scaleX(1); }
-
-@keyframes bzb-cardIn {
-  from { opacity: 0; transform: translateY(16px) scale(.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.bzb-follow-btn {
-  margin-top: auto;
-  width: 100%;
-  padding: 7px 0;
-  border-radius: 20px;
-  border: 1.5px solid #2563eb;
-  background: transparent;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all .22s ease;
-  font-family: inherit;
-  touch-action: manipulation;
-}
-.bzb-follow-btn:hover { background: #2563eb; color: #fff; }
-.bzb-follow-btn.bzb-following { background: #2563eb; color: #fff; }
-.bzb-follow-btn.bzb-following:hover { background: #dc2626; border-color: #dc2626; }
-
-@keyframes bzb-shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-}
-.bzb-skeleton { pointer-events: none; animation: none !important; opacity: 1 !important; }
-.bzb-skeleton::after { display: none; }
-.bzb-sk-logo, .bzb-sk-line, .bzb-sk-btn {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 400px 100%;
-  animation: bzb-shimmer 1.4s ease-in-out infinite;
-  border-radius: 8px;
-}
-.bzb-sk-logo { width: 52px; height: 52px; border-radius: 12px; margin-bottom: 10px; }
-.bzb-sk-line { height: 11px; margin-bottom: 6px; }
-.bzb-sk-btn  { height: 30px; border-radius: 20px; margin-top: 8px; width: 100%; }
-
-[data-theme="dark"] .bzb-sk-logo,
-[data-theme="dark"] .bzb-sk-line,
-[data-theme="dark"] .bzb-sk-btn {
-  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-  background-size: 400px 100%;
-  animation: bzb-shimmer 1.4s ease-in-out infinite;
-}
-
-#bzb-following-row::-webkit-scrollbar { display: none; }
-#brandsPageSearch { font-size: 16px !important; }
-
-/* Brands page escape container */
-html { overflow-x: hidden; }
-body { overflow-x: hidden; width: 100%; }
-
-#brandsPage {
-  margin-top: -20px;
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  box-sizing: border-box;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bzb-card, .bzb-sk-logo, .bzb-sk-line, .bzb-sk-btn { animation: none !important; }
+  padding-bottom: 80px !important;
+  background: #f8fafc !important;
 }
