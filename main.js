@@ -3021,7 +3021,18 @@
       if (!sorted || sorted.length === 0) {
         // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
-          container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
+          container.innerHTML = `
+            <div style="background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#60a5fa 100%);border-radius:16px;padding:28px 20px;text-align:center;position:relative;overflow:hidden;margin-bottom:4px;">
+              <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:rgba(255,255,255,.07);border-radius:50%;"></div>
+              <div style="position:absolute;left:-10px;bottom:-30px;width:90px;height:90px;background:rgba(255,255,255,.05);border-radius:50%;"></div>
+              <div style="font-size:2.8rem;margin-bottom:10px;">🚀</div>
+              <h3 style="color:#fff;font-size:1.1rem;font-weight:800;margin:0 0 8px;">Exciting Products Coming Soon!</h3>
+              <p style="color:rgba(255,255,255,.8);font-size:.82rem;margin:0 0 18px;line-height:1.5;">We're curating the best products for you.<br>Stay tuned for amazing deals!</p>
+              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                <button onclick="showPage('brandsPage')" style="padding:10px 22px;background:#fff;color:#2563eb;border:none;border-radius:20px;font-weight:800;cursor:pointer;font-size:13px;font-family:inherit;">🏷️ Explore Brands</button>
+                <button onclick="showPage('offersPage')" style="padding:10px 22px;background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:20px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;">🎁 View Offers</button>
+              </div>
+            </div>`;
         }
         return;
       }
@@ -6098,8 +6109,6 @@
     // ================================================================
     //  BRAND SYSTEM — Complete Fixed Version
     // ================================================================
-    //  BRAND SYSTEM — v2 (skeleton-first, no empty space)
-    // ================================================================
     var _siteBrandsAll   = [];
     var _bzBrandsLoading = false;
     var _bzCurrentTab    = 'all';
@@ -6373,134 +6382,6 @@
       loadBrandsPage();
     };
 
-    // ── Wire hero search box (runs after brands are loaded) ──
-    function bzWireHeroSearch() {
-      var hsi = document.getElementById('brandsPageSearch');
-      if (!hsi || hsi._bzwired) return;
-      hsi._bzwired = true;
-      hsi.addEventListener('input', function() {
-        var clr = document.getElementById('brandsSearchClear');
-        if (clr) clr.style.display = this.value ? 'block' : 'none';
-        filterSiteBrands(this.value);
-      });
-    }
-
-    // ════════════════════════════════════════════════
-    //  BRAND PRELOADER — Runs on startup automatically
-    //  Populates _siteBrandsAll & __bzBrandsCache so
-    //  search, blue ticks & home sections work without
-    //  the user ever visiting the Brands page first.
-    // ════════════════════════════════════════════════
-    function bzPreloadBrands() {
-      if (_siteBrandsAll.length) {
-        // Already loaded — just refresh home sections
-        bzRenderHomePopularBrands();
-        if (typeof loadFollowingProducts === 'function') loadFollowingProducts();
-        bzInjectVerifiedTicks();
-        return;
-      }
-      var fb = window.firebase;
-      if (!fb || !fb.database) { setTimeout(bzPreloadBrands, 1200); return; }
-      var database = fb.database;
-      var ref      = fb.ref;
-      var get      = fb.get;
-      var currentUser = fb.auth && fb.auth.currentUser;
-
-      Promise.all([
-        get(ref(database, 'products')),
-        get(ref(database, 'brands')),
-        currentUser ? get(ref(database, 'brandFollowers')) : Promise.resolve(null)
-      ]).then(function(results) {
-        var prodSnap  = results[0];
-        var brandSnap = results[1];
-        var follSnap  = results[2];
-
-        // Build product count per brand
-        var prodMap = {};
-        if (prodSnap && prodSnap.exists()) {
-          prodSnap.forEach(function(c) {
-            var v = c.val();
-            var bn = (v && (v.brand || v.brandName || '')).trim();
-            if (bn) { prodMap[bn] = (prodMap[bn] || 0) + 1; }
-          });
-        }
-
-        // Build followedSet
-        var followedSet = {};
-        if (follSnap && follSnap.exists() && currentUser) {
-          var fd = follSnap.val() || {};
-          Object.keys(fd).forEach(function(bid) {
-            if (fd[bid] && fd[bid][currentUser.uid]) followedSet[bid] = true;
-          });
-        }
-
-        // Build brand list from Firebase brands node
-        var brandMap = {};
-        if (brandSnap && brandSnap.exists()) {
-          brandSnap.forEach(function(c) {
-            var v = c.val();
-            if (!v || !v.name) return;
-            var pid = prodMap[v.name] || 0;
-            brandMap[c.key] = {
-              id: c.key, name: v.name || '', logo: v.logo || '',
-              description: v.description || '', blueTickAdmin: !!v.blueTickAdmin,
-              verificationLevel: v.verificationLevel || 'normal',
-              followers: v.followers || v.followersCount || 0,
-              rating: v.rating || 0,
-              productCount: pid, products: Array(pid),
-              followed: !!followedSet[c.key]
-            };
-          });
-        }
-        // Also create entries from product brand names (if not already in brands node)
-        Object.keys(prodMap).forEach(function(bn) {
-          if (!Object.values(brandMap).find(function(b) { return b.name === bn; })) {
-            var fakeId = bn.toLowerCase().replace(/[^a-z0-9]/g, '_');
-            if (!brandMap[fakeId]) {
-              brandMap[fakeId] = {
-                id: fakeId, name: bn, logo: '', description: '',
-                blueTickAdmin: false, verificationLevel: 'normal',
-                followers: 0, rating: 0,
-                productCount: prodMap[bn], products: Array(prodMap[bn]),
-                followed: false
-              };
-            }
-          }
-        });
-
-        _siteBrandsAll = Object.values(brandMap).filter(function(b) { return b.productCount > 0 || b.blueTickAdmin; });
-        _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
-        _siteBrandsAll._followedSet = followedSet;
-
-        // Populate global cache used by search & tick injector
-        window.__bzBrandsCache = _siteBrandsAll.map(function(b) {
-          return { id: b.id, name: b.name, logo: b.logo, blueTickAdmin: b.blueTickAdmin,
-                   products: b.products, followers: b.followers, rating: b.rating };
-        });
-
-        // Now render home sections & inject ticks
-        bzRenderHomePopularBrands();
-        if (typeof loadFollowingProducts === 'function') loadFollowingProducts();
-        bzInjectVerifiedTicks();
-      }).catch(function(e) {
-        console.warn('bzPreloadBrands error:', e);
-      });
-    }
-    window.bzPreloadBrands = bzPreloadBrands;
-
-    // Run preloader: once after auth resolves, and once after a short delay as fallback
-    (function schedulePreload() {
-      var fb = window.firebase;
-      if (fb && fb.auth && typeof fb.onAuthStateChanged === 'function') {
-        fb.onAuthStateChanged(fb.auth, function() {
-          setTimeout(bzPreloadBrands, 300);
-        });
-      }
-      // Fallback — always run after 2s regardless of auth
-      setTimeout(bzPreloadBrands, 2000);
-    })();
-
-    // ── Brands Page Loader ──
     // ── Show products filtered by brand ──
     function showBrandProducts(brandId, brandName) {
       var branded = products.filter(function(p) {
@@ -6519,15 +6400,24 @@
 
     function showBrandProfile(brandId, brandName) {
       window._currentBrandId = brandId;
-      var mainEl = document.querySelector('main') || document.body;
+      // Append to BODY so it's not constrained by main.container
       var page = document.getElementById('brandProfilePage');
       if (!page) {
         page = document.createElement('section');
         page.id = 'brandProfilePage';
         page.className = 'page';
-        mainEl.appendChild(page);
+        document.body.appendChild(page);
       }
-      page.style.cssText = 'min-height:auto;background:#f8fafc;padding-bottom:80px;';
+      // Full-screen fixed overlay
+      page.style.cssText = [
+        'position:fixed',
+        'top:0','left:0','right:0','bottom:0',
+        'z-index:500',
+        'overflow-y:auto',
+        '-webkit-overflow-scrolling:touch',
+        'background:#f8fafc',
+        'padding-bottom:80px'
+      ].join(';') + ';';
 
       // ── Skeleton loading state ──
       page.innerHTML = `
@@ -6556,7 +6446,7 @@
       }
 
       showPage('brandProfilePage');
-      window.scrollTo(0, 0);
+      page.scrollTop = 0;  // scroll the fixed div itself to top
 
       var _fb = window.firebase;
       Promise.all([
