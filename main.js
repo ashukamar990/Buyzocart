@@ -644,6 +644,12 @@
     }
 
     function showPage(pageId) {
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        if (pageId === 'brandsPage') mainEl.classList.remove('container');
+        else mainEl.classList.add('container');
+      }
+
       const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
       window.history.pushState(null, '', newUrl);
       document.querySelectorAll('main .page').forEach(page => page.classList.remove('active'));
@@ -651,7 +657,16 @@
       if (pageElement) pageElement.classList.add('active');
       updateBottomNav();
       updateStepPills();
-      window.scrollTo(0, 0);
+
+      // Robust scroll reset to handle browser navigation edge cases
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: 'instant' });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        });
+      });
+
       switch(pageId) {
         case 'myOrdersPage':
           if (currentUser) showMyOrders();
@@ -6216,7 +6231,7 @@
       var sp = document.getElementById('brandsLoadingSpinner');
 
       // ── Cache hit: render immediately, never flash blank ──
-      if (_siteBrandsAll.length) {
+      if (_siteBrandsAll.length > 0) {
         if (sp) sp.style.display = 'none';
         _renderBrands(_siteBrandsAll, _siteBrandsAll._followedSet);
         bzWireHeroSearch();
