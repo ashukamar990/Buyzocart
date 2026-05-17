@@ -481,26 +481,69 @@
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
-      topThree.forEach(product => {
-        const suggestion = document.createElement('div');
-        suggestion.className = 'search-suggestion';
-        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
-        suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
-          <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
-            <div class="search-suggestion-price">${formatPrice(product.price)}</div>
-          </div>
-        `;
-        suggestion.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
-        suggestionsContainer.appendChild(suggestion);
+
+      // ── Amazon/Flipkart style: keyword text suggestions (no product cards) ──
+      const keywordSuggestions = [];
+      const seenLabels = new Set();
+
+      // 1. Product names as keywords
+      results.slice(0, 8).forEach(product => {
+        const name = (product.name || product.title || '').trim();
+        if (name && !seenLabels.has(name.toLowerCase())) {
+          seenLabels.add(name.toLowerCase());
+          keywordSuggestions.push({ label: name, query: name, icon: '🔍' });
+        }
       });
+
+      // 2. Category suggestions: "query in Category"
+      const catMap = {};
+      results.forEach(product => {
+        const catName = (categories.find(c => c.id === product.category)?.name || product.category || '').trim();
+        if (catName && !catMap[catName]) {
+          catMap[catName] = true;
+          const label = query + ' in ' + catName;
+          if (!seenLabels.has(label.toLowerCase())) {
+            seenLabels.add(label.toLowerCase());
+            keywordSuggestions.push({ label: label, query: query, cat: catName, icon: '📂' });
+          }
+        }
+      });
+
+      // Show up to 5 keyword suggestions
+      keywordSuggestions.slice(0, 5).forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border,#f1f5f9);transition:background .15s;';
+        row.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span style="font-size:14px;color:var(--ink,#0f172a);flex:1;">${item.label}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" style="flex-shrink:0;transform:rotate(-45deg);">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>`;
+        row.addEventListener('mouseover', () => row.style.background = 'var(--surface2,#f8fafc)');
+        row.addEventListener('mouseout',  () => row.style.background = '');
+        row.addEventListener('click', () => {
+          const inp = document.getElementById('searchPanelInput');
+          if (inp) inp.value = item.query;
+          if (item.cat) {
+            window.currentCategoryFilter = item.cat;
+          }
+          performSearch(item.query);
+          closeSearchPanel();
+        });
+        suggestionsContainer.appendChild(row);
+      });
+
       if (results.length > 3) {
         const viewAll = document.createElement('div');
-        viewAll.className = 'search-suggestion';
-        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
-        viewAll.addEventListener('click', () => performSearch(query));
+        viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-top:1px solid var(--border,#f1f5f9);';
+        viewAll.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${query}"</span>`;
+        viewAll.addEventListener('click', () => { performSearch(query); closeSearchPanel(); });
         suggestionsContainer.appendChild(viewAll);
       }
     }
@@ -985,7 +1028,7 @@
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span class="product-card-brand">${product.brand}</span></div>` : ''}
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span class="product-card-brand">${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&(bCache.blueTickAdmin||bCache.verificationLevel==='premium'));return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -2009,25 +2052,37 @@
     }
 
     async function toPayment() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType')?.value || 'home';
-
-      const addrObj = { name: fullname, mobile, pincode, city, state, street: house, type: addressType };
-      const error = validateAddress(addrObj);
-      if (error) {
-        showToast(error, 'error');
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
         return;
       }
-
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
 
-      // Auto-save address for future use
-      saveToLocalStorageAddresses(addrObj);
+      if (currentUser) {
+        try {
+          const alreadySaved = savedAddresses.some(a => a.mobile === mobile && a.pincode === pincode && a.street === house);
+          if (!alreadySaved) {
+            const addressId = 'address_' + Date.now();
+            const addressData = {
+              name: fullname, mobile, pincode, city, state,
+              street: house, type: addressType,
+              userId: currentUser.uid,
+              isDefault: savedAddresses.length === 0,
+              createdAt: Date.now()
+            };
+            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+            savedAddresses.push({ id: addressId, ...addressData });
+            cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+          }
+        } catch (e) {}
+      }
 
       showPage('paymentPage');
     }
@@ -2131,19 +2186,6 @@
         cachedOrders.push(orderData);
         cacheManager.set(CACHE_KEYS.ORDERS, cachedOrders);
         sendOrderNotification(currentUser.email, orderId, currentProduct.name, total);
-
-        // Save address to localStorage and make default
-        if (userInfo && userInfo.fullName) {
-          saveToLocalStorageAddresses({
-            name: userInfo.fullName,
-            mobile: userInfo.mobile,
-            pincode: userInfo.pincode,
-            city: userInfo.city,
-            state: userInfo.state,
-            street: userInfo.house || userInfo.street
-          });
-        }
-
         document.getElementById('orderIdDisplay').textContent = orderId;
         showPage('successPage');
         showToast('Order placed successfully!', 'success');
@@ -3458,95 +3500,40 @@
       });
     }
 
-    function validateAddress(addr) {
-      if (!addr.name || addr.name.trim().length < 2) return "Full Name is required";
-      if (!addr.mobile || !/^\d{10}$/.test(addr.mobile)) return "Enter a valid 10-digit mobile number";
-      if (!addr.pincode || !/^\d{6}$/.test(addr.pincode)) return "Enter a valid 6-digit pincode";
-      if (!addr.city || addr.city.trim().length < 2) return "City is required";
-      if (!addr.state || addr.state.trim().length < 2) return "State is required";
-      if (!addr.street || addr.street.trim().length < 3) return "House / Street details are required";
-      return null;
-    }
-
-    function saveToLocalStorageAddresses(addressData) {
-      try {
-        const stored = localStorage.getItem(CACHE_KEYS.ADDRESSES);
-        let addresses = stored ? JSON.parse(stored) : [];
-
-        // Remove duplicate if exists to re-add at top
-        const duplicateIdx = addresses.findIndex(a =>
-          a.name.toLowerCase() === addressData.name.toLowerCase() &&
-          a.mobile === addressData.mobile &&
-          a.pincode === addressData.pincode &&
-          a.street.toLowerCase() === (addressData.street || addressData.house || '').toLowerCase()
-        );
-
-        if (duplicateIdx !== -1) {
-          addresses.splice(duplicateIdx, 1);
-        }
-
-        // Add new/updated address to top
-        const newAddress = {
-          id: addressData.id || 'addr_' + Date.now(),
-          ...addressData,
-          street: addressData.street || addressData.house, // standardize field name
-          updatedAt: Date.now()
-        };
-        delete newAddress.house; // use street consistently
-
-        addresses.unshift(newAddress);
-
-        // Mark first as default, others not
-        addresses.forEach((a, i) => a.isDefault = (i === 0));
-
-        // Keep max 10 addresses
-        if (addresses.length > 10) addresses = addresses.slice(0, 10);
-
-        localStorage.setItem(CACHE_KEYS.ADDRESSES, JSON.stringify(addresses));
-        savedAddresses = addresses;
-        return newAddress;
-      } catch (e) {
-        console.error("Error saving to localStorage:", e);
-        return null;
-      }
-    }
-
     async function loadSavedAddresses() {
-      const addressesList = document.getElementById('savedAddressesList');
-      const savedAddressesSection = document.getElementById('savedAddressesSection');
-
+      if (!currentUser) return;
       try {
-        // Primary storage: localStorage
-        const stored = localStorage.getItem(CACHE_KEYS.ADDRESSES);
-        if (stored) {
-          savedAddresses = JSON.parse(stored);
-        } else {
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'addresses'),
+            window.firebase.orderByChild('userId'),
+            window.firebase.equalTo(currentUser.uid)
+          )
+        );
+        const addressesList = document.getElementById('savedAddressesList');
+        const savedAddressesSection = document.getElementById('savedAddressesSection');
+        if (!snapshot.exists()) {
+          savedAddressesSection.style.display = 'none';
           savedAddresses = [];
+          return;
         }
-
-        if (savedAddresses.length > 0) {
-          if (savedAddressesSection) savedAddressesSection.style.display = 'block';
+        const addressesObj = snapshot.val();
+        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
+        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+        if (addresses.length > 0) {
+          savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-
-          // Last used address should be default (at index 0 or marked isDefault)
-          const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+          const defaultAddr = savedAddresses[0];
           if (defaultAddr) {
             fillAddressForm(defaultAddr);
-            userInfo = {
-              fullName: defaultAddr.name,
-              mobile: defaultAddr.mobile,
-              pincode: defaultAddr.pincode,
-              city: defaultAddr.city,
-              state: defaultAddr.state,
-              house: defaultAddr.street
-            };
+            userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
+            const radios = document.querySelectorAll('input[name="savedAddress"]');
+            radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
           }
-        } else {
-          if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-        }
+        } else savedAddressesSection.style.display = 'none';
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
       } catch (error) {
         console.error('Error loading addresses:', error);
-        savedAddresses = [];
       }
     }
 
@@ -3554,84 +3541,50 @@
       const addressesList = document.getElementById('savedAddressesList');
       if (!addressesList) return;
       addressesList.innerHTML = '';
-
-      savedAddresses.forEach((address, index) => {
+      savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card' + (address.isDefault ? ' selected' : '');
-        addressCard.style.cssText = `
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 16px;
-          margin-bottom: 12px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          background: var(--surface, #fff);
-          position: relative;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        `;
-
-        const addressType = address.type || 'home';
-        const isDefault = address.isDefault;
-
+        addressCard.className = 'saved-address-card';
+        const addressType = address.type || 'Other';
+        const isDefault = address.isDefault ? '• Default' : '';
         addressCard.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-            <div style="background:var(--accent-light, #eff6ff); color:var(--accent, #2563eb); font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px;">${addressType}</div>
-            ${isDefault ? '<div style="color:#16a34a; font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px;">✓ DEFAULT</div>' : ''}
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
+            <div style="flex:1">
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
+            </div>
           </div>
-          <div style="font-weight:700; font-size:15px; margin-bottom:4px; color:var(--text, #0f172a);">${address.name}</div>
-          <div style="font-size:13px; color:var(--text, #0f172a); line-height:1.4;">${address.street || address.house}</div>
-          <div style="font-size:13px; color:var(--text, #0f172a); margin-bottom:8px;">${address.city}, ${address.state} - ${address.pincode}</div>
-          <div style="font-size:13px; font-weight:600; color:var(--text, #0f172a); margin-bottom:14px;">📞 ${address.mobile}</div>
-
-          <div style="display:flex; gap:10px; border-top:1px solid var(--border, #e2e8f0); padding-top:12px;">
-            <button class="btn secondary edit-address" style="padding:6px 16px; font-size:12px; flex:1;">Edit</button>
-            <button class="btn error delete-address" style="padding:6px 16px; font-size:12px; flex:1; background:#fee2e2; color:#ef4444; border:none;">Delete</button>
+          <div class="address-actions">
+            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
           </div>
         `;
-
-        if (isDefault) {
-          addressCard.style.borderColor = 'var(--accent, #2563eb)';
-          addressCard.style.background = 'var(--accent-faint, #f0f7ff)';
-        }
-
-        addressCard.addEventListener('click', function(e) {
-          if (e.target.closest('button')) return;
-
-          // Set as default and move to top
-          const newAddresses = [...savedAddresses];
-          const clicked = newAddresses.splice(index, 1)[0];
-          newAddresses.unshift(clicked);
-          newAddresses.forEach((a, i) => a.isDefault = (i === 0));
-
-          localStorage.setItem(CACHE_KEYS.ADDRESSES, JSON.stringify(newAddresses));
-          savedAddresses = newAddresses;
-
-          fillAddressForm(clicked);
-          userInfo = {
-            fullName: clicked.name,
-            mobile: clicked.mobile,
-            pincode: clicked.pincode,
-            city: clicked.city,
-            state: clicked.state,
-            house: clicked.street || clicked.house
-          };
-
-          renderSavedAddresses();
-          showToast('Address selected as default', 'success');
+        const radio = addressCard.querySelector('input[type="radio"]');
+        radio.addEventListener('click', function(e) {
+          e.stopPropagation();
+          fillAddressForm(address);
+          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
         });
-
+        addressCard.addEventListener('click', function(e) {
+          if (e.target.type !== 'radio') {
+            radio.checked = true;
+            fillAddressForm(address);
+            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+          }
+        });
         const editBtn = addressCard.querySelector('.edit-address');
-        editBtn.addEventListener('click', (e) => {
+        editBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           editAddress(address);
         });
-
         const deleteBtn = addressCard.querySelector('.delete-address');
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           deleteAddressConfirmation(address);
         });
-
         addressesList.appendChild(addressCard);
       });
     }
@@ -3647,27 +3600,43 @@
     }
 
     async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType').value;
-
-      const addrObj = { name: fullname, mobile, pincode, city, state, street: house, type: addressType };
-      const error = validateAddress(addrObj);
-      if (error) {
-        showToast(error, 'error');
+      if (!fullname || !mobile || !pincode || !city || !state || !house) {
+        showToast('Please fill in all required fields', 'error');
         return;
       }
-
-      saveToLocalStorageAddresses(addrObj);
-      showToast('Address saved!', 'success');
-
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
-
-      loadSavedAddresses();
+      const addressData = {
+        name: fullname,
+        mobile: mobile,
+        pincode: pincode,
+        city: city,
+        state: state,
+        street: house,
+        type: addressType,
+        userId: currentUser.uid,
+        isDefault: savedAddresses.length === 0,
+        createdAt: Date.now()
+      };
+      try {
+        const addressId = 'address_' + Date.now();
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        savedAddresses.push({ id: addressId, ...addressData });
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+        showToast('Address saved successfully', 'success');
+        await loadSavedAddresses();
+        document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
+      } catch (error) {
+        console.error('Error saving address:', error);
+        showToast('Failed to save address', 'error');
+      }
     }
 
     function showNewAddressForm() {
@@ -3687,58 +3656,66 @@
 
     function editAddress(address) {
       fillAddressForm(address);
+      document.getElementById('savedAddressesSection').style.display = 'none';
+      document.getElementById('newAddressForm').style.display = 'block';
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Update Address';
-      saveBtn.onclick = function() {
-        const fullname = document.getElementById('fullname').value.trim();
-        const mobile = document.getElementById('mobile').value.trim();
-        const pincode = document.getElementById('pincode').value.trim();
-        const city = document.getElementById('city').value.trim();
-        const state = document.getElementById('state').value.trim();
-        const house = document.getElementById('house').value.trim();
+      saveBtn.onclick = async function() {
+        const fullname = document.getElementById('fullname').value;
+        const mobile = document.getElementById('mobile').value;
+        const pincode = document.getElementById('pincode').value;
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const house = document.getElementById('house').value;
         const addressType = document.getElementById('addressType').value;
-
-        const addrObj = { name: fullname, mobile, pincode, city, state, street: house, type: addressType, id: address.id };
-        const error = validateAddress(addrObj);
-        if (error) {
-          showToast(error, 'error');
-          return;
+        const addressData = {
+          name: fullname,
+          mobile: mobile,
+          pincode: pincode,
+          city: city,
+          state: state,
+          street: house,
+          type: addressType,
+          userId: currentUser.uid,
+          isDefault: address.isDefault
+        };
+        try {
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
+          showToast('Address updated successfully', 'success');
+          document.getElementById('savedAddressesSection').style.display = 'block';
+          document.getElementById('newAddressForm').style.display = 'block';
+          await loadSavedAddresses();
+        } catch (error) {
+          console.error('Error updating address:', error);
+          showToast('Failed to update address', 'error');
         }
-
-        saveToLocalStorageAddresses(addrObj);
-        showToast('Address updated!', 'success');
-
-        // Reset button
-        saveBtn.textContent = 'Save This Address';
-        saveBtn.onclick = saveUserInfoAndAddress;
-
-        loadSavedAddresses();
       };
-
-      // Scroll to form
-      document.getElementById('newAddressForm').scrollIntoView({ behavior: 'smooth' });
     }
 
     function deleteAddressConfirmation(address) {
-      if (confirm(`Are you sure you want to delete address for ${address.name}?`)) {
+      document.getElementById('alertTitle').textContent = 'Delete Address';
+      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
+      document.getElementById('alertModal').classList.add('active');
+      document.getElementById('alertConfirmBtn').onclick = async function() {
+        document.getElementById('alertModal').classList.remove('active');
+        if (!currentUser) { showToast('Please log in again', 'error'); return; }
         try {
-          const stored = localStorage.getItem(CACHE_KEYS.ADDRESSES);
-          if (stored) {
-            let addresses = JSON.parse(stored);
-            addresses = addresses.filter(a => a.id !== address.id);
-            // Re-assign default if we deleted the default one
-            if (address.isDefault && addresses.length > 0) {
-              addresses[0].isDefault = true;
-            }
-            localStorage.setItem(CACHE_KEYS.ADDRESSES, JSON.stringify(addresses));
-            showToast('Address deleted', 'success');
-            loadSavedAddresses();
-          }
-        } catch (e) {
-          console.error('Error deleting address:', e);
-          showToast('Could not delete address', 'error');
+          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
+          showToast('Address deleted', 'success');
+          await loadSavedAddresses();
+          const _sas = document.getElementById('savedAddressesSection');
+          const _naf = document.getElementById('newAddressForm');
+          if (_sas) _sas.style.display = savedAddresses.length ? 'block' : 'none';
+          if (_naf) _naf.style.display = 'block';
+        } catch (error) {
+          console.error('Error deleting address:', error);
+          // Never sign out on address delete error
+          showToast('Could not delete address. Please try again.', 'error');
         }
-      }
+      };
+      document.getElementById('alertCancelBtn').onclick = function() {
+        document.getElementById('alertModal').classList.remove('active');
+      };
     }
 
     (function setupLazyImages() {
@@ -4893,7 +4870,6 @@
       // ───────────────────────────────────────────────────────────
 
       setupEventListeners();
-      loadSavedAddresses(); // Load addresses instantly from localStorage
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
           if (user) {
@@ -6286,11 +6262,11 @@
       var fb = window.firebase;
       if (fb && fb.auth && typeof fb.onAuthStateChanged === 'function') {
         fb.onAuthStateChanged(fb.auth, function() {
-          setTimeout(bzPreloadBrands, 50);
+          setTimeout(bzPreloadBrands, 300);
         });
       }
-      // Fallback — run quickly so brands appear on first load without delay
-      setTimeout(bzPreloadBrands, 50);
+      // Fallback — always run after 2s regardless of auth
+      setTimeout(bzPreloadBrands, 2000);
     })();
 
     // ── Brands Page Loader ──
@@ -6555,7 +6531,7 @@
         page.className = 'page';
         mainEl.appendChild(page);
       }
-      page.style.cssText = 'min-height:auto;background:#f8fafc;padding-bottom:80px;';
+      page.style.cssText = 'min-height:100vh;background:#f8fafc;padding-bottom:100px;';
 
       // ── Skeleton loading state ──
       page.innerHTML = `
@@ -6726,7 +6702,7 @@
 
         // ── STICKY TOP BAR ──
         '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">'
-          +'<div style="max-width:min(900px,100%);margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
+          +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
             +'<button onclick="showPage(window._brandProfileReturnPage||\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
             +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
             + shareBtn
@@ -6734,7 +6710,7 @@
         +'</div>'
 
         // ── HERO BANNER ──
-        +'<div style="position:relative;max-width:min(900px,100%);margin:0 auto;">'
+        +'<div style="position:relative;max-width:640px;margin:0 auto;">'
           +'<div style="height:190px;'+bannerBg+'position:relative;overflow:hidden;">'
             + bannerOverlay
             // Decorative circles when no banner
@@ -6749,7 +6725,7 @@
         +'</div>'
 
         // ── BRAND IDENTITY ──
-        +'<div style="max-width:min(900px,100%);margin:0 auto;background:#fff;padding:46px 18px 16px;border-bottom:1px solid #f1f5f9;">'
+        +'<div style="max-width:640px;margin:0 auto;background:#fff;padding:46px 18px 16px;border-bottom:1px solid #f1f5f9;">'
           +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;">'
             +'<div style="flex:1;min-width:0;">'
               +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -6765,7 +6741,7 @@
         +'</div>'
 
         // ── STATS ROW ──
-        +'<div style="max-width:min(900px,100%);margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
+        +'<div style="max-width:640px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
           +'<div style="display:flex;gap:8px;">'
             + statCard('<span id="brandFollowerCount">'+fmtNum(followers)+'</span>','Followers', themeColor)
             + statCard(fmtNum(brandProds.length),'Products','#0f172a')
@@ -6775,17 +6751,17 @@
         +'</div>'
 
         // ── ACTION BUTTONS ──
-        +'<div style="max-width:min(900px,100%);margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
+        +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
           + followBtn
           +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;transition:all .2s;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
           + shareBtn
         +'</div>'
 
         // ── OFFERS ──
-        +(offers?'<div style="max-width:min(900px,100%);margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
+        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
 
         // Search bar removed
-        +'<div id="bpTabsBar" style="max-width:min(900px,100%);margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
+        +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
           +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
             +['Products','Trending','Reviews','About'].map(function(t,i){
               return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:12px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
@@ -6794,7 +6770,7 @@
         +'</div>'
 
         // ── TAB CONTENTS ──
-        +'<div style="max-width:min(900px,100%);margin:0 auto;">'
+        +'<div style="max-width:640px;margin:0 auto;">'
 
           // Products tab
           +'<div id="bpTabContentProducts" style="padding:16px;">'
@@ -6880,7 +6856,7 @@
 
         // ── STICKY FOLLOW BAR (mobile, shown when scrolled past buttons) ──
         +'<div id="bpStickyFollow" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#fff;border-top:1px solid #f1f5f9;z-index:40;box-shadow:0 -4px 16px rgba(0,0,0,.08);">'
-          +'<div style="max-width:min(900px,100%);margin:0 auto;display:flex;gap:10px;align-items:center;">'
+          +'<div style="max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center;">'
             +'<div style="width:36px;height:36px;border-radius:10px;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">'+(logo?'<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;">':'<span style="font-size:14px;font-weight:800;color:#fff;">'+initials+'</span>')+'</div>'
             +'<span style="font-weight:800;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
             +'<button id="bpStickyFollowBtn" onclick="window.toggleBrandFollow(\''+brandId+'\',\''+safeName+'\',this)" style="padding:9px 22px;border-radius:24px;border:none;cursor:pointer;font-size:13px;font-weight:800;font-family:inherit;'+(isFollowing?'background:#f1f5f9;color:#64748b;':'background:'+themeColor+';color:#fff;')+'">'+(isFollowing?'✓ Following':'+ Follow')+'</button>'
@@ -7158,7 +7134,7 @@
         document.querySelectorAll(sel + ':not([data-bztick])').forEach(function(el) {
           el.setAttribute('data-bztick', '1');
           var txt = el.textContent.replace(/\u2713|✓|✔/g, '').trim().toLowerCase();
-          if (verifiedSet[txt] && !el.querySelector('.bz-tick') && !(el.nextElementSibling && el.nextElementSibling.classList && el.nextElementSibling.classList.contains('bz-tick'))) {
+          if (verifiedSet[txt] && !el.querySelector('.bz-tick')) {
             el.insertAdjacentHTML('beforeend', BT);
           }
         });
