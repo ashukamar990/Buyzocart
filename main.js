@@ -6488,7 +6488,7 @@
         page.className = 'page';
         mainEl.appendChild(page);
       }
-      page.style.cssText = 'min-height: auto; background: #f8fafc; padding-bottom: 80px;';
+      page.style.cssText = 'min-height:auto;background:#f8fafc;padding-bottom:80px;';
 
       // ── Skeleton loading state ──
       page.innerHTML = `
