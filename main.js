@@ -361,62 +361,198 @@
       document.getElementById('searchSuggestions').style.display = 'none';
     }
 
+    // ════════════════════════════════════════════════════
+    //  SMART SEARCH ENGINE — Amazon/Flipkart style
+    //  Features: fuzzy, synonyms, typo fix, ranking,
+    //  tags, semantic, similar products fallback
+    // ════════════════════════════════════════════════════
+
+    // ── Synonym & typo correction map ──
+    const _SEARCH_SYNONYMS = {
+      't shrt':'tshirt', 't-shrt':'tshirt', 'tshrt':'tshirt', 'shirt':'tshirt',
+      'shirts':'tshirt', 't shirt':'tshirt', 'polo shirt':'polo tshirt',
+      'trouser':'pants', 'trousers':'pants', 'pant':'pants', 'jeans pant':'jeans',
+      'hoodi':'hoodie', 'hoddie':'hoodie', 'sweatshirt':'hoodie',
+      'shoes':'footwear', 'chappal':'footwear', 'sandal':'footwear',
+      'kameez':'kurta', 'kurti':'kurta',
+      'jacket':'jacket', 'coat':'jacket',
+      'sports wear':'activewear', 'gym wear':'activewear', 'workout':'activewear',
+      'summer':'casual', 'winter':'woolen',
+      'gents':'men', 'ladies':'women', 'female':'women', 'male':'men',
+      'navey':'navy', 'navy':'navy', 'bule':'blue', 'bleu':'blue',
+      'cottan':'cotton', 'coton':'cotton', 'cotten':'cotton',
+      'casual':'casual', 'forml':'formal', 'formol':'formal',
+    };
+
+    // ── Semantic groups (query → related terms) ──
+    const _SEMANTIC_MAP = {
+      'activewear': ['gym','sports','dri-fit','workout','athletic','running'],
+      'casual':     ['everyday','regular','daily','comfy','comfortable'],
+      'formal':     ['office','professional','business','party','occasion'],
+      'tshirt':     ['polo','crew neck','round neck','v-neck','half sleeve'],
+      'warm':       ['woolen','wool','fleece','thermal','winter'],
+      'cool':       ['cotton','linen','breathable','summer','light'],
+      'men':        ['gents','male','boy','boys','mens'],
+      'women':      ['ladies','female','girl','girls','womens'],
+    };
+
+    // ── Apply synonyms + typo correction to query ──
+    function _normalizeQuery(q) {
+      const lower = q.toLowerCase().trim();
+      if (_SEARCH_SYNONYMS[lower]) return _SEARCH_SYNONYMS[lower];
+      // Partial match correction
+      for (const [wrong, correct] of Object.entries(_SEARCH_SYNONYMS)) {
+        if (lower.includes(wrong)) return lower.replace(wrong, correct);
+      }
+      return lower;
+    }
+
+    // ── Word-level fuzzy score ──
     function fuzzyScore(text, query) {
       if (!text || !query) return 0;
       const t = text.toLowerCase();
       const q = query.toLowerCase();
       if (t === q) return 100;
-      if (t.startsWith(q)) return 90;
-      if (t.includes(q)) return 80;
-      const lenT = t.length, lenQ = q.length;
-      if (Math.abs(lenT - lenQ) > 5) return 0;
-      const dp = Array.from({length: lenQ + 1}, (_, i) => i);
-      for (let j = 1; j <= lenT; j++) {
+      if (t.startsWith(q)) return 92;
+      if (t.includes(q)) return 82;
+      // Word-by-word match bonus
+      const tWords = t.split(/[\s\-_,]+/);
+      const qWords = q.split(/[\s\-_,]+/);
+      let wordScore = 0;
+      qWords.forEach(qw => {
+        if (!qw) return;
+        tWords.forEach(tw => {
+          if (tw === qw) wordScore += 15;
+          else if (tw.startsWith(qw) || qw.startsWith(tw)) wordScore += 10;
+          else if (tw.includes(qw) || qw.includes(tw)) wordScore += 6;
+        });
+      });
+      if (wordScore > 0) return Math.min(78, wordScore);
+      // Levenshtein for short queries (typo tolerance)
+      if (Math.abs(t.length - q.length) > 6) return 0;
+      const dp = Array.from({length: q.length + 1}, (_, i) => i);
+      for (let j = 1; j <= t.length; j++) {
         let prev = j;
-        for (let i = 1; i <= lenQ; i++) {
+        for (let i = 1; i <= q.length; i++) {
           const cur = t[j-1] === q[i-1] ? dp[i-1] : Math.min(dp[i-1], dp[i], prev) + 1;
-          dp[i-1] = prev;
-          prev = cur;
+          dp[i-1] = prev; prev = cur;
         }
-        dp[lenQ] = prev;
+        dp[q.length] = prev;
       }
-      const dist = dp[lenQ];
-      const maxLen = Math.max(lenT, lenQ);
-      const similarity = (1 - dist / maxLen) * 70;
-      return similarity > 30 ? similarity : 0;
+      const dist = dp[q.length];
+      const maxLen = Math.max(t.length, q.length);
+      const sim = (1 - dist / maxLen) * 70;
+      return sim > 28 ? sim : 0;
     }
 
+    // ── Build searchable string for a product ──
+    function _buildSearchIndex(p) {
+      const tags   = Array.isArray(p.tags) ? p.tags.join(' ') : (p.tags || '');
+      const kw     = Array.isArray(p.searchKeywords) ? p.searchKeywords.join(' ') : (p.searchKeywords || '');
+      const short  = p.shortTitle || '';
+      return [
+        p.name || p.title || '',
+        short,
+        p.description || '',
+        p.category || '',
+        p.brand || '',
+        tags, kw,
+        p.color || '', p.material || '', p.style || '',
+      ].join(' ').toLowerCase();
+    }
+
+    // ── Score a single product against query terms ──
+    function _scoreProduct(p, terms, originalQuery) {
+      const name   = (p.name || p.title || '').toLowerCase();
+      const short  = (p.shortTitle || '').toLowerCase();
+      const cat    = (p.category || '').toLowerCase();
+      const brand  = (p.brand || '').toLowerCase();
+      const full   = _buildSearchIndex(p);
+      let score = 0;
+
+      terms.forEach(q => {
+        // Exact full match
+        if (name === q)    { score += 120; return; }
+        if (short === q)   { score += 110; return; }
+        // Name matching (most important)
+        score += fuzzyScore(name,  q) * 1.0;
+        score += fuzzyScore(short, q) * 0.9;
+        // Category / brand matching
+        score += fuzzyScore(cat,   q) * 0.75;
+        score += fuzzyScore(brand, q) * 0.8;
+        // Full index fallback
+        score += fuzzyScore(full,  q) * 0.4;
+        // Semantic expansion
+        const related = _SEMANTIC_MAP[q] || [];
+        related.forEach(r => {
+          if (full.includes(r)) score += 18;
+        });
+      });
+
+      // Boost: trending, high rating
+      if (p.trending || p.isTrending) score += 15;
+      if (p.bestseller || p.isBestseller) score += 10;
+      const rating = calculateProductRating(p.id);
+      if (rating >= 4) score += 8;
+      if (rating >= 4.5) score += 5;
+
+      return score;
+    }
+
+    // ── Main search function ──
     function searchProducts(query) {
-      if (!query.trim()) return [];
-      const q = query.trim();
+      if (!query || !query.trim()) return [];
+      const raw   = query.trim();
+      // Normalize: correct typos + synonyms
+      const norm  = _normalizeQuery(raw);
+      // Split into individual terms for multi-word queries
+      const terms = Array.from(new Set(
+        [norm, raw.toLowerCase(), ...norm.split(/\s+/), ...raw.toLowerCase().split(/\s+/)]
+          .filter(t => t && t.length > 1)
+      ));
+
+      // Score all products
       const scored = [];
       products.forEach(p => {
-        const name = p.name || p.title || '';
-        const desc = p.description || '';
-        const cat = p.category || '';
-        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
-        const brand = p.brand || '';
         const pid = p.id || p.productId || '';
-        // ✅ PRODUCT ID SEARCH: exact match = instant top result
-        if (pid && (pid.toLowerCase() === q.toLowerCase() || pid.toLowerCase().includes(q.toLowerCase()))) {
+        // Exact ID match — instant top
+        if (pid && pid.toLowerCase() === raw.toLowerCase()) {
           scored.push({ product: p, score: 1000 });
           return;
         }
-        const combined = [name, desc, cat, tags, brand].join(' ');
-        let score = 0;
-        score = Math.max(score, fuzzyScore(name, q));
-        score = Math.max(score, fuzzyScore(cat, q) * 0.7);
-        score = Math.max(score, fuzzyScore(brand, q) * 0.8);
-        score = Math.max(score, fuzzyScore(combined, q) * 0.5);
-        if (score > 25) scored.push({ product: p, score });
+        const score = _scoreProduct(p, terms, raw);
+        if (score > 20) scored.push({ product: p, score });
       });
+
+      // Sort: score desc, then rating desc
       scored.sort((a, b) => {
-        if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
-        const rA = calculateProductRating(a.product.id);
-        const rB = calculateProductRating(b.product.id);
-        return rB - rA;
+        const diff = b.score - a.score;
+        if (Math.abs(diff) > 5) return diff;
+        return calculateProductRating(b.product.id) - calculateProductRating(a.product.id);
       });
-      return scored.map(s => s.product);
+
+      let results = scored.map(s => s.product);
+
+      // ── Similar products fallback ──
+      if (results.length === 0) {
+        // Try category match with first word
+        const firstWord = norm.split(' ')[0];
+        results = products.filter(p => {
+          const cat = (p.category || '').toLowerCase();
+          const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+          return cat.includes(firstWord) || tags.includes(firstWord);
+        });
+        if (results.length > 0) {
+          window._lastSearchWasFallback = true;
+          window._lastSearchFallbackTerm = firstWord;
+        } else {
+          window._lastSearchWasFallback = false;
+        }
+      } else {
+        window._lastSearchWasFallback = false;
+      }
+
+      return results;
     }
 
     function performSearch(query) {
@@ -448,8 +584,22 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       const results = searchProducts(query);
+
+      // Show typo correction notice
+      const normalized = _normalizeQuery(query);
+      const wasCorrected = normalized !== query.toLowerCase().trim();
+
       const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
+
+      // Show correction banner
+      if (wasCorrected && results.length > 0) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'padding:6px 14px;font-size:12px;color:#2563eb;background:#eff6ff;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;gap:6px;';
+        banner.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Showing results for <b style="margin:0 3px;">"${normalized}"</b> instead of "${query}"`;
+        suggestionsContainer.appendChild(banner);
+      }
 
       // ── Brand results shown in searchBrandsSection below (not duplicated here) ──
       var allBrandsQ = window.__bzBrandsCache || [];
@@ -481,69 +631,26 @@
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
-
-      // ── Amazon/Flipkart style: keyword text suggestions (no product cards) ──
-      const keywordSuggestions = [];
-      const seenLabels = new Set();
-
-      // 1. Product names as keywords
-      results.slice(0, 8).forEach(product => {
-        const name = (product.name || product.title || '').trim();
-        if (name && !seenLabels.has(name.toLowerCase())) {
-          seenLabels.add(name.toLowerCase());
-          keywordSuggestions.push({ label: name, query: name, icon: '🔍' });
-        }
+      topThree.forEach(product => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'search-suggestion';
+        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
+        suggestion.innerHTML = `
+          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
+          <div class="search-suggestion-info">
+            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
+            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-price">${formatPrice(product.price)}</div>
+          </div>
+        `;
+        suggestion.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
+        suggestionsContainer.appendChild(suggestion);
       });
-
-      // 2. Category suggestions: "query in Category"
-      const catMap = {};
-      results.forEach(product => {
-        const catName = (categories.find(c => c.id === product.category)?.name || product.category || '').trim();
-        if (catName && !catMap[catName]) {
-          catMap[catName] = true;
-          const label = query + ' in ' + catName;
-          if (!seenLabels.has(label.toLowerCase())) {
-            seenLabels.add(label.toLowerCase());
-            keywordSuggestions.push({ label: label, query: query, cat: catName, icon: '📂' });
-          }
-        }
-      });
-
-      // Show up to 5 keyword suggestions
-      keywordSuggestions.slice(0, 5).forEach(item => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border,#f1f5f9);transition:background .15s;';
-        row.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <span style="font-size:14px;color:var(--ink,#0f172a);flex:1;">${item.label}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" style="flex-shrink:0;transform:rotate(-45deg);">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>`;
-        row.addEventListener('mouseover', () => row.style.background = 'var(--surface2,#f8fafc)');
-        row.addEventListener('mouseout',  () => row.style.background = '');
-        row.addEventListener('click', () => {
-          const inp = document.getElementById('searchPanelInput');
-          if (inp) inp.value = item.query;
-          if (item.cat) {
-            window.currentCategoryFilter = item.cat;
-          }
-          performSearch(item.query);
-          closeSearchPanel();
-        });
-        suggestionsContainer.appendChild(row);
-      });
-
       if (results.length > 3) {
         const viewAll = document.createElement('div');
-        viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-top:1px solid var(--border,#f1f5f9);';
-        viewAll.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${query}"</span>`;
-        viewAll.addEventListener('click', () => { performSearch(query); closeSearchPanel(); });
+        viewAll.className = 'search-suggestion';
+        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
+        viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
     }
@@ -861,18 +968,29 @@
     }
 
     function renderSearchResults(results, query) {
-      const grid = document.getElementById('searchResultsGrid');
-      const count = document.getElementById('searchResultsCount');
+      const grid      = document.getElementById('searchResultsGrid');
+      const count     = document.getElementById('searchResultsCount');
       const noResults = document.getElementById('noSearchResultsMessage');
       if (!grid) return;
+
       if (results.length === 0) {
         grid.innerHTML = '';
-        noResults.style.display = 'block';
-        count.textContent = 'No products found';
+        if (noResults) noResults.style.display = 'block';
+        if (count) count.textContent = 'No products found for "' + query + '"';
         return;
       }
-      noResults.style.display = 'none';
-      count.textContent = `${results.length} products found for "${query}"`;
+
+      if (noResults) noResults.style.display = 'none';
+
+      // Show fallback notice if showing similar products
+      if (window._lastSearchWasFallback) {
+        if (count) count.innerHTML =
+          '<span style="color:#f59e0b;font-weight:700;">⚠️ No exact match for "' + query +
+          '" — showing similar products</span>';
+      } else {
+        if (count) count.textContent = results.length + ' products found for "' + query + '"';
+      }
+
       renderProducts(results, 'searchResultsGrid');
     }
 
