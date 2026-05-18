@@ -631,26 +631,65 @@
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
-      topThree.forEach(product => {
-        const suggestion = document.createElement('div');
-        suggestion.className = 'search-suggestion';
-        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
-        suggestion.innerHTML = `
-          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
-          <div class="search-suggestion-info">
-            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
-            <div class="search-suggestion-category">${productCategory}</div>
-            <div class="search-suggestion-price">${formatPrice(product.price)}</div>
-          </div>
-        `;
-        suggestion.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
-        suggestionsContainer.appendChild(suggestion);
+
+      // ── Amazon/Flipkart style keyword text suggestions ──
+      const keywordSuggestions = [];
+      const seenLabels = new Set();
+
+      // Product names as text keywords
+      results.slice(0, 8).forEach(product => {
+        const name = (product.name || product.title || '').trim();
+        if (name && !seenLabels.has(name.toLowerCase())) {
+          seenLabels.add(name.toLowerCase());
+          keywordSuggestions.push({ label: name, query: name });
+        }
       });
+
+      // "query in Category" suggestions
+      const catMap = {};
+      results.forEach(product => {
+        const catName = (categories.find(c => c.id === product.category)?.name || product.category || '').trim();
+        if (catName && !catMap[catName]) {
+          catMap[catName] = true;
+          const label = query + ' in ' + catName;
+          if (!seenLabels.has(label.toLowerCase())) {
+            seenLabels.add(label.toLowerCase());
+            keywordSuggestions.push({ label: label, query: query, cat: catName });
+          }
+        }
+      });
+
+      keywordSuggestions.slice(0, 5).forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border,#f1f5f9);';
+        row.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span style="font-size:14px;color:var(--ink,#0f172a);flex:1;">${item.label}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" style="flex-shrink:0;transform:rotate(-45deg);">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>`;
+        row.addEventListener('mouseover', () => row.style.background = 'var(--surface2,#f8fafc)');
+        row.addEventListener('mouseout',  () => row.style.background = '');
+        row.addEventListener('click', () => {
+          const inp = document.getElementById('searchPanelInput');
+          if (inp) inp.value = item.query;
+          performSearch(item.query);
+          closeSearchPanel();
+        });
+        suggestionsContainer.appendChild(row);
+      });
+
       if (results.length > 3) {
         const viewAll = document.createElement('div');
-        viewAll.className = 'search-suggestion';
-        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
-        viewAll.addEventListener('click', () => performSearch(query));
+        viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-top:1px solid var(--border,#f1f5f9);';
+        viewAll.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${query}"</span>`;
+        viewAll.addEventListener('click', () => { performSearch(query); closeSearchPanel(); });
         suggestionsContainer.appendChild(viewAll);
       }
     }
