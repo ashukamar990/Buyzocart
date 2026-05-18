@@ -632,64 +632,119 @@
       });
       suggestionsContainer.appendChild(imageRow);
 
-      // ── Amazon/Flipkart style keyword text suggestions ──
-      const keywordSuggestions = [];
+      // ══ SMART SUGGESTIONS — Amazon/Flipkart style ══
+      const q       = query.trim();
+      const qLow    = q.toLowerCase();
+      const qLen    = q.length;
       const seenLabels = new Set();
+      const rows    = [];
 
-      // Product names as text keywords
-      results.slice(0, 8).forEach(product => {
-        const name = (product.name || product.title || '').trim();
-        if (name && !seenLabels.has(name.toLowerCase())) {
-          seenLabels.add(name.toLowerCase());
-          keywordSuggestions.push({ label: name, query: name });
+      // ── STEP 1: Category suggestions (always first, hidden categories included) ──
+      const matchingCats = categories.filter(c => {
+        const name = (c.name || '').toLowerCase();
+        return name.includes(qLow) || name.startsWith(qLow);
+      }).slice(0, 4);
+
+      matchingCats.forEach(cat => {
+        const label = cat.name;
+        if (!seenLabels.has(label.toLowerCase())) {
+          seenLabels.add(label.toLowerCase());
+          rows.push({
+            label : '📂 ' + label,
+            query : label,
+            icon  : 'category',
+            action: () => { filterByCategory(cat.id); closeSearchPanel(); }
+          });
         }
       });
 
-      // "query in Category" suggestions
-      const catMap = {};
-      results.forEach(product => {
-        const catName = (categories.find(c => c.id === product.category)?.name || product.category || '').trim();
-        if (catName && !catMap[catName]) {
-          catMap[catName] = true;
-          const label = query + ' in ' + catName;
-          if (!seenLabels.has(label.toLowerCase())) {
-            seenLabels.add(label.toLowerCase());
-            keywordSuggestions.push({ label: label, query: query, cat: catName });
+      // ── STEP 2: Product name suggestions ──
+      // Short query (≤2 chars): skip product names (too many, not useful)
+      // Medium (3-4 chars): show first 3 words
+      // Long (5+ chars): show first 5 words (close to full name)
+      if (qLen > 2) {
+        const wordLimit = qLen >= 8 ? 6 : qLen >= 5 ? 5 : 3;
+
+        results.slice(0, 8).forEach(product => {
+          const fullName  = (product.name || product.title || '').trim();
+          if (!fullName) return;
+
+          // Use shortTitle if admin set it, else smart slice
+          let shortName;
+          if (product.shortTitle) {
+            shortName = product.shortTitle;
+          } else {
+            const words = fullName.split(' ');
+            shortName = words.length > wordLimit
+              ? words.slice(0, wordLimit).join(' ') + '...'
+              : fullName;
           }
-        }
-      });
 
-      keywordSuggestions.slice(0, 5).forEach(item => {
+          // If user typed most of the name → show full name
+          const similarity = fullName.toLowerCase().startsWith(qLow)
+            || qLow.split(' ').every(w => fullName.toLowerCase().includes(w));
+          const displayName = (qLen >= 6 && similarity) ? fullName : shortName;
+
+          if (!seenLabels.has(displayName.toLowerCase())) {
+            seenLabels.add(displayName.toLowerCase());
+            rows.push({
+              label : displayName,
+              query : fullName,
+              icon  : 'search'
+            });
+          }
+        });
+
+        // "query in Category" rows (only for 3+ chars)
+        const catMap = {};
+        results.forEach(product => {
+          const catName = (
+            categories.find(c => c.id === product.category)?.name ||
+            product.category || ''
+          ).trim();
+          if (catName && !catMap[catName] && !matchingCats.find(c => c.name === catName)) {
+            catMap[catName] = true;
+            const label = q + ' in ' + catName;
+            if (!seenLabels.has(label.toLowerCase())) {
+              seenLabels.add(label.toLowerCase());
+              rows.push({ label: label, query: q, icon: 'category' });
+            }
+          }
+        });
+      }
+
+      // ── Render rows ──
+      rows.slice(0, 6).forEach(item => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border,#f1f5f9);';
-        row.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <span style="font-size:14px;color:var(--ink,#0f172a);flex:1;">${item.label}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" style="flex-shrink:0;transform:rotate(-45deg);">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>`;
+
+        const iconSvg = item.icon === 'category'
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+
+        row.innerHTML = iconSvg +
+          `<span style="font-size:14px;color:var(--ink,#0f172a);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.label}</span>
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" style="flex-shrink:0;transform:rotate(-45deg);"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+
         row.addEventListener('mouseover', () => row.style.background = 'var(--surface2,#f8fafc)');
         row.addEventListener('mouseout',  () => row.style.background = '');
-        row.addEventListener('click', () => {
+        row.addEventListener('click', item.action || (() => {
           const inp = document.getElementById('searchPanelInput');
           if (inp) inp.value = item.query;
           performSearch(item.query);
           closeSearchPanel();
-        });
+        }));
         suggestionsContainer.appendChild(row);
       });
 
-      if (results.length > 3) {
+      // View all
+      if (results.length > 0) {
         const viewAll = document.createElement('div');
-        viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-top:1px solid var(--border,#f1f5f9);';
-        viewAll.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${query}"</span>`;
-        viewAll.addEventListener('click', () => { performSearch(query); closeSearchPanel(); });
+        viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;';
+        viewAll.innerHTML =
+          `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+           <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${q}"</span>`;
+        viewAll.addEventListener('click', () => { performSearch(q); closeSearchPanel(); });
         suggestionsContainer.appendChild(viewAll);
       }
     }
