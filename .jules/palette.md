@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-18 - Semantic Accessibility & ARIA Labels
+**Learning:** Standardizing interactive elements as semantic `<button type="button">` with descriptive `aria-label` attributes significantly improves accessibility for screen readers and keyboard navigation without requiring CSS changes, provided the design system already includes CSS resets for these tags (e.g., `background: none; border: none;`).
+**Action:** Always prefer `<button>` over `div` for interactive icons and ensure all icon-only buttons have explicit ARIA labels.
