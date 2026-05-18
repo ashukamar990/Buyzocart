@@ -774,12 +774,16 @@
       recentSearches.forEach(search => {
         const item = document.createElement('div');
         item.className = 'recent-search-item';
+        item.style.cssText = 'cursor:pointer;';
         item.innerHTML = `
-          <span class="recent-search-text">${search}</span>
+          <span class="recent-search-text" style="cursor:pointer;pointer-events:auto;">${search}</span>
           <button class="recent-search-remove" data-search="${search}">×</button>
         `;
-        item.querySelector('.recent-search-text').addEventListener('click', () => {
-          document.getElementById('searchPanelInput').value = search;
+        // Make ENTIRE row clickable (not just the text span)
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.recent-search-remove')) return;
+          const inp = document.getElementById('searchPanelInput');
+          if (inp) { inp.value = search; inp.focus(); }
           performSearch(search);
         });
         item.querySelector('.recent-search-remove').addEventListener('click', (e) => {
@@ -1067,25 +1071,97 @@
       const noResults = document.getElementById('noSearchResultsMessage');
       if (!grid) return;
 
-      if (results.length === 0) {
-        grid.innerHTML = '';
+      grid.innerHTML = '';
+      if (noResults) noResults.style.display = 'none';
+
+      // ── Show matching brand cards at top ──
+      const qLow = (query || '').toLowerCase();
+      const matchingBrands = (window.__bzBrandsCache || []).filter(b =>
+        (b.name || '').toLowerCase().includes(qLow)
+      );
+
+      if (matchingBrands.length > 0) {
+        const brandSection = document.createElement('div');
+        brandSection.style.cssText = 'margin-bottom:16px;';
+
+        const brandHeader = document.createElement('div');
+        brandHeader.style.cssText = 'font-size:12px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:0 2px 10px;';
+        brandHeader.textContent = '🏷️ Brands';
+        brandSection.appendChild(brandHeader);
+
+        const brandRow = document.createElement('div');
+        brandRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
+
+        matchingBrands.slice(0, 4).forEach(b => {
+          const BCOLS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669'];
+          const color = BCOLS[(b.name || 'A').charCodeAt(0) % BCOLS.length];
+          const ini   = (b.name || 'B').slice(0, 2).toUpperCase();
+          const BT    = window.__BZ_BLUE_TICK || '';
+          const isVerified = b.blueTickAdmin || b.verificationLevel === 'premium';
+
+          const card = document.createElement('div');
+          card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:14px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;';
+          card.innerHTML = `
+            <div style="width:46px;height:46px;border-radius:12px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+              ${b.logo
+                ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display='none'">`
+                : `<span style="color:#fff;font-size:16px;font-weight:800;">${ini}</span>`}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${b.name}${isVerified ? BT : ''}
+              </div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">
+                ${b.products ? b.products.length + ' products' : 'Brand'}
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>`;
+
+          card.addEventListener('mouseover', () => { card.style.borderColor = '#2563eb'; card.style.boxShadow = '0 4px 14px rgba(37,99,235,.1)'; });
+          card.addEventListener('mouseout',  () => { card.style.borderColor = 'var(--border,#f1f5f9)'; card.style.boxShadow = ''; });
+          card.addEventListener('click', () => showBrandProfile(b.id, b.name));
+          brandRow.appendChild(card);
+        });
+
+        brandSection.appendChild(brandRow);
+
+        // "Similar brands" if more than 1 match
+        if (matchingBrands.length > 1) {
+          const moreRow = document.createElement('div');
+          moreRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;';
+          matchingBrands.slice(1, 5).forEach(b => {
+            if (matchingBrands.indexOf(b) === 0) return;
+            const BCOLS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626'];
+            const color = BCOLS[(b.name || 'A').charCodeAt(0) % BCOLS.length];
+            const ini   = (b.name || 'B').slice(0, 1).toUpperCase();
+            const chip  = document.createElement('div');
+            chip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface2,#f8fafc);border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;border:1px solid var(--border,#f1f5f9);';
+            chip.innerHTML = `<div style="width:20px;height:20px;border-radius:6px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${b.logo ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<span style=color:#fff;font-size:8px;font-weight:800>${ini}</span>'">` : `<span style="color:#fff;font-size:8px;font-weight:800;">${ini}</span>`}</div>${b.name}`;
+            chip.addEventListener('click', () => showBrandProfile(b.id, b.name));
+            moreRow.appendChild(chip);
+          });
+          if (moreRow.children.length > 0) brandSection.appendChild(moreRow);
+        }
+
+        grid.appendChild(brandSection);
+      }
+
+      // ── Show products ──
+      if (results.length === 0 && matchingBrands.length === 0) {
         if (noResults) noResults.style.display = 'block';
-        if (count) count.textContent = 'No products found for "' + query + '"';
+        if (count) count.textContent = 'No results found for "' + query + '"';
         return;
       }
 
-      if (noResults) noResults.style.display = 'none';
-
-      // Show fallback notice if showing similar products
-      if (window._lastSearchWasFallback) {
-        if (count) count.innerHTML =
-          '<span style="color:#f59e0b;font-weight:700;">⚠️ No exact match for "' + query +
-          '" — showing similar products</span>';
+      if (window._lastSearchWasFallback && results.length > 0) {
+        if (count) count.innerHTML = '<span style="color:#f59e0b;font-weight:700;">⚠️ No exact match — showing similar products</span>';
       } else {
-        if (count) count.textContent = results.length + ' products found for "' + query + '"';
+        if (count) count.textContent = results.length + ' product' + (results.length !== 1 ? 's' : '') + ' for "' + query + '"';
       }
 
-      renderProducts(results, 'searchResultsGrid');
+      if (results.length > 0) {
+        renderProducts(results, 'searchResultsGrid');
+      }
     }
 
     function setupSearchPriceSlider() {
