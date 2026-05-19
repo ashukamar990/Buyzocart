@@ -1,29 +1,4 @@
 // Buyzo Cart - Main Application Logic
-// ── PERF: Inject critical performance CSS as early as possible ──
-(function bzInjectPerfCSS() {
-  const style = document.createElement('style');
-  style.textContent = [
-    // Use will-change only on actively animated elements, not globally
-    '.banner-slide img, .slider-item img, .product-card img { will-change: auto; }',
-    // Contain product cards to reduce layout recalc scope
-    '.product-card { contain: layout style; }',
-    // font-display: swap for all Google Fonts (handled via CSS if @font-face used)
-    // Reduce CLS: give product card images a fixed aspect ratio placeholder
-    '.product-card-image { aspect-ratio: 1 / 1; overflow: hidden; background: #f3f4f6; }',
-    '.product-card-image img { width: 100%; height: 100%; object-fit: cover; }',
-    // Prevent layout shift on banner carousel
-    '.banner-carousel { aspect-ratio: 16 / 6; overflow: hidden; }',
-    // touch-action optimization for sliders
-    '[data-slider-key] { touch-action: pan-y; }',
-    // Passive scroll: hint to browser our content is scrollable
-    'body { overscroll-behavior-y: contain; }',
-    // Remove heavy box-shadow on mobile (saves GPU compositing)
-    '@media (max-width: 480px) { .product-card { box-shadow: 0 1px 4px rgba(0,0,0,.08) !important; } }',
-  ].join('\n');
-  // Inject before DOMContentLoaded so styles apply before first paint
-  (document.head || document.documentElement).appendChild(style);
-})();
-
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -386,209 +361,62 @@
       document.getElementById('searchSuggestions').style.display = 'none';
     }
 
-    // ════════════════════════════════════════════════════
-    //  SMART SEARCH ENGINE — Amazon/Flipkart style
-    //  Features: fuzzy, synonyms, typo fix, ranking,
-    //  tags, semantic, similar products fallback
-    // ════════════════════════════════════════════════════
-
-    // ── Synonym & typo correction map ──
-    const _SEARCH_SYNONYMS = {
-      't shrt':'tshirt', 't-shrt':'tshirt', 'tshrt':'tshirt', 'shirt':'tshirt',
-      'shirts':'tshirt', 't shirt':'tshirt', 'polo shirt':'polo tshirt',
-      'trouser':'pants', 'trousers':'pants', 'pant':'pants', 'jeans pant':'jeans',
-      'hoodi':'hoodie', 'hoddie':'hoodie', 'sweatshirt':'hoodie',
-      'shoes':'footwear', 'chappal':'footwear', 'sandal':'footwear',
-      'kameez':'kurta', 'kurti':'kurta',
-      'jacket':'jacket', 'coat':'jacket',
-      'sports wear':'activewear', 'gym wear':'activewear', 'workout':'activewear',
-      'summer':'casual', 'winter':'woolen',
-      'gents':'men', 'ladies':'women', 'female':'women', 'male':'men',
-      'navey':'navy', 'navy':'navy', 'bule':'blue', 'bleu':'blue',
-      'cottan':'cotton', 'coton':'cotton', 'cotten':'cotton',
-      'casual':'casual', 'forml':'formal', 'formol':'formal',
-    };
-
-    // ── Semantic groups (query → related terms) ──
-    const _SEMANTIC_MAP = {
-      'activewear': ['gym','sports','dri-fit','workout','athletic','running'],
-      'casual':     ['everyday','regular','daily','comfy','comfortable'],
-      'formal':     ['office','professional','business','party','occasion'],
-      'tshirt':     ['polo','crew neck','round neck','v-neck','half sleeve'],
-      'warm':       ['woolen','wool','fleece','thermal','winter'],
-      'cool':       ['cotton','linen','breathable','summer','light'],
-      'men':        ['gents','male','boy','boys','mens'],
-      'women':      ['ladies','female','girl','girls','womens'],
-    };
-
-    // ── Apply synonyms + typo correction to query ──
-    function _normalizeQuery(q) {
-      const lower = q.toLowerCase().trim();
-      if (_SEARCH_SYNONYMS[lower]) return _SEARCH_SYNONYMS[lower];
-      // Partial match correction
-      for (const [wrong, correct] of Object.entries(_SEARCH_SYNONYMS)) {
-        if (lower.includes(wrong)) return lower.replace(wrong, correct);
-      }
-      return lower;
-    }
-
-    // ── Word-level fuzzy score ──
     function fuzzyScore(text, query) {
       if (!text || !query) return 0;
       const t = text.toLowerCase();
       const q = query.toLowerCase();
       if (t === q) return 100;
-      if (t.startsWith(q)) return 92;
-      if (t.includes(q)) return 82;
-      // Word-by-word match bonus
-      const tWords = t.split(/[\s\-_,]+/);
-      const qWords = q.split(/[\s\-_,]+/);
-      let wordScore = 0;
-      qWords.forEach(qw => {
-        if (!qw) return;
-        tWords.forEach(tw => {
-          if (tw === qw) wordScore += 15;
-          else if (tw.startsWith(qw) || qw.startsWith(tw)) wordScore += 10;
-          else if (tw.includes(qw) || qw.includes(tw)) wordScore += 6;
-        });
-      });
-      if (wordScore > 0) return Math.min(78, wordScore);
-      // Levenshtein for short queries (typo tolerance)
-      if (Math.abs(t.length - q.length) > 6) return 0;
-      const dp = Array.from({length: q.length + 1}, (_, i) => i);
-      for (let j = 1; j <= t.length; j++) {
+      if (t.startsWith(q)) return 90;
+      if (t.includes(q)) return 80;
+      const lenT = t.length, lenQ = q.length;
+      if (Math.abs(lenT - lenQ) > 5) return 0;
+      const dp = Array.from({length: lenQ + 1}, (_, i) => i);
+      for (let j = 1; j <= lenT; j++) {
         let prev = j;
-        for (let i = 1; i <= q.length; i++) {
+        for (let i = 1; i <= lenQ; i++) {
           const cur = t[j-1] === q[i-1] ? dp[i-1] : Math.min(dp[i-1], dp[i], prev) + 1;
-          dp[i-1] = prev; prev = cur;
+          dp[i-1] = prev;
+          prev = cur;
         }
-        dp[q.length] = prev;
+        dp[lenQ] = prev;
       }
-      const dist = dp[q.length];
-      const maxLen = Math.max(t.length, q.length);
-      const sim = (1 - dist / maxLen) * 70;
-      return sim > 28 ? sim : 0;
+      const dist = dp[lenQ];
+      const maxLen = Math.max(lenT, lenQ);
+      const similarity = (1 - dist / maxLen) * 70;
+      return similarity > 30 ? similarity : 0;
     }
 
-    // ── PERF: Pre-built search index — computed once when products load ──
-    const _searchIndexMap = new Map(); // productId → searchable string
-
-    function _buildSearchIndex(p) {
-      const id = p.id || p.productId || '';
-      if (_searchIndexMap.has(id)) return _searchIndexMap.get(id);
-      const tags   = Array.isArray(p.tags) ? p.tags.join(' ') : (p.tags || '');
-      const kw     = Array.isArray(p.searchKeywords) ? p.searchKeywords.join(' ') : (p.searchKeywords || '');
-      const short  = p.shortTitle || '';
-      const index  = [
-        p.name || p.title || '',
-        short,
-        p.description || '',
-        p.category || '',
-        p.brand || '',
-        tags, kw,
-        p.color || '', p.material || '', p.style || '',
-      ].join(' ').toLowerCase();
-      _searchIndexMap.set(id, index);
-      return index;
-    }
-
-    function _rebuildSearchIndexes() {
-      _searchIndexMap.clear();
-      products.forEach(p => _buildSearchIndex(p));
-    }
-
-    // ── Score a single product against query terms ──
-    function _scoreProduct(p, terms, originalQuery) {
-      const name   = (p.name || p.title || '').toLowerCase();
-      const short  = (p.shortTitle || '').toLowerCase();
-      const cat    = (p.category || '').toLowerCase();
-      const brand  = (p.brand || '').toLowerCase();
-      const full   = _buildSearchIndex(p);
-      let score = 0;
-
-      terms.forEach(q => {
-        // Exact full match
-        if (name === q)    { score += 120; return; }
-        if (short === q)   { score += 110; return; }
-        // Name matching (most important)
-        score += fuzzyScore(name,  q) * 1.0;
-        score += fuzzyScore(short, q) * 0.9;
-        // Category / brand matching
-        score += fuzzyScore(cat,   q) * 0.75;
-        score += fuzzyScore(brand, q) * 0.8;
-        // Full index fallback
-        score += fuzzyScore(full,  q) * 0.4;
-        // Semantic expansion
-        const related = _SEMANTIC_MAP[q] || [];
-        related.forEach(r => {
-          if (full.includes(r)) score += 18;
-        });
-      });
-
-      // Boost: trending, high rating
-      if (p.trending || p.isTrending) score += 15;
-      if (p.bestseller || p.isBestseller) score += 10;
-      const rating = calculateProductRating(p.id);
-      if (rating >= 4) score += 8;
-      if (rating >= 4.5) score += 5;
-
-      return score;
-    }
-
-    // ── Main search function ──
     function searchProducts(query) {
-      if (!query || !query.trim()) return [];
-      const raw   = query.trim();
-      // Normalize: correct typos + synonyms
-      const norm  = _normalizeQuery(raw);
-      // Split into individual terms for multi-word queries
-      const terms = Array.from(new Set(
-        [norm, raw.toLowerCase(), ...norm.split(/\s+/), ...raw.toLowerCase().split(/\s+/)]
-          .filter(t => t && t.length > 1)
-      ));
-
-      // Score all products
+      if (!query.trim()) return [];
+      const q = query.trim();
       const scored = [];
       products.forEach(p => {
+        const name = p.name || p.title || '';
+        const desc = p.description || '';
+        const cat = p.category || '';
+        const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+        const brand = p.brand || '';
         const pid = p.id || p.productId || '';
-        // Exact ID match — instant top
-        if (pid && pid.toLowerCase() === raw.toLowerCase()) {
+        // ✅ PRODUCT ID SEARCH: exact match = instant top result
+        if (pid && (pid.toLowerCase() === q.toLowerCase() || pid.toLowerCase().includes(q.toLowerCase()))) {
           scored.push({ product: p, score: 1000 });
           return;
         }
-        const score = _scoreProduct(p, terms, raw);
-        if (score > 20) scored.push({ product: p, score });
+        const combined = [name, desc, cat, tags, brand].join(' ');
+        let score = 0;
+        score = Math.max(score, fuzzyScore(name, q));
+        score = Math.max(score, fuzzyScore(cat, q) * 0.7);
+        score = Math.max(score, fuzzyScore(brand, q) * 0.8);
+        score = Math.max(score, fuzzyScore(combined, q) * 0.5);
+        if (score > 25) scored.push({ product: p, score });
       });
-
-      // Sort: score desc, then rating desc
       scored.sort((a, b) => {
-        const diff = b.score - a.score;
-        if (Math.abs(diff) > 5) return diff;
-        return calculateProductRating(b.product.id) - calculateProductRating(a.product.id);
+        if (Math.abs(a.score - b.score) > 5) return b.score - a.score;
+        const rA = calculateProductRating(a.product.id);
+        const rB = calculateProductRating(b.product.id);
+        return rB - rA;
       });
-
-      let results = scored.map(s => s.product);
-
-      // ── Similar products fallback ──
-      if (results.length === 0) {
-        // Try category match with first word
-        const firstWord = norm.split(' ')[0];
-        results = products.filter(p => {
-          const cat = (p.category || '').toLowerCase();
-          const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
-          return cat.includes(firstWord) || tags.includes(firstWord);
-        });
-        if (results.length > 0) {
-          window._lastSearchWasFallback = true;
-          window._lastSearchFallbackTerm = firstWord;
-        } else {
-          window._lastSearchWasFallback = false;
-        }
-      } else {
-        window._lastSearchWasFallback = false;
-      }
-
-      return results;
+      return scored.map(s => s.product);
     }
 
     function performSearch(query) {
@@ -608,40 +436,20 @@
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        // PERF: debounce expensive fuzzy search — don't run on every keystroke
-        clearTimeout(handleSearchPanelInput._timer);
-        handleSearchPanelInput._timer = setTimeout(() => {
-          showSearchSuggestions(query);
-          suggestionsContainer.style.display = 'block';
-        }, 150);
+        showSearchSuggestions(query);
+        suggestionsContainer.style.display = 'block';
       } else {
-        clearTimeout(handleSearchPanelInput._timer);
         clearSearchSuggestions();
         suggestionsContainer.style.display = 'none';
       }
     }
-    handleSearchPanelInput._timer = null;
 
     function showSearchSuggestions(query) {
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       const results = searchProducts(query);
-
-      // Show typo correction notice
-      const normalized = _normalizeQuery(query);
-      const wasCorrected = normalized !== query.toLowerCase().trim();
-
       const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
-
-      // Show correction banner
-      if (wasCorrected && results.length > 0) {
-        const banner = document.createElement('div');
-        banner.style.cssText = 'padding:6px 14px;font-size:12px;color:#2563eb;background:#eff6ff;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;gap:6px;';
-        banner.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Showing results for <b style="margin:0 3px;">"${normalized}"</b> instead of "${query}"`;
-        suggestionsContainer.appendChild(banner);
-      }
 
       // ── Brand results shown in searchBrandsSection below (not duplicated here) ──
       var allBrandsQ = window.__bzBrandsCache || [];
@@ -673,120 +481,26 @@
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
-
-      // ══ SMART SUGGESTIONS — Amazon/Flipkart style ══
-      const q       = query.trim();
-      const qLow    = q.toLowerCase();
-      const qLen    = q.length;
-      const seenLabels = new Set();
-      const rows    = [];
-
-      // ── STEP 1: Category suggestions (always first, hidden categories included) ──
-      const matchingCats = categories.filter(c => {
-        const name = (c.name || '').toLowerCase();
-        return name.includes(qLow) || name.startsWith(qLow);
-      }).slice(0, 4);
-
-      matchingCats.forEach(cat => {
-        const label = cat.name;
-        if (!seenLabels.has(label.toLowerCase())) {
-          seenLabels.add(label.toLowerCase());
-          rows.push({
-            label : '📂 ' + label,
-            query : label,
-            icon  : 'category',
-            action: () => { filterByCategory(cat.id); closeSearchPanel(); }
-          });
-        }
+      topThree.forEach(product => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'search-suggestion';
+        const productCategory = categories.find(c => c.id === product.category)?.name || product.category || '';
+        suggestion.innerHTML = `
+          <div class="search-suggestion-img" style="background-image: url('${getProductImage(product)}'); background-size: contain; background-repeat: no-repeat; background-position: center; background-color: #f8fafc;"></div>
+          <div class="search-suggestion-info">
+            <div class="search-suggestion-name">${product.name || product.title || 'Product'}</div>
+            <div class="search-suggestion-category">${productCategory}</div>
+            <div class="search-suggestion-price">${formatPrice(product.price)}</div>
+          </div>
+        `;
+        suggestion.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
+        suggestionsContainer.appendChild(suggestion);
       });
-
-      // ── STEP 2: Product name suggestions ──
-      // Short query (≤2 chars): skip product names (too many, not useful)
-      // Medium (3-4 chars): show first 3 words
-      // Long (5+ chars): show first 5 words (close to full name)
-      if (qLen > 2) {
-        const wordLimit = qLen >= 8 ? 6 : qLen >= 5 ? 5 : 3;
-
-        results.slice(0, 8).forEach(product => {
-          const fullName  = (product.name || product.title || '').trim();
-          if (!fullName) return;
-
-          // Use shortTitle if admin set it, else smart slice
-          let shortName;
-          if (product.shortTitle) {
-            shortName = product.shortTitle;
-          } else {
-            const words = fullName.split(' ');
-            shortName = words.length > wordLimit
-              ? words.slice(0, wordLimit).join(' ') + '...'
-              : fullName;
-          }
-
-          // If user typed most of the name → show full name
-          const similarity = fullName.toLowerCase().startsWith(qLow)
-            || qLow.split(' ').every(w => fullName.toLowerCase().includes(w));
-          const displayName = (qLen >= 6 && similarity) ? fullName : shortName;
-
-          if (!seenLabels.has(displayName.toLowerCase())) {
-            seenLabels.add(displayName.toLowerCase());
-            rows.push({
-              label : displayName,
-              query : fullName,
-              icon  : 'search'
-            });
-          }
-        });
-
-        // "query in Category" rows (only for 3+ chars)
-        const catMap = {};
-        results.forEach(product => {
-          const catName = (
-            categories.find(c => c.id === product.category)?.name ||
-            product.category || ''
-          ).trim();
-          if (catName && !catMap[catName] && !matchingCats.find(c => c.name === catName)) {
-            catMap[catName] = true;
-            const label = q + ' in ' + catName;
-            if (!seenLabels.has(label.toLowerCase())) {
-              seenLabels.add(label.toLowerCase());
-              rows.push({ label: label, query: q, icon: 'category' });
-            }
-          }
-        });
-      }
-
-      // ── Render rows ──
-      rows.slice(0, 6).forEach(item => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border,#f1f5f9);';
-
-        const iconSvg = item.icon === 'category'
-          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`
-          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
-
-        row.innerHTML = iconSvg +
-          `<span style="font-size:14px;color:var(--ink,#0f172a);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.label}</span>
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" style="flex-shrink:0;transform:rotate(-45deg);"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
-
-        row.addEventListener('mouseover', () => row.style.background = 'var(--surface2,#f8fafc)');
-        row.addEventListener('mouseout',  () => row.style.background = '');
-        row.addEventListener('click', item.action || (() => {
-          const inp = document.getElementById('searchPanelInput');
-          if (inp) inp.value = item.query;
-          performSearch(item.query);
-          closeSearchPanel();
-        }));
-        suggestionsContainer.appendChild(row);
-      });
-
-      // View all
-      if (results.length > 0) {
+      if (results.length > 3) {
         const viewAll = document.createElement('div');
-        viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;';
-        viewAll.innerHTML =
-          `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-           <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${q}"</span>`;
-        viewAll.addEventListener('click', () => { performSearch(q); closeSearchPanel(); });
+        viewAll.className = 'search-suggestion';
+        viewAll.innerHTML = `<div class="search-suggestion-info" style="padding-left:0;"><div class="search-suggestion-name" style="color:var(--accent);">View all ${results.length} results for "${query}"</div></div>`;
+        viewAll.addEventListener('click', () => performSearch(query));
         suggestionsContainer.appendChild(viewAll);
       }
     }
@@ -816,16 +530,12 @@
       recentSearches.forEach(search => {
         const item = document.createElement('div');
         item.className = 'recent-search-item';
-        item.style.cssText = 'cursor:pointer;';
         item.innerHTML = `
-          <span class="recent-search-text" style="cursor:pointer;pointer-events:auto;">${search}</span>
+          <span class="recent-search-text">${search}</span>
           <button class="recent-search-remove" data-search="${search}">×</button>
         `;
-        // Make ENTIRE row clickable (not just the text span)
-        item.addEventListener('click', (e) => {
-          if (e.target.closest('.recent-search-remove')) return;
-          const inp = document.getElementById('searchPanelInput');
-          if (inp) { inp.value = search; inp.focus(); }
+        item.querySelector('.recent-search-text').addEventListener('click', () => {
+          document.getElementById('searchPanelInput').value = search;
           performSearch(search);
         });
         item.querySelector('.recent-search-remove').addEventListener('click', (e) => {
@@ -1108,110 +818,19 @@
     }
 
     function renderSearchResults(results, query) {
-      const grid      = document.getElementById('searchResultsGrid');
-      const count     = document.getElementById('searchResultsCount');
+      const grid = document.getElementById('searchResultsGrid');
+      const count = document.getElementById('searchResultsCount');
       const noResults = document.getElementById('noSearchResultsMessage');
       if (!grid) return;
-
-      grid.innerHTML = '';
-      if (noResults) noResults.style.display = 'none';
-
-      const qLow = (query || '').toLowerCase().trim();
-
-      // ── Find matching brands ──
-      const matchingBrands = (window.__bzBrandsCache || []).filter(b =>
-        (b.name || '').toLowerCase().includes(qLow)
-      );
-
-      // Is this an exact / near-exact brand search?
-      const exactBrandMatch = matchingBrands.find(b =>
-        (b.name || '').toLowerCase() === qLow ||
-        (b.name || '').toLowerCase().replace(/\s+/g,'') === qLow.replace(/\s+/g,'')
-      );
-
-      // ── Show brand card(s) ──
-      if (matchingBrands.length > 0) {
-        const brandSection = document.createElement('div');
-        brandSection.style.cssText = 'margin-bottom:16px;';
-
-        const brandHeader = document.createElement('div');
-        brandHeader.style.cssText = 'font-size:12px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:0 2px 10px;';
-        brandHeader.textContent = '🏷️ Brands';
-        brandSection.appendChild(brandHeader);
-
-        const brandRow = document.createElement('div');
-        brandRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
-
-        matchingBrands.slice(0, 4).forEach(b => {
-          const BCOLS = ['#f97316','#2563eb','#7c3aed','#16a34a','#dc2626','#0369a1','#d97706','#059669'];
-          const color = BCOLS[(b.name || 'A').charCodeAt(0) % BCOLS.length];
-          const ini   = (b.name || 'B').slice(0, 2).toUpperCase();
-          const BT    = window.__BZ_BLUE_TICK || '';
-          const isV   = b.blueTickAdmin || b.verificationLevel === 'premium';
-
-          const card = document.createElement('div');
-          card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:14px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;';
-          card.innerHTML =
-            `<div style="width:46px;height:46px;border-radius:12px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-              ${b.logo ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display='none'">` : `<span style="color:#fff;font-size:16px;font-weight:800;">${ini}</span>`}
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:3px;">${b.name}${isV ? BT : ''}</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">${b.products && b.products.length ? b.products.length + ' products' : 'No products yet'}</div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>`;
-
-          card.addEventListener('mouseover', () => { card.style.borderColor='#2563eb'; card.style.boxShadow='0 4px 14px rgba(37,99,235,.1)'; });
-          card.addEventListener('mouseout',  () => { card.style.borderColor='var(--border,#f1f5f9)'; card.style.boxShadow=''; });
-          card.addEventListener('click', () => showBrandProfile(b.id, b.name));
-          brandRow.appendChild(card);
-        });
-
-        brandSection.appendChild(brandRow);
-        grid.appendChild(brandSection);
-      }
-
-      // ── If exact brand match → filter products to ONLY that brand ──
-      let displayResults = results;
-      if (exactBrandMatch) {
-        // Show only products belonging to this specific brand
-        displayResults = products.filter(p => {
-          const pBrand = (p.brand || p.brandName || '').toLowerCase();
-          const pBid   = (p.brandId || '').toLowerCase();
-          const eBid   = (exactBrandMatch.id || '').toLowerCase();
-          return pBrand === (exactBrandMatch.name || '').toLowerCase() ||
-                 pBid === eBid;
-        });
-      }
-
-      // ── Products section ──
-      if (displayResults.length === 0) {
-        if (matchingBrands.length > 0) {
-          // Brand found but no products
-          const noProds = document.createElement('div');
-          noProds.style.cssText = 'text-align:center;padding:32px 16px;color:#94a3b8;';
-          noProds.innerHTML = `<div style="font-size:2rem;margin-bottom:10px;">🛍️</div>
-            <div style="font-weight:700;font-size:15px;color:var(--ink,#0f172a);margin-bottom:6px;">No products from this brand yet</div>
-            <div style="font-size:13px;">This brand hasn't listed any products.</div>`;
-          grid.appendChild(noProds);
-          if (count) count.textContent = 'Brand found — no products yet';
-        } else {
-          if (noResults) noResults.style.display = 'block';
-          if (count) count.textContent = 'No results for "' + query + '"';
-        }
+      if (results.length === 0) {
+        grid.innerHTML = '';
+        noResults.style.display = 'block';
+        count.textContent = 'No products found';
         return;
       }
-
-      // Show products
-      if (count) {
-        if (window._lastSearchWasFallback && !exactBrandMatch) {
-          count.innerHTML = '<span style="color:#f59e0b;font-weight:700;">⚠️ No exact match — showing similar products</span>';
-        } else {
-          const label = exactBrandMatch ? 'Products from ' + exactBrandMatch.name : displayResults.length + ' product' + (displayResults.length !== 1 ? 's' : '') + ' for "' + query + '"';
-          count.textContent = label;
-        }
-      }
-      renderProducts(displayResults, 'searchResultsGrid');
+      noResults.style.display = 'none';
+      count.textContent = `${results.length} products found for "${query}"`;
+      renderProducts(results, 'searchResultsGrid');
     }
 
     function setupSearchPriceSlider() {
@@ -1325,23 +944,11 @@
 
     let reviews = [];
 
-    // ── PERF: Memoized rating cache — rebuilt when reviews array changes ──
-    let _ratingCache = new Map();
-    let _ratingCacheVersion = 0;
-
-    function _invalidateRatingCache() {
-      _ratingCache = new Map();
-      _ratingCacheVersion++;
-      _productScoreCache = new Map(); // also invalidate score cache
-    }
-
     function calculateProductRating(productId) {
-      if (_ratingCache.has(productId)) return _ratingCache.get(productId);
       const productReviews = reviews.filter(r => r.productId === productId);
-      const rating = productReviews.length === 0 ? 0
-        : productReviews.reduce((acc, r) => acc + r.rating, 0) / productReviews.length;
-      _ratingCache.set(productId, rating);
-      return rating;
+      if (productReviews.length === 0) return 0;
+      const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+      return sum / productReviews.length;
     }
 
     function createProductCard(product) {
@@ -1372,25 +979,13 @@
       } else if (productBadge) {
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
-      // PERF: Use <img loading="lazy" decoding="async"> instead of CSS background-image
-      // This lets the browser natively defer off-screen image loads
       card.innerHTML = `
-        <div class="product-card-image">
-          <img
-            src="${productImage}"
-            alt="${productName.replace(/"/g,'&quot;')}"
-            loading="lazy"
-            decoding="async"
-            width="300"
-            height="300"
-            style="width:100%;height:100%;object-fit:cover;display:block;"
-            onerror="this.src='https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image'"
-          />
+        <div class="product-card-image" style="background-image: url('${productImage}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span class="product-card-brand">${product.brand}</span></div>` : ''}
+          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span class="product-card-brand">${product.brand}</span>${(function(){try{var bCache=window.__bzBrandsCache&&window.__bzBrandsCache.find(function(x){return x.name===(product.brand||'');});var isV=(bCache&&(bCache.blueTickAdmin||bCache.verificationLevel==='premium'));return isV&&window.__BZ_BLUE_TICK?window.__BZ_BLUE_TICK:'';}catch(e){return '';}})()}</div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -1789,9 +1384,6 @@
         img.src = src;
         img.draggable = false;
         img.alt = 'Product image ' + (i+1);
-        img.decoding = 'async';
-        // PERF: only the current slide loads eagerly; adjacent load lazy
-        img.loading = (i === _FV.index) ? 'eager' : 'lazy';
         slide.appendChild(img);
         track.appendChild(slide);
       });
@@ -3217,17 +2809,10 @@
       showPage('orderDetailPage');
     }
 
-    // PERF: throttle recently-viewed writes — max one Firebase write per 2s per product
-    const _recentlyViewedThrottle = new Map();
-
     async function addToRecentlyViewed(productId) {
       if (!currentUser) return;
-      const now = Date.now();
-      const last = _recentlyViewedThrottle.get(productId) || 0;
-      if (now - last < 2000) return; // skip if same product written within 2s
-      _recentlyViewedThrottle.set(productId, now);
       try {
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), now);
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
         loadRecentlyViewed(currentUser);
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
@@ -3399,82 +2984,38 @@
       container.appendChild(fragment);
     }
 
-    // ── PERF: Memoized product score cache ──
-    let _productScoreCache = new Map();
-
+    // ── Product score for smart sorting (orders × weight + rating × weight) ──
     function getProductScore(product) {
-      const id = product.id || product.productId || '';
-      if (_productScoreCache.has(id)) return _productScoreCache.get(id);
-      const rating = calculateProductRating(id);
-      const orderCount = (window._productStats && window._productStats[id]?.orderCount)
+      const rs = reviews.filter(r => r.productId === product.id);
+      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+      const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
-      const score = (orderCount * 0.6) + (rating * 0.8);
-      _productScoreCache.set(id, score);
-      return score;
+      return (orderCount * 0.6) + (rating * 0.8);
     }
-
-    const PRODUCTS_PER_PAGE = 12; // initial batch for fast first paint
-    // Track per-container sentinel observers so we can disconnect old ones
-    const _gridObservers = {};
 
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-
+      const ratingMap = {};
+      productsToRender.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else ratingMap[p.id] = 0;
+      });
       const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
+        // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
           container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
         return;
       }
-
-      // Disconnect any previous observer for this container
-      if (_gridObservers[containerId]) {
-        _gridObservers[containerId].disconnect();
-        delete _gridObservers[containerId];
-      }
-
-      let rendered = 0;
-
-      function renderBatch(count) {
-        const end = Math.min(rendered + count, sorted.length);
-        const fragment = document.createDocumentFragment();
-        for (let i = rendered; i < end; i++) {
-          if (sorted[i]) fragment.appendChild(createProductCard(sorted[i]));
-        }
-        container.appendChild(fragment);
-        rendered = end;
-      }
-
-      // Render first batch immediately (fast first paint)
-      renderBatch(PRODUCTS_PER_PAGE);
-
-      // If more products exist, add sentinel + IntersectionObserver for lazy load
-      if (rendered < sorted.length && 'IntersectionObserver' in window) {
-        const sentinel = document.createElement('div');
-        sentinel.className = 'bz-load-sentinel';
-        sentinel.style.cssText = 'height:1px;width:100%;grid-column:1/-1;';
-        container.appendChild(sentinel);
-
-        const obs = new IntersectionObserver((entries) => {
-          if (entries[0].isIntersecting) {
-            renderBatch(PRODUCTS_PER_PAGE);
-            if (rendered >= sorted.length) {
-              obs.disconnect();
-              delete _gridObservers[containerId];
-              sentinel.remove();
-            }
-          }
-        }, { rootMargin: '200px' });
-
-        obs.observe(sentinel);
-        _gridObservers[containerId] = obs;
-      } else if (rendered < sorted.length) {
-        // Fallback for browsers without IntersectionObserver
-        renderBatch(sorted.length);
-      }
+      const fragment = document.createDocumentFragment();
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      container.appendChild(fragment);
     }
 
     function renderBannerCarousel() {
@@ -3482,19 +3023,22 @@
       const controls = document.getElementById('bannerControls');
       if (!track || !controls) return;
 
+      const preloadImages = banners.map(banner => {
+        return new Promise(resolve => {
+          const img = new Image();
+          img.onload = img.onerror = resolve;
+          img.src = getProductImage(banner);
+        });
+      });
+
       const trackFragment = document.createDocumentFragment();
       const controlsFragment = document.createDocumentFragment();
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        // PERF: use <img> with loading="lazy" (except first banner — eager for LCP)
-        const img = document.createElement('img');
-        img.src = getProductImage(banner);
-        img.alt = banner.title || 'Banner';
-        img.decoding = 'async';
-        img.loading = index === 0 ? 'eager' : 'lazy'; // first banner is LCP — load eagerly
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
-        slide.appendChild(img);
+        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        slide.style.backgroundSize = 'cover';
+        slide.style.backgroundPosition = 'center';
         if (banner.link) {
           slide.style.cursor = 'pointer';
           slide.addEventListener('click', () => window.open(banner.link, '_blank'));
@@ -3512,6 +3056,8 @@
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
       setupBannerAutoSlide();
       setupBannerTouchEvents();
+
+      Promise.all(preloadImages).catch(() => {});
     }
 
     function setBannerSlide(index) {
@@ -3682,13 +3228,10 @@
       if (totalSlides <= 1) return;
       let currentSlide = 0;
       if (trendingAutoSlideInterval) clearInterval(trendingAutoSlideInterval);
-      // PERF: use requestAnimationFrame inside the interval callback for smoother paint
       trendingAutoSlideInterval = setInterval(() => {
         if (!slidePaused) {
           currentSlide = (currentSlide + 1) % totalSlides;
-          requestAnimationFrame(() => {
-            slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' });
-          });
+          slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' });
         }
       }, 4000);
     }
@@ -4334,22 +3877,21 @@
         setHeroStat('heroStatRating', s.rating ? s.rating + '★' : null);
         return;
       }
-      // PERF: Use already-loaded in-memory data instead of extra Firebase reads
-      const productCount = products.length;
-      if (productCount > 0) {
-        setHeroStat('heroStatProducts', productCount >= 1000 ? Math.floor(productCount/1000) + 'K+' : productCount + '+');
-      }
-      // For users & reviews, only fetch if admin hasn't set heroStats — and use shallow queries
       const db = window.firebase?.database;
       const ref = window.firebase?.ref;
       const get = window.firebase?.get;
-      const query = window.firebase?.query;
-      const limitToFirst = window.firebase?.limitToFirst;
       if (!db || !ref || !get) return;
-      // Shallow estimate: count keys at users/ — Firebase doesn't support COUNT but
-      // we can get just keys by using shallow=true (REST) or accept full read.
-      // To avoid another full products fetch we skip it and rely on in-memory count above.
-      // Only fetch reviews for rating (usually small dataset)
+
+      get(ref(db, 'products')).then(snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
+      }).catch(()=>{});
+
+      get(ref(db, 'users')).then(snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
+      }).catch(()=>{});
+
       get(ref(db, 'reviews')).then(snap => {
         if (!snap.exists()) { setHeroStat('heroStatRating', null); return; }
         const vals = Object.values(snap.val());
@@ -4431,10 +3973,27 @@
         console.error('Firebase not initialized');
         return;
       }
+
+      // ── Skip reads if cache is fresh (< 5 min) ──
+      const _FRESH = 5 * 60 * 1000;
+      function _isFresh(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return false;
+          return (Date.now() - JSON.parse(raw).timestamp) < _FRESH;
+        } catch { return false; }
+      }
+
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const get = window.firebase.get;
-      get(ref(database, 'products')).then(snapshot => {
+
+      // Build only the reads we actually need
+      const reads = [];
+
+      if (!_isFresh(CACHE_KEYS.PRODUCTS)) {
+        reads.push(
+          get(ref(database, 'products')).then(snapshot => {
         const productsObj = snapshot.val();
         if (productsObj) {
           const newProducts = Object.keys(productsObj).map(key => {
@@ -4451,9 +4010,6 @@
           });
           products = newProducts;
           window.products = products;
-          // PERF: rebuild search indexes and invalidate score/rating caches
-          _invalidateRatingCache();
-          _rebuildSearchIndexes();
           cacheManager.set(CACHE_KEYS.PRODUCTS, products);
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage') {
@@ -4480,55 +4036,70 @@
       }).catch(error => {
         console.error('Error fetching products:', error);
         products = [];
-        renderProducts([], 'homeProductGrid');
-        renderProducts([], 'productGrid');
-      });
-      // Load product order stats for scoring/trending
-      get(ref(database, 'productStats')).then(snap => {
-        if (snap.exists()) window._productStats = snap.val();
-      }).catch(() => {});
+      })
+        );
+      } // end if !_isFresh products
 
-      get(ref(database, 'categories')).then(snapshot => {
-        const categoriesObj = snapshot.val();
-        if (categoriesObj) {
-          const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
-          categories = newCategories;
-          cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          renderCategories();
-          if (typeof renderCategoryCircles === 'function') renderCategoryCircles();
-        } else categories = [];
-      }).catch(error => {
-        console.error('Error fetching categories:', error);
-        categories = [];
-      });
-      get(ref(database, 'banners')).then(snapshot => {
-        const bannersObj = snapshot.val();
-        if (bannersObj) {
-          const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
-          banners = newBanners;
-          cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          renderBannerCarousel();
-        } else banners = [];
-      }).catch(error => {
-        console.error('Error fetching banners:', error);
-        banners = [];
-      });
-      get(ref(database, 'adminSettings')).then(snapshot => {
-        const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
-        }
-      }).catch(error => {
-        console.error('Error fetching admin settings:', error);
-      });
-      get(ref(database, 'outOfStock')).then(snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) window.outOfStockItems = outOfStockObj;
-      }).catch(error => {
-        console.error('Error fetching out of stock items:', error);
-      });
+      // Always fetch lightweight stats
+      reads.push(
+        get(ref(database, 'productStats')).then(snap => {
+          if (snap.exists()) window._productStats = snap.val();
+        }).catch(() => {})
+      );
+
+      if (!_isFresh(CACHE_KEYS.CATEGORIES)) {
+        reads.push(
+          get(ref(database, 'categories')).then(snapshot => {
+            const categoriesObj = snapshot.val();
+            if (categoriesObj) {
+              const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
+              categories = newCategories;
+              cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
+              if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
+                renderCategories();
+                renderCategoryCircles();
+              }
+            } else categories = [];
+          }).catch(() => { categories = []; })
+        );
+      }
+
+      if (!_isFresh(CACHE_KEYS.BANNERS)) {
+        reads.push(
+          get(ref(database, 'banners')).then(snapshot => {
+            const bannersObj = snapshot.val();
+            if (bannersObj) {
+              const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
+              banners = newBanners;
+              cacheManager.set(CACHE_KEYS.BANNERS, banners);
+              if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
+            } else banners = [];
+          }).catch(() => { banners = []; })
+        );
+      }
+
+      if (!_isFresh(CACHE_KEYS.SETTINGS)) {
+        reads.push(
+          get(ref(database, 'adminSettings')).then(snapshot => {
+            const settingsObj = snapshot.val();
+            if (settingsObj) {
+              adminSettings = { ...adminSettings, ...settingsObj };
+              cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
+              updateAdminSettingsUI();
+            }
+          }).catch(() => {})
+        );
+      }
+
+      reads.push(
+        get(ref(database, 'outOfStock')).then(snapshot => {
+          const outOfStockObj = snapshot.val();
+          if (outOfStockObj) window.outOfStockItems = outOfStockObj;
+        }).catch(() => {})
+      );
+
+      // Run all needed reads in parallel
+      Promise.all(reads).catch(() => {});
     }
 
     function loadCachedData() {
@@ -4536,8 +4107,6 @@
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
         window.products = products;
-        // PERF: pre-build search indexes from cached data immediately
-        _rebuildSearchIndexes();
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         const trending = products.filter(p => p.isTrending || p.trending).slice(0, 10);
@@ -4584,9 +4153,6 @@
           });
           products = newProducts;
           window.products = products;
-          // PERF: rebuild caches on live update
-          _invalidateRatingCache();
-          _rebuildSearchIndexes();
           cacheManager.set(CACHE_KEYS.PRODUCTS, products);
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage' || currentPage === 'productsPage' || currentPage === 'productDetailPage' || currentPage === 'searchResultsPage') {
@@ -4613,8 +4179,10 @@
           const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
           categories = newCategories;
           cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          renderCategories();
-          if (typeof renderCategoryCircles === 'function') renderCategoryCircles();
+          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
+            renderCategories();
+            renderCategoryCircles();
+          }
         } else categories = [];
       });
       onValue(ref(database, 'banners'), snapshot => {
@@ -4623,7 +4191,7 @@
           const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
           banners = newBanners;
           cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          renderBannerCarousel();
+          if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
         } else banners = [];
       });
       // Load brands for blue tick display on cards
@@ -4688,15 +4256,10 @@
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
-      // PERF: passive listener + show once (no need to fire every frame)
-      let _headerVisible = false;
       window.addEventListener('scroll', function() {
-        if (!_headerVisible) {
-          headerSearchContainer.style.opacity = '1';
-          headerSearchContainer.style.visibility = 'visible';
-          _headerVisible = true;
-        }
-      }, { passive: true });
+        headerSearchContainer.style.opacity = '1';
+        headerSearchContainer.style.visibility = 'visible';
+      }, false);
     }
 
     function setupBackButton() {
@@ -5252,29 +4815,6 @@
 
     // categoryPage + orderTrackPage in showPage switch
     function initApp() {
-      // ── INSTANT LOAD: Cache se sabse pehle render karo (0ms delay) ──
-      // Render functions expose karo (fix-patch.js ke liye)
-      window.renderProducts       = renderProducts;
-      window.renderCategories     = renderCategories;
-      window.renderBannerCarousel = renderBannerCarousel;
-      window.renderProductSlider  = renderProductSlider;
-      window.fetchLiveData        = fetchLiveData;
-      // Cache se turant render
-      const _cp = cacheManager.get(CACHE_KEYS.PRODUCTS);
-      if (_cp && _cp.length > 0) {
-        products = _cp; window.products = _cp;
-        _rebuildSearchIndexes();
-        renderProducts(_cp, 'homeProductGrid');
-        renderProducts(_cp, 'productGrid');
-        const _tr = _cp.filter(p => p.isTrending || p.trending);
-        renderProductSlider(_tr.length ? _tr.slice(0,10) : _cp.slice(0,10), 'productSlider');
-      }
-      const _cc = cacheManager.get(CACHE_KEYS.CATEGORIES);
-      if (_cc && _cc.length > 0) { categories = _cc; renderCategories(); }
-      const _cb = cacheManager.get(CACHE_KEYS.BANNERS);
-      if (_cb && _cb.length > 0) { banners = _cb; renderBannerCarousel(); }
-      // ──────────────────────────────────────────────────────────────
-
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];
@@ -7566,24 +7106,22 @@
       var verifiedSet = {};
       (_siteBrandsAll || []).forEach(function(b) {
         if (b.blueTickAdmin || b.verificationLevel === 'premium') {
-          verifiedSet[(b.name || '').toLowerCase()] = true;
+          verifiedSet[b.name.toLowerCase()] = true;
         }
       });
+      // Also check brands cache
       (window.__bzBrandsCache || []).forEach(function(b) {
         if (b.blueTickAdmin || b.verificationLevel === 'premium') {
-          verifiedSet[(b.name || '').toLowerCase()] = true;
+          verifiedSet[(b.name||'').toLowerCase()] = true;
         }
       });
+
       var sels = ['.product-brand', '.product-card-brand', '.detail-brand', '.brand-name-text', '.bz-prod-brand'];
       sels.forEach(function(sel) {
-        document.querySelectorAll(sel).forEach(function(el) {
-          // Prevent double tick: check inside AND sibling
-          if (el.querySelector('.bz-tick')) return;
-          if (el.nextElementSibling && el.nextElementSibling.classList && el.nextElementSibling.classList.contains('bz-tick')) return;
-          if (el.getAttribute('data-bztick') === '1') return;
+        document.querySelectorAll(sel + ':not([data-bztick])').forEach(function(el) {
           el.setAttribute('data-bztick', '1');
-          var txt = el.textContent.trim().toLowerCase();
-          if (verifiedSet[txt]) {
+          var txt = el.textContent.replace(/\u2713|✓|✔/g, '').trim().toLowerCase();
+          if (verifiedSet[txt] && !el.querySelector('.bz-tick')) {
             el.insertAdjacentHTML('beforeend', BT);
           }
         });
@@ -7894,3 +7432,81 @@
 
 
 // End of main-patch.js
+
+    // ════════════════════════════════════════════════════
+    //  SAFE PERFORMANCE ADDITIONS (no global patches)
+    // ════════════════════════════════════════════════════
+
+    // ── Lazy image loading with IntersectionObserver ──
+    (function bzInitLazyLoad() {
+      if (!('IntersectionObserver' in window)) return;
+
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          if (el.dataset.src) {
+            el.src = el.dataset.src;
+            el.removeAttribute('data-src');
+          }
+          if (el.dataset.bg) {
+            el.style.backgroundImage = "url('" + el.dataset.bg + "')";
+            el.removeAttribute('data-bg');
+          }
+          obs.unobserve(el);
+        });
+      }, { rootMargin: '300px 0px', threshold: 0 });
+
+      // Observe all images currently in DOM
+      function observeImages() {
+        document.querySelectorAll('img:not([data-observed])').forEach(img => {
+          img.setAttribute('data-observed', '1');
+          if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy');
+          if (!img.hasAttribute('decoding')) img.setAttribute('decoding', 'async');
+          obs.observe(img);
+        });
+        document.querySelectorAll('[data-src],[data-bg]').forEach(el => obs.observe(el));
+      }
+
+      // Run after each page render
+      observeImages();
+      document.addEventListener('bzProductsRendered', observeImages);
+      // Check periodically for new images
+      setInterval(observeImages, 2000);
+
+      window._bzImgObserver = obs;
+      window._bzObserveImages = observeImages;
+    })();
+
+    // ── Preconnect to key domains ──
+    (function bzPreconnect() {
+      const hosts = [
+        { href: 'https://i.ibb.co', crossOrigin: true },
+        { href: 'https://firebasestorage.googleapis.com', crossOrigin: true },
+        { href: 'https://fonts.gstatic.com', crossOrigin: true },
+      ];
+      hosts.forEach(h => {
+        if (document.querySelector('link[href="' + h.href + '"]')) return;
+        const l = document.createElement('link');
+        l.rel = 'preconnect';
+        l.href = h.href;
+        if (h.crossOrigin) l.crossOrigin = 'anonymous';
+        document.head.appendChild(l);
+      });
+    })();
+
+    // ── Low-end device: reduce animations ──
+    (function bzLowEndMode() {
+      const cores  = navigator.hardwareConcurrency || 4;
+      const ram    = navigator.deviceMemory || 4;
+      const isSlow = cores <= 2 || ram <= 2;
+      if (isSlow) {
+        document.documentElement.classList.add('bz-low-end');
+        // Disable heavy CSS animations
+        const style = document.createElement('style');
+        style.textContent = '.bz-low-end .product-card{transition:none!important;box-shadow:none!important}' +
+          '.bz-low-end *{animation-duration:.01ms!important;transition-duration:.01ms!important}';
+        document.head.appendChild(style);
+      }
+    })();
+
