@@ -14,7 +14,7 @@
       --ink-2: #334155;
       --border: #e2e8f0;
       --radius: 12px;
-      --transition: all 0.3s ease;
+      --transition: background-color 0.3s ease, color 0.3s ease, border-color 0.2s ease;
     }
 
     [data-theme="dark"] {
@@ -51,8 +51,10 @@
       -moz-user-select: none;
       -ms-user-select: none;
       user-select: none;
-      transition: var(--transition);
+      /* transition removed for FCP perf */
       padding-bottom: 70px;
+    
+      overscroll-behavior-y: contain;
     }
 
     a {
@@ -69,7 +71,7 @@
       top: 0;
       z-index: 50;
       border-bottom: 1px solid var(--border);
-      transition: var(--transition);
+      
     }
 
     .header-inner {
@@ -215,6 +217,7 @@
 
     /* Notification Badge */
     .notification-badge {
+      will-change: transform;
       position: absolute;
       top: -5px;
       right: -5px;
@@ -251,7 +254,7 @@
       border-radius: var(--radius);
       padding: 0;
       margin-bottom: 20px;
-      transition: var(--transition);
+      
       overflow: hidden;
       position: relative;
     }
@@ -439,7 +442,7 @@
       display: flex;
       flex-direction: column;
       border: 1px solid var(--border);
-      transition: all 0.3s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       cursor: pointer;
       position: relative;
     }
@@ -450,7 +453,8 @@
     }
 
     .product-card-image {
-      height: 160px;
+height: 160px;
+aspect-ratio: 1 / 1; /* CLS prevention */
       position: relative;
       cursor: pointer;
       background-color: #f8fafc;
@@ -465,7 +469,9 @@
       height: 100%;
       object-fit: cover;
       transition: transform 0.3s ease;
-    }
+    
+  image-rendering: auto;
+}
 
     .product-card-badge {
       position: absolute;
@@ -558,16 +564,6 @@
       color: var(--muted);
     }
 
-    /* FIXED: Instant Red Wishlist */
-    .wishlist-btn.active {
-      color: red !important;
-      background: #fee2e2 !important;
-    }
-
-    .wishlist-btn.active svg {
-      fill: red !important;
-    }
-
     .share-btn {
       color: var(--muted);
     }
@@ -594,7 +590,7 @@
       box-shadow: var(--shadow);
       margin-bottom: 14px;
       border: 1px solid var(--border);
-      transition: var(--transition);
+      transition: background-color 0.3s ease;
     }
 
     .card-panel h3 {
@@ -1083,7 +1079,7 @@
       margin-bottom: 16px;
       border: 1px solid var(--border);
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       user-select: none;
     }
     
@@ -1329,7 +1325,9 @@
       scrollbar-width: none;
       -ms-overflow-style: none;
       user-select: none;
-    }
+    
+    touch-action: pan-y;
+  }
     
     .slider-container::-webkit-scrollbar {
       display: none;
@@ -1350,7 +1348,7 @@
       overflow: hidden;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
-      transition: all 0.3s ease;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
       cursor: pointer;
       user-select: none;
     }
@@ -5487,29 +5485,34 @@ img {
    PERFORMANCE OPTIMIZATIONS
 ════════════════════════════════════════════════ */
 
-/* ── Font display swap ── */
-@font-face {
-  font-display: swap;
-}
+/* font-display: swap — apply this directly inside your @font-face rules that include src/font-family */
 
 /* ── Content visibility: skip off-screen rendering ── */
 .footer-container,
 .newsletter-section,
 .recently-viewed,
 .similar-products,
-.review-section {
+.review-section,
+.product-slider,
+.about-us,
+.category-circles-section {
   content-visibility: auto;
   contain-intrinsic-size: 0 400px;
 }
 
-/* ── GPU acceleration for animated elements ── */
-.product-card,
+/* ── GPU: promote only actively-animated elements ── */
 .banner-carousel,
-.slider-track,
+.slider-track {
+  will-change: transform;
+}
 .bottom-nav,
 .mobile-menu {
-  will-change: transform;
   transform: translateZ(0);
+}
+/* product-card gets will-change only on hover — not statically on all 100+ cards */
+.product-card:hover,
+.slider-item:hover {
+  will-change: transform;
 }
 
 /* ── Low-end device: disable heavy effects ── */
@@ -5526,6 +5529,20 @@ img {
 }
 
 /* ── Reduce backdrop-filter (very expensive) ── */
+@media (max-width: 480px) {
+  /* Simplify shadows on mobile — reduces GPU compositing */
+  .product-card {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .card-panel {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  /* Disable image hover scale on touch — prevents layout thrash */
+  .product-detail-main-image:hover {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce), (max-width: 480px) {
   [style*="backdrop-filter"],
   [style*="blur"] {
@@ -5536,7 +5553,7 @@ img {
 
 /* ── Image containers: prevent layout shift ── */
 .product-card-image {
-  contain: strict;
+  contain: layout paint;
 }
 .product-card-image img {
   width: 100%;
