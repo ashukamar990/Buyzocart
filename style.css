@@ -491,14 +491,9 @@
       font-weight: 600;
       margin-bottom: 6px;
       font-size: 15px;
-      white-space: normal;
-      word-break: break-word;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      min-height: 2.4em;
     }
 
     .product-card-rating {
@@ -5488,16 +5483,79 @@ img {
 }
 
 
-/* ── Brands page: cancel container top margin ── */
-#brandsPage {
-  margin-top: -20px;
-  width: calc(100% + 32px);
-  margin-left: -16px;
-  margin-right: -16px;
-  box-sizing: border-box;
+/* ════════════════════════════════════════════════
+   PERFORMANCE OPTIMIZATIONS
+════════════════════════════════════════════════ */
+
+/* ── Font display swap ── */
+@font-face {
+  font-display: swap;
 }
 
-/* ── Brand profile: no bottom empty space ── */
-#brandProfilePage {
-  min-height: auto !important;
+/* ── Content visibility: skip off-screen rendering ── */
+.footer-container,
+.newsletter-section,
+.recently-viewed,
+.similar-products,
+.review-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 400px;
+}
+
+/* ── GPU acceleration for animated elements ── */
+.product-card,
+.banner-carousel,
+.slider-track,
+.bottom-nav,
+.mobile-menu {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ── Low-end device: disable heavy effects ── */
+.bz-low-end .product-card {
+  box-shadow: none !important;
+  transition: none !important;
+}
+.bz-low-end .product-card:hover {
+  transform: none !important;
+}
+.bz-low-end * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ── Reduce backdrop-filter (very expensive) ── */
+@media (prefers-reduced-motion: reduce), (max-width: 480px) {
+  [style*="backdrop-filter"],
+  [style*="blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ── Image containers: prevent layout shift ── */
+.product-card-image {
+  contain: strict;
+}
+.product-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── Lazy load placeholder ── */
+[data-src], [data-bg] {
+  background-color: #f1f5f9;
+  background-image: none !important;
+}
+
+/* ── Reduce paint areas ── */
+.page {
+  isolation: isolate;
+}
+
+/* ── Optimize list rendering ── */
+.product-grid {
+  contain: layout style;
 }
