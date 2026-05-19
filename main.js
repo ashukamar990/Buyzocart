@@ -51,11 +51,7 @@
         if (!item) return null;
         try {
           const parsed = JSON.parse(item);
-          // STALE-WHILE-REVALIDATE: Purana data bhi turant dikhaao,
-          // fresh data background mein fetchLiveData se aa jaayega.
-          // TTL sirf 24 ghante baad hard-expire karta hai (not 1 hour).
-          const HARD_EXPIRE = 24 * 60 * 60 * 1000; // 24 hours
-          if (Date.now() - parsed.timestamp > HARD_EXPIRE) {
+          if (Date.now() - parsed.timestamp > parsed.ttl) {
             localStorage.removeItem(key);
             return null;
           }
@@ -4459,18 +4455,19 @@
           _invalidateRatingCache();
           _rebuildSearchIndexes();
           cacheManager.set(CACHE_KEYS.PRODUCTS, products);
-          // FIX: Hamesha dono grids render karo — active page check hata diya
-          renderProducts(products, 'homeProductGrid');
-          renderProducts(products, 'productGrid');
-          let trendingProducts = products.filter(p => p.isTrending || p.trending);
-          if (!trendingProducts.length) {
-            trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
-          }
-          if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
-          else renderProductSlider(products.slice(0, 10), 'productSlider');
-          updateProductsCount();
           const currentPage = document.querySelector('.page.active')?.id;
-          if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
+          if (currentPage === 'homePage') {
+            renderProducts(products, 'homeProductGrid');
+            let trendingProducts = products.filter(p => p.isTrending || p.trending);
+            if (!trendingProducts.length) {
+              trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+            }
+            if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
+            else renderProductSlider(products.slice(0, 10), 'productSlider');
+          } else if (currentPage === 'productsPage') {
+            renderProducts(products, 'productGrid');
+            updateProductsCount();
+          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
             const filteredResults = searchProducts(window.currentSearchQuery);
             window.currentSearchResults = filteredResults;
             renderSearchResults(filteredResults, window.currentSearchQuery);
@@ -4497,7 +4494,6 @@
           const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
           categories = newCategories;
           cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          // FIX: Hamesha render karo
           renderCategories();
           if (typeof renderCategoryCircles === 'function') renderCategoryCircles();
         } else categories = [];
@@ -4511,7 +4507,6 @@
           const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
           banners = newBanners;
           cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          // FIX: Hamesha render karo
           renderBannerCarousel();
         } else banners = [];
       }).catch(error => {
@@ -4618,7 +4613,6 @@
           const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
           categories = newCategories;
           cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          // FIX: Hamesha render karo
           renderCategories();
           if (typeof renderCategoryCircles === 'function') renderCategoryCircles();
         } else categories = [];
@@ -4629,7 +4623,6 @@
           const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
           banners = newBanners;
           cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          // FIX: Hamesha render karo
           renderBannerCarousel();
         } else banners = [];
       });
@@ -5257,18 +5250,30 @@
       stage.innerHTML = scenes[step] || scenes[0];
     }
 
-    // ── Expose critical functions on window (fix-patch.js + external compatibility) ──
-    window.renderProducts       = function() { return renderProducts.apply(this, arguments); };
-    window.renderCategories     = function() { return renderCategories.apply(this, arguments); };
-    window.renderBannerCarousel = function() { return renderBannerCarousel.apply(this, arguments); };
-    window.renderProductSlider  = function() { return renderProductSlider.apply(this, arguments); };
-    window.loadCachedData       = loadCachedData;
-    window.fetchLiveData        = fetchLiveData;
-
     // categoryPage + orderTrackPage in showPage switch
     function initApp() {
-      // ── SABSE PEHLE: Cache se instantly render karo ──────────
-      loadCachedData();
+      // ── INSTANT LOAD: Cache se sabse pehle render karo (0ms delay) ──
+      // Render functions expose karo (fix-patch.js ke liye)
+      window.renderProducts       = renderProducts;
+      window.renderCategories     = renderCategories;
+      window.renderBannerCarousel = renderBannerCarousel;
+      window.renderProductSlider  = renderProductSlider;
+      window.fetchLiveData        = fetchLiveData;
+      // Cache se turant render
+      const _cp = cacheManager.get(CACHE_KEYS.PRODUCTS);
+      if (_cp && _cp.length > 0) {
+        products = _cp; window.products = _cp;
+        _rebuildSearchIndexes();
+        renderProducts(_cp, 'homeProductGrid');
+        renderProducts(_cp, 'productGrid');
+        const _tr = _cp.filter(p => p.isTrending || p.trending);
+        renderProductSlider(_tr.length ? _tr.slice(0,10) : _cp.slice(0,10), 'productSlider');
+      }
+      const _cc = cacheManager.get(CACHE_KEYS.CATEGORIES);
+      if (_cc && _cc.length > 0) { categories = _cc; renderCategories(); }
+      const _cb = cacheManager.get(CACHE_KEYS.BANNERS);
+      if (_cb && _cb.length > 0) { banners = _cb; renderBannerCarousel(); }
+      // ──────────────────────────────────────────────────────────────
 
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -5360,7 +5365,7 @@
           }
         });
       }
-      // loadCachedData() already called at top of initApp — skip duplicate
+      loadCachedData();
       fetchLiveData();
       setupRealtimeListeners();
       showPage('homePage');
