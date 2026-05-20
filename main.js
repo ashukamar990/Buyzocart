@@ -1,18 +1,4 @@
 // Buyzo Cart - Main Application Logic
-// PERF: Inject critical CSS immediately for CLS prevention and mobile perf
-(function bzPerfCSS(){
-  var s = document.createElement('style');
-  s.textContent = [
-    '.product-card{contain:layout style;}',
-    '.product-card-image{aspect-ratio:1/1;overflow:hidden;background:#f3f4f6;}',
-    '.product-card-image img{width:100%;height:100%;object-fit:cover;display:block;}',
-    '.banner-carousel{aspect-ratio:16/6;overflow:hidden;}',
-    'body{overscroll-behavior-y:contain;}',
-    '@media(max-width:480px){.product-card{box-shadow:0 1px 4px rgba(0,0,0,.08)!important;}}',
-  ].join('');
-  (document.head||document.documentElement).appendChild(s);
-})();
-
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -460,19 +446,20 @@
     }
 
     // ── Build searchable string for a product ──
-    // PERF: Pre-built search index — computed once, not on every keystroke
-    const _searchIndexMap = new Map();
     function _buildSearchIndex(p) {
-      const id = p.id || p.productId || '';
-      if (_searchIndexMap.has(id)) return _searchIndexMap.get(id);
-      const tags = Array.isArray(p.tags) ? p.tags.join(' ') : (p.tags || '');
-      const kw   = Array.isArray(p.searchKeywords) ? p.searchKeywords.join(' ') : (p.searchKeywords || '');
-      const idx  = [p.name||p.title||'', p.shortTitle||'', p.description||'', p.category||'',
-                    p.brand||'', tags, kw, p.color||'', p.material||'', p.style||''].join(' ').toLowerCase();
-      _searchIndexMap.set(id, idx);
-      return idx;
+      const tags   = Array.isArray(p.tags) ? p.tags.join(' ') : (p.tags || '');
+      const kw     = Array.isArray(p.searchKeywords) ? p.searchKeywords.join(' ') : (p.searchKeywords || '');
+      const short  = p.shortTitle || '';
+      return [
+        p.name || p.title || '',
+        short,
+        p.description || '',
+        p.category || '',
+        p.brand || '',
+        tags, kw,
+        p.color || '', p.material || '', p.style || '',
+      ].join(' ').toLowerCase();
     }
-    function _rebuildSearchIndexes() { _searchIndexMap.clear(); products.forEach(p => _buildSearchIndex(p)); }
 
     // ── Score a single product against query terms ──
     function _scoreProduct(p, terms, originalQuery) {
@@ -580,24 +567,18 @@
       closeSearchPanel();
     }
 
-    // PERF: Debounced search — wait 150ms before running fuzzy search
     function handleSearchPanelInput(e) {
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
       if (query.length >= 1) {
-        clearTimeout(handleSearchPanelInput._t);
-        handleSearchPanelInput._t = setTimeout(() => {
-          showSearchSuggestions(query);
-          suggestionsContainer.style.display = 'block';
-        }, 150);
+        showSearchSuggestions(query);
+        suggestionsContainer.style.display = 'block';
       } else {
-        clearTimeout(handleSearchPanelInput._t);
         clearSearchSuggestions();
         suggestionsContainer.style.display = 'none';
       }
     }
-    handleSearchPanelInput._t = null;
 
     function showSearchSuggestions(query) {
       const suggestionsContainer = document.getElementById('searchSuggestions');
@@ -1302,18 +1283,11 @@
 
     let reviews = [];
 
-    // PERF: Memoized rating cache
-    let _ratingCache = new Map();
-    let _productScoreCache = new Map();
-    function _invalidateRatingCache() { _ratingCache = new Map(); _productScoreCache = new Map(); }
-
     function calculateProductRating(productId) {
-      if (_ratingCache.has(productId)) return _ratingCache.get(productId);
       const productReviews = reviews.filter(r => r.productId === productId);
-      const rating = productReviews.length === 0 ? 0
-        : productReviews.reduce((acc, r) => acc + r.rating, 0) / productReviews.length;
-      _ratingCache.set(productId, rating);
-      return rating;
+      if (productReviews.length === 0) return 0;
+      const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+      return sum / productReviews.length;
     }
 
     function createProductCard(product) {
@@ -1345,8 +1319,7 @@
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       card.innerHTML = `
-        <div class="product-card-image">
-          <img src="${productImage}" alt="${productName.replace(/"/g,'&quot;')}" loading="lazy" decoding="async" width="300" height="300" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.src='https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image'"/>
+        <div class="product-card-image" style="background-image: url('${productImage}')">
           ${badgeHtml}
         </div>
         <div class="product-card-body">
@@ -1750,8 +1723,6 @@
         img.src = src;
         img.draggable = false;
         img.alt = 'Product image ' + (i+1);
-        img.decoding = 'async';
-        img.loading = (i === _FV.index) ? 'eager' : 'lazy';
         slide.appendChild(img);
         track.appendChild(slide);
       });
@@ -3177,15 +3148,10 @@
       showPage('orderDetailPage');
     }
 
-    // PERF: Throttle recently-viewed writes — max 1 per 2s per product
-    const _rvThrottle = new Map();
     async function addToRecentlyViewed(productId) {
       if (!currentUser) return;
-      const now = Date.now();
-      if (now - (_rvThrottle.get(productId) || 0) < 2000) return;
-      _rvThrottle.set(productId, now);
       try {
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), now);
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
         loadRecentlyViewed(currentUser);
       } catch (error) {
         console.error('Error adding to recently viewed:', error);
@@ -3358,86 +3324,79 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    // PERF: Memoized product score
     function getProductScore(product) {
-      const id = product.id || product.productId || '';
-      if (_productScoreCache.has(id)) return _productScoreCache.get(id);
-      const rating = calculateProductRating(id);
-      const orderCount = (window._productStats && window._productStats[id]?.orderCount)
+      const rs = reviews.filter(r => r.productId === product.id);
+      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+      const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
-      const score = (orderCount * 0.6) + (rating * 0.8);
-      _productScoreCache.set(id, score);
-      return score;
+      return (orderCount * 0.6) + (rating * 0.8);
     }
 
-    // PERF: Lazy paginated renderProducts — renders 12 cards, rest load on scroll
-    const _BATCH = 12;
-    const _gridObs = {};
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      const ratingMap = {};
+      productsToRender.forEach(p => {
+        const productReviews = reviews.filter(r => r.productId === p.id);
+        if (productReviews.length) {
+          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+          ratingMap[p.id] = sum / productReviews.length;
+        } else ratingMap[p.id] = 0;
+      });
       const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
       container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
+        // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
           container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
         return;
       }
-      if (_gridObs[containerId]) { _gridObs[containerId].disconnect(); delete _gridObs[containerId]; }
-      let rendered = 0;
-      function renderBatch(n) {
-        const end = Math.min(rendered + n, sorted.length);
-        const frag = document.createDocumentFragment();
-        for (let i = rendered; i < end; i++) if (sorted[i]) frag.appendChild(createProductCard(sorted[i]));
-        container.appendChild(frag);
-        rendered = end;
-      }
-      renderBatch(_BATCH);
-      if (rendered < sorted.length && 'IntersectionObserver' in window) {
-        const sentinel = document.createElement('div');
-        sentinel.style.cssText = 'height:1px;width:100%;grid-column:1/-1;';
-        container.appendChild(sentinel);
-        const obs = new IntersectionObserver(entries => {
-          if (entries[0].isIntersecting) {
-            renderBatch(_BATCH);
-            if (rendered >= sorted.length) { obs.disconnect(); delete _gridObs[containerId]; sentinel.remove(); }
-          }
-        }, { rootMargin: '200px' });
-        obs.observe(sentinel);
-        _gridObs[containerId] = obs;
-      } else if (rendered < sorted.length) { renderBatch(sorted.length); }
+      const fragment = document.createDocumentFragment();
+      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      container.appendChild(fragment);
     }
 
-    // PERF: Banner uses <img loading=lazy> — first banner eager (LCP element)
     function renderBannerCarousel() {
       const track = document.getElementById('bannerTrack');
       const controls = document.getElementById('bannerControls');
       if (!track || !controls) return;
-      const tFrag = document.createDocumentFragment();
-      const cFrag = document.createDocumentFragment();
+
+      const preloadImages = banners.map(banner => {
+        return new Promise(resolve => {
+          const img = new Image();
+          img.onload = img.onerror = resolve;
+          img.src = getProductImage(banner);
+        });
+      });
+
+      const trackFragment = document.createDocumentFragment();
+      const controlsFragment = document.createDocumentFragment();
       banners.forEach((banner, index) => {
         const slide = document.createElement('div');
         slide.className = 'banner-slide';
-        const img = document.createElement('img');
-        img.src = getProductImage(banner);
-        img.alt = banner.title || 'Banner';
-        img.decoding = 'async';
-        img.loading = index === 0 ? 'eager' : 'lazy';
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
-        slide.appendChild(img);
-        if (banner.link) { slide.style.cursor = 'pointer'; slide.addEventListener('click', () => window.open(banner.link, '_blank')); }
-        tFrag.appendChild(slide);
+        slide.style.backgroundImage = `url('${getProductImage(banner)}')`;
+        slide.style.backgroundSize = 'cover';
+        slide.style.backgroundPosition = 'center';
+        if (banner.link) {
+          slide.style.cursor = 'pointer';
+          slide.addEventListener('click', () => window.open(banner.link, '_blank'));
+        }
+        trackFragment.appendChild(slide);
         const dot = document.createElement('div');
         dot.className = `banner-dot ${index === 0 ? 'active' : ''}`;
         dot.addEventListener('click', () => setBannerSlide(index));
-        cFrag.appendChild(dot);
+        controlsFragment.appendChild(dot);
       });
-      track.innerHTML = ''; controls.innerHTML = '';
-      track.appendChild(tFrag); controls.appendChild(cFrag);
+      track.innerHTML = '';
+      controls.innerHTML = '';
+      track.appendChild(trackFragment);
+      controls.appendChild(controlsFragment);
       document.getElementById('bannerCarousel')?.classList.remove('skeleton');
       setupBannerAutoSlide();
       setupBannerTouchEvents();
+
+      Promise.all(preloadImages).catch(() => {});
     }
 
     function setBannerSlide(index) {
@@ -3611,7 +3570,7 @@
       trendingAutoSlideInterval = setInterval(() => {
         if (!slidePaused) {
           currentSlide = (currentSlide + 1) % totalSlides;
-          requestAnimationFrame(() => { slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' }); });
+          slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' });
         }
       }, 4000);
     }
@@ -4262,9 +4221,15 @@
       const get = window.firebase?.get;
       if (!db || !ref || !get) return;
 
-      // PERF: Use in-memory products.length — avoids extra Firebase read
-      const pCount = products.length;
-      if (pCount > 0) setHeroStat('heroStatProducts', pCount >= 1000 ? Math.floor(pCount/1000)+'K+' : pCount+'+');
+      get(ref(db, 'products')).then(snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
+      }).catch(()=>{});
+
+      get(ref(db, 'users')).then(snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
+      }).catch(()=>{});
 
       get(ref(db, 'reviews')).then(snap => {
         if (!snap.exists()) { setHeroStat('heroStatRating', null); return; }
@@ -4367,9 +4332,6 @@
           });
           products = newProducts;
           window.products = products;
-          // PERF: rebuild caches after fresh data
-          _invalidateRatingCache();
-          _rebuildSearchIndexes();
           cacheManager.set(CACHE_KEYS.PRODUCTS, products);
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage') {
@@ -4454,8 +4416,6 @@
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
         window.products = products;
-        // PERF: pre-build search index from cached data immediately
-        _rebuildSearchIndexes();
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         const trending = products.filter(p => p.isTrending || p.trending).slice(0, 10);
@@ -4502,9 +4462,6 @@
           });
           products = newProducts;
           window.products = products;
-          // PERF: invalidate memoized caches on live update
-          _invalidateRatingCache();
-          _rebuildSearchIndexes();
           cacheManager.set(CACHE_KEYS.PRODUCTS, products);
           const currentPage = document.querySelector('.page.active')?.id;
           if (currentPage === 'homePage' || currentPage === 'productsPage' || currentPage === 'productDetailPage' || currentPage === 'searchResultsPage') {
@@ -4608,13 +4565,10 @@
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
-      let _hShown = false;
       window.addEventListener('scroll', function() {
-        if (_hShown) return;
         headerSearchContainer.style.opacity = '1';
         headerSearchContainer.style.visibility = 'visible';
-        _hShown = true;
-      }, { passive: true });
+      }, false);
     }
 
     function setupBackButton() {
@@ -7017,12 +6971,17 @@
         // Product card for brand grid
         function bpProductCard(p) {
           var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
-          var img = (p.images&&p.images[0]) || p.image || p.thumbnail || '';
+          // FIX: use getProductImage() — handles all image formats (images[], image, imageUrl, thumbnail)
+          var img = typeof getProductImage==='function' ? getProductImage(p) : ((p.images&&p.images[0])||p.image||p.thumbnail||'');
           var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
           var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
-          return '<div onclick="showProductDetail(\''+p.id+'\')" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
+          // FIX: showProductDetail needs full product object, not just ID string
+          // Store product in window._bpProds map so onclick can retrieve it
+          if (!window._bpProds) window._bpProds = {};
+          window._bpProds[p.id] = p;
+          return '<div onclick="var _p=window._bpProds&&window._bpProds[\''+p.id+'\'];if(_p){showProductDetail(_p);}else{var _fp=window.products&&window.products.find(function(x){return x.id===\''+p.id+'\';});if(_fp)showProductDetail(_fp);}" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
             +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
-              +(img?'<img src="'+img+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display=\'none\'">':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
+              +(img?'<img src="'+img+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML=\'<div style=\\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;\\">🛍️</div>\'">':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
               +'<div style="position:absolute;top:8px;right:8px;">'
                 +'<button onclick="event.stopPropagation();typeof toggleWishlist===\'function\'&&toggleWishlist(\''+p.id+'\')" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);">'
                   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(wlActive?'#ef4444':'none')+'" stroke="'+(wlActive?'#ef4444':'#94a3b8')+'" stroke-width="2.2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
