@@ -2004,6 +2004,29 @@
 
   <script src="main.js" defer></script>
 
+  <!-- FIX: Render cached data INSTANTLY, before Firebase connects -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // main.js is defer so it runs just before DOMContentLoaded fires
+      // Call loadCachedData() immediately — shows products from localStorage with zero Firebase wait
+      try {
+        if (typeof loadCachedData === 'function') {
+          loadCachedData();
+        }
+      } catch(e) {}
+
+      // Safety net: if grid still empty after 1 second, force Firebase fetch
+      setTimeout(function() {
+        try {
+          var homeGrid = document.getElementById('homeProductGrid');
+          if (homeGrid && homeGrid.querySelectorAll('[data-product-id]').length === 0) {
+            if (typeof fetchLiveData === 'function') fetchLiveData();
+          }
+        } catch(e) {}
+      }, 1000);
+    });
+  </script>
+
 
   <div id="progressBar"></div>
 
@@ -2029,12 +2052,12 @@
     (function() {
       const t = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', t);
-      if (t === 'dark') {
-        const sun = document.querySelector('.theme-toggle-btn .sun-icon');
-        const moon = document.querySelector('.theme-toggle-btn .moon-icon');
-        if (sun) sun.style.display = 'none';
-        if (moon) moon.style.display = 'block';
-      }
+      // FIX: Always set BOTH icons — not just in dark mode
+      // Without this, initApp() in main.js can reset moon to visible in light mode
+      const sun  = document.querySelector('.theme-toggle-btn .sun-icon');
+      const moon = document.querySelector('.theme-toggle-btn .moon-icon');
+      if (sun)  sun.style.display  = t === 'dark' ? 'none'  : 'block';
+      if (moon) moon.style.display = t === 'dark' ? 'block' : 'none';
     })();
 
     window.addEventListener('scroll', function() {
