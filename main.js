@@ -6969,29 +6969,46 @@
         }
 
         // Product card for brand grid
+        // Register a clean global click handler (set once, not per card)
+        if (!window._bpCardClick) {
+          window._bpCardClick = function(id) {
+            var p = (window._bpProds && window._bpProds[id])
+                 || (window.products && window.products.find(function(x){ return x.id === id; }));
+            if (p && typeof showProductDetail === 'function') showProductDetail(p);
+          };
+        }
+        if (!window._bpWLClick) {
+          window._bpWLClick = function(e, id) {
+            e.stopPropagation();
+            if (typeof toggleWishlist === 'function') toggleWishlist(id);
+          };
+        }
+
         function bpProductCard(p) {
           var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
-          // FIX: use getProductImage() — handles all image formats (images[], image, imageUrl, thumbnail)
+          // Use getProductImage() which handles all image formats
           var img = typeof getProductImage==='function' ? getProductImage(p) : ((p.images&&p.images[0])||p.image||p.thumbnail||'');
           var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
-          var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
-          // FIX: showProductDetail needs full product object, not just ID string
-          // Store product in window._bpProds map so onclick can retrieve it
+          var wlActive = typeof wishlist!=='undefined' && Array.isArray(wishlist) && wishlist.includes(p.id);
+          // Store product object so _bpCardClick can retrieve it — safe, no string escaping needed
           if (!window._bpProds) window._bpProds = {};
           window._bpProds[p.id] = p;
-          return '<div onclick="var _p=window._bpProds&&window._bpProds[\''+p.id+'\'];if(_p){showProductDetail(_p);}else{var _fp=window.products&&window.products.find(function(x){return x.id===\''+p.id+'\';});if(_fp)showProductDetail(_fp);}" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
+          // Use simple data-bpid attribute — no complex escaped JS in onclick
+          return '<div data-bpid="'+p.id+'" onclick="window._bpCardClick(this.getAttribute(\'data-bpid\'))" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
             +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
-              +(img?'<img src="'+img+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML=\'<div style=\\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;\\">🛍️</div>\'">':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
+              +(img ? '<img src="'+img+'" alt="product" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling&&(this.nextElementSibling.style.display=\'flex\')">'
+                     +'<div style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:32px;">🛍️</div>'
+                  : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
               +'<div style="position:absolute;top:8px;right:8px;">'
-                +'<button onclick="event.stopPropagation();typeof toggleWishlist===\'function\'&&toggleWishlist(\''+p.id+'\')" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);">'
+                +'<button data-wlid="'+p.id+'" onclick="window._bpWLClick(event,this.getAttribute(\'data-wlid\'))" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);">'
                   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(wlActive?'#ef4444':'none')+'" stroke="'+(wlActive?'#ef4444':'#94a3b8')+'" stroke-width="2.2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
                 +'</button>'
               +'</div>'
-              +(p.trending||p.isTrending?'<div style="position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;">🔥 HOT</div>':'')
+              +(p.trending||p.isTrending ? '<div style="position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;">🔥 HOT</div>' : '')
             +'</div>'
             +'<div style="padding:10px 10px 12px;">'
-              +'<div style="font-size:12px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;">'+( p.name||'Product')+'</div>'
-              +(pRating?'<div style="font-size:10px;color:#f59e0b;margin-bottom:4px;">'+stars(pRating)+'<span style="color:#94a3b8;margin-left:2px;">('+pRating+')</span></div>':'')
+              +'<div style="font-size:12px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;">'+(p.name||'Product')+'</div>'
+              +(pRating ? '<div style="font-size:10px;color:#f59e0b;margin-bottom:4px;">'+stars(pRating)+'<span style="color:#94a3b8;margin-left:2px;">('+pRating+')</span></div>' : '')
               +'<div style="font-size:13px;font-weight:900;color:'+themeColor+';">'+price+'</div>'
             +'</div>'
           +'</div>';
