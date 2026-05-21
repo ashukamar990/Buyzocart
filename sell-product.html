@@ -415,7 +415,7 @@
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; width: 100% !important; }
+            .main-content { margin-left: 0; width: 100%; }
             .menu-toggle { display: flex; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
             .form-row { grid-template-columns: 1fr; }
@@ -717,20 +717,26 @@
 
         window._imgbbKey = 'YOUR_IMGBB_API_KEY_HERE';
 
-        // Auto-load imgbb key from Firebase adminSettings
+        // Auto-load imgbb key from Firebase adminSettings (retries every 30s in case admin just saved it)
         (function loadImgbbKey() {
-            try {
-                var _db2 = window._db || (window.firebase && window.firebase.database);
-                var _ref2 = window._ref || (window.firebase && window.firebase.ref);
-                var _get2 = window._get || (window.firebase && window.firebase.get);
-                if (_db2 && _ref2 && _get2) {
-                    _get2(_ref2(_db2, 'adminSettings/imgbbKey')).then(function(snap) {
-                        if (snap && snap.exists() && snap.val()) {
-                            window._imgbbKey = snap.val();
-                        }
-                    }).catch(function(){});
-                }
-            } catch(e) {}
+            function tryLoad() {
+                try {
+                    var _db2 = window._db || (window.firebase && window.firebase.database);
+                    var _ref2 = window._ref || (window.firebase && window.firebase.ref);
+                    var _get2 = window._get || (window.firebase && window.firebase.get);
+                    if (_db2 && _ref2 && _get2) {
+                        _get2(_ref2(_db2, 'adminSettings/imgbbKey')).then(function(snap) {
+                            if (snap && snap.exists() && snap.val()) {
+                                window._imgbbKey = snap.val();
+                                console.log('[Buyzo] ImgBB key loaded from admin settings ✅');
+                            }
+                        }).catch(function(){});
+                    }
+                } catch(e) {}
+            }
+            tryLoad();
+            // Retry once after 5 seconds (in case Firebase wasn't ready yet)
+            setTimeout(tryLoad, 5000);
         })();
 
         window._state = {
@@ -861,9 +867,18 @@
             }
             
             window._state.user = user;
-            var initials = (user.displayName || user.email || 'S').charAt(0).toUpperCase();
+            // ── Show Google display name (First Name from Gmail) ──
+            var fullName   = user.displayName || '';
+            var firstName  = fullName ? fullName.split(' ')[0] : '';
+            var displayLabel = firstName || user.email || 'Seller';
+            var initials   = fullName
+              ? fullName.split(' ').slice(0,2).map(function(n){ return n[0]; }).join('').toUpperCase()
+              : (user.email||'S').charAt(0).toUpperCase();
             document.getElementById('headerAvatar').textContent = initials;
-            document.getElementById('headerName').textContent = user.displayName || user.email || 'Seller';
+            document.getElementById('headerName').textContent = displayLabel;
+            // Store for use in welcome page
+            window._state.userFirstName = firstName;
+            window._state.userFullName  = fullName;
 
             try {
                 const catSnap = await get(ref(db, 'categories'));
@@ -1365,7 +1380,7 @@
                 // ── Hero ──
                 '<div class="anim-up" style="text-align:center;margin-bottom:36px;animation-delay:.05s;">' +
                     '<div style="width:88px;height:88px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;margin:0 auto 20px;box-shadow:0 8px 32px rgba(37,99,235,.3);animation:popIn .4s ease .1s both;">🛍️</div>' +
-                    '<h1 style="font-size:1.75rem;font-weight:900;background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;line-height:1.2;">Start Selling on<br>Buyzo Cart</h1>' +
+                    '<h1 style="font-size:1.75rem;font-weight:900;background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;line-height:1.2;">'+(window._state.userFirstName ? 'Hey '+window._state.userFirstName+', 👋<br>' : '')+'Start Selling on<br>Buyzo Cart</h1>' +
                     '<p style="color:#64748b;font-size:0.95rem;max-width:380px;margin:0 auto;line-height:1.6;">Reach thousands of customers across India. Free to join — no monthly fees.</p>' +
                 '</div>' +
 
@@ -2218,6 +2233,7 @@
                 '</div>' +
                 '<div class="card"><div class="card-body">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;"><span class="text-muted">Business Name</span><strong>' + ((window._state.sellerData && window._state.sellerData.businessName) ? window._state.sellerData.businessName : 'N/A') + '</strong></div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Name</span><strong>' + (window._state.userFullName || window._state.user.displayName || 'N/A') + '</strong></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Email</span><strong>' + (window._state.user ? window._state.user.email : 'N/A') + '</strong></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><span class="text-muted">Account Status</span><span class="badge badge-success">✅ Approved</span></div>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">' +
@@ -2366,7 +2382,11 @@
                 var l = Array.from({length:3}, function(){ return String.fromCharCode(65 + Math.floor(Math.random()*26)); }).join('');
                 return n + l;
             })();
-            var sellerName = (window._state.sellerData && window._state.sellerData.businessName) || window._state.user.displayName || window._state.user.email || 'Seller';
+            var sellerName = (window._state.sellerData && window._state.sellerData.businessName)
+              || window._state.userFullName
+              || window._state.user.displayName
+              || window._state.user.email
+              || 'Seller';
 
             var mrp = parseFloat(document.getElementById('prodMrp') ? document.getElementById('prodMrp').value : 0) || 0;
             var colors = (document.getElementById('prodColors') ? document.getElementById('prodColors').value : '').split(',').map(function(c){ return c.trim(); }).filter(Boolean);
@@ -2628,7 +2648,9 @@
                 await window._push(window._ref(window._db, 'brandRequests'), {
                     name: name, normalizedName: norm, logo: logo, description: desc, reason: reason,
                     requestedBy: uid, requestedByEmail: (window._state.user.email||''),
-                    requestedByName: (window._state.sellerData && window._state.sellerData.businessName)||'',
+                    requestedByName: (window._state.sellerData && window._state.sellerData.businessName)
+                                  || window._state.userFullName
+                                  || window._state.user.displayName || '',
                     status: 'pending', requestedAt: Date.now()
                 });
                 showToast('Brand request submitted! ✅ Auto-approve in 24 hours if admin doesn\'t review.', 'success');
@@ -2639,7 +2661,13 @@
         // ── BRAND AUTO-APPROVE (24 HOURS) ────────────────────────────────
         async function checkAndAutoApproveBrands(uid) {
             if (!uid) return;
-            var AUTO_APPROVE_MS = 24 * 60 * 60 * 1000;
+            // Auto-approve hours loaded from adminSettings (admin can change from panel)
+            var _baaHours = 24;
+            try {
+              var _baaSnap = await window._get(window._ref(window._db, 'adminSettings/brandAutoApproveHours'));
+              if (_baaSnap && _baaSnap.exists() && _baaSnap.val()) _baaHours = parseInt(_baaSnap.val()) || 24;
+            } catch(e) {}
+            var AUTO_APPROVE_MS = _baaHours * 60 * 60 * 1000;
             try {
                 var snap = await window._get(window._ref(window._db, 'brandRequests'));
                 if (!snap.exists()) return;
@@ -2778,7 +2806,13 @@
         function _renderBrandReqStatus(req, uid) {
             var color = _brandColor2(req.name||'B');
             var initials = (req.name||'B').slice(0,2).toUpperCase();
-            var AUTO_APPROVE_MS = 24 * 60 * 60 * 1000;
+            // Auto-approve hours loaded from adminSettings (admin can change from panel)
+            var _baaHours = 24;
+            try {
+              var _baaSnap = await window._get(window._ref(window._db, 'adminSettings/brandAutoApproveHours'));
+              if (_baaSnap && _baaSnap.exists() && _baaSnap.val()) _baaHours = parseInt(_baaSnap.val()) || 24;
+            } catch(e) {}
+            var AUTO_APPROVE_MS = _baaHours * 60 * 60 * 1000;
 
             // Compute countdown
             var countdownHtml = '';
