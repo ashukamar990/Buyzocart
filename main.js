@@ -304,7 +304,7 @@
     window._bzSafeError = function(err, fallback) {
       var fbKeys = ['firebase','firestore','permission-denied','unavailable','network-request-failed','quota-exceeded','unauthenticated','auth/','storage/','googleapis'];
       var msg = ((err && (err.message || err.code)) || String(err || '')).toLowerCase();
-      return fbKeys.some(k => msg.includes(k)) ? (fallback || 'Something went wrong. Please try again.') : (fallback || 'Something went wrong. Please try again.');
+      return fbKeys.some(function(k){ return msg.includes(k); }) ? (fallback || 'Something went wrong. Please try again.') : (fallback || 'Something went wrong. Please try again.');
     };
 
     function showToast(message, type = 'success') {
@@ -898,10 +898,6 @@
       if (cb) cb.checked = (newTheme === 'dark');
     }
 
-    // Page history stack for accurate back navigation
-    window._bzPageHistory = ['homePage'];
-    window._bzIsPopState = false;
-
     function showPage(pageId) {
       const mainEl = document.querySelector('main');
       if (mainEl) {
@@ -909,8 +905,9 @@
         else mainEl.classList.add('container');
       }
 
-      // Track history stack (skip during popstate)
+      // Track page history for accurate back navigation
       if (!window._bzIsPopState) {
+        if (!window._bzPageHistory) window._bzPageHistory = ['homePage'];
         if (window._bzPageHistory[window._bzPageHistory.length - 1] !== pageId) {
           window._bzPageHistory.push(pageId);
         }
@@ -1028,7 +1025,7 @@
         showLoginModal();
         return;
       }
-      const cur = document.querySelector('.page.active');
+      var cur = document.querySelector('.page.active');
       if (cur) sessionStorage.setItem('bz_return_page', cur.id);
       window.location.href = '/account';
     }
@@ -1126,15 +1123,15 @@
 
           const card = document.createElement('div');
           card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:16px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);';
-          const logoHtml = b.logo
-            ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=color:#fff;font-size:16px;font-weight:800>${ini}</span>')">`
+          const logoInner = b.logo
+            ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=color:#fff;font-size:16px;font-weight:800>${ini}</span>'">`
             : `<span style="color:#fff;font-size:16px;font-weight:800;">${ini}</span>`;
           card.innerHTML =
             `<div style="width:50px;height:50px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid rgba(0,0,0,.06);">
-              ${logoHtml}
+              ${logoInner}
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:4px;">${b.name}${isV ? (BT||'') : ''}</div>
+              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:4px;">${b.name}${isV ? BT : ''}</div>
               <div style="font-size:11px;color:#64748b;margin-top:2px;">${b.products && b.products.length ? b.products.length + ' products' : 'View products'}</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>`;
@@ -4187,8 +4184,8 @@
       messages.forEach((m, i) => m.classList.toggle('active', i === 0));
       if (messages.length <= 1) return;
       let idx = 0;
-      _heroMsgTimer = setInterval(() => {
-        messages.forEach(m => m.classList.remove('active'));
+      _heroMsgTimer = setInterval(function() {
+        messages.forEach(function(m) { m.classList.remove('active'); });
         idx = (idx + 1) % messages.length;
         messages[idx].classList.add('active');
       }, 3000);
@@ -4211,7 +4208,7 @@
           if (index === 0) span.classList.add('active');
           heroMessagesContainer.appendChild(span);
         });
-        // Restart rotation with new messages
+        // Restart rotation with the new messages from admin
         setupHeroMessages();
       }
 
@@ -4600,8 +4597,10 @@
     }
 
     function setupBackButton() {
+      window._bzPageHistory = ['homePage'];
+      window._bzIsPopState = false;
       window.history.replaceState({ page: 'homePage' }, '', window.location.href);
-      window.addEventListener('popstate', function(event) {
+      window.addEventListener('popstate', function() {
         window._bzIsPopState = true;
         try {
           if (window._bzPageHistory.length > 1) {
@@ -5177,7 +5176,7 @@
             // Load following brands products
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
 
-            // Check seller approval → update menu text
+            // Seller approved → menu "Sell Product" becomes "My Shop"
             try {
               window.firebase.get(window.firebase.ref(window.firebase.database, 'sellerRequests/' + user.uid)).then(function(snap) {
                 if (snap.exists() && snap.val().status === 'approved') {
@@ -5223,8 +5222,7 @@
       loadCachedData();
       fetchLiveData();
       setupRealtimeListeners();
-      // Restore page if returning from account/sell-product
-      const _retPage = sessionStorage.getItem('bz_return_page');
+      var _retPage = sessionStorage.getItem('bz_return_page');
       if (_retPage && _retPage !== 'homePage') {
         sessionStorage.removeItem('bz_return_page');
         showPage(_retPage);
@@ -5595,7 +5593,7 @@
     })();
 
     function openAccountPage() {
-      const cur = document.querySelector('.page.active');
+      var cur = document.querySelector('.page.active');
       if (cur) sessionStorage.setItem('bz_return_page', cur.id);
       window.location.href = '/account';
     }
