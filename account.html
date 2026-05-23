@@ -869,6 +869,16 @@
     }
 
     // ========== CHECK SELLER STATUS ==========
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     async function checkSellerStatus(user) {
       try {
         const snap = await get(ref(db, 'sellerRequests/' + user.uid));
@@ -906,6 +916,7 @@
 
     // ========== MODAL ==========
     window.accOpenModal = function(id) { document.getElementById(id)?.classList.add('active'); };
+    window.escapeHTML = escapeHTML;
     window.accCloseModal = function(id) { document.getElementById(id)?.classList.remove('active'); };
 
     // ========== ALERT ==========
@@ -930,12 +941,12 @@
         card.className = 'address-card' + (a.isDefault ? ' default' : '');
         card.innerHTML = `
           <div class="address-card-header">
-            <span class="address-type-badge">${a.type || 'home'}</span>
+            <span class="address-type-badge">${escapeHTML(a.type || 'home')}</span>
             ${a.isDefault ? '<span class="default-badge">✓ Default</span>' : ''}
           </div>
-          <div style="font-weight:600;margin-bottom:0.25rem">${a.name}</div>
-          <div style="color:var(--text-secondary);font-size:0.875rem">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
-          <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${a.mobile}</div>
+          <div style="font-weight:600;margin-bottom:0.25rem">${escapeHTML(a.name)}</div>
+          <div style="color:var(--text-secondary);font-size:0.875rem">${escapeHTML(a.street)}, ${escapeHTML(a.city)}, ${escapeHTML(a.state)} - ${escapeHTML(a.pincode)}</div>
+          <div style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.25rem">📞 ${escapeHTML(a.mobile)}</div>
           <div class="address-actions">
             <button class="btn-outline btn-sm edit-addr" data-id="${a.id}">Edit</button>
             <button class="btn-outline btn-sm delete-addr" data-id="${a.id}">Delete</button>

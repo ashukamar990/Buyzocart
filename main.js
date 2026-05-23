@@ -211,6 +211,16 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -1324,10 +1334,10 @@
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
-      const productName = product.name || product.title || 'Product Name';
+      const productName = escapeHTML(product.name || product.title || 'Product Name');
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
-      const productBadge = product.badge || product.tag || '';
+      const productBadge = escapeHTML(product.badge || product.tag || '');
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
       let badgeHtml = '';
@@ -7407,6 +7417,7 @@
     window.loadBrandsPage = loadBrandsPage;
     window.filterSiteBrands      = filterSiteBrands;
     window.showBrandProfile      = showBrandProfile;
+    window.escapeHTML            = escapeHTML;
     window.showBrandProducts     = showBrandProducts;
     window.toggleBrandFollow     = toggleBrandFollow;
     window.loadFollowingProducts = loadFollowingProducts;
