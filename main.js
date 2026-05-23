@@ -1100,6 +1100,7 @@
       const qLow = (query || '').toLowerCase().trim();
 
       // ── Find matching brands ──
+      const BTSMALL = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       const matchingBrands = (window.__bzBrandsCache || []).filter(b =>
         (b.name || '').toLowerCase().includes(qLow)
       );
@@ -1131,14 +1132,16 @@
           const isV   = b.blueTickAdmin || b.verificationLevel === 'premium';
 
           const card = document.createElement('div');
-          card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:14px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;';
+          card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:16px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);';
           card.innerHTML =
-            `<div style="width:46px;height:46px;border-radius:12px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-              ${b.logo ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display='none'">` : `<span style="color:#fff;font-size:16px;font-weight:800;">${ini}</span>`}
+            `<div style="width:50px;height:50px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid rgba(0,0,0,.06);">
+              ${b.logo
+                ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='<span style=color:#fff;font-size:17px;font-weight:800>${ini}</span>'">`
+                : `<span style="color:#fff;font-size:17px;font-weight:800;">${ini}</span>`}
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:3px;">${b.name}${isV ? BT : ''}</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">${b.products && b.products.length ? b.products.length + ' products' : 'No products yet'}</div>
+              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:4px;">${b.name}${isV ? BTSMALL : ''}</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">${b.products && b.products.length ? b.products.length + ' products' : 'View products'}</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>`;
 
@@ -4187,10 +4190,16 @@
       }).catch(()=>{});
     }
 
+    var _heroMsgInterval = null;
     function setupHeroMessages() {
+      if (_heroMsgInterval) { clearInterval(_heroMsgInterval); _heroMsgInterval = null; }
       const messages = document.querySelectorAll('#heroMessages span');
+      if (!messages.length) return;
+      // Make sure first one is active
+      messages.forEach((m, i) => m.classList.toggle('active', i === 0));
+      if (messages.length <= 1) return;
       let currentIndex = 0;
-      setInterval(() => {
+      _heroMsgInterval = setInterval(() => {
         messages.forEach(msg => msg.classList.remove('active'));
         currentIndex = (currentIndex + 1) % messages.length;
         messages[currentIndex].classList.add('active');
@@ -4214,6 +4223,8 @@
           if (index === 0) span.classList.add('active');
           heroMessagesContainer.appendChild(span);
         });
+        // Restart the rotation with the new messages
+        setupHeroMessages();
       }
 
       if (highlightStrip) {
@@ -4272,11 +4283,15 @@
       const el = document.getElementById(id);
       const row = document.getElementById('heroStatsRow');
       if (!el) return;
+      const statDiv = el.closest('.hero-stat');
       if (value) {
         el.textContent = value;
+        if (statDiv) statDiv.style.display = '';
         if (row) row.style.display = '';
       } else {
-        el.textContent = '—';
+        // Hide the entire stat block when there's no data
+        if (statDiv) statDiv.style.display = 'none';
+        el.textContent = '';
       }
     }
 
@@ -4961,8 +4976,14 @@
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
         chip.addEventListener('click', function() {
-          var cat = categories && categories.find(function(c) { return c.name === tag; });
-          if (cat) filterByCategory(cat.id);
+          // Try exact category match first
+          var cat = categories && categories.find(function(c) { return (c.name||'').toLowerCase() === tag.toLowerCase(); });
+          if (cat) {
+            filterByCategory(cat.id);
+          } else {
+            // Fall back to performing a product search for this tag
+            performSearch(tag);
+          }
         });
         container.appendChild(chip);
       });
@@ -6952,7 +6973,7 @@
         page.className = 'page';
         mainEl.appendChild(page);
       }
-      page.style.cssText = 'min-height:100vh;background:#f8fafc;padding-bottom:100px;';
+      page.style.cssText = 'min-height:auto;background:#f8fafc;padding-bottom:80px;';
 
       // ── Skeleton loading state ──
       page.innerHTML = `
