@@ -300,6 +300,18 @@
         return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
     }
 
+    // ── Firebase error sanitizer: never show Firebase-specific messages to users ──
+    window._bzSafeError = function(err, fallbackMsg) {
+      if (!err) return fallbackMsg || 'Something went wrong. Please try again.';
+      const msg = (err.message || err.code || String(err)).toLowerCase();
+      const fbKeywords = ['firebase', 'firestore', 'realtime database', 'permission-denied', 'unavailable', 'network-request-failed', 'quota-exceeded', 'unauthenticated', 'auth/', 'storage/', 'functions/'];
+      const isFb = fbKeywords.some(k => msg.includes(k));
+      if (isFb) return fallbackMsg || 'Something went wrong. Please try again.';
+      // Also hide internal paths and generic JS errors
+      if (msg.includes('firebase') || msg.includes('googleapis')) return fallbackMsg || 'Something went wrong. Please try again.';
+      return fallbackMsg || 'Something went wrong. Please try again.';
+    };
+
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       if (!toast) return;
@@ -898,8 +910,16 @@
         else mainEl.classList.add('container');
       }
 
+      // Track page history for accurate back navigation (skip during popstate)
+      if (!window._bzIsPopState) {
+        if (!window._bzPageHistory) window._bzPageHistory = ['homePage'];
+        if (window._bzPageHistory[window._bzPageHistory.length - 1] !== pageId) {
+          window._bzPageHistory.push(pageId);
+        }
+      }
+
       const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
-      window.history.pushState(null, '', newUrl);
+      window.history.pushState({ page: pageId }, '', newUrl);
       document.querySelectorAll('main .page').forEach(page => page.classList.remove('active'));
       const pageElement = document.getElementById(pageId);
       if (pageElement) pageElement.classList.add('active');
@@ -3344,14 +3364,20 @@
         } else ratingMap[p.id] = 0;
       });
       const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
-      container.innerHTML = '';
+      // Keep skeleton for homeProductGrid when no products (match banner blank style)
       if (!sorted || sorted.length === 0) {
+        if (containerId === 'homeProductGrid') {
+          // Keep skeleton shimmer — do not replace with "No products yet"
+          return;
+        }
+        container.innerHTML = '';
         // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
           container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
         return;
       }
+      container.innerHTML = '';
       const fragment = document.createDocumentFragment();
       sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
       container.appendChild(fragment);
@@ -4269,8 +4295,10 @@
           if (userData.name) {
             const headerName = document.getElementById('headerUserNameShort');
             if (headerName) {
-              const short = userData.name.split(' ')[0];
-              headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
+              // Limit to first 2 words max
+              const words = userData.name.split(' ').filter(Boolean);
+              const displayName = words.slice(0, 2).join(' ');
+              headerName.textContent = displayName.length > 14 ? displayName.slice(0, 14) + '…' : displayName;
             }
             const avatarInit = document.getElementById('userAvatarInitial');
             if (avatarInit) avatarInit.textContent = userData.name.charAt(0).toUpperCase();
@@ -4571,16 +4599,77 @@
       }, false);
     }
 
+    // ── Page History Stack for accurate back navigation ──
+    window._bzPageHistory = ['homePage'];
+    window._bzIsPopState = false;
+
     function setupBackButton() {
+      // Set the initial state so we always have a baseline
+      window.history.replaceState({ page: 'homePage', idx: 0 }, '', window.location.href);
+
       window.addEventListener('popstate', function(event) {
-        const currentPage = document.querySelector('.page.active').id;
-        if (currentPage === 'productDetailPage') showPage('productsPage');
-        else if (currentPage === 'orderPage' || currentPage === 'userPage' || currentPage === 'paymentPage') {
-          if (currentPage === 'paymentPage') showPage('userPage');
-          else if (currentPage === 'userPage') showPage('orderPage');
-          else if (currentPage === 'orderPage') showPage('productsPage');
-        } else showPage('homePage');
+        window._bzIsPopState = true;
+        try {
+          // Pop from our custom history stack
+          if (window._bzPageHistory.length > 1) {
+            window._bzPageHistory.pop(); // remove current
+            const previousPage = window._bzPageHistory[window._bzPageHistory.length - 1];
+            // Navigate to previous page WITHOUT pushing new state
+            _showPageInternal(previousPage);
+          } else {
+            // Already at root, show home
+            _showPageInternal('homePage');
+          }
+        } finally {
+          window._bzIsPopState = false;
+        }
       });
+    }
+
+    // Internal page show that does NOT push history (used by popstate)
+    function _showPageInternal(pageId) {
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        if (pageId === 'brandsPage') mainEl.classList.remove('container');
+        else mainEl.classList.add('container');
+      }
+      document.querySelectorAll('main .page').forEach(page => page.classList.remove('active'));
+      const pageElement = document.getElementById(pageId);
+      if (pageElement) pageElement.classList.add('active');
+      updateBottomNav();
+      updateStepPills();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: 'instant' });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        });
+      });
+      // Update URL
+      const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
+      window.history.replaceState({ page: pageId }, '', newUrl);
+      // Run page-specific hooks
+      switch(pageId) {
+        case 'myOrdersPage': if (currentUser) showMyOrders(); break;
+        case 'wishlistPage': renderWishlist(); break;
+        case 'productDetailPage':
+          if (currentProduct) { loadProductReviews(currentProduct.id); loadSimilarProducts(currentProduct); loadSimilarProductsSmall(currentProduct); }
+          break;
+        case 'paymentPage': updatePaymentSummary(); break;
+        case 'userPage': if (currentUser) loadSavedAddresses(); break;
+        case 'orderPage': if (currentProduct) initOrderPageGallery(); break;
+        case 'productsPage': renderProducts(products, 'productGrid'); updateProductsCount(); break;
+        case 'homePage':
+          renderProducts(products, 'homeProductGrid');
+          setTimeout(() => { setupTrendingAutoSlide(); setupBannerAutoSlide(); }, 500);
+          break;
+        case 'brandsPage':
+          var bpp = document.getElementById('brandProfilePage');
+          if (bpp) { bpp.style.display = 'none'; bpp.classList.remove('active'); }
+          window.scrollTo(0, 0);
+          setTimeout(function() { if (typeof loadBrandsPage === 'function') loadBrandsPage(); }, 80);
+          break;
+      }
     }
 
     function setupSearchInput() {
@@ -5158,8 +5247,9 @@
             if (_aim) _aim.style.display = 'none';
           }
           if (_hn) {
-            const sn = (_ud.displayName || 'User').split(' ')[0];
-            _hn.textContent = sn.length > 10 ? sn.substring(0, 10) + '...' : sn;
+            const words = (_ud.displayName || 'User').split(' ').filter(Boolean);
+            const sn = words.slice(0, 2).join(' ');
+            _hn.textContent = sn.length > 14 ? sn.substring(0, 14) + '…' : sn;
           }
         }
       } catch(e) {}
@@ -5225,6 +5315,15 @@
       setupSearchInput();
       setupViewAllRatings();
       updateAdminSettingsUI();
+
+      // Hide the main loading screen once app is ready
+      setTimeout(function() {
+        var loader = document.getElementById('bzMainLoader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(function() { loader.style.display = 'none'; }, 360);
+        }
+      }, 600);
       if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
         const productId = window.location.hash.split('=')[1];
         const checkProducts = setInterval(() => {
@@ -5582,6 +5681,13 @@
     })();
 
     function openAccountPage() {
+      // Push current page to history stack before navigating to account
+      // so that pressing back in account.html returns to correct page
+      const curPage = document.querySelector('.page.active');
+      if (curPage) {
+        const curHash = '#' + curPage.id;
+        window.history.replaceState({ page: curPage.id }, '', window.location.origin + window.location.pathname.replace('index.html','') + curHash);
+      }
       window.location.href = '/account';
     }
 
@@ -5597,8 +5703,9 @@
         const data = snapshot.val();
         const headerName = document.getElementById('headerUserNameShort');
         if (headerName && data.name) {
-          const short = data.name.split(' ')[0];
-          headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
+          const words = data.name.split(' ').filter(Boolean);
+          const sn = words.slice(0, 2).join(' ');
+          headerName.textContent = sn.length > 14 ? sn.slice(0, 14) + '…' : sn;
         }
         const avatarInitial = document.getElementById('userAvatarInitial');
         if (avatarInitial && data.name) {
@@ -7674,7 +7781,8 @@
   window.bzShowUsernamePopup = bzShowUsernamePopup;
 
   window.bzCheckUsername = function(raw) {
-    var val=(raw||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
+    // Only allow letters, numbers — no separators that create multi-word feel
+    var val=(raw||'').toLowerCase().replace(/[^a-z0-9]/g,'');
     var inp=document.getElementById('bzUnameInput');
     if(inp&&inp.value!==val) inp.value=val;
     clearTimeout(_uTimer);

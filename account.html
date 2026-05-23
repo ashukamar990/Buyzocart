@@ -62,22 +62,35 @@
     a { color: inherit; text-decoration: none; }
     img { max-width: 100%; height: auto; pointer-events: none; -webkit-user-drag: none; }
     
-    /* Loading Screen */
+    /* Loading Screen — matches main site */
     #loadingScreen {
       position: fixed; inset: 0;
       background: var(--bg);
       display: flex; align-items: center; justify-content: center; flex-direction: column;
-      z-index: 9999; gap: 14px;
+      z-index: 9999; gap: 16px;
     }
-    .spinner {
-      width: 40px; height: 40px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .bz-loader-logo {
+      font-size: 28px; font-weight: 900; letter-spacing: -1px;
+      display: flex; align-items: center; gap: 8px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loadingScreen p { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+    .bz-loader-chip {
+      background: #2563eb; color: #fff; padding: 4px 10px;
+      border-radius: 8px; font-size: 16px; font-weight: 800;
+    }
+    .bz-loader-dots {
+      display: flex; gap: 6px; margin-top: 4px;
+    }
+    .bz-loader-dots span {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #2563eb; animation: bzDotBounce 1.2s infinite ease-in-out;
+    }
+    .bz-loader-dots span:nth-child(2) { animation-delay: 0.2s; background: #60a5fa; }
+    .bz-loader-dots span:nth-child(3) { animation-delay: 0.4s; background: #93c5fd; }
+    @keyframes bzDotBounce {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    #loadingScreen p { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
 
     /* Header */
     .acc-header {
@@ -368,13 +381,19 @@
 <body oncontextmenu="return false;">
   <!-- Loading Screen -->
   <div id="loadingScreen">
-    <div class="spinner"></div>
+    <div class="bz-loader-logo">
+      <span class="bz-loader-chip">BUYZO</span>
+      <span style="color:var(--text)">Cart</span>
+    </div>
+    <div class="bz-loader-dots">
+      <span></span><span></span><span></span>
+    </div>
     <p>Loading your account...</p>
   </div>
 
   <!-- Header -->
   <header class="acc-header">
-    <div class="acc-brand" onclick="window.location.href='/'">
+    <div class="acc-brand" onclick="history.back()">
       <span class="acc-brand-chip">BUYZO</span>
       <span>Cart</span>
     </div>
@@ -386,9 +405,9 @@
         </div>
         <span class="user-chip-name" id="chipUserName">User</span>
       </div>
-      <button class="back-btn" onclick="window.location.href='/'">
+      <button class="back-btn" onclick="history.back()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Home
+        Back
       </button>
     </div>
   </header>
@@ -716,8 +735,8 @@
       console.log('🔔 Auth state changed. User:', user ? user.email : 'null');
 
       if (!user) {
-        console.log('❌ No user, redirecting to home...');
-        window.location.href = '/';
+        console.log('❌ No user, redirecting back...');
+        history.back();
         return;
       }
 
@@ -1373,7 +1392,8 @@
     // ══════ Username System ══════
     var _accUnameTimer;
     function accCheckUsername(val) {
-      val = (val||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
+      // Only allow letters and numbers — single word, no separators
+      val = (val||'').toLowerCase().replace(/[^a-z0-9]/g,'');
       var inp = document.getElementById('accUsernameInput');
       if (inp && inp.value !== val) inp.value = val;
       var status = document.getElementById('accUsernameStatus');
