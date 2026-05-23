@@ -2842,6 +2842,31 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay').textContent;
+      if (!orderId) return;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(orderId).then(() => {
+          showToast('Order ID copied to clipboard', 'success');
+        }).catch(err => {
+          console.error('Could not copy text: ', err);
+        });
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = orderId;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showToast('Order ID copied to clipboard', 'success');
+        } catch (err) {
+          console.error('Fallback: Oops, unable to copy', err);
+        }
+        document.body.removeChild(textArea);
+      }
+    }
+
     // ===== REAL-TIME ORDERS LISTENER =====
     let _ordersListenerUnsubscribe = null;
     function setupOrdersRealtimeListener(user) {
@@ -4711,6 +4736,7 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
