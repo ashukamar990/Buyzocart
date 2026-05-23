@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-16 - Unified Copy Feedback Pattern
+**Learning:** Providing immediate, in-place visual feedback (e.g., "Copied! ✓") on the button itself, combined with a toast notification, significantly reduces user uncertainty during copy operations compared to just a toast.
+**Action:** Use the `copyToClipboard` utility for all data-copying interactions to ensure consistent multi-layered feedback across the application.
