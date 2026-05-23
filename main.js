@@ -906,7 +906,7 @@
     function showPage(pageId) {
       const mainEl = document.querySelector('main');
       if (mainEl) {
-        if (pageId === 'brandsPage') mainEl.classList.remove('container');
+        if (pageId === 'brandsPage' || pageId === 'brandProfilePage') mainEl.classList.remove('container');
         else mainEl.classList.add('container');
       }
 
@@ -1033,6 +1033,9 @@
         showLoginModal();
         return;
       }
+      // Save current page so back returns to correct page
+      const curPage = document.querySelector('.page.active');
+      if (curPage) sessionStorage.setItem('bz_return_page', curPage.id);
       window.location.href = '/account';
     }
 
@@ -4295,10 +4298,8 @@
           if (userData.name) {
             const headerName = document.getElementById('headerUserNameShort');
             if (headerName) {
-              // Limit to first 2 words max
-              const words = userData.name.split(' ').filter(Boolean);
-              const displayName = words.slice(0, 2).join(' ');
-              headerName.textContent = displayName.length > 14 ? displayName.slice(0, 14) + '…' : displayName;
+              const short = userData.name.split(' ')[0];
+              headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
             }
             const avatarInit = document.getElementById('userAvatarInitial');
             if (avatarInit) avatarInit.textContent = userData.name.charAt(0).toUpperCase();
@@ -4630,7 +4631,7 @@
     function _showPageInternal(pageId) {
       const mainEl = document.querySelector('main');
       if (mainEl) {
-        if (pageId === 'brandsPage') mainEl.classList.remove('container');
+        if (pageId === 'brandsPage' || pageId === 'brandProfilePage') mainEl.classList.remove('container');
         else mainEl.classList.add('container');
       }
       document.querySelectorAll('main .page').forEach(page => page.classList.remove('active'));
@@ -5247,9 +5248,8 @@
             if (_aim) _aim.style.display = 'none';
           }
           if (_hn) {
-            const words = (_ud.displayName || 'User').split(' ').filter(Boolean);
-            const sn = words.slice(0, 2).join(' ');
-            _hn.textContent = sn.length > 14 ? sn.substring(0, 14) + '…' : sn;
+            const sn = (_ud.displayName || 'User').split(' ')[0];
+            _hn.textContent = sn.length > 10 ? sn.substring(0, 10) + '...' : sn;
           }
         }
       } catch(e) {}
@@ -5270,6 +5270,24 @@
             setupOrdersRealtimeListener(user);
             // Load following brands products
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
+
+            // ── Check seller approval → update menu text ──
+            try {
+              window.firebase.get(window.firebase.ref(window.firebase.database, 'sellerRequests/' + user.uid)).then(function(snap) {
+                if (snap.exists()) {
+                  var d = snap.val();
+                  if (d.status === 'approved') {
+                    var txt = document.getElementById('menuSellProductText');
+                    if (txt) txt.textContent = 'My Shop';
+                    var icon = document.getElementById('menuSellProductItem')?.querySelector('svg');
+                    if (icon) icon.style.color = '#16a34a';
+                    // Also bottom nav / header if present
+                    var sellBtn = document.getElementById('menuSellProductItem');
+                    if (sellBtn) sellBtn.title = 'My Shop';
+                  }
+                }
+              }).catch(function(){});
+            } catch(e) {}
 
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
@@ -5307,7 +5325,16 @@
       loadCachedData();
       fetchLiveData();
       setupRealtimeListeners();
-      showPage('homePage');
+
+      // ── Restore page if returning from account/sell pages ──
+      const _returnPage = sessionStorage.getItem('bz_return_page');
+      if (_returnPage && _returnPage !== 'homePage') {
+        sessionStorage.removeItem('bz_return_page');
+        showPage(_returnPage);
+      } else {
+        showPage('homePage');
+      }
+
       setupHeroMessages();
       updateBottomNav();
       setupHeaderSearchScroll();
@@ -5315,15 +5342,6 @@
       setupSearchInput();
       setupViewAllRatings();
       updateAdminSettingsUI();
-
-      // Hide the main loading screen once app is ready
-      setTimeout(function() {
-        var loader = document.getElementById('bzMainLoader');
-        if (loader) {
-          loader.style.opacity = '0';
-          setTimeout(function() { loader.style.display = 'none'; }, 360);
-        }
-      }, 600);
       if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
         const productId = window.location.hash.split('=')[1];
         const checkProducts = setInterval(() => {
@@ -5681,10 +5699,11 @@
     })();
 
     function openAccountPage() {
-      // Push current page to history stack before navigating to account
-      // so that pressing back in account.html returns to correct page
+      // Save current page so we can restore it when user comes back
       const curPage = document.querySelector('.page.active');
       if (curPage) {
+        sessionStorage.setItem('bz_return_page', curPage.id);
+        // Also save current URL hash so back navigation restores it
         const curHash = '#' + curPage.id;
         window.history.replaceState({ page: curPage.id }, '', window.location.origin + window.location.pathname.replace('index.html','') + curHash);
       }
@@ -5703,9 +5722,8 @@
         const data = snapshot.val();
         const headerName = document.getElementById('headerUserNameShort');
         if (headerName && data.name) {
-          const words = data.name.split(' ').filter(Boolean);
-          const sn = words.slice(0, 2).join(' ');
-          headerName.textContent = sn.length > 14 ? sn.slice(0, 14) + '…' : sn;
+          const short = data.name.split(' ')[0];
+          headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
         }
         const avatarInitial = document.getElementById('userAvatarInitial');
         if (avatarInitial && data.name) {
@@ -7781,8 +7799,8 @@
   window.bzShowUsernamePopup = bzShowUsernamePopup;
 
   window.bzCheckUsername = function(raw) {
-    // Only allow letters, numbers — no separators that create multi-word feel
-    var val=(raw||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    // Original: allow letters, numbers, dots, underscores
+    var val=(raw||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
     var inp=document.getElementById('bzUnameInput');
     if(inp&&inp.value!==val) inp.value=val;
     clearTimeout(_uTimer);

@@ -84,6 +84,7 @@
     .skeleton-box{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
     [data-theme="dark"] .skeleton-box{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    @keyframes bzDotB{0%,80%,100%{transform:scale(.7);opacity:.5}40%{transform:scale(1);opacity:1}}
     .product-grid-skeleton{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:16px 0}
     .product-card-skeleton{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,.05)}
     [data-theme="dark"] .product-card-skeleton{background:#1e293b;border-color:#334155}
@@ -610,25 +611,6 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
-  <!-- ═══ CONSISTENT LOADING SCREEN ═══ -->
-  <div id="bzMainLoader" style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:99999;gap:16px;transition:opacity .35s ease;">
-    <div style="font-size:28px;font-weight:900;display:flex;align-items:center;gap:8px;">
-      <span style="background:#2563eb;color:#fff;padding:4px 10px;border-radius:8px;font-size:16px;font-weight:800;">BUYZO</span>
-      <span style="color:#0f172a;">Cart</span>
-    </div>
-    <div style="display:flex;gap:6px;margin-top:4px;">
-      <span style="width:8px;height:8px;border-radius:50%;background:#2563eb;animation:bzDotB 1.2s infinite ease-in-out;"></span>
-      <span style="width:8px;height:8px;border-radius:50%;background:#60a5fa;animation:bzDotB 1.2s .2s infinite ease-in-out;"></span>
-      <span style="width:8px;height:8px;border-radius:50%;background:#93c5fd;animation:bzDotB 1.2s .4s infinite ease-in-out;"></span>
-    </div>
-    <p style="color:#64748b;font-size:13px;font-weight:500;">Loading Buyzo Cart...</p>
-  </div>
-  <style>
-    [data-theme="dark"] #bzMainLoader { background:#0f172a; }
-    [data-theme="dark"] #bzMainLoader span[style*="color:#0f172a"] { color:#f1f5f9 !important; }
-    @keyframes bzDotB { 0%,80%,100%{transform:scale(0.7);opacity:.5} 40%{transform:scale(1);opacity:1} }
-  </style>
-
   <div class="menu-overlay" id="menuOverlay"></div>
   
   <div class="mobile-menu" id="mobileMenu">
@@ -709,7 +691,7 @@
         </svg>
         Brands
       </div>
-      <div class="menu-item" id="menuSellProductItem" onclick="window.location.href='/sellproduct'; closeMenu();">
+      <div class="menu-item" id="menuSellProductItem" onclick="(function(){var p=document.querySelector('.page.active');if(p)sessionStorage.setItem('bz_return_page',p.id);window.location.href='/sellproduct';})(); closeMenu();">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="16"></line>
@@ -1634,9 +1616,13 @@
       <!-- Category filter chips -->
       <div id="bzCategoryChips" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px;margin-top:4px;"></div>
 
-      <!-- Loading spinner -->
+      <!-- Loading spinner — consistent BUYZO style -->
       <div id="brandsLoadingSpinner" style="display:none;text-align:center;padding:3rem 1rem;">
-        <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;"></div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#2563eb;animation:bzDotB 1.2s infinite ease-in-out;display:inline-block;"></span>
+          <span style="width:8px;height:8px;border-radius:50%;background:#60a5fa;animation:bzDotB 1.2s .2s infinite ease-in-out;display:inline-block;"></span>
+          <span style="width:8px;height:8px;border-radius:50%;background:#93c5fd;animation:bzDotB 1.2s .4s infinite ease-in-out;display:inline-block;"></span>
+        </div>
         <p style="color:#94a3b8;font-size:13px;font-weight:600;">Loading brands...</p>
       </div>
 
