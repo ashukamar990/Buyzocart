@@ -1354,13 +1354,13 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist" aria-label="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
+            <button class="action-btn share-btn" data-product-id="${productId}" title="Share" aria-label="Share product">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -2221,6 +2221,11 @@
         showToast('Added to wishlist', 'success');
       }
       localStorage.setItem(CACHE_KEYS.WISHLIST, JSON.stringify(wishlist));
+
+      // Update ARIA labels for all instances of this product's wishlist button
+      document.querySelectorAll(`.wishlist-btn[data-product-id="${productId}"]`).forEach(btn => {
+        btn.setAttribute('aria-label', !isWishlisted ? 'Remove from wishlist' : 'Add to wishlist');
+      });
       
       if (currentUser && window.firebase) {
         const wishlistRef = window.firebase.ref(window.firebase.database, 'wishlist/' + currentUser.uid + '/' + productId);
@@ -6939,7 +6944,7 @@
       // ── Skeleton loading state ──
       page.innerHTML = `
         <div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;border-bottom:1px solid #f1f5f9;">
-          <button onclick="showPage(window._brandProfileReturnPage||'brandsPage')" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <button onclick="showPage(window._brandProfileReturnPage||'brandsPage')" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;" aria-label="Back to previous page">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
           <div style="height:18px;width:120px;background:#f1f5f9;border-radius:6px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div>
