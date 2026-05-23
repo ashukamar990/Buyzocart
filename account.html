@@ -62,34 +62,25 @@
     a { color: inherit; text-decoration: none; }
     img { max-width: 100%; height: auto; pointer-events: none; -webkit-user-drag: none; }
     
-    /* Loading Screen — matches main site */
+    /* Loading Screen — consistent BUYZO dots style */
     #loadingScreen {
       position: fixed; inset: 0;
       background: var(--bg);
       display: flex; align-items: center; justify-content: center; flex-direction: column;
       z-index: 9999; gap: 16px;
     }
-    .bz-loader-logo {
-      font-size: 28px; font-weight: 900; letter-spacing: -1px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .bz-loader-chip {
-      background: #2563eb; color: #fff; padding: 4px 10px;
-      border-radius: 8px; font-size: 16px; font-weight: 800;
-    }
-    .bz-loader-dots {
-      display: flex; gap: 6px; margin-top: 4px;
-    }
-    .bz-loader-dots span {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #2563eb; animation: bzDotBounce 1.2s infinite ease-in-out;
-    }
+    .bz-loader-logo { font-size: 26px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+    .bz-loader-chip { background: #2563eb; color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 15px; font-weight: 800; }
+    .bz-loader-dots { display: flex; gap: 6px; margin-top: 2px; }
+    .bz-loader-dots span { width: 8px; height: 8px; border-radius: 50%; background: #2563eb; animation: bzDotBounce 1.2s infinite ease-in-out; display: inline-block; }
     .bz-loader-dots span:nth-child(2) { animation-delay: 0.2s; background: #60a5fa; }
     .bz-loader-dots span:nth-child(3) { animation-delay: 0.4s; background: #93c5fd; }
-    @keyframes bzDotBounce {
-      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-      40% { transform: scale(1); opacity: 1; }
-    }
+    @keyframes bzDotBounce { 0%,80%,100%{transform:scale(.7);opacity:.5} 40%{transform:scale(1);opacity:1} }
+    /* Keep spinner class for inline use */
+    .spinner { display:inline-flex;gap:5px;align-items:center;justify-content:center; }
+    .spinner::before,.spinner::after,.spinner-dot { content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--primary);animation:bzDotBounce 1.2s infinite ease-in-out; }
+    .spinner::after { animation-delay:.2s;background:#60a5fa; }
+    .spinner-dot { animation-delay:.4s;background:#93c5fd; }
     #loadingScreen p { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
 
     /* Header */
@@ -385,9 +376,7 @@
       <span class="bz-loader-chip">BUYZO</span>
       <span style="color:var(--text)">Cart</span>
     </div>
-    <div class="bz-loader-dots">
-      <span></span><span></span><span></span>
-    </div>
+    <div class="bz-loader-dots"><span></span><span></span><span></span></div>
     <p>Loading your account...</p>
   </div>
 
@@ -735,7 +724,7 @@
       console.log('🔔 Auth state changed. User:', user ? user.email : 'null');
 
       if (!user) {
-        console.log('❌ No user, redirecting back...');
+        console.log('❌ No user, going back...');
         history.back();
         return;
       }
@@ -1021,7 +1010,7 @@
     async function loadAddresses(user) {
       const container = document.getElementById('savedAddresses');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;"></div></div>';
+      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div style="display:flex;gap:5px;justify-content:center;margin:0 auto"><span style="width:7px;height:7px;border-radius:50%;background:#2563eb;animation:bzDotBounce 1.2s infinite ease-in-out;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:bzDotBounce 1.2s .2s infinite ease-in-out;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#93c5fd;animation:bzDotBounce 1.2s .4s infinite ease-in-out;display:inline-block"></span></div></div>';
       try {
         const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
         renderAddressList(snap, container);
@@ -1034,7 +1023,7 @@
     async function loadWishlist(user) {
       const container = document.getElementById('wishlistItems');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;"></div></div>';
+      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div style="display:flex;gap:5px;justify-content:center;margin:0 auto"><span style="width:7px;height:7px;border-radius:50%;background:#2563eb;animation:bzDotBounce 1.2s infinite ease-in-out;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:bzDotBounce 1.2s .2s infinite ease-in-out;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#93c5fd;animation:bzDotBounce 1.2s .4s infinite ease-in-out;display:inline-block"></span></div></div>';
       try {
         const snap = await get(ref(db, 'wishlist/' + user.uid));
         renderWishlistItems(snap, container);
@@ -1047,7 +1036,7 @@
     async function loadOrders(user) {
       const container = document.getElementById('ordersList');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;"></div></div>';
+      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div style="display:flex;gap:5px;justify-content:center;margin:0 auto"><span style="width:7px;height:7px;border-radius:50%;background:#2563eb;animation:bzDotBounce 1.2s infinite ease-in-out;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:bzDotBounce 1.2s .2s infinite ease-in-out;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#93c5fd;animation:bzDotBounce 1.2s .4s infinite ease-in-out;display:inline-block"></span></div></div>';
       try {
         const snap = await get(query(ref(db, 'orders'), orderByChild('userId'), equalTo(user.uid)));
         renderOrdersList(snap, container);
@@ -1392,7 +1381,6 @@
     // ══════ Username System ══════
     var _accUnameTimer;
     function accCheckUsername(val) {
-      // Allow letters, numbers, dots, underscores (original)
       val = (val||'').toLowerCase().replace(/[^a-z0-9_.]/g,'');
       var inp = document.getElementById('accUsernameInput');
       if (inp && inp.value !== val) inp.value = val;
