@@ -425,6 +425,15 @@
             .topbar-home-btn { display: inline-flex !important; }
             .sidebar-mobile-footer { display: block !important; }
         }
+        /* Mobile sidebar backdrop */
+        #sidebarBackdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 199;
+        }
+        #sidebarBackdrop.show { display: block; }
         .topbar-home-btn {
             display: none;
             align-items: center;
@@ -503,6 +512,9 @@
             </button>
         </div>
     </aside>
+
+    <!-- Mobile sidebar backdrop -->
+    <div id="sidebarBackdrop" onclick="closeSidebarMobile()"></div>
 
     <main class="main-content">
         <header class="topbar">
@@ -860,7 +872,7 @@
         onAuthStateChanged(auth, async (user) => {
             _authResolved = true;
             clearTimeout(_authTimeout);
-
+            
             if (!user) {
                 history.back();
                 return;
@@ -1025,11 +1037,24 @@
             else if (page === 'pending') showPendingPage(window._state.sellerData);
             else if (page === 'rejected') showRejectedPage(window._state.sellerData);
 
-            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+                var bd = document.getElementById('sidebarBackdrop');
+                if (bd) bd.classList.remove('show');
+            }
         }
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
+            var sb = document.getElementById('sidebar');
+            var bd = document.getElementById('sidebarBackdrop');
+            sb.classList.toggle('open');
+            if (bd) bd.classList.toggle('show', sb.classList.contains('open'));
+        }
+
+        function closeSidebarMobile() {
+            document.getElementById('sidebar').classList.remove('open');
+            var bd = document.getElementById('sidebarBackdrop');
+            if (bd) bd.classList.remove('show');
         }
 
         // ============ TOAST ============
@@ -2514,6 +2539,8 @@
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 768 && !e.target.closest('.sidebar') && !e.target.closest('.menu-toggle')) {
                 document.getElementById('sidebar').classList.remove('open');
+                var bd = document.getElementById('sidebarBackdrop');
+                if (bd) bd.classList.remove('show');
             }
         });
 
