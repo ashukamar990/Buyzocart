@@ -751,6 +751,15 @@
             setTimeout(tryLoad, 5000);
         })();
 
+        // Safe error: never show Firebase/internal errors to users
+        function _safeErr(err) {
+            var msg = ((err && (err.message || err.code)) || String(err || '')).toLowerCase();
+            var fbWords = ['permission','firebase','firestore','unavailable','network-request','quota','unauthenticated','auth/','storage/','googleapis','permission denied','permission_denied'];
+            return fbWords.some(function(k){ return msg.indexOf(k) !== -1; })
+                ? 'Unable to connect. Please check your internet and try again.'
+                : (err && err.message ? err.message : 'Something went wrong. Please try again.');
+        }
+
         window._state = {
             user: null,
             sellerData: null,
@@ -851,7 +860,7 @@
                 document.getElementById('contentArea').innerHTML = 
                     '<div style="text-align:center;padding:40px;">' +
                     '<p style="color:#ef4444;font-weight:600;">⚠️ Failed to load dashboard data.</p>' +
-                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">Error: ' + (err.message || 'Unknown error') + '</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">' + _safeErr(err) + '</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button></div>';
             }
         };
@@ -930,7 +939,7 @@
                     '<div style="text-align:center;padding:40px;">' +
                     '<div style="font-size:3rem;margin-bottom:12px;">⚠️</div>' +
                     '<p style="color:#ef4444;font-weight:600;font-size:1.1rem;">Dashboard Load Failed</p>' +
-                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0;">Error: ' + (err.message || 'Connection failed') + '</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0;">' + _safeErr(err) + '</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh Page</button>' +
                     '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Back to Store</button></div>';
             }
@@ -2682,7 +2691,7 @@
                 });
                 showToast('Brand request submitted! ✅ Auto-approve in 24 hours if admin doesn\'t review.', 'success');
                 closeModal('brandReqModal');
-            } catch(err) { showToast('Failed: '+err.message, 'error'); }
+            } catch(err) { showToast(_safeErr(err), 'error'); }
         }
 
         // ── BRAND AUTO-APPROVE (24 HOURS) ────────────────────────────────
@@ -2782,7 +2791,7 @@
                 else if (myReq)    _renderBrandReqStatus(myReq, uid);
                 else               _renderNoBrand(uid);
             } catch(err) {
-                ca.innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">Error: '+err.message+'</p><button class="btn btn-primary" onclick="renderBrandPage()" style="margin-top:12px;">Retry</button></div>';
+                ca.innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">' + _safeErr(err) + '</p><button class="btn btn-primary" onclick="renderBrandPage()" style="margin-top:12px;">Retry</button></div>';
             }
         }
 
@@ -3023,7 +3032,7 @@
                 showToast('Brand profile updated! ✅','success');
                 var m=document.getElementById('_ebModal'); if(m) m.remove();
                 renderBrandPage();
-            } catch(err) { showToast('Failed: '+err.message,'error'); }
+            } catch(err) { showToast(_safeErr(err),'error'); }
         }
 
         function formatDate(ts) {
@@ -3035,19 +3044,19 @@
             if (!confirm('Confirm this order?')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'confirmed', updatedAt:Date.now() })
                 .then(function() { showToast('Order confirmed!','success'); if(window.loadDashboardData) window.loadDashboardData(); })
-                .catch(function(err) { showToast('Error: '+err.message,'error'); });
+                .catch(function(err) { showToast(_safeErr(err),'error'); });
         }
         function sellerShipOrder(orderId) {
             if (!confirm('Mark as Shipped?')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'shipped', updatedAt:Date.now() })
                 .then(function() { showToast('Marked as Shipped!','success'); if(window.loadDashboardData) window.loadDashboardData(); })
-                .catch(function(err) { showToast('Error: '+err.message,'error'); });
+                .catch(function(err) { showToast(_safeErr(err),'error'); });
         }
         function sellerCancelOrder(orderId) {
             if (!confirm('Cancel this order? Cannot be undone.')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'cancelled', cancelledBy:'seller', cancelReason:'Cancelled by Seller', cancelledAt:Date.now(), updatedAt:Date.now() })
                 .then(function() { showToast('Order cancelled','info'); if(window.loadDashboardData) window.loadDashboardData(); })
-                .catch(function(err) { showToast('Error: '+err.message,'error'); });
+                .catch(function(err) { showToast(_safeErr(err),'error'); });
         }
         var _sdmOrderId=null, _sdmLink='';
         function openSellerDeliveryModal(orderId) {
@@ -3086,7 +3095,7 @@
                     var msg='Namaste '+name+'!\n\nAapko ek order deliver karna hai:\n'+(order?(order.productName||'Product')+' - '+formatCurrency(order.totalAmount)+'\n':'')+'\nDelivery Link:\n'+link+'\n\nIs link se order Delivered ya Cancel kar sakte hain.\n- '+seller;
                     window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(msg),'_blank');
                 })
-                .catch(function(err){showToast('Error: '+err.message,'error');btn.disabled=false;btn.textContent='Generate and Send via WhatsApp';});
+                .catch(function(err){showToast(_safeErr(err),'error');btn.disabled=false;btn.textContent='Generate and Send via WhatsApp';});
         }
         function copySDMLink(){var inp=document.getElementById('sdmLink');if(!inp||!inp.value)return;if(navigator.clipboard){navigator.clipboard.writeText(inp.value).then(function(){showToast('Link copied!','success');});}else{inp.select();document.execCommand('copy');showToast('Copied!','success');}}
         function resendSDMWA(){
@@ -3133,7 +3142,7 @@
                 showToast('Logo uploaded!', 'success');
             } catch(err) {
                 if (label) label.textContent = '❌ Upload failed — try URL instead';
-                showToast('Logo upload failed: ' + (err.message || 'Try again'), 'error');
+                showToast(_safeErr(err), 'error');
             }
             e.target.value = '';
         }
