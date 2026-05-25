@@ -825,27 +825,56 @@
                 } catch(be) { window._state.brands = []; }
 
                 console.log('📋 Loading orders...');
-                const orderSnap = await get(ref(db, 'orders'));
+                var sellerUid = user.uid;
+                var customSid = window._state.sellerData && window._state.sellerData.sellerId;
+
+                // Query only this seller's orders — avoids reading the entire orders node
+                var ordersRef = ref(db, 'orders');
+                var sellerOrdersQuery = query(ordersRef, orderByChild('sellerId'), equalTo(sellerUid));
+                var orderSnap = await get(sellerOrdersQuery);
 
                 var allOrders = orderSnap.exists() ? Object.entries(orderSnap.val()).map(function(entry) {
-                    return { 
-                        id: entry[0], 
-                        orderId: entry[1].orderId, 
-                        productName: entry[1].productName, 
-                        totalAmount: entry[1].totalAmount, 
-                        status: entry[1].status, 
-                        orderDate: entry[1].orderDate, 
-                        sellerId: entry[1].sellerId, 
-                        userInfo: entry[1].userInfo, 
-                        productImage: entry[1].productImage, 
-                        quantity: entry[1].quantity 
+                    return {
+                        id: entry[0],
+                        orderId: entry[1].orderId,
+                        productName: entry[1].productName,
+                        totalAmount: entry[1].totalAmount,
+                        status: entry[1].status,
+                        orderDate: entry[1].orderDate,
+                        sellerId: entry[1].sellerId,
+                        userInfo: entry[1].userInfo,
+                        productImage: entry[1].productImage,
+                        quantity: entry[1].quantity
                     };
                 }) : [];
 
-                window._state.orders = allOrders.filter(function(o) {
-                    var customSid = window._state.sellerData && window._state.sellerData.sellerId;
-                    return o.sellerId === user.uid || (customSid && o.sellerId === customSid) || o.sellerUid === user.uid;
-                });
+                // Also try customSid if different from uid
+                if (customSid && customSid !== sellerUid) {
+                    try {
+                        var customQuery = query(ordersRef, orderByChild('sellerId'), equalTo(customSid));
+                        var customSnap = await get(customQuery);
+                        if (customSnap.exists()) {
+                            Object.entries(customSnap.val()).forEach(function(entry) {
+                                if (!allOrders.find(function(o){ return o.id === entry[0]; })) {
+                                    allOrders.push({
+                                        id: entry[0],
+                                        orderId: entry[1].orderId,
+                                        productName: entry[1].productName,
+                                        totalAmount: entry[1].totalAmount,
+                                        status: entry[1].status,
+                                        orderDate: entry[1].orderDate,
+                                        sellerId: entry[1].sellerId,
+                                        userInfo: entry[1].userInfo,
+                                        productImage: entry[1].productImage,
+                                        quantity: entry[1].quantity
+                                    });
+                                }
+                            });
+                        }
+                    } catch(qe) { console.warn('Custom sellerId query failed', qe); }
+                }
+
+                window._state.orders = allOrders;
                 console.log('✅ Orders loaded:', window._state.orders.length);
 
                 // Auto-approve brands check on every dashboard load
