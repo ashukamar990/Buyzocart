@@ -2334,24 +2334,42 @@
       if (productImages.length === 0) productImages.push(getProductImage(currentProduct));
       galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
       dotsContainer.innerHTML = '';
-      productImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => setOrderPageImage(index, productImages));
-        dotsContainer.appendChild(dot);
+      if (productImages.length > 1) {
+        productImages.forEach((_, index) => {
+          const dot = document.createElement('div');
+          dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+          dot.addEventListener('click', () => setOrderPageImage(index, productImages));
+          dotsContainer.appendChild(dot);
+        });
+      }
+
+      // Touch/swipe support — remove old listeners first
+      const oldClone = galleryMain.cloneNode(true);
+      galleryMain.parentNode.replaceChild(oldClone, galleryMain);
+      const gm = document.getElementById('galleryMain');
+      // Re-attach dot listeners after clone
+      document.querySelectorAll('#orderCarouselDots .carousel-dot').forEach((dot, idx) => {
+        dot.addEventListener('click', () => setOrderPageImage(idx, productImages));
       });
-      const prevBtn = galleryMain.querySelector('.carousel-control.prev');
-      const nextBtn = galleryMain.querySelector('.carousel-control.next');
-      if (prevBtn) prevBtn.onclick = () => {
-        const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
-        const newIndex = (activeIndex - 1 + productImages.length) % productImages.length;
-        setOrderPageImage(newIndex, productImages);
-      };
-      if (nextBtn) nextBtn.onclick = () => {
-        const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
-        const newIndex = (activeIndex + 1) % productImages.length;
-        setOrderPageImage(newIndex, productImages);
-      };
+
+      let txStart = 0, tyStart = 0;
+      gm.addEventListener('touchstart', function(e) {
+        txStart = e.touches[0].clientX;
+        tyStart = e.touches[0].clientY;
+      }, { passive: true });
+      gm.addEventListener('touchmove', function(e) {
+        if (Math.abs(e.touches[0].clientX - txStart) > Math.abs(e.touches[0].clientY - tyStart)) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      gm.addEventListener('touchend', function(e) {
+        const diff = txStart - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 40) {
+          const cur = Array.from(document.querySelectorAll('#orderCarouselDots .carousel-dot')).findIndex(d => d.classList.contains('active'));
+          const next = diff > 0 ? (cur + 1) % productImages.length : (cur - 1 + productImages.length) % productImages.length;
+          setOrderPageImage(next, productImages);
+        }
+      }, { passive: true });
     }
 
     function setOrderPageImage(index, productImages) {
@@ -3449,65 +3467,55 @@
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
-      let bannerTouchStartX = 0;
-      let bannerTouchEndX = 0;
-      let isBannerDragging = false;
-      bannerCarousel.addEventListener('touchstart', (e) => {
+      let startX = 0, startY = 0, isDragging = false;
+
+      function onTouchStart(e) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isDragging = true;
         pauseSlide();
-        bannerTouchStartX = e.touches[0].clientX;
-        isBannerDragging = true;
-      }, { passive: true });
-      bannerCarousel.addEventListener('touchmove', (e) => {
-        if (!isBannerDragging) return;
-        bannerTouchEndX = e.touches[0].clientX;
-      }, { passive: true });
-      bannerCarousel.addEventListener('touchend', (e) => {
-        if (!isBannerDragging) return;
-        const diff = bannerTouchStartX - bannerTouchEndX;
-        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
-        if (Math.abs(diff) > 50) {
+      }
+      function onTouchMove(e) {
+        if (!isDragging) return;
+        // Prevent vertical scroll hijack only for horizontal swipes
+        const dx = Math.abs(e.touches[0].clientX - startX);
+        const dy = Math.abs(e.touches[0].clientY - startY);
+        if (dx > dy) e.preventDefault();
+      }
+      function onTouchEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = startX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 40) {
+          const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(d => d.classList.contains('active'));
           if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
+            setBannerSlide((activeIndex + 1) % banners.length);
           } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
+            setBannerSlide((activeIndex - 1 + banners.length) % banners.length);
           }
         }
-        isBannerDragging = false;
         resumeSlideAfterDelay();
-      }, { passive: true });
-      bannerCarousel.addEventListener('mousedown', (e) => {
-        pauseSlide();
-        bannerTouchStartX = e.clientX;
-        isBannerDragging = true;
-      });
-      bannerCarousel.addEventListener('mousemove', (e) => {
-        if (!isBannerDragging) return;
-        bannerTouchEndX = e.clientX;
-      });
+      }
+
+      bannerCarousel.addEventListener('touchstart', onTouchStart, { passive: true });
+      bannerCarousel.addEventListener('touchmove', onTouchMove, { passive: false });
+      bannerCarousel.addEventListener('touchend', onTouchEnd, { passive: true });
+
+      // Mouse events for desktop
+      bannerCarousel.addEventListener('mousedown', (e) => { startX = e.clientX; isDragging = true; pauseSlide(); });
+      bannerCarousel.addEventListener('mousemove', (e) => { if (!isDragging) return; });
       bannerCarousel.addEventListener('mouseup', (e) => {
-        if (!isBannerDragging) return;
-        const diff = bannerTouchStartX - bannerTouchEndX;
-        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
-        if (Math.abs(diff) > 50) {
-          if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
-          } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
-          }
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = startX - e.clientX;
+        if (Math.abs(diff) > 40) {
+          const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(d => d.classList.contains('active'));
+          if (diff > 0) setBannerSlide((activeIndex + 1) % banners.length);
+          else setBannerSlide((activeIndex - 1 + banners.length) % banners.length);
         }
-        isBannerDragging = false;
         resumeSlideAfterDelay();
       });
-      bannerCarousel.addEventListener('mouseleave', () => {
-        if (isBannerDragging) {
-          isBannerDragging = false;
-          resumeSlideAfterDelay();
-        }
-      });
+      bannerCarousel.addEventListener('mouseleave', () => { isDragging = false; resumeSlideAfterDelay(); });
     }
 
     function setupPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput) {
