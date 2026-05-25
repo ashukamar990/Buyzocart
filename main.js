@@ -2866,6 +2866,32 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay')?.textContent;
+      if (!orderId) return;
+
+      const btn = document.getElementById('copyOrderIdBtn');
+      const originalInner = btn.innerHTML;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(orderId).then(() => {
+          showToast('Order ID copied!', 'success');
+          btn.innerHTML = '✅ Copied!';
+          setTimeout(() => btn.innerHTML = originalInner, 2000);
+        });
+      } else {
+        const dummy = document.createElement('input');
+        document.body.appendChild(dummy);
+        dummy.value = orderId;
+        dummy.select();
+        document.execCommand('copy');
+        document.body.removeChild(dummy);
+        showToast('Order ID copied!', 'success');
+        btn.innerHTML = '✅ Copied!';
+        setTimeout(() => btn.innerHTML = originalInner, 2000);
+      }
+    }
+
     // ===== REAL-TIME ORDERS LISTENER =====
     let _ordersListenerUnsubscribe = null;
     function setupOrdersRealtimeListener(user) {
@@ -4738,6 +4764,7 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
