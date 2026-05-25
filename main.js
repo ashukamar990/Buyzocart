@@ -2299,20 +2299,27 @@
       document.getElementById('spDesc').textContent = currentProduct.description || currentProduct.desc || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       const sizeOptionsContainer = document.getElementById('sizeOptions');
+      const sizeSection = document.getElementById('sizeSection');
       sizeOptionsContainer.innerHTML = '';
-      const sizesFromProduct = currentProduct.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
-      sizesFromProduct.forEach(sizeVal => {
-        const opt = document.createElement('div');
-        opt.className = 'size-option';
-        opt.setAttribute('data-value', sizeVal);
-        opt.textContent = sizeVal;
-        opt.addEventListener('click', function() {
-          document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('sizeValidationError')?.classList.remove('show');
+      const sizesFromProduct = currentProduct.sizes && currentProduct.sizes.length ? currentProduct.sizes : null;
+      if (sizesFromProduct) {
+        if (sizeSection) sizeSection.style.display = '';
+        sizesFromProduct.forEach(sizeVal => {
+          const opt = document.createElement('div');
+          opt.className = 'size-option';
+          opt.setAttribute('data-value', sizeVal);
+          opt.textContent = sizeVal;
+          opt.addEventListener('click', function() {
+            document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('sizeValidationError')?.classList.remove('show');
+          });
+          sizeOptionsContainer.appendChild(opt);
         });
-        sizeOptionsContainer.appendChild(opt);
-      });
+      } else {
+        // No sizes defined — hide size section
+        if (sizeSection) sizeSection.style.display = 'none';
+      }
       document.getElementById('qtySelect').value = 1;
       initOrderPageGallery();
       showPage('orderPage');
@@ -2355,8 +2362,10 @@
     }
 
     function toUserInfo() {
+      const sizeSection = document.getElementById('sizeSection');
+      const sizeSectionVisible = !sizeSection || sizeSection.style.display !== 'none';
       const selectedSize = document.querySelector('#sizeOptions .size-option.selected');
-      if (!selectedSize) {
+      if (sizeSectionVisible && sizeSection && !selectedSize) {
         document.getElementById('sizeValidationError').classList.add('show');
         showToast('Please select a size to continue', 'error');
         return;
@@ -2365,20 +2374,38 @@
     }
 
     async function toPayment() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType')?.value || 'home';
-
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
 
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house, addressType };
+      if (currentUser) {
+        try {
+          const alreadySaved = savedAddresses.some(a => a.mobile === mobile && a.pincode === pincode && a.street === house);
+          if (!alreadySaved) {
+            const addressId = 'address_' + Date.now();
+            const addressData = {
+              name: fullname, mobile, pincode, city, state,
+              street: house, type: addressType,
+              userId: currentUser.uid,
+              isDefault: savedAddresses.length === 0,
+              createdAt: Date.now()
+            };
+            await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+            savedAddresses.push({ id: addressId, ...addressData });
+            cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+          }
+        } catch (e) {}
+      }
+
       showPage('paymentPage');
     }
 
@@ -2401,7 +2428,7 @@
       currentOrderId = orderId;
       const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
       const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || 'Not specified';
+      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || null;
       const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
       const deliveryCharge = adminSettings.deliveryCharge || 50;
@@ -2462,30 +2489,6 @@
         };
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'orders/' + orderId), orderData);
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + orderId), true);
-
-        // Save address to localStorage and Firebase, and set as default (last used)
-        if (userInfo && userInfo.fullName) {
-          const addressData = {
-            name: userInfo.fullName,
-            mobile: userInfo.mobile,
-            pincode: userInfo.pincode,
-            city: userInfo.city,
-            state: userInfo.state,
-            street: userInfo.house,
-            type: userInfo.addressType || 'home',
-            userId: currentUser.uid,
-            isDefault: true,
-            updatedAt: Date.now()
-          };
-          addOrUpdateLocalAddress(addressData);
-          if (window.firebase) {
-            try {
-              const addressId = 'address_' + Date.now();
-              await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
-            } catch (e) {}
-          }
-        }
-
         // Track order count per product (for trending + scoring)
         try {
           const _psRef = window.firebase.ref(window.firebase.database, 'productStats/' + orderData.productId + '/orderCount');
@@ -3010,7 +3013,7 @@
             <div class="order-product-info">
               <div class="order-product-title">${order.productName || 'Product'}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount || 0)}</div>
-              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
+              <div class="order-product-meta">Qty: ${order.quantity || 1}${order.size ? ' | Size: ' + order.size : ''}</div>
             </div>
           </div>
           ${trackingHtml}
@@ -3127,7 +3130,7 @@
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity} | Size: ${order.size}
+                Qty: ${order.quantity}${order.size ? ' | Size: ' + order.size : ''}
               </div>
             </div>
           </div>
@@ -3820,80 +3823,40 @@
       });
     }
 
-    function getLocalAddresses() {
-      try {
-        const data = localStorage.getItem(CACHE_KEYS.ADDRESSES);
-        return data ? JSON.parse(data) : [];
-      } catch (e) { return []; }
-    }
-
-    function saveLocalAddresses(addresses) {
-      try {
-        localStorage.setItem(CACHE_KEYS.ADDRESSES, JSON.stringify(addresses));
-      } catch (e) {}
-    }
-
-    function addOrUpdateLocalAddress(address) {
-      let addresses = getLocalAddresses();
-      if (address.isDefault) {
-        addresses.forEach(a => a.isDefault = false);
-      }
-      const index = addresses.findIndex(a => a.id === address.id);
-      if (index !== -1) {
-        addresses[index] = { ...addresses[index], ...address, updatedAt: Date.now() };
-      } else {
-        const duplicateIndex = addresses.findIndex(a =>
-          a.name === address.name &&
-          a.mobile === address.mobile &&
-          a.pincode === address.pincode &&
-          a.street === address.street
-        );
-        if (duplicateIndex !== -1) {
-          addresses[duplicateIndex] = { ...addresses[duplicateIndex], ...address, updatedAt: Date.now() };
-        } else {
-          address.id = address.id || 'addr_' + Date.now();
-          address.createdAt = address.createdAt || Date.now();
-          address.updatedAt = Date.now();
-          addresses.unshift(address);
-        }
-      }
-      saveLocalAddresses(addresses);
-      return addresses;
-    }
-
-    function removeLocalAddress(id) {
-      let addresses = getLocalAddresses();
-      addresses = addresses.filter(a => a.id !== id);
-      saveLocalAddresses(addresses);
-      return addresses;
-    }
-
     async function loadSavedAddresses() {
-      // Prioritize localStorage for address management
-      savedAddresses = getLocalAddresses();
-
-      const savedAddressesSection = document.getElementById('savedAddressesSection');
-      if (savedAddresses.length > 0) {
-        if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-        renderSavedAddresses();
-
-        // Select last used or default
-        const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
-        if (defaultAddr) {
-          fillAddressForm(defaultAddr);
-          userInfo = {
-            fullName: defaultAddr.name,
-            mobile: defaultAddr.mobile,
-            pincode: defaultAddr.pincode,
-            city: defaultAddr.city,
-            state: defaultAddr.state,
-            house: defaultAddr.street
-          };
-          const radios = document.querySelectorAll('input[name="savedAddress"]');
-          radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
+      if (!currentUser) return;
+      try {
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'addresses'),
+            window.firebase.orderByChild('userId'),
+            window.firebase.equalTo(currentUser.uid)
+          )
+        );
+        const addressesList = document.getElementById('savedAddressesList');
+        const savedAddressesSection = document.getElementById('savedAddressesSection');
+        if (!snapshot.exists()) {
+          savedAddressesSection.style.display = 'none';
+          savedAddresses = [];
+          return;
         }
-      } else {
-        if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+        const addressesObj = snapshot.val();
+        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
+        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+        if (addresses.length > 0) {
+          savedAddressesSection.style.display = 'block';
+          renderSavedAddresses();
+          const defaultAddr = savedAddresses[0];
+          if (defaultAddr) {
+            fillAddressForm(defaultAddr);
+            userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
+            const radios = document.querySelectorAll('input[name="savedAddress"]');
+            radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
+          }
+        } else savedAddressesSection.style.display = 'none';
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+      } catch (error) {
+        console.error('Error loading addresses:', error);
       }
     }
 
@@ -3901,63 +3864,50 @@
       const addressesList = document.getElementById('savedAddressesList');
       if (!addressesList) return;
       addressesList.innerHTML = '';
-
       savedAddresses.forEach(address => {
         const addressCard = document.createElement('div');
-        addressCard.className = 'saved-address-card' + (address.isDefault ? ' selected' : '');
-        const addressType = address.type || 'home';
-
+        addressCard.className = 'saved-address-card';
+        const addressType = address.type || 'Other';
+        const isDefault = address.isDefault ? '• Default' : '';
         addressCard.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:12px;">
-            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''} style="margin-top:4px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="savedAddress" value="${address.id}" ${address.isDefault ? 'checked' : ''}>
             <div style="flex:1">
-              <div style="font-weight:700; font-size:14px; margin-bottom:2px;">${address.name} <span style="font-size:11px; font-weight:600; color:var(--accent); background:rgba(37,99,235,0.1); padding:2px 8px; border-radius:10px; margin-left:5px; text-transform:uppercase;">${addressType}</span></div>
-              <div style="font-size:13px; color:var(--text);">${address.street}</div>
-              <div style="font-size:13px; color:var(--text);">${address.city}, ${address.state} - ${address.pincode}</div>
-              <div style="font-size:13px; font-weight:600; margin-top:4px;">📞 ${address.mobile}</div>
+              <div style="font-weight:600">${address.name}</div>
+              <div>${address.street}</div>
+              <div>${address.city}, ${address.state} - ${address.pincode}</div>
+              <div>Mobile: ${address.mobile}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px;">${addressType} ${isDefault}</div>
             </div>
           </div>
-          <div class="address-actions" style="margin-top:12px; display:flex; gap:8px; border-top:1px solid var(--border); padding-top:10px;">
-            <button class="btn secondary edit-address" data-id="${address.id}" style="padding:6px 12px; font-size:12px; flex:1;">Edit</button>
-            <button class="btn error delete-address" data-id="${address.id}" style="padding:6px 12px; font-size:12px; flex:1; background:#fee2e2; color:#ef4444; border:1px solid #fecaca;">Delete</button>
+          <div class="address-actions">
+            <button class="btn secondary edit-address" data-id="${address.id}">Edit</button>
+            <button class="btn error delete-address" data-id="${address.id}">Delete</button>
           </div>
         `;
-
         const radio = addressCard.querySelector('input[type="radio"]');
-        const selectHandler = () => {
-          radio.checked = true;
-          document.querySelectorAll('.saved-address-card').forEach(c => c.classList.remove('selected'));
-          addressCard.classList.add('selected');
+        radio.addEventListener('click', function(e) {
+          e.stopPropagation();
           fillAddressForm(address);
-          userInfo = {
-            fullName: address.name,
-            mobile: address.mobile,
-            pincode: address.pincode,
-            city: address.city,
-            state: address.state,
-            house: address.street
-          };
-        };
-
-        addressCard.addEventListener('click', (e) => {
-          if (e.target.closest('.address-actions') || e.target.type === 'radio') return;
-          selectHandler();
+          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
         });
-
-        radio.addEventListener('change', selectHandler);
-
+        addressCard.addEventListener('click', function(e) {
+          if (e.target.type !== 'radio') {
+            radio.checked = true;
+            fillAddressForm(address);
+            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+          }
+        });
         const editBtn = addressCard.querySelector('.edit-address');
-        editBtn.addEventListener('click', (e) => {
+        editBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           editAddress(address);
         });
-
         const deleteBtn = addressCard.querySelector('.delete-address');
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           deleteAddressConfirmation(address);
         });
-
         addressesList.appendChild(addressCard);
       });
     }
@@ -3973,19 +3923,18 @@
     }
 
     async function saveUserInfoAndAddress() {
-      const fullname = document.getElementById('fullname').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const pincode = document.getElementById('pincode').value.trim();
-      const city = document.getElementById('city').value.trim();
-      const state = document.getElementById('state').value.trim();
-      const house = document.getElementById('house').value.trim();
+      const fullname = document.getElementById('fullname').value;
+      const mobile = document.getElementById('mobile').value;
+      const pincode = document.getElementById('pincode').value;
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const house = document.getElementById('house').value;
       const addressType = document.getElementById('addressType').value;
-
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
-
+      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
       const addressData = {
         name: fullname,
         mobile: mobile,
@@ -3994,27 +3943,28 @@
         state: state,
         street: house,
         type: addressType,
-        userId: currentUser ? currentUser.uid : 'guest',
+        userId: currentUser.uid,
         isDefault: savedAddresses.length === 0,
-        updatedAt: Date.now()
+        createdAt: Date.now()
       };
-
-      addOrUpdateLocalAddress(addressData);
-
-      if (currentUser && window.firebase) {
-        try {
-          const addressId = 'address_' + Date.now();
-          await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
-        } catch (e) { console.warn('Firebase save failed'); }
+      try {
+        const addressId = 'address_' + Date.now();
+        await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        savedAddresses.push({ id: addressId, ...addressData });
+        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+        showToast('Address saved successfully', 'success');
+        await loadSavedAddresses();
+        document.getElementById('savedAddressesSection').style.display = 'block';
+        document.getElementById('newAddressForm').style.display = 'block';
+      } catch (error) {
+        console.error('Error saving address:', error);
+        showToast('Failed to save address', 'error');
       }
-
-      showToast('Address saved successfully', 'success');
-      await loadSavedAddresses();
-
-      userInfo = { fullName: fullname, mobile, pincode, city, state, house };
     }
 
     function showNewAddressForm() {
+      document.getElementById('savedAddressesSection').style.display = 'block';
+      document.getElementById('newAddressForm').style.display = 'block';
       document.getElementById('fullname').value = '';
       document.getElementById('mobile').value = '';
       document.getElementById('pincode').value = '';
@@ -4022,7 +3972,6 @@
       document.getElementById('state').value = '';
       document.getElementById('house').value = '';
       document.getElementById('addressType').value = 'home';
-
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Save This Address';
       saveBtn.onclick = saveUserInfoAndAddress;
@@ -4032,25 +3981,17 @@
       fillAddressForm(address);
       document.getElementById('savedAddressesSection').style.display = 'none';
       document.getElementById('newAddressForm').style.display = 'block';
-
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Update Address';
       saveBtn.onclick = async function() {
-        const fullname = document.getElementById('fullname').value.trim();
-        const mobile = document.getElementById('mobile').value.trim();
-        const pincode = document.getElementById('pincode').value.trim();
-        const city = document.getElementById('city').value.trim();
-        const state = document.getElementById('state').value.trim();
-        const house = document.getElementById('house').value.trim();
+        const fullname = document.getElementById('fullname').value;
+        const mobile = document.getElementById('mobile').value;
+        const pincode = document.getElementById('pincode').value;
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const house = document.getElementById('house').value;
         const addressType = document.getElementById('addressType').value;
-
-        if (!fullname || !mobile || !pincode || !city || !state || !house) {
-          showToast('Please fill in all required fields', 'error');
-          return;
-        }
-
         const addressData = {
-          ...address,
           name: fullname,
           mobile: mobile,
           pincode: pincode,
@@ -4058,20 +3999,19 @@
           state: state,
           street: house,
           type: addressType,
-          updatedAt: Date.now()
+          userId: currentUser.uid,
+          isDefault: address.isDefault
         };
-
-        addOrUpdateLocalAddress(addressData);
-
-        if (currentUser && window.firebase) {
-          try {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
-          } catch (e) { console.warn('Firebase update failed'); }
+        try {
+          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
+          showToast('Address updated successfully', 'success');
+          document.getElementById('savedAddressesSection').style.display = 'block';
+          document.getElementById('newAddressForm').style.display = 'block';
+          await loadSavedAddresses();
+        } catch (error) {
+          console.error('Error updating address:', error);
+          showToast('Failed to update address', 'error');
         }
-
-        showToast('Address updated successfully', 'success');
-        document.getElementById('savedAddressesSection').style.display = 'block';
-        await loadSavedAddresses();
       };
     }
 
@@ -4079,22 +4019,23 @@
       document.getElementById('alertTitle').textContent = 'Delete Address';
       document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
       document.getElementById('alertModal').classList.add('active');
-
       document.getElementById('alertConfirmBtn').onclick = async function() {
         document.getElementById('alertModal').classList.remove('active');
-
-        removeLocalAddress(address.id);
-
-        if (currentUser && window.firebase) {
-          try {
-            await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
-          } catch (e) { console.warn('Firebase delete failed'); }
+        if (!currentUser) { showToast('Please log in again', 'error'); return; }
+        try {
+          await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
+          showToast('Address deleted', 'success');
+          await loadSavedAddresses();
+          const _sas = document.getElementById('savedAddressesSection');
+          const _naf = document.getElementById('newAddressForm');
+          if (_sas) _sas.style.display = savedAddresses.length ? 'block' : 'none';
+          if (_naf) _naf.style.display = 'block';
+        } catch (error) {
+          console.error('Error deleting address:', error);
+          // Never sign out on address delete error
+          showToast('Could not delete address. Please try again.', 'error');
         }
-
-        showToast('Address deleted', 'success');
-        await loadSavedAddresses();
       };
-
       document.getElementById('alertCancelBtn').onclick = function() {
         document.getElementById('alertModal').classList.remove('active');
       };
@@ -4505,9 +4446,6 @@
     }
 
     function loadCachedData() {
-      // Load saved addresses instantly
-      loadSavedAddresses();
-
       const cachedProducts = cacheManager.get(CACHE_KEYS.PRODUCTS);
       if (cachedProducts && cachedProducts.length > 0) {
         products = cachedProducts;
@@ -4998,7 +4936,7 @@
       var imgUrl = lp ? getProductImage(lp) : (order.productImage || '');
       if (img && imgUrl) img.style.backgroundImage = "url('" + imgUrl + "')";
       if (nameEl) nameEl.textContent = order.productName || 'Product';
-      if (metaEl) metaEl.textContent = formatPrice(order.totalAmount || 0) + '  ·  Qty: ' + (order.quantity || 1) + '  ·  Size: ' + (order.size || 'N/A');
+      if (metaEl) metaEl.textContent = formatPrice(order.totalAmount || 0) + '  ·  Qty: ' + (order.quantity || 1) + (order.size ? '  ·  Size: ' + order.size : '');
       if (idEl)   idEl.textContent   = 'Order ID: ' + (order.orderId || order.id || '');
       var SM = { placed: 0, confirmed: 1, shipped: 2, out_for_delivery: 2, delivered: 3, cancelled: 0 };
       otSetStep(SM[(order.status || 'placed').toLowerCase()] ?? 0);
