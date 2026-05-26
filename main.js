@@ -2859,11 +2859,31 @@
       if (viewAllBtn) viewAllBtn.addEventListener('click', showAllRatings);
     }
 
+    function copyToClipboard(text, btn) {
+      if (!text || btn?.dataset?.copying) return;
+      const fallback = () => {
+        const inp = document.createElement('input');
+        inp.value = text; document.body.appendChild(inp);
+        inp.select(); document.execCommand('copy');
+        document.body.removeChild(inp); feedback();
+      };
+      const feedback = () => {
+        showToast('Copied to clipboard!', 'success');
+        if (!btn) return;
+        btn.dataset.copying = 'true';
+        const old = btn.innerHTML;
+        btn.innerHTML = btn.querySelector('svg') ? old + '<span style="font-size:10px"> ✅</span>' : '✅ Copied!';
+        setTimeout(() => { btn.innerHTML = old; delete btn.dataset.copying; }, 2000);
+      };
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(feedback).catch(fallback);
+      else fallback();
+    }
+
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      if (shareLink) {
+        copyToClipboard(shareLink.value, document.getElementById('copyShareLink'));
+      }
     }
 
     // ===== REAL-TIME ORDERS LISTENER =====
@@ -4738,6 +4758,10 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay')?.textContent;
+        if (orderId) copyToClipboard(orderId, this);
+      });
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
