@@ -10,6 +10,11 @@
 - **Impact:** Significant improvement in the visual quality of the application and better UX for users who find no results.
 - **Accessibility:** Used semantic HTML and ensured descriptive text accompanies the icons.
 - **Measurement Verification:** Playwright screenshots (e.g., `2_no_products_found.png`) confirmed the improved layout and icon presence.
+
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-27 - Keyboard-accessible Newsletter Subscription
+**Learning:** Users expect to be able to submit simple one-field forms (like newsletters) by pressing 'Enter'. Adding a 'keydown' event listener improves usability for keyboard users and matches standard web behavior. Using 'keydown' instead of the deprecated 'keypress' ensures better compatibility.
+**Action:** Always add keyboard listeners (preferably 'keydown') to single-input forms that lack a natural `<form>` submission context.
