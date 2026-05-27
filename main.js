@@ -4727,6 +4727,9 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      document.getElementById('newsletterEmail')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleNewsletterSubscription();
+      });
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
