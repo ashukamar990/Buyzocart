@@ -469,7 +469,8 @@
     }
 
     // ── Score a single product against query terms ──
-    function _scoreProduct(p, terms, originalQuery) {
+    // ⚡ Bolt: Added optional ratingMap for O(1) boost calculation
+    function _scoreProduct(p, terms, originalQuery, ratingMap = null) {
       const name   = (p.name || p.title || '').toLowerCase();
       const short  = (p.shortTitle || '').toLowerCase();
       const cat    = (p.category || '').toLowerCase();
@@ -499,7 +500,7 @@
       // Boost: trending, high rating
       if (p.trending || p.isTrending) score += 15;
       if (p.bestseller || p.isBestseller) score += 10;
-      const rating = calculateProductRating(p.id);
+      const rating = calculateProductRating(p.id, ratingMap);
       if (rating >= 4) score += 8;
       if (rating >= 4.5) score += 5;
 
@@ -518,7 +519,8 @@
           .filter(t => t && t.length > 1)
       ));
 
-      // Score all products
+      // ⚡ Bolt: Optimized search sorting and scoring to O(P + R)
+      const ratingMap = getRatingMap();
       const scored = [];
       products.forEach(p => {
         const pid = p.id || p.productId || '';
@@ -527,7 +529,7 @@
           scored.push({ product: p, score: 1000 });
           return;
         }
-        const score = _scoreProduct(p, terms, raw);
+        const score = _scoreProduct(p, terms, raw, ratingMap);
         if (score > 20) scored.push({ product: p, score });
       });
 
@@ -535,7 +537,7 @@
       scored.sort((a, b) => {
         const diff = b.score - a.score;
         if (Math.abs(diff) > 5) return diff;
-        return calculateProductRating(b.product.id) - calculateProductRating(a.product.id);
+        return calculateProductRating(b.product.id, ratingMap) - calculateProductRating(a.product.id, ratingMap);
       });
 
       let results = scored.map(s => s.product);
@@ -596,7 +598,9 @@
       const normalized = _normalizeQuery(query);
       const wasCorrected = normalized !== query.toLowerCase().trim();
 
-      const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
+      // ⚡ Bolt: Optimized suggestions sorting to O(P + R)
+      const ratingMap = getRatingMap();
+      const topThree = [...results].sort((a,b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap)).slice(0, 3);
       suggestionsContainer.innerHTML = '';
 
       // Show correction banner
@@ -1300,7 +1304,24 @@
 
     let reviews = [];
 
-    function calculateProductRating(productId) {
+    // ⚡ Bolt: O(R) utility to pre-calculate ratings for all products
+    function getRatingMap() {
+      const map = {};
+      reviews.forEach(r => {
+        if (!r.productId) return;
+        if (!map[r.productId]) map[r.productId] = { sum: 0, count: 0 };
+        map[r.productId].sum += (r.rating || 0);
+        map[r.productId].count += 1;
+      });
+      for (const id in map) {
+        map[id].rating = map[id].sum / map[id].count;
+      }
+      return map;
+    }
+
+    // ⚡ Bolt: Enhanced with optional ratingMap for O(1) performance
+    function calculateProductRating(productId, ratingMap = null) {
+      if (ratingMap) return ratingMap[productId]?.rating ?? 0;
       const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
@@ -2076,17 +2097,10 @@
       let similarProducts = products
         .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
-      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // ⚡ Bolt: Optimized similar products sorting to O(P + R)
+      const ratingMap = getRatingMap();
+      similarProducts.sort((a, b) => (ratingMap[b.id]?.rating ?? 0) - (ratingMap[a.id]?.rating ?? 0));
       const firstRow = similarProducts.slice(0, 10);
       const secondRow = similarProducts.slice(10, 20);
       const container = document.getElementById('similarProductsSlider');
@@ -3243,15 +3257,11 @@
       if (!category) return;
       currentCategoryFilter = category.id;
       let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // ⚡ Bolt: Optimized category sorting to O(P + R)
+      const ratingMap = getRatingMap();
+      filteredProducts.sort((a, b) => (ratingMap[b.id]?.rating ?? 0) - (ratingMap[a.id]?.rating ?? 0));
+
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('active');
@@ -3270,15 +3280,11 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
+
+      // ⚡ Bolt: Optimized price filter sorting to O(P + R)
+      const ratingMap = getRatingMap();
+      filteredProducts.sort((a, b) => (ratingMap[b.id]?.rating ?? 0) - (ratingMap[a.id]?.rating ?? 0));
+
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
     }
@@ -3368,9 +3374,12 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+    // ⚡ Bolt: Added optional ratingMap for O(1) lookup during batch sorting
+    function getProductScore(product, ratingMap = null) {
+      const rating = ratingMap ? (ratingMap[product.id]?.rating ?? 0) : (function() {
+        const rs = reviews.filter(r => r.productId === product.id);
+        return rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+      })();
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
@@ -3379,15 +3388,10 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      productsToRender.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+
+      // ⚡ Bolt: Optimized rating lookup and sorting to O(P + R)
+      const ratingMap = getRatingMap();
+      const sorted = [...productsToRender].sort((a, b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap));
       if (!sorted || sorted.length === 0) {
         if (containerId === 'homeProductGrid') return; // keep skeleton shimmer
         container.innerHTML = '';
