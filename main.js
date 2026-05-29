@@ -318,6 +318,28 @@
       }, 3000);
     }
 
+    /**
+     * Centralized copy-to-clipboard helper with visual feedback.
+     */
+    function bzCopyText(text, button, successMsg = 'Copied to clipboard!') {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg, 'success');
+        if (button && !button.dataset.copying) {
+          const originalHTML = button.innerHTML;
+          button.dataset.copying = "true";
+          button.innerHTML = "✅ Copied!";
+          setTimeout(() => {
+            button.innerHTML = originalHTML;
+            delete button.dataset.copying;
+          }, 2000);
+        }
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+        showToast('Failed to copy', 'error');
+      });
+    }
+
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -1571,7 +1593,7 @@
         brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
           + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
           + '<span>Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11px;">'+(freshProduct.id||'').toUpperCase()+'</code></span>'
-          + '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+freshProduct.id+'\').then(function(){showToast(\'Product ID copied!\',\'success\')})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:0;" title="Copy">📋</button>'
+          + '<button onclick="bzCopyText(\''+freshProduct.id+'\', this, \'Product ID copied!\')" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:0;" title="Copy">📋</button>'
           + '</div>';
         brandBadgeEl.style.display = 'block';
       } else {
@@ -2861,9 +2883,7 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      bzCopyText(shareLink.value, document.getElementById('copyShareLink'), 'Product link copied!');
     }
 
     // ===== REAL-TIME ORDERS LISTENER =====
@@ -4644,6 +4664,17 @@
         });
         searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
       }
+
+      // Newsletter input Enter key support
+      const newsletterInput = document.getElementById('newsletterEmail');
+      if (newsletterInput) {
+        newsletterInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleNewsletterSubscription();
+          }
+        });
+      }
     }
 
     function setupFileUpload() {
@@ -4711,6 +4742,10 @@
       document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay')?.textContent;
+        bzCopyText(orderId, this, 'Order ID copied!');
+      });
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
@@ -5265,12 +5300,8 @@
       }
     }
 
-    function copyOfferCode(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        showToast('Offer code "' + code + '" copied!', 'success');
-      }).catch(() => {
-        showToast('Code: ' + code, 'success');
-      });
+    function copyOfferCode(code, button) {
+      bzCopyText(code, button, 'Offer code "' + code + '" copied!');
     }
 
     function loadOffersFromDB() {
@@ -5299,8 +5330,8 @@
             <p class="offer-desc">${offer.description || offer.message || ''}</p>
             ${code ? `<div class="offer-code-box">
               <span class="offer-code-label">Use Code:</span>
-              <span class="offer-code" onclick="copyOfferCode('${code}')">${code}</span>
-              <button class="offer-copy-btn" onclick="copyOfferCode('${code}')">📋 Copy</button>
+              <span class="offer-code" onclick="copyOfferCode('${code}', this)">${code}</span>
+              <button class="offer-copy-btn" onclick="copyOfferCode('${code}', this)">📋 Copy</button>
             </div>` : ''}
             ${offer.savings ? `<div class="offer-savings">${offer.savings}</div>` : ''}
             <button class="offer-shop-btn" onclick="showPage('productsPage');">Shop Now →</button>
@@ -7106,7 +7137,7 @@
         +'</div>'
 
         // ── OFFERS ──
-        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
+        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="bzCopyText(\''+offers+'\', this)" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
 
         // Search bar removed
         +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
