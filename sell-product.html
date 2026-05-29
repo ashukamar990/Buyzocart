@@ -806,7 +806,7 @@
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Retry Now</button>' +
                     '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Home</button></div>';
             }
-        }, 20000);
+        }, 10000);
 
         onAuthStateChanged(auth, async (user) => {
             _authResolved = true;
@@ -835,15 +835,23 @@
                 window._state.categories = [];
             }
 
+            // Timeout helper — if Firebase read hangs, resolve with null after 8s
+            function _fbGet(path) {
+                return Promise.race([
+                    get(ref(db, path)),
+                    new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 8000); })
+                ]);
+            }
+
             try {
-                const snap = await get(ref(db, 'sellerRequests/' + user.uid));
-                
-                if (!snap.exists()) {
+                var snap = await _fbGet('sellerRequests/' + user.uid);
+
+                if (!snap || !snap.exists()) {
                     if (typeof showSellerWelcome === 'function') showSellerWelcome();
                 } else {
                     const data = snap.val();
                     window._state.sellerData = data;
-                    
+
                     if (data.status === 'approved') {
                         await window.loadDashboardData();
                     } else if (data.status === 'pending') {
