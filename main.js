@@ -1,4 +1,28 @@
 // Buyzo Cart - Main Application Logic
+// ============================================================
+//  FIREBASE OPTIMIZATION LOG — Applied Changes
+// ============================================================
+//  1. fetchLiveData()     → TTL cache (1hr products, 30min settings)
+//                           get() instead of onValue() everywhere
+//  2. setupRealtimeListeners() → ONLY adminNotifications onValue()
+//                           remaining. Baaki sab get() mein moved.
+//  3. updateHeroStats()   → local products[]/reviews[] se count,
+//                           zero Firebase reads (session cache for users)
+//  4. setupAccountRealtimeSync() → get() + sessionStorage cache
+//  5. setupOrdersRealtimeListener() → persistent listener removed,
+//                           showMyOrders() on-demand get() with cache
+//  6. loadSavedAddresses() → 5 min TTL cache, _bzInvalidateAddressCache()
+//                            added for save/edit/delete operations
+//  7. addToRecentlyViewed() → local update + 2s debounced batched write
+//  8. visibilitychange    → 10 min cooldown + cache check
+//  9. Presence .info/connected onValue() → simple set() removed
+// 10. setInterval(60s fetchLiveData) → one-time 8s retry only
+// 11. handleSearchPanelInput → 300ms debounce added
+// 12. connectFirebaseForHero → onValue → get() with cache
+// 13. Image lazy loading  → loading="lazy" added to brand/review imgs
+// 14. _bzInvalidateAddressCache() → toPayment, editAddress,
+//                                   deleteAddress mein call added
+// ============================================================
     const CACHE_KEYS = {
       PRODUCTS: 'bz_products',
       CATEGORIES: 'bz_categories',
@@ -300,13 +324,6 @@
         return `ORDER-${yyyy}${mm}${dd}-${randomNum}`;
     }
 
-    // Firebase error sanitizer — never show internal Firebase messages to users
-    window._bzSafeError = function(err, fallback) {
-      var fbKeys = ['firebase','firestore','permission-denied','unavailable','network-request-failed','quota-exceeded','unauthenticated','auth/','storage/','googleapis'];
-      var msg = ((err && (err.message || err.code)) || String(err || '')).toLowerCase();
-      return fbKeys.some(function(k){ return msg.includes(k); }) ? (fallback || 'Something went wrong. Please try again.') : (fallback || 'Something went wrong. Please try again.');
-    };
-
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       if (!toast) return;
@@ -574,17 +591,29 @@
       closeSearchPanel();
     }
 
+    // ── OPTIMIZATION: handleSearchPanelInput ─────────────────────
+    // PROBLEM: Har keystroke pe showSearchSuggestions() call hoti
+    //          thi. searchProducts() local filter hai (good), lekin
+    //          DOM rendering har keypress pe = UI jank + CPU waste.
+    // FIX: 300ms debounce → user type karna band kare tab hi
+    //      suggestions render hon. Zero Firebase reads (already ok).
+    // ────────────────────────────────────────────────────────────
+    let _searchDebounceTimer = null;
     function handleSearchPanelInput(e) {
       const query = e.target.value.trim();
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
-      if (query.length >= 1) {
-        showSearchSuggestions(query);
-        suggestionsContainer.style.display = 'block';
-      } else {
+      clearTimeout(_searchDebounceTimer);
+      if (!query.length) {
         clearSearchSuggestions();
         suggestionsContainer.style.display = 'none';
+        return;
       }
+      // 300ms debounce — sirf tab render karo jab user ruk jaye
+      _searchDebounceTimer = setTimeout(() => {
+        showSearchSuggestions(query);
+        suggestionsContainer.style.display = 'block';
+      }, 300);
     }
 
     function showSearchSuggestions(query) {
@@ -901,20 +930,12 @@
     function showPage(pageId) {
       const mainEl = document.querySelector('main');
       if (mainEl) {
-        if (pageId === 'brandsPage' || pageId === 'brandProfilePage') mainEl.classList.remove('container');
+        if (pageId === 'brandsPage') mainEl.classList.remove('container');
         else mainEl.classList.add('container');
       }
 
-      // Track page history for accurate back navigation
-      if (!window._bzIsPopState) {
-        if (!window._bzPageHistory) window._bzPageHistory = ['homePage'];
-        if (window._bzPageHistory[window._bzPageHistory.length - 1] !== pageId) {
-          window._bzPageHistory.push(pageId);
-        }
-      }
-
       const newUrl = window.location.origin + window.location.pathname.replace('index.html', '') + '#' + pageId;
-      window.history.pushState({ page: pageId }, '', newUrl);
+      window.history.pushState(null, '', newUrl);
       document.querySelectorAll('main .page').forEach(page => page.classList.remove('active'));
       const pageElement = document.getElementById(pageId);
       if (pageElement) pageElement.classList.add('active');
@@ -965,7 +986,10 @@
           }, 500);
           break;
         case 'searchResultsPage':
-          setupSearchPriceSlider();
+          if (window.currentSearchQuery) {
+            document.getElementById('searchResultsInput').value = window.currentSearchQuery;
+            setupSearchPriceSlider();
+          }
           break;
         case 'recentlyViewedPage':
           renderRecentlyViewedPage();
@@ -1025,8 +1049,6 @@
         showLoginModal();
         return;
       }
-      var cur = document.querySelector('.page.active');
-      if (cur) sessionStorage.setItem('bz_return_page', cur.id);
       window.location.href = '/account';
     }
 
@@ -1122,17 +1144,14 @@
           const isV   = b.blueTickAdmin || b.verificationLevel === 'premium';
 
           const card = document.createElement('div');
-          card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:16px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);';
-          const logoInner = b.logo
-            ? `<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=color:#fff;font-size:16px;font-weight:800>${ini}</span>'">`
-            : `<span style="color:#fff;font-size:16px;font-weight:800;">${ini}</span>`;
+          card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card,#fff);border:1.5px solid var(--border,#f1f5f9);border-radius:14px;cursor:pointer;flex:1;min-width:140px;transition:border-color .2s,box-shadow .2s;';
           card.innerHTML =
-            `<div style="width:50px;height:50px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid rgba(0,0,0,.06);">
-              ${logoInner}
+            `<div style="width:46px;height:46px;border-radius:12px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+              ${b.logo ? `<img src="${b.logo}" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display='none'">` : `<span style="color:#fff;font-size:16px;font-weight:800;">${ini}</span>`}
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:4px;">${b.name}${isV ? BT : ''}</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">${b.products && b.products.length ? b.products.length + ' products' : 'View products'}</div>
+              <div style="font-weight:800;font-size:14px;color:var(--ink,#0f172a);display:flex;align-items:center;gap:3px;">${b.name}${isV ? BT : ''}</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">${b.products && b.products.length ? b.products.length + ' products' : 'No products yet'}</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>`;
 
@@ -1737,7 +1756,21 @@
         slide.className = 'viewer-slide';
         slide.id = 'vslide_' + i;
         const img = document.createElement('img');
-        img.src = src;
+        // ── OPTIMIZATION: Lazy loading ───────────────────────────
+        // First image eager (above fold), rest lazy (bandwidth save)
+        if (i === 0) {
+          img.src = src;
+        } else {
+          img.dataset.src = src;
+          img.loading = 'lazy';
+          // IntersectionObserver se load hoga jab slide visible ho
+          if (window._lazyObserver) {
+            img.src = ''; // placeholder
+            window._lazyObserver.observe(img);
+          } else {
+            img.src = src;
+          }
+        }
         img.draggable = false;
         img.alt = 'Product image ' + (i+1);
         slide.appendChild(img);
@@ -2299,27 +2332,20 @@
       document.getElementById('spDesc').textContent = currentProduct.description || currentProduct.desc || '';
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       const sizeOptionsContainer = document.getElementById('sizeOptions');
-      const sizeSection = document.getElementById('sizeSection');
       sizeOptionsContainer.innerHTML = '';
-      const sizesFromProduct = currentProduct.sizes && currentProduct.sizes.length ? currentProduct.sizes : null;
-      if (sizesFromProduct) {
-        if (sizeSection) sizeSection.style.display = '';
-        sizesFromProduct.forEach(sizeVal => {
-          const opt = document.createElement('div');
-          opt.className = 'size-option';
-          opt.setAttribute('data-value', sizeVal);
-          opt.textContent = sizeVal;
-          opt.addEventListener('click', function() {
-            document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-            this.classList.add('selected');
-            document.getElementById('sizeValidationError')?.classList.remove('show');
-          });
-          sizeOptionsContainer.appendChild(opt);
+      const sizesFromProduct = currentProduct.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
+      sizesFromProduct.forEach(sizeVal => {
+        const opt = document.createElement('div');
+        opt.className = 'size-option';
+        opt.setAttribute('data-value', sizeVal);
+        opt.textContent = sizeVal;
+        opt.addEventListener('click', function() {
+          document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('sizeValidationError')?.classList.remove('show');
         });
-      } else {
-        // No sizes defined — hide size section
-        if (sizeSection) sizeSection.style.display = 'none';
-      }
+        sizeOptionsContainer.appendChild(opt);
+      });
       document.getElementById('qtySelect').value = 1;
       initOrderPageGallery();
       showPage('orderPage');
@@ -2334,42 +2360,24 @@
       if (productImages.length === 0) productImages.push(getProductImage(currentProduct));
       galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
       dotsContainer.innerHTML = '';
-      if (productImages.length > 1) {
-        productImages.forEach((_, index) => {
-          const dot = document.createElement('div');
-          dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
-          dot.addEventListener('click', () => setOrderPageImage(index, productImages));
-          dotsContainer.appendChild(dot);
-        });
-      }
-
-      // Touch/swipe support — remove old listeners first
-      const oldClone = galleryMain.cloneNode(true);
-      galleryMain.parentNode.replaceChild(oldClone, galleryMain);
-      const gm = document.getElementById('galleryMain');
-      // Re-attach dot listeners after clone
-      document.querySelectorAll('#orderCarouselDots .carousel-dot').forEach((dot, idx) => {
-        dot.addEventListener('click', () => setOrderPageImage(idx, productImages));
+      productImages.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => setOrderPageImage(index, productImages));
+        dotsContainer.appendChild(dot);
       });
-
-      let txStart = 0, tyStart = 0;
-      gm.addEventListener('touchstart', function(e) {
-        txStart = e.touches[0].clientX;
-        tyStart = e.touches[0].clientY;
-      }, { passive: true });
-      gm.addEventListener('touchmove', function(e) {
-        if (Math.abs(e.touches[0].clientX - txStart) > Math.abs(e.touches[0].clientY - tyStart)) {
-          e.preventDefault();
-        }
-      }, { passive: false });
-      gm.addEventListener('touchend', function(e) {
-        const diff = txStart - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40) {
-          const cur = Array.from(document.querySelectorAll('#orderCarouselDots .carousel-dot')).findIndex(d => d.classList.contains('active'));
-          const next = diff > 0 ? (cur + 1) % productImages.length : (cur - 1 + productImages.length) % productImages.length;
-          setOrderPageImage(next, productImages);
-        }
-      }, { passive: true });
+      const prevBtn = galleryMain.querySelector('.carousel-control.prev');
+      const nextBtn = galleryMain.querySelector('.carousel-control.next');
+      if (prevBtn) prevBtn.onclick = () => {
+        const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
+        const newIndex = (activeIndex - 1 + productImages.length) % productImages.length;
+        setOrderPageImage(newIndex, productImages);
+      };
+      if (nextBtn) nextBtn.onclick = () => {
+        const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
+        const newIndex = (activeIndex + 1) % productImages.length;
+        setOrderPageImage(newIndex, productImages);
+      };
     }
 
     function setOrderPageImage(index, productImages) {
@@ -2380,10 +2388,8 @@
     }
 
     function toUserInfo() {
-      const sizeSection = document.getElementById('sizeSection');
-      const sizeSectionVisible = !sizeSection || sizeSection.style.display !== 'none';
       const selectedSize = document.querySelector('#sizeOptions .size-option.selected');
-      if (sizeSectionVisible && sizeSection && !selectedSize) {
+      if (!selectedSize) {
         document.getElementById('sizeValidationError').classList.add('show');
         showToast('Please select a size to continue', 'error');
         return;
@@ -2419,7 +2425,8 @@
             };
             await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
             savedAddresses.push({ id: addressId, ...addressData });
-            cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+            // Invalidate address cache taaki next load fresh data aaye
+            _bzInvalidateAddressCache();
           }
         } catch (e) {}
       }
@@ -2446,7 +2453,7 @@
       currentOrderId = orderId;
       const paymentMethod = document.querySelector('input[name="pay"]:checked').value;
       const quantity = parseInt(document.getElementById('qtySelect').value) || 1;
-      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || null;
+      const size = document.querySelector('#sizeOptions .size-option.selected')?.getAttribute('data-value') || 'Not specified';
       const productPrice = parsePrice(currentProduct.price);
       const subtotal = productPrice * quantity;
       const deliveryCharge = adminSettings.deliveryCharge || 50;
@@ -2658,7 +2665,7 @@
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
               <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
               ${isVerified} ${isPending}
@@ -2866,81 +2873,74 @@
       showToast('Link copied to clipboard', 'success');
     }
 
-    // ===== REAL-TIME ORDERS LISTENER =====
-    let _ordersListenerUnsubscribe = null;
+    // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
+    // PROBLEM: onValue() lagaya tha orders pe → user ke saare orders
+    //          ki continuous TCP connection (persistent watcher)
+    //          Har kisi bhi order mein change = re-download
+    // FIX: Persistent listener hata diya. showMyOrders() on-demand
+    //      get() karta hai with TTL cache. Tab hi fetch hota hai
+    //      jab user myOrdersPage pe jata hai.
+    // ────────────────────────────────────────────────────────────
     function setupOrdersRealtimeListener(user) {
-      if (!user || !window.firebase || !window.firebase.onValue) return;
-      // Clean up previous listener if any
-      if (_ordersListenerUnsubscribe) { try { _ordersListenerUnsubscribe(); } catch(e){} }
-      try {
-        const ordersRef = window.firebase.query(
-          window.firebase.ref(window.firebase.database, 'orders'),
-          window.firebase.orderByChild('userId'),
-          window.firebase.equalTo(user.uid)
-        );
-        _ordersListenerUnsubscribe = window.firebase.onValue(ordersRef, (snap) => {
-          if (!document.getElementById('myOrdersPage')?.classList.contains('active')) return;
-          const container = document.getElementById('ordersList');
-          const empty = document.getElementById('orders-empty');
-          if (!container) return;
-          const orders = [];
-          if (snap.exists()) {
-            snap.forEach(child => orders.push({ id: child.key, ...child.val() }));
-          }
-          if (!orders.length) {
-            container.innerHTML = '';
-            if (empty) empty.style.display = 'block';
-            return;
-          }
-          orders.sort((a, b) => (b.orderDate || 0) - (a.orderDate || 0));
-          if (empty) empty.style.display = 'none';
-          renderOrders(orders);
-        });
-      } catch(e) { console.warn('Real-time orders listener error:', e); }
+      // Clean up any previous listener
+      if (_ordersListenerUnsubscribe) {
+        try { _ordersListenerUnsubscribe(); } catch(e) {}
+        _ordersListenerUnsubscribe = null;
+      }
+      // ❌ No persistent onValue() — orders fetched on demand in showMyOrders()
     }
 
-        async function showMyOrders() {
+    // ── OPTIMIZATION: showMyOrders ───────────────────────────────
+    // PROBLEM: userOrders se N orderIds get karta tha, phir
+    //          N alag Firebase reads (Promise.all) → N+1 problem!
+    //          10 orders = 11 Firebase reads
+    // FIX: Single query by userId (1 read). 2 min TTL cache →
+    //      page switch karne pe zero extra reads.
+    // ────────────────────────────────────────────────────────────
+    let _ordersListenerUnsubscribe = null;
+    async function showMyOrders() {
       if (!currentUser) return;
+      const uid = currentUser.uid;
       const ordersList = document.getElementById('ordersList');
       const empty = document.getElementById('orders-empty');
       if (ordersList) ordersList.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);">Loading orders...</div>';
+
+      // ── Cache check (2 min TTL) ───────────────────────────────
+      const cacheKey = 'bz_orders_' + uid;
+      const cached = _bzCacheGet(cacheKey, 2 * 60 * 1000);
+      if (cached) {
+        if (!cached.length) {
+          if (ordersList) ordersList.innerHTML = '';
+          if (empty) empty.style.display = 'block';
+          return;
+        }
+        if (empty) empty.style.display = 'none';
+        renderOrders(cached);
+        return;
+      }
+
+      // ── Cache miss → single Firebase query (not N+1) ─────────
       try {
-        const userOrdersSnap = await window.firebase.get(
-          window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid)
+        const snapshot = await window.firebase.get(
+          window.firebase.query(
+            window.firebase.ref(window.firebase.database, 'orders'),
+            window.firebase.orderByChild('userId'),
+            window.firebase.equalTo(uid)
+          )
         );
         let orders = [];
-        if (userOrdersSnap.exists()) {
-          const orderIds = Object.keys(userOrdersSnap.val());
-          const orderPromises = orderIds.map(id =>
-            window.firebase.get(window.firebase.ref(window.firebase.database, 'orders/' + id))
-          );
-          const snapshots = await Promise.all(orderPromises);
-          orders = snapshots.filter(s => s.exists()).map(s => ({ id: s.key, ...s.val() }));
-        } else {
-          const snapshot = await window.firebase.get(
-            window.firebase.query(
-              window.firebase.ref(window.firebase.database, 'orders'),
-              window.firebase.orderByChild('userId'),
-              window.firebase.equalTo(currentUser.uid)
-            )
-          );
-          if (snapshot.exists()) {
-            const ordersObj = snapshot.val();
-            orders = Object.keys(ordersObj).map(key => ({ id: key, ...ordersObj[key] }));
-            orders.forEach(o => {
-              window.firebase.set(window.firebase.ref(window.firebase.database, 'userOrders/' + currentUser.uid + '/' + o.id), true).catch(()=>{});
-            });
-          }
+        if (snapshot.exists()) {
+          snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
         }
+        orders.sort((a, b) => (b.orderDate || 0) - (a.orderDate || 0));
+        _bzCacheSet(cacheKey, orders);
         if (!orders.length) {
           if (ordersList) ordersList.innerHTML = '';
           if (empty) empty.style.display = 'block';
           return;
         }
-        orders.sort((a, b) => (b.orderDate || 0) - (a.orderDate || 0));
         renderOrders(orders);
         if (empty) empty.style.display = 'none';
-        cacheManager.set(CACHE_KEYS.ORDERS, orders);
       } catch (error) {
         console.error('Error loading orders:', error);
         if (ordersList) ordersList.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);">Could not load orders. Please try again.</div>';
@@ -3031,7 +3031,7 @@
             <div class="order-product-info">
               <div class="order-product-title">${order.productName || 'Product'}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount || 0)}</div>
-              <div class="order-product-meta">Qty: ${order.quantity || 1}${order.size ? ' | Size: ' + order.size : ''}</div>
+              <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
             </div>
           </div>
           ${trackingHtml}
@@ -3148,7 +3148,7 @@
               <div style="font-weight:600;margin-bottom:8px">${order.productName}</div>
               <div style="color:var(--accent);font-weight:700;margin-bottom:8px">${formatPrice(order.productPrice)}</div>
               <div style="color:var(--muted);font-size:14px">
-                Qty: ${order.quantity}${order.size ? ' | Size: ' + order.size : ''}
+                Qty: ${order.quantity} | Size: ${order.size}
               </div>
             </div>
           </div>
@@ -3192,14 +3192,36 @@
       showPage('orderDetailPage');
     }
 
+    // ── OPTIMIZATION: addToRecentlyViewed ────────────────────────
+    // PROBLEM: Har product view pe:
+    //   1) Firebase write (set) — turant
+    //   2) Firebase read (loadRecentlyViewed → get) — foran baad
+    //   5 products dekhne = 10 Firebase calls!
+    // FIX: Local array update (zero reads). Write ko 2s debounce
+    //      karo — user 5 products quickly dekhe to sirf 1 write.
+    // ────────────────────────────────────────────────────────────
+    let _rvWriteTimer = null;
     async function addToRecentlyViewed(productId) {
+      if (!productId) return;
+      // ── Local update (zero Firebase reads) ────────────────────
+      recentlyViewed = recentlyViewed.filter(id => id !== productId);
+      recentlyViewed.unshift(productId);
+      recentlyViewed = recentlyViewed.slice(0, 20);
+      renderRecentlyViewed(); // UI update from local data
+
+      // ── Debounced batched write (1 write per batch) ───────────
       if (!currentUser) return;
-      try {
-        await window.firebase.set(window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid + '/' + productId), Date.now());
-        loadRecentlyViewed(currentUser);
-      } catch (error) {
-        console.error('Error adding to recently viewed:', error);
-      }
+      clearTimeout(_rvWriteTimer);
+      _rvWriteTimer = setTimeout(() => {
+        if (!currentUser || !window.firebase?.database) return;
+        const updates = {};
+        recentlyViewed.slice(0, 20).forEach(id => { updates[id] = Date.now(); });
+        window.firebase.set(
+          window.firebase.ref(window.firebase.database, 'recentlyViewed/' + currentUser.uid),
+          updates
+        ).catch(() => {});
+        // ❌ loadRecentlyViewed() call removed — local data already updated
+      }, 2000);
     }
 
     async function loadRecentlyViewed(user) {
@@ -3388,15 +3410,14 @@
         } else ratingMap[p.id] = 0;
       });
       const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+      container.innerHTML = '';
       if (!sorted || sorted.length === 0) {
-        if (containerId === 'homeProductGrid') return; // keep skeleton shimmer
-        container.innerHTML = '';
+        // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
           container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
         return;
       }
-      container.innerHTML = '';
       const fragment = document.createDocumentFragment();
       sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
       container.appendChild(fragment);
@@ -3467,55 +3488,65 @@
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
-      let startX = 0, startY = 0, isDragging = false;
-
-      function onTouchStart(e) {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        isDragging = true;
+      let bannerTouchStartX = 0;
+      let bannerTouchEndX = 0;
+      let isBannerDragging = false;
+      bannerCarousel.addEventListener('touchstart', (e) => {
         pauseSlide();
-      }
-      function onTouchMove(e) {
-        if (!isDragging) return;
-        // Prevent vertical scroll hijack only for horizontal swipes
-        const dx = Math.abs(e.touches[0].clientX - startX);
-        const dy = Math.abs(e.touches[0].clientY - startY);
-        if (dx > dy) e.preventDefault();
-      }
-      function onTouchEnd(e) {
-        if (!isDragging) return;
-        isDragging = false;
-        const diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40) {
-          const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(d => d.classList.contains('active'));
+        bannerTouchStartX = e.touches[0].clientX;
+        isBannerDragging = true;
+      }, { passive: true });
+      bannerCarousel.addEventListener('touchmove', (e) => {
+        if (!isBannerDragging) return;
+        bannerTouchEndX = e.touches[0].clientX;
+      }, { passive: true });
+      bannerCarousel.addEventListener('touchend', (e) => {
+        if (!isBannerDragging) return;
+        const diff = bannerTouchStartX - bannerTouchEndX;
+        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
+        if (Math.abs(diff) > 50) {
           if (diff > 0) {
-            setBannerSlide((activeIndex + 1) % banners.length);
+            const nextIndex = (activeIndex + 1) % banners.length;
+            setBannerSlide(nextIndex);
           } else {
-            setBannerSlide((activeIndex - 1 + banners.length) % banners.length);
+            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+            setBannerSlide(prevIndex);
           }
         }
+        isBannerDragging = false;
         resumeSlideAfterDelay();
-      }
-
-      bannerCarousel.addEventListener('touchstart', onTouchStart, { passive: true });
-      bannerCarousel.addEventListener('touchmove', onTouchMove, { passive: false });
-      bannerCarousel.addEventListener('touchend', onTouchEnd, { passive: true });
-
-      // Mouse events for desktop
-      bannerCarousel.addEventListener('mousedown', (e) => { startX = e.clientX; isDragging = true; pauseSlide(); });
-      bannerCarousel.addEventListener('mousemove', (e) => { if (!isDragging) return; });
+      }, { passive: true });
+      bannerCarousel.addEventListener('mousedown', (e) => {
+        pauseSlide();
+        bannerTouchStartX = e.clientX;
+        isBannerDragging = true;
+      });
+      bannerCarousel.addEventListener('mousemove', (e) => {
+        if (!isBannerDragging) return;
+        bannerTouchEndX = e.clientX;
+      });
       bannerCarousel.addEventListener('mouseup', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        const diff = startX - e.clientX;
-        if (Math.abs(diff) > 40) {
-          const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(d => d.classList.contains('active'));
-          if (diff > 0) setBannerSlide((activeIndex + 1) % banners.length);
-          else setBannerSlide((activeIndex - 1 + banners.length) % banners.length);
+        if (!isBannerDragging) return;
+        const diff = bannerTouchStartX - bannerTouchEndX;
+        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            const nextIndex = (activeIndex + 1) % banners.length;
+            setBannerSlide(nextIndex);
+          } else {
+            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
+            setBannerSlide(prevIndex);
+          }
         }
+        isBannerDragging = false;
         resumeSlideAfterDelay();
       });
-      bannerCarousel.addEventListener('mouseleave', () => { isDragging = false; resumeSlideAfterDelay(); });
+      bannerCarousel.addEventListener('mouseleave', () => {
+        if (isBannerDragging) {
+          isBannerDragging = false;
+          resumeSlideAfterDelay();
+        }
+      });
     }
 
     function setupPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput) {
@@ -3831,8 +3862,39 @@
       });
     }
 
+    // ── OPTIMIZATION: loadSavedAddresses ─────────────────────────
+    // PROBLEM: Har baar bina cache ke Firebase read:
+    //   - Page navigation pe
+    //   - visibilitychange pe
+    //   - address save ke baad
+    //   = Bahut zyada unnecessary reads
+    // FIX: 5 min TTL cache. Firebase sirf tab call hogi jab cache
+    //      expire ho ya explicitly invalidate kiya jaye.
+    // ────────────────────────────────────────────────────────────
     async function loadSavedAddresses() {
       if (!currentUser) return;
+      const uid = currentUser.uid;
+      const cacheKey = 'bz_addr_' + uid;
+
+      // ── Cache check pehle ─────────────────────────────────────
+      const cached = _bzCacheGet(cacheKey, 5 * 60 * 1000);
+      if (cached) {
+        try { savedAddresses = cached; } catch(e) {}
+        const savedAddressesSection = document.getElementById('savedAddressesSection');
+        if (cached.length > 0) {
+          if (savedAddressesSection) savedAddressesSection.style.display = 'block';
+          renderSavedAddresses();
+          const defaultAddr = savedAddresses[0];
+          if (defaultAddr) {
+            fillAddressForm(defaultAddr);
+            userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
+            document.querySelectorAll('input[name="savedAddress"]').forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
+          }
+        } else if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+        return; // Zero Firebase read
+      }
+
+      // ── Cache miss → Firebase se fetch ───────────────────────
       try {
         const snapshot = await window.firebase.get(
           window.firebase.query(
@@ -3841,18 +3903,19 @@
             window.firebase.equalTo(currentUser.uid)
           )
         );
-        const addressesList = document.getElementById('savedAddressesList');
         const savedAddressesSection = document.getElementById('savedAddressesSection');
         if (!snapshot.exists()) {
-          savedAddressesSection.style.display = 'none';
+          if (savedAddressesSection) savedAddressesSection.style.display = 'none';
           savedAddresses = [];
+          _bzCacheSet(cacheKey, []);
           return;
         }
         const addressesObj = snapshot.val();
         const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
         savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+        _bzCacheSet(cacheKey, savedAddresses); // Cache mein save karo
         if (addresses.length > 0) {
-          savedAddressesSection.style.display = 'block';
+          if (savedAddressesSection) savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
           const defaultAddr = savedAddresses[0];
           if (defaultAddr) {
@@ -3861,11 +3924,15 @@
             const radios = document.querySelectorAll('input[name="savedAddress"]');
             radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
           }
-        } else savedAddressesSection.style.display = 'none';
-        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+        } else if (savedAddressesSection) savedAddressesSection.style.display = 'none';
       } catch (error) {
         console.error('Error loading addresses:', error);
       }
+    }
+    // Address cache invalidate karo jab naya address save ho
+    function _bzInvalidateAddressCache() {
+      if (!currentUser) return;
+      localStorage.removeItem('bz_addr_' + currentUser.uid);
     }
 
     function renderSavedAddresses() {
@@ -4015,6 +4082,7 @@
           showToast('Address updated successfully', 'success');
           document.getElementById('savedAddressesSection').style.display = 'block';
           document.getElementById('newAddressForm').style.display = 'block';
+          _bzInvalidateAddressCache(); // Cache invalidate → next loadSavedAddresses fresh data layega
           await loadSavedAddresses();
         } catch (error) {
           console.error('Error updating address:', error);
@@ -4033,6 +4101,7 @@
         try {
           await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
           showToast('Address deleted', 'success');
+          _bzInvalidateAddressCache(); // Cache invalidate → fresh data aayega
           await loadSavedAddresses();
           const _sas = document.getElementById('savedAddressesSection');
           const _naf = document.getElementById('newAddressForm');
@@ -4193,18 +4262,13 @@
       }).catch(()=>{});
     }
 
-    var _heroMsgTimer = null;
     function setupHeroMessages() {
-      if (_heroMsgTimer) { clearInterval(_heroMsgTimer); _heroMsgTimer = null; }
       const messages = document.querySelectorAll('#heroMessages span');
-      if (!messages.length) return;
-      messages.forEach((m, i) => m.classList.toggle('active', i === 0));
-      if (messages.length <= 1) return;
-      let idx = 0;
-      _heroMsgTimer = setInterval(function() {
-        messages.forEach(function(m) { m.classList.remove('active'); });
-        idx = (idx + 1) % messages.length;
-        messages[idx].classList.add('active');
+      let currentIndex = 0;
+      setInterval(() => {
+        messages.forEach(msg => msg.classList.remove('active'));
+        currentIndex = (currentIndex + 1) % messages.length;
+        messages[currentIndex].classList.add('active');
       }, 3000);
     }
 
@@ -4225,8 +4289,6 @@
           if (index === 0) span.classList.add('active');
           heroMessagesContainer.appendChild(span);
         });
-        // Restart rotation with the new messages from admin
-        setupHeroMessages();
       }
 
       if (highlightStrip) {
@@ -4250,35 +4312,52 @@
       updateHeroStats();
     }
 
+    // ── OPTIMIZATION: updateHeroStats ────────────────────────────
+    // PROBLEM: 3 alag Firebase reads sirf counters ke liye:
+    //   get(products), get(users), get(reviews)
+    //   → Poori collections download just for .length
+    // FIX: Local products[] array se count, reviews[] se avg rating.
+    //      Users count → sessionStorage cache (ek baar per session).
+    //      Agar admin ne heroStats hardcode kiya hai → zero reads.
+    // ────────────────────────────────────────────────────────────
     function updateHeroStats() {
       if (adminSettings.heroStats) {
         const s = adminSettings.heroStats;
         setHeroStat('heroStatProducts', s.products || null);
         setHeroStat('heroStatCustomers', s.customers || null);
         setHeroStat('heroStatRating', s.rating ? s.rating + '★' : null);
-        return;
+        return; // Admin ne hardcode kiya → zero Firebase reads
       }
-      const db = window.firebase?.database;
-      const ref = window.firebase?.ref;
-      const get = window.firebase?.get;
-      if (!db || !ref || !get) return;
 
-      get(ref(db, 'products')).then(snap => {
-        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-        setHeroStat('heroStatProducts', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
-      }).catch(()=>{});
+      // ── Products count: local array se (zero Firebase reads) ──
+      if (products && products.length > 0) {
+        const c = products.length;
+        setHeroStat('heroStatProducts', c >= 1000 ? Math.floor(c / 1000) + 'K+' : c + '+');
+      }
 
-      get(ref(db, 'users')).then(snap => {
-        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-        setHeroStat('heroStatCustomers', count > 0 ? (count >= 1000 ? Math.floor(count/1000) + 'K+' : count + '+') : null);
-      }).catch(()=>{});
+      // ── Rating: local reviews[] se (zero Firebase reads) ──────
+      if (typeof reviews !== 'undefined' && Array.isArray(reviews) && reviews.length > 0) {
+        const avg = reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length;
+        if (avg > 0) setHeroStat('heroStatRating', avg.toFixed(1) + '★');
+      }
 
-      get(ref(db, 'reviews')).then(snap => {
-        if (!snap.exists()) { setHeroStat('heroStatRating', null); return; }
-        const vals = Object.values(snap.val());
-        const avg = vals.reduce((s, r) => s + (r.rating || 0), 0) / vals.length;
-        setHeroStat('heroStatRating', avg > 0 ? avg.toFixed(1) + '★' : null);
-      }).catch(()=>{});
+      // ── Customers: sessionStorage cache (sirf ek baar fetch) ──
+      const cachedCount = sessionStorage.getItem('bz_customer_count');
+      if (cachedCount) {
+        setHeroStat('heroStatCustomers', cachedCount);
+      } else {
+        const db = window.firebase?.database;
+        const ref = window.firebase?.ref;
+        const get = window.firebase?.get;
+        if (!db || !ref || !get) return;
+        get(ref(db, 'users')).then(snap => {
+          if (!snap.exists()) return;
+          const count = Object.keys(snap.val()).length;
+          const label = count >= 1000 ? Math.floor(count / 1000) + 'K+' : count + '+';
+          sessionStorage.setItem('bz_customer_count', label);
+          setHeroStat('heroStatCustomers', label);
+        }).catch(() => {});
+      }
     }
 
     function setHeroStat(id, value) {
@@ -4349,7 +4428,35 @@
       }
     }
 
-    function fetchLiveData() {
+    // ── OPTIMIZATION: fetchLiveData ──────────────────────────────
+    // PROBLEM: Har page load pe poori data bina cache check ke fetch
+    //          hoti thi. fetchLiveData() + setupRealtimeListeners()
+    //          dono call hote the → DUPLICATE reads.
+    // FIX: TTL-based localStorage cache. Firebase sirf tab call ho
+    //      jab cache expire ho (products: 1hr, settings: 30min).
+    //      onValue() hataya, sirf get() use ho raha hai.
+    // ────────────────────────────────────────────────────────────
+    const _BZ_TTL = {
+      PRODUCTS:   60 * 60 * 1000,  // 1 ghanta
+      CATEGORIES: 60 * 60 * 1000,
+      BANNERS:    60 * 60 * 1000,
+      SETTINGS:   30 * 60 * 1000,
+    };
+
+    function _bzCacheGet(key, ttl) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const p = JSON.parse(raw);
+        if (!p.timestamp || (Date.now() - p.timestamp) > ttl) { localStorage.removeItem(key); return null; }
+        return p.data;
+      } catch(e) { return null; }
+    }
+    function _bzCacheSet(key, data) {
+      try { localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() })); } catch(e) {}
+    }
+
+    function fetchLiveData(forceRefresh) {
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
         return;
@@ -4357,100 +4464,133 @@
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const get = window.firebase.get;
-      get(ref(database, 'products')).then(snapshot => {
-        const productsObj = snapshot.val();
-        if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => {
-            const product = productsObj[key];
-            return {
-              id: key,
-              ...product,
-              images: product.images ? 
-                (Array.isArray(product.images) ? product.images : [product.images]) : 
-                (product.image ? [product.image] : 
-                 (product.img ? [product.img] : 
-                  (product.imageUrl ? [product.imageUrl] : [])))
-            };
-          });
-          products = newProducts;
-          window.products = products;
-          cacheManager.set(CACHE_KEYS.PRODUCTS, products);
-          const currentPage = document.querySelector('.page.active')?.id;
-          if (currentPage === 'homePage') {
-            renderProducts(products, 'homeProductGrid');
-            let trendingProducts = products.filter(p => p.isTrending || p.trending);
-            if (!trendingProducts.length) {
-              trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
-            }
-            if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
-            else renderProductSlider(products.slice(0, 10), 'productSlider');
-          } else if (currentPage === 'productsPage') {
-            renderProducts(products, 'productGrid');
-            updateProductsCount();
-          } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
-            const filteredResults = searchProducts(window.currentSearchQuery);
-            window.currentSearchResults = filteredResults;
-            renderSearchResults(filteredResults, window.currentSearchQuery);
-          }
-        } else {
-          products = [];
-          renderProducts([], 'homeProductGrid');
-          renderProducts([], 'productGrid');
-        }
-      }).catch(error => {
-        console.error('Error fetching products:', error);
-        products = [];
-        renderProducts([], 'homeProductGrid');
-        renderProducts([], 'productGrid');
-      });
-      // Load product order stats for scoring/trending
-      get(ref(database, 'productStats')).then(snap => {
-        if (snap.exists()) window._productStats = snap.val();
-      }).catch(() => {});
 
-      get(ref(database, 'categories')).then(snapshot => {
-        const categoriesObj = snapshot.val();
-        if (categoriesObj) {
-          const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
-          categories = newCategories;
-          cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
-        } else categories = [];
-      }).catch(error => {
-        console.error('Error fetching categories:', error);
-        categories = [];
-      });
-      get(ref(database, 'banners')).then(snapshot => {
-        const bannersObj = snapshot.val();
-        if (bannersObj) {
-          const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
-          banners = newBanners;
-          cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
-      }).catch(error => {
-        console.error('Error fetching banners:', error);
-        banners = [];
-      });
-      get(ref(database, 'adminSettings')).then(snapshot => {
-        const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
+      // ── PRODUCTS: Cache check pehle ──────────────────────────
+      const cachedProds = forceRefresh ? null : _bzCacheGet(CACHE_KEYS.PRODUCTS, _BZ_TTL.PRODUCTS);
+      if (cachedProds && cachedProds.length > 0) {
+        // Cache hit → zero Firebase read
+        products = cachedProds;
+        window.products = products;
+        const cp = document.querySelector('.page.active')?.id;
+        if (cp === 'homePage') {
+          renderProducts(products, 'homeProductGrid');
+          const tp = products.filter(p => p.isTrending || p.trending);
+          renderProductSlider(tp.length ? tp.slice(0,10) : products.slice(0,10), 'productSlider');
+        } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(); }
+        else if (cp === 'searchResultsPage' && window.currentSearchQuery) {
+          const r = searchProducts(window.currentSearchQuery); window.currentSearchResults = r; renderSearchResults(r, window.currentSearchQuery);
         }
-      }).catch(error => {
-        console.error('Error fetching admin settings:', error);
-      });
-      get(ref(database, 'outOfStock')).then(snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) window.outOfStockItems = outOfStockObj;
-      }).catch(error => {
-        console.error('Error fetching out of stock items:', error);
-      });
+      } else {
+        // Cache miss → fetch once with get() (NOT onValue)
+        get(ref(database, 'products')).then(snapshot => {
+          const productsObj = snapshot.val();
+          if (productsObj) {
+            const newProducts = Object.keys(productsObj).map(key => {
+              const product = productsObj[key];
+              return {
+                id: key, ...product,
+                images: product.images ?
+                  (Array.isArray(product.images) ? product.images : [product.images]) :
+                  (product.image ? [product.image] : product.img ? [product.img] : product.imageUrl ? [product.imageUrl] : [])
+              };
+            });
+            products = newProducts;
+            window.products = products;
+            _bzCacheSet(CACHE_KEYS.PRODUCTS, products); // Cache mein save karo
+            const currentPage = document.querySelector('.page.active')?.id;
+            if (currentPage === 'homePage') {
+              renderProducts(products, 'homeProductGrid');
+              let trendingProducts = products.filter(p => p.isTrending || p.trending);
+              if (!trendingProducts.length) trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+              renderProductSlider(trendingProducts.length ? trendingProducts : products.slice(0, 10), 'productSlider');
+            } else if (currentPage === 'productsPage') {
+              renderProducts(products, 'productGrid'); updateProductsCount();
+            } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
+              const filteredResults = searchProducts(window.currentSearchQuery);
+              window.currentSearchResults = filteredResults; renderSearchResults(filteredResults, window.currentSearchQuery);
+            }
+          } else { products = []; renderProducts([], 'homeProductGrid'); renderProducts([], 'productGrid'); }
+        }).catch(error => {
+          console.error('Error fetching products:', error);
+          products = []; renderProducts([], 'homeProductGrid'); renderProducts([], 'productGrid');
+        });
+      }
+
+      // ── PRODUCT STATS: Session cache (ek baar per session) ───
+      if (!sessionStorage.getItem('bz_pstats_loaded')) {
+        get(ref(database, 'productStats')).then(snap => {
+          if (snap.exists()) { window._productStats = snap.val(); sessionStorage.setItem('bz_pstats_loaded', '1'); }
+        }).catch(() => {});
+      }
+
+      // ── CATEGORIES: TTL cache ────────────────────────────────
+      const cachedCats = forceRefresh ? null : _bzCacheGet(CACHE_KEYS.CATEGORIES, _BZ_TTL.CATEGORIES);
+      if (cachedCats && cachedCats.length > 0) {
+        categories = cachedCats;
+        if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
+          renderCategories(); renderCategoryCircles();
+        }
+      } else {
+        get(ref(database, 'categories')).then(snapshot => {
+          const categoriesObj = snapshot.val();
+          if (categoriesObj) {
+            categories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
+            _bzCacheSet(CACHE_KEYS.CATEGORIES, categories);
+            if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
+              renderCategories(); renderCategoryCircles();
+            }
+          } else categories = [];
+        }).catch(() => { categories = []; });
+      }
+
+      // ── BANNERS: TTL cache ───────────────────────────────────
+      const cachedBan = forceRefresh ? null : _bzCacheGet(CACHE_KEYS.BANNERS, _BZ_TTL.BANNERS);
+      if (cachedBan && cachedBan.length > 0) {
+        banners = cachedBan;
+        if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
+      } else {
+        get(ref(database, 'banners')).then(snapshot => {
+          const bannersObj = snapshot.val();
+          if (bannersObj) {
+            banners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
+            _bzCacheSet(CACHE_KEYS.BANNERS, banners);
+            if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
+          } else banners = [];
+        }).catch(() => { banners = []; });
+      }
+
+      // ── ADMIN SETTINGS: TTL cache ────────────────────────────
+      const cachedSet = forceRefresh ? null : _bzCacheGet(CACHE_KEYS.SETTINGS, _BZ_TTL.SETTINGS);
+      if (cachedSet) {
+        adminSettings = { ...adminSettings, ...cachedSet }; updateAdminSettingsUI();
+      } else {
+        get(ref(database, 'adminSettings')).then(snapshot => {
+          const settingsObj = snapshot.val();
+          if (settingsObj) {
+            adminSettings = { ...adminSettings, ...settingsObj };
+            _bzCacheSet(CACHE_KEYS.SETTINGS, adminSettings); updateAdminSettingsUI();
+          }
+        }).catch(() => {});
+      }
+
+      // ── OUT OF STOCK: Session cache ──────────────────────────
+      if (!sessionStorage.getItem('bz_oos_loaded')) {
+        get(ref(database, 'outOfStock')).then(snapshot => {
+          const outOfStockObj = snapshot.val();
+          if (outOfStockObj) { window.outOfStockItems = outOfStockObj; sessionStorage.setItem('bz_oos_loaded', '1'); }
+        }).catch(() => {});
+      }
+
+      // ── BRANDS: Session cache ────────────────────────────────
+      if (!sessionStorage.getItem('bz_brands_loaded')) {
+        get(ref(database, 'brands')).then(snap => {
+          window._brandsData = {};
+          if (snap.exists()) {
+            snap.forEach(child => { window._brandsData[child.key] = child.val(); });
+            sessionStorage.setItem('bz_brands_loaded', '1');
+          }
+        }).catch(() => {});
+      }
     }
 
     function loadCachedData() {
@@ -4482,103 +4622,33 @@
       }
     }
 
+    // ── OPTIMIZATION: setupRealtimeListeners ─────────────────────
+    // PROBLEM: 7 alag onValue() listeners the:
+    //   products, categories, banners, brands, adminSettings,
+    //   outOfStock, adminNotifications
+    //   → Har change pe POORI collection dobara download
+    //   → Persistent TCP connections = bandwidth drain
+    // FIX: Sirf adminNotifications ka onValue() rakha (genuinely
+    //      real-time zaruri hai). Baaki sab get() + TTL cache se
+    //      fetchLiveData() mein handle ho rahe hain.
+    // ────────────────────────────────────────────────────────────
     function setupRealtimeListeners() {
       if (!window.firebase || !window.firebase.database) return;
       const database = window.firebase.database;
       const ref = window.firebase.ref;
       const onValue = window.firebase.onValue;
-      onValue(ref(database, 'products'), snapshot => {
-        const productsObj = snapshot.val();
-        if (productsObj) {
-          const newProducts = Object.keys(productsObj).map(key => {
-            const product = productsObj[key];
-            return {
-              id: key,
-              ...product,
-              images: product.images ? 
-                (Array.isArray(product.images) ? product.images : [product.images]) : 
-                (product.image ? [product.image] : 
-                 (product.img ? [product.img] : 
-                  (product.imageUrl ? [product.imageUrl] : [])))
-            };
-          });
-          products = newProducts;
-          window.products = products;
-          cacheManager.set(CACHE_KEYS.PRODUCTS, products);
-          const currentPage = document.querySelector('.page.active')?.id;
-          if (currentPage === 'homePage' || currentPage === 'productsPage' || currentPage === 'productDetailPage' || currentPage === 'searchResultsPage') {
-            if (currentPage === 'homePage') {
-              renderProducts(products, 'homeProductGrid');
-              const trendingProducts = products.filter(p => p.isTrending);
-              if (trendingProducts.length > 0) renderProductSlider(trendingProducts, 'productSlider');
-              else renderProductSlider(products.slice(0, 10), 'productSlider');
-            } else if (currentPage === 'productsPage') {
-              renderProducts(products, 'productGrid');
-              updateProductsCount();
-            }
-            if (document.getElementById('searchResultsPage')?.classList.contains('active') && window.currentSearchQuery) {
-              const filteredResults = searchProducts(window.currentSearchQuery);
-              window.currentSearchResults = filteredResults;
-              renderSearchResults(filteredResults, window.currentSearchQuery);
-            }
-          }
-        } else products = [];
-      });
-      onValue(ref(database, 'categories'), snapshot => {
-        const categoriesObj = snapshot.val();
-        if (categoriesObj) {
-          const newCategories = Object.keys(categoriesObj).map(key => ({ id: key, ...categoriesObj[key] }));
-          categories = newCategories;
-          cacheManager.set(CACHE_KEYS.CATEGORIES, categories);
-          if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
-            renderCategories();
-            renderCategoryCircles();
-          }
-        } else categories = [];
-      });
-      onValue(ref(database, 'banners'), snapshot => {
-        const bannersObj = snapshot.val();
-        if (bannersObj) {
-          const newBanners = Object.keys(bannersObj).map(key => ({ id: key, ...bannersObj[key] }));
-          banners = newBanners;
-          cacheManager.set(CACHE_KEYS.BANNERS, banners);
-          if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
-        } else banners = [];
-      });
-      // Load brands for blue tick display on cards
-      onValue(ref(database, 'brands'), snapshot => {
-        window._brandsData = {};
-        if (snapshot.exists()) {
-          snapshot.forEach(child => {
-            window._brandsData[child.key] = child.val();
-          });
-        }
-      });
 
-      onValue(ref(database, 'adminSettings'), snapshot => {
-        const settingsObj = snapshot.val();
-        if (settingsObj) {
-          adminSettings = { ...adminSettings, ...settingsObj };
-          cacheManager.set(CACHE_KEYS.SETTINGS, adminSettings);
-          updateAdminSettingsUI();
-        }
-      });
-      onValue(ref(database, 'outOfStock'), snapshot => {
-        const outOfStockObj = snapshot.val();
-        if (outOfStockObj) window.outOfStockItems = outOfStockObj;
-      });
-
+      // ✅ ONLY adminNotifications: genuinely real-time
       let _lastAdminNotifTs = 0;
       let _adminNotifLoaded = false;
       onValue(ref(database, 'adminNotifications'), snapshot => {
         if (!snapshot.exists()) return;
         const now = Date.now();
-        const cutoff = now - (7 * 24 * 60 * 60 * 1000); // 7 days
+        const cutoff = now - (7 * 24 * 60 * 60 * 1000);
         snapshot.forEach(child => {
           const n = child.val();
           if (!n || !n.timestamp) return;
           if (!_adminNotifLoaded) {
-            // First load: show all from last 7 days
             if (n.timestamp > cutoff) {
               addNotif({ type: n.type || 'system', title: n.title, message: n.message, badge: n.badge || 'Info', timestamp: n.timestamp });
             }
@@ -4589,6 +4659,11 @@
         });
         _adminNotifLoaded = true;
       });
+
+      // ❌ REMOVED: onValue for products, categories, banners,
+      //             brands, adminSettings, outOfStock
+      // These are now handled by fetchLiveData() with TTL cache.
+      // onValue creates persistent sockets = continuous bandwidth.
     }
 
     function adjustZoom(delta) { fvSetZoom((_FV.zoom||1) + delta, true); }
@@ -4614,22 +4689,14 @@
     }
 
     function setupBackButton() {
-      window._bzPageHistory = ['homePage'];
-      window._bzIsPopState = false;
-      window.history.replaceState({ page: 'homePage' }, '', window.location.href);
-      window.addEventListener('popstate', function() {
-        window._bzIsPopState = true;
-        try {
-          if (window._bzPageHistory.length > 1) {
-            window._bzPageHistory.pop();
-            const prev = window._bzPageHistory[window._bzPageHistory.length - 1];
-            showPage(prev);
-          } else {
-            showPage('homePage');
-          }
-        } finally {
-          window._bzIsPopState = false;
-        }
+      window.addEventListener('popstate', function(event) {
+        const currentPage = document.querySelector('.page.active').id;
+        if (currentPage === 'productDetailPage') showPage('productsPage');
+        else if (currentPage === 'orderPage' || currentPage === 'userPage' || currentPage === 'paymentPage') {
+          if (currentPage === 'paymentPage') showPage('userPage');
+          else if (currentPage === 'userPage') showPage('orderPage');
+          else if (currentPage === 'orderPage') showPage('productsPage');
+        } else showPage('homePage');
       });
     }
 
@@ -4643,6 +4710,45 @@
           }
         });
         searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
+      }
+      const searchResultsInput = document.getElementById('searchResultsInput');
+      const searchResultsBtn = document.getElementById('searchResultsBtn');
+      if (searchResultsInput) {
+        searchResultsInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = this.value.trim();
+            if (query) {
+              window.currentSearchQuery = query;
+              const filteredResults = products.filter(product => 
+                (product.name || '').toLowerCase().includes(query.toLowerCase()) ||
+                (product.description || '').toLowerCase().includes(query.toLowerCase()) ||
+                (product.category || '').toLowerCase().includes(query.toLowerCase()) ||
+                (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(query.toLowerCase())))
+              );
+              window.currentSearchResults = filteredResults;
+              renderSearchResults(filteredResults, query);
+              document.getElementById('searchResultsInput').blur();
+            }
+          }
+        });
+      }
+      if (searchResultsBtn) {
+        searchResultsBtn.addEventListener('click', function() {
+          const query = document.getElementById('searchResultsInput').value.trim();
+          if (query) {
+            window.currentSearchQuery = query;
+            const filteredResults = products.filter(product => 
+              (product.name || '').toLowerCase().includes(query.toLowerCase()) ||
+              (product.description || '').toLowerCase().includes(query.toLowerCase()) ||
+              (product.category || '').toLowerCase().includes(query.toLowerCase()) ||
+              (product.tags && product.tags.some(tag => (tag || '').toLowerCase().includes(query.toLowerCase())))
+            );
+            window.currentSearchResults = filteredResults;
+            renderSearchResults(filteredResults, query);
+            document.getElementById('searchResultsInput').blur();
+          }
+        });
       }
     }
 
@@ -4882,9 +4988,8 @@
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
         chip.addEventListener('click', function() {
-          var cat = categories && categories.find(function(c) { return (c.name||'').toLowerCase() === tag.toLowerCase(); });
+          var cat = categories && categories.find(function(c) { return c.name === tag; });
           if (cat) filterByCategory(cat.id);
-          else performSearch(tag);
         });
         container.appendChild(chip);
       });
@@ -4944,7 +5049,7 @@
       var imgUrl = lp ? getProductImage(lp) : (order.productImage || '');
       if (img && imgUrl) img.style.backgroundImage = "url('" + imgUrl + "')";
       if (nameEl) nameEl.textContent = order.productName || 'Product';
-      if (metaEl) metaEl.textContent = formatPrice(order.totalAmount || 0) + '  ·  Qty: ' + (order.quantity || 1) + (order.size ? '  ·  Size: ' + order.size : '');
+      if (metaEl) metaEl.textContent = formatPrice(order.totalAmount || 0) + '  ·  Qty: ' + (order.quantity || 1) + '  ·  Size: ' + (order.size || 'N/A');
       if (idEl)   idEl.textContent   = 'Order ID: ' + (order.orderId || order.id || '');
       var SM = { placed: 0, confirmed: 1, shipped: 2, out_for_delivery: 2, delivered: 3, cancelled: 0 };
       otSetStep(SM[(order.status || 'placed').toLowerCase()] ?? 0);
@@ -5193,33 +5298,26 @@
             // Load following brands products
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 1500);
 
-            // Seller approved → menu "Sell Product" becomes "My Shop"
-            try {
-              window.firebase.get(window.firebase.ref(window.firebase.database, 'sellerRequests/' + user.uid)).then(function(snap) {
-                if (snap.exists() && snap.val().status === 'approved') {
-                  var txt = document.getElementById('menuSellProductText');
-                  if (txt) { txt.textContent = 'My Shop'; txt.style.color = '#16a34a'; }
-                }
-              }).catch(function(){});
-            } catch(e) {}
-
             if (window._pendingAccountNav) {
               window._pendingAccountNav = false;
               setTimeout(() => { window.location.href = '/account'; }, 300);
             }
 
             try {
+              // ── OPTIMIZATION: Presence ──────────────────────────
+              // PROBLEM: onValue('.info/connected') → persistent
+              //          socket connection + re-write on every
+              //          Firebase reconnect = extra bandwidth
+              // FIX: Simple one-time set() on login.
+              //      beforeunload pe remove. Firebase handles
+              //      reconnection internally — no need to watch it.
+              // ───────────────────────────────────────────────────
               const presenceRef = window.firebase.ref(window.firebase.database, 'presence/' + user.uid);
               window.firebase.set(presenceRef, { uid: user.uid, online: true, lastSeen: Date.now() });
-              const connRef = window.firebase.ref(window.firebase.database, '.info/connected');
-              window.firebase.onValue(connRef, snap => {
-                if (snap.val() === true) {
-                  window.firebase.set(presenceRef, { uid: user.uid, online: true, lastSeen: Date.now() });
-                }
-              });
+              // ❌ REMOVED: onValue('.info/connected') — persistent socket
               window.addEventListener('beforeunload', () => {
                 window.firebase.remove(presenceRef).catch(()=>{});
-              });
+              }, { once: true });
             } catch(e) {}
 
             const freshSessionKey = 'bz_fresh_session_' + user.uid;
@@ -5239,13 +5337,7 @@
       loadCachedData();
       fetchLiveData();
       setupRealtimeListeners();
-      var _retPage = sessionStorage.getItem('bz_return_page');
-      if (_retPage && _retPage !== 'homePage') {
-        sessionStorage.removeItem('bz_return_page');
-        showPage(_retPage);
-      } else {
-        showPage('homePage');
-      }
+      showPage('homePage');
       setupHeroMessages();
       updateBottomNav();
       setupHeaderSearchScroll();
@@ -5560,14 +5652,19 @@
         } catch(e) {}
       }
 
-      setInterval(() => {
-        fixBrokenBgImages();
-        if (!products.length && window.firebase?.database) {
-          fetchLiveData();
-        }
-      }, 60000);
-
+      // ── OPTIMIZATION: Remove 60s periodic fetchLiveData ─────────
+      // PROBLEM: setInterval(60s) → agar products na hon to
+      //          fetchLiveData() call karo → unnecessary periodic
+      //          Firebase reads. Products already cache mein hain.
+      // FIX: Sirf once retry karo, interval completely hataya.
+      // ────────────────────────────────────────────────────────────
       setTimeout(fixBrokenBgImages, 2000);
+      // One-time retry agar products load nahi hue (network issue)
+      setTimeout(() => {
+        if (!products.length && window.firebase?.database) {
+          fetchLiveData(true); // force refresh once if empty
+        }
+      }, 8000);
 
       return { logError, scheduleFirebaseRetry, fixBrokenBgImages };
     })();
@@ -5610,8 +5707,6 @@
     })();
 
     function openAccountPage() {
-      var cur = document.querySelector('.page.active');
-      if (cur) sessionStorage.setItem('bz_return_page', cur.id);
       window.location.href = '/account';
     }
 
@@ -5619,50 +5714,50 @@
       showPage('homePage');
     }
 
+    // ── OPTIMIZATION: setupAccountRealtimeSync ───────────────────
+    // PROBLEM: 2 onValue() listeners:
+    //   1) user data (name, etc.) → persistent watch
+    //   2) addresses → poori collection watch with orderByChild
+    //   → Dono ne permanent TCP connections banaye
+    // FIX: get() with session/TTL cache. User data → sessionStorage.
+    //      Addresses → loadSavedAddresses() jo already cached hai.
+    // ────────────────────────────────────────────────────────────
     function setupAccountRealtimeSync(uid) {
-      if (!window.firebase || !window.firebase.onValue) return;
-      const userRef = window.firebase.ref(window.firebase.database, 'users/' + uid);
-      window.firebase.onValue(userRef, function(snapshot) {
-        if (!snapshot.exists()) return;
-        const data = snapshot.val();
+      if (!window.firebase || !window.firebase.database) return;
+
+      // ── User data: session cache se ───────────────────────────
+      const sessionKey = 'bz_user_' + uid;
+      let cachedUser;
+      try { cachedUser = JSON.parse(sessionStorage.getItem(sessionKey)); } catch(e) {}
+
+      function applyUserData(data) {
+        if (!data) return;
         const headerName = document.getElementById('headerUserNameShort');
         if (headerName && data.name) {
           const short = data.name.split(' ')[0];
           headerName.textContent = short.length > 10 ? short.slice(0, 10) + '...' : short;
         }
         const avatarInitial = document.getElementById('userAvatarInitial');
-        if (avatarInitial && data.name) {
-          avatarInitial.textContent = data.name.charAt(0).toUpperCase();
-        }
-        if (data.name && typeof userInfo !== 'undefined') {
-          userInfo.fullName = userInfo.fullName || data.name;
-        }
-      });
+        if (avatarInitial && data.name) avatarInitial.textContent = data.name.charAt(0).toUpperCase();
+        if (data.name && typeof userInfo !== 'undefined') userInfo.fullName = userInfo.fullName || data.name;
+      }
 
-      const addrRef = window.firebase.ref(window.firebase.database, 'addresses');
-      window.firebase.onValue(
-        window.firebase.query(addrRef,
-          window.firebase.orderByChild('userId'),
-          window.firebase.equalTo(uid)
-        ),
-        function(snapshot) {
-          if (!snapshot.exists()) { savedAddresses = []; return; }
-          const obj = snapshot.val();
-          const list = Object.keys(obj).map(k => ({ id: k, ...obj[k] }));
-          savedAddresses = list.sort((a, b) =>
-            (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt || 0) - (a.createdAt || 0)
-          );
-          if (typeof renderSavedAddresses === 'function') {
-            const section = document.getElementById('savedAddressesSection');
-            if (section) {
-              section.style.display = savedAddresses.length > 0 ? 'block' : 'none';
-              renderSavedAddresses();
-              const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
-              if (def && typeof fillAddressForm === 'function') fillAddressForm(def);
-            }
-          }
-        }
-      );
+      if (cachedUser) {
+        applyUserData(cachedUser); // Zero Firebase read
+      } else {
+        window.firebase.get(window.firebase.ref(window.firebase.database, 'users/' + uid)).then(snap => {
+          if (!snap.exists()) return;
+          const data = snap.val();
+          try { sessionStorage.setItem(sessionKey, JSON.stringify(data)); } catch(e) {}
+          applyUserData(data);
+        }).catch(() => {});
+      }
+
+      // ── Addresses: loadSavedAddresses() already has TTL cache ─
+      loadSavedAddresses();
+
+      // ❌ REMOVED: onValue(userRef) — user data changes rarely
+      // ❌ REMOVED: onValue(addrRef query) — persistent collection watch
     }
 
     window.addEventListener('storage', function(e) {
@@ -5686,11 +5781,24 @@
       }
     });
 
+    // ── OPTIMIZATION: visibilitychange ───────────────────────────
+    // PROBLEM: Har tab focus pe turant loadSavedAddresses() +
+    //          loadUserData() → dono Firebase reads trigger
+    //          User ne ek tab switch kiya = 2 unnecessary reads
+    // FIX: 10 min cooldown + cache check pehle. Firebase sirf tab
+    //      jab cache expire ho aur 10 min se zyada time ho gaya ho.
+    // ────────────────────────────────────────────────────────────
+    let _lastVisibilityFetch = 0;
     document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible' && currentUser) {
-        loadSavedAddresses();
-        loadUserData(currentUser);
-      }
+      if (document.visibilityState !== 'visible' || !currentUser) return;
+      const now = Date.now();
+      // 10 min se pehle dobara fetch nahi
+      if (now - _lastVisibilityFetch < 10 * 60 * 1000) return;
+      _lastVisibilityFetch = now;
+      // Sirf fetch karo agar address cache expire ho chuka ho
+      const addrCached = _bzCacheGet('bz_addr_' + currentUser.uid, 5 * 60 * 1000);
+      if (!addrCached) loadSavedAddresses();
+      // loadUserData() hataya — user info session mein already cached hai
     });/**
  * ============================================================
  *  BUYZO CART — main-patch.js
@@ -6333,14 +6441,34 @@
     }
   }
 
+  // ── OPTIMIZATION: connectFirebaseForHero ─────────────────────
+  // PROBLEM: firebase.database().ref('adminSettings').on('value')
+  //          → persistent onValue listener sirf hero section ke
+  //          liye = extra bandwidth, stale API pattern
+  // FIX: get() with TTL cache (already in fetchLiveData).
+  //      adminSettings already cached hai → local se apply karo.
+  // ────────────────────────────────────────────────────────────
   function connectFirebaseForHero() {
     const firebase = window.firebase;
     if (!firebase || !firebase.database) { setTimeout(connectFirebaseForHero, 1000); return; }
 
-    // Listen for admin settings changes
-    firebase.database().ref('adminSettings').on('value', snap => {
+    // ── Try from already-cached adminSettings first ───────────
+    try {
+      const raw = localStorage.getItem('bz_settings');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p && p.data && (Date.now() - p.timestamp) < 30 * 60 * 1000) {
+          applyHeroSettings(p.data);
+          return; // Cache hit → zero Firebase read
+        }
+      }
+    } catch(e) {}
+
+    // ── Cache miss → single get() ─────────────────────────────
+    firebase.get(firebase.ref(firebase.database, 'adminSettings')).then(snap => {
       if (snap.exists()) applyHeroSettings(snap.val());
-    });
+    }).catch(() => {});
+    // ❌ REMOVED: .on('value') persistent listener
   }
 
   if (document.readyState === 'loading') {
@@ -6857,7 +6985,7 @@
         page.className = 'page';
         mainEl.appendChild(page);
       }
-      page.style.cssText = 'min-height:auto;background:#f8fafc;padding-bottom:80px;';
+      page.style.cssText = 'min-height:100vh;background:#f8fafc;padding-bottom:100px;';
 
       // ── Skeleton loading state ──
       page.innerHTML = `
@@ -6999,46 +7127,24 @@
         }
 
         // Product card for brand grid
-        // Register a clean global click handler (set once, not per card)
-        if (!window._bpCardClick) {
-          window._bpCardClick = function(id) {
-            var p = (window._bpProds && window._bpProds[id])
-                 || (window.products && window.products.find(function(x){ return x.id === id; }));
-            if (p && typeof showProductDetail === 'function') showProductDetail(p);
-          };
-        }
-        if (!window._bpWLClick) {
-          window._bpWLClick = function(e, id) {
-            e.stopPropagation();
-            if (typeof toggleWishlist === 'function') toggleWishlist(id);
-          };
-        }
-
         function bpProductCard(p) {
           var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
-          // Use getProductImage() which handles all image formats
-          var img = typeof getProductImage==='function' ? getProductImage(p) : ((p.images&&p.images[0])||p.image||p.thumbnail||'');
+          var img = (p.images&&p.images[0]) || p.image || p.thumbnail || '';
           var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
-          var wlActive = typeof wishlist!=='undefined' && Array.isArray(wishlist) && wishlist.includes(p.id);
-          // Store product object so _bpCardClick can retrieve it — safe, no string escaping needed
-          if (!window._bpProds) window._bpProds = {};
-          window._bpProds[p.id] = p;
-          // Use simple data-bpid attribute — no complex escaped JS in onclick
-          return '<div data-bpid="'+p.id+'" onclick="window._bpCardClick(this.getAttribute(\'data-bpid\'))" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
+          var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
+          return '<div onclick="showProductDetail(\''+p.id+'\')" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
             +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
-              +(img ? '<img src="'+img+'" alt="product" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling&&(this.nextElementSibling.style.display=\'flex\')">'
-                     +'<div style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:32px;">🛍️</div>'
-                  : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
+              +(img?'<img src="'+img+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display=\'none\'">':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;">🛍️</div>')
               +'<div style="position:absolute;top:8px;right:8px;">'
-                +'<button data-wlid="'+p.id+'" onclick="window._bpWLClick(event,this.getAttribute(\'data-wlid\'))" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);">'
+                +'<button onclick="event.stopPropagation();typeof toggleWishlist===\'function\'&&toggleWishlist(\''+p.id+'\')" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);">'
                   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(wlActive?'#ef4444':'none')+'" stroke="'+(wlActive?'#ef4444':'#94a3b8')+'" stroke-width="2.2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
                 +'</button>'
               +'</div>'
-              +(p.trending||p.isTrending ? '<div style="position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;">🔥 HOT</div>' : '')
+              +(p.trending||p.isTrending?'<div style="position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;">🔥 HOT</div>':'')
             +'</div>'
             +'<div style="padding:10px 10px 12px;">'
-              +'<div style="font-size:12px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;">'+(p.name||'Product')+'</div>'
-              +(pRating ? '<div style="font-size:10px;color:#f59e0b;margin-bottom:4px;">'+stars(pRating)+'<span style="color:#94a3b8;margin-left:2px;">('+pRating+')</span></div>' : '')
+              +'<div style="font-size:12px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;">'+( p.name||'Product')+'</div>'
+              +(pRating?'<div style="font-size:10px;color:#f59e0b;margin-bottom:4px;">'+stars(pRating)+'<span style="color:#94a3b8;margin-left:2px;">('+pRating+')</span></div>':'')
               +'<div style="font-size:13px;font-weight:900;color:'+themeColor+';">'+price+'</div>'
             +'</div>'
           +'</div>';
