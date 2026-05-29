@@ -2233,6 +2233,11 @@
         fragment.appendChild(sliderItem);
       });
       container.appendChild(fragment);
+
+      // ── AUTO HORIZONTAL SLIDE: Trending Products ───────────────
+      // Products render hone ke baad smooth auto-scroll shuru karo
+      // Slower speed (5000ms interval) — product cards bade hain
+      setTimeout(() => _bzStartAutoSlide(container, containerId, 5000), 300);
     }
 
     function isInWishlist(productId) {
@@ -3387,6 +3392,102 @@
       });
       container.innerHTML = '';
       container.appendChild(fragment);
+
+      // ── AUTO HORIZONTAL SLIDE: Categories ──────────────────────
+      // Problem: Categories static rehti thi, zyada categories
+      //          honay pe user ko manually scroll karna padta tha
+      // Fix: Auto left-right slide with pause on touch/hover
+      _bzStartAutoSlide(container, 'category');
+    }
+
+    // ── Universal Auto-Slide Engine ─────────────────────────────
+    // Ek shared function categories, trending, brands sab ke liye
+    // Features:
+    //   - Smooth pixel-by-pixel RAF scroll (60fps)
+    //   - Bounce at both ends (left ↔ right)
+    //   - Pause on hover / touch
+    //   - Manual mouse-drag + touch-drag support
+    // ────────────────────────────────────────────────────────────
+    const _bzSliders = {};
+    function _bzStartAutoSlide(container, key, intervalMs) {
+      if (!container) return;
+
+      // Clear previous animation for this key
+      if (_bzSliders[key]) {
+        cancelAnimationFrame(_bzSliders[key].rafId);
+        _bzSliders[key] = null;
+      }
+
+      let paused = false;
+      let direction = 1; // 1 = scroll right, -1 = scroll left
+
+      // ── Smooth RAF scroll ───────────────────────────────────────
+      const STEP = 0.8; // px per frame
+      let rafId = null;
+      let lastTs = 0;
+
+      function tick(ts) {
+        if (!_bzSliders[key]) return; // Stopped
+        rafId = requestAnimationFrame(tick);
+        if (ts - lastTs < 16) return; // ~60fps cap
+        lastTs = ts;
+        if (paused) return;
+
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        if (maxScroll <= 0) return;
+
+        container.scrollLeft += direction * STEP;
+
+        if (container.scrollLeft >= maxScroll - 1) {
+          direction = -1;
+        } else if (container.scrollLeft <= 1) {
+          direction = 1;
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+      _bzSliders[key] = { rafId };
+
+      // ── Pause on hover ──────────────────────────────────────────
+      container.addEventListener('mouseenter', () => { paused = true; });
+      container.addEventListener('mouseleave', () => { paused = false; });
+
+      // ── Mouse drag to scroll ────────────────────────────────────
+      let isDragging = false, dragStartX = 0, dragScrollLeft = 0;
+      container.addEventListener('mousedown', (e) => {
+        isDragging = true; paused = true;
+        dragStartX = e.pageX - container.offsetLeft;
+        dragScrollLeft = container.scrollLeft;
+        container.style.cursor = 'grabbing';
+      });
+      container.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        container.scrollLeft = dragScrollLeft - (x - dragStartX);
+      });
+      const stopDrag = () => {
+        isDragging = false;
+        container.style.cursor = 'grab';
+        setTimeout(() => { paused = false; }, 1500);
+      };
+      container.addEventListener('mouseup', stopDrag);
+      container.addEventListener('mouseleave', stopDrag);
+
+      // ── Touch drag to scroll (mobile swipe) ────────────────────
+      let touchStartX = 0, touchScrollLeft = 0;
+      container.addEventListener('touchstart', (e) => {
+        paused = true;
+        touchStartX = e.touches[0].pageX;
+        touchScrollLeft = container.scrollLeft;
+      }, { passive: true });
+      container.addEventListener('touchmove', (e) => {
+        const dx = touchStartX - e.touches[0].pageX;
+        container.scrollLeft = touchScrollLeft + dx;
+      }, { passive: true });
+      container.addEventListener('touchend', () => {
+        setTimeout(() => { paused = false; }, 2000);
+      }, { passive: true });
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
@@ -5282,6 +5383,84 @@
       } catch(e) {}
       // ───────────────────────────────────────────────────────────
 
+      // ── AUTO-SLIDE CSS INJECTION ──────────────────────────────
+      // Categories, trending products, popular brands ke containers
+      // ko horizontally scrollable banao with smooth scrollbar-hide
+      // ────────────────────────────────────────────────────────────
+      (function injectAutoSlideCSS() {
+        if (document.getElementById('bz-autoslide-css')) return;
+        const s = document.createElement('style');
+        s.id = 'bz-autoslide-css';
+        s.textContent = `
+          /* Category circles — horizontal scroll + hide scrollbar */
+          #categoryCirclesContainer {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-behavior: auto !important; /* JS controls scroll */
+            -webkit-overflow-scrolling: touch;
+            gap: 12px;
+            padding-bottom: 8px;
+            cursor: grab;
+          }
+          #categoryCirclesContainer:active { cursor: grabbing; }
+          #categoryCirclesContainer .category-circle { flex-shrink: 0; }
+
+          /* Trending product slider */
+          #productSlider, #recentlyViewedSlider {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-behavior: auto !important;
+            -webkit-overflow-scrolling: touch;
+            gap: 12px;
+            padding-bottom: 6px;
+            cursor: grab;
+          }
+          #productSlider:active, #recentlyViewedSlider:active { cursor: grabbing; }
+          #productSlider .slider-item, #recentlyViewedSlider .slider-item { flex-shrink: 0; }
+
+          /* Popular brands grid — horizontal scroll */
+          #popularBrandsGrid, #suggestedBrandsGrid, #followingBrandsRow {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-behavior: auto !important;
+            -webkit-overflow-scrolling: touch;
+            gap: 12px;
+            padding-bottom: 6px;
+            cursor: grab;
+          }
+          #popularBrandsGrid:active,
+          #suggestedBrandsGrid:active,
+          #followingBrandsRow:active { cursor: grabbing; }
+
+          /* Hide scrollbar — all auto-slide containers */
+          #categoryCirclesContainer::-webkit-scrollbar,
+          #productSlider::-webkit-scrollbar,
+          #recentlyViewedSlider::-webkit-scrollbar,
+          #popularBrandsGrid::-webkit-scrollbar,
+          #suggestedBrandsGrid::-webkit-scrollbar,
+          #followingBrandsRow::-webkit-scrollbar { display: none; }
+          #categoryCirclesContainer,
+          #productSlider,
+          #recentlyViewedSlider,
+          #popularBrandsGrid,
+          #suggestedBrandsGrid,
+          #followingBrandsRow {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `;
+        document.head.appendChild(s);
+      })();
+
       setupEventListeners();
       if (window.firebase && window.firebase.auth) {
         window.firebase.onAuthStateChanged(window.firebase.auth, user => {
@@ -6916,6 +7095,8 @@
             + '<span style="font-size:10px;font-weight:700;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + b.name + '</span>'
             + '</div>';
         }).join('');
+        // Auto-slide following brands strip
+        if (followed.length > 5) setTimeout(() => _bzStartAutoSlide(followingRow, 'followingBrands', 3500), 300);
       } else if (followingSec) {
         followingSec.style.display = 'none';
       }
@@ -6932,6 +7113,12 @@
         popSection.style.display = popular.length ? 'block' : 'none';
         popularGrid.innerHTML = '';
         popular.forEach(function(b) { popularGrid.appendChild(_makeBrandCard(b, !!followedSet[b.id])); });
+        // ── AUTO HORIZONTAL SLIDE: Popular Brands ─────────────────
+        // Zyada brands hone pe auto-scroll shuru karo
+        // 4 se zyada brands → auto slide zaroori
+        if (popular.length > 4) {
+          setTimeout(() => _bzStartAutoSlide(popularGrid, 'popularBrands', 4000), 300);
+        }
       }
 
       if (sugSection && sugGrid) {

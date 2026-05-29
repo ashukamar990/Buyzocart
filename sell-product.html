@@ -798,15 +798,29 @@
         var _authResolved = false;
         var _authTimeout = setTimeout(function() {
             if (!_authResolved) {
-                document.getElementById('contentArea').innerHTML = 
+                document.getElementById('contentArea').innerHTML =
                     '<div style="text-align:center;padding:40px;">' +
                     '<div style="font-size:3rem;margin-bottom:12px;">⏱️</div>' +
                     '<p style="color:#ef4444;font-weight:600;font-size:1.1rem;">Connection Timeout</p>' +
                     '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 20px;">Server response slow. Check internet and try again.</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Retry Now</button>' +
-                    '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Home</button></div>';
+                    '<button class="btn btn-outline" onclick="history.back()" style="margin-left:8px;">← Home</button></div>';
             }
         }, 10000);
+
+        // Hard fallback: if spinner still visible after 6s, force render
+        setTimeout(function() {
+            var ca = document.getElementById('contentArea');
+            if (ca && ca.innerHTML.indexOf('Connecting to Buyzo Cart') !== -1) {
+                if (window._state && window._state.user) {
+                    if (!window._state.products) window._state.products = [];
+                    if (!window._state.orders) window._state.orders = [];
+                    if (!window._state.brands) window._state.brands = [];
+                    if (typeof renderDashboardPage === 'function') renderDashboardPage();
+                    else if (typeof showSellerWelcome === 'function') showSellerWelcome();
+                }
+            }
+        }, 6000);
 
         onAuthStateChanged(auth, async (user) => {
             _authResolved = true;
@@ -823,15 +837,16 @@
             document.getElementById('headerName').textContent = user.displayName || user.email || 'Seller';
 
             try {
-                const catSnap = await get(ref(db, 'categories'));
-                if (catSnap.exists()) {
-                    var cats = Object.values(catSnap.val()).filter(c => c && c.name);
-                    window._state.categories = cats;
+                const catSnap = await Promise.race([
+                    get(ref(db, 'categories')),
+                    new Promise(function(resolve){ setTimeout(function(){ resolve(null); }, 5000); })
+                ]);
+                if (catSnap && catSnap.exists()) {
+                    window._state.categories = Object.values(catSnap.val()).filter(function(c){ return c && c.name; });
                 } else {
                     window._state.categories = [];
                 }
             } catch(catErr) {
-                console.error('Category load failed:', catErr);
                 window._state.categories = [];
             }
 
