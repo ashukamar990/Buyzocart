@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-29 - Visual Feedback for Copy Operations
+**Learning:** Users appreciate immediate in-place feedback when copying identifiers or links. A temporary state change on the button (e.g., "✅ Copied!") is more effective and less intrusive than global toast notifications alone.
+**Action:** Use the `bzCopyText` helper for all clipboard interactions to ensure consistent visual confirmation across the application.
