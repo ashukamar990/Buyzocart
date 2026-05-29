@@ -89,6 +89,19 @@
         .sidebar-nav a i { width: 18px; text-align: center; font-size: 0.9rem; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid #1e293b; }
         @keyframes fadeInUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        
+        @keyframes anim-up-kf {
+            from { opacity:0; transform:translateY(22px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .anim-up {
+            opacity:0;
+            animation: anim-up-kf .45s cubic-bezier(.4,0,.2,1) both;
+        }
+        @keyframes popIn {
+            from { opacity:0; transform:scale(.88); }
+            to   { opacity:1; transform:scale(1); }
+        }
         @keyframes popIn { from { opacity:0; transform:scale(.93); } to { opacity:1; transform:scale(1); } }
         @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .anim-up { animation: fadeInUp .35s ease both; }
@@ -412,11 +425,6 @@
             .topbar-home-btn { display: inline-flex !important; }
             .sidebar-mobile-footer { display: block !important; }
         }
-        #sidebarBackdrop {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.4); z-index: 199;
-        }
-        #sidebarBackdrop.show { display: block; }
         .topbar-home-btn {
             display: none;
             align-items: center;
@@ -496,7 +504,6 @@
         </div>
     </aside>
 
-    <div id="sidebarBackdrop" onclick="closeSidebarMobile()"></div>
     <main class="main-content">
         <header class="topbar">
             <div class="topbar-left">
@@ -539,7 +546,7 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Price (₹) <span class="required">*</span></label>
+                        <label class="form-label">Selling Price (₹) <span class="required">*</span></label>
                         <input type="number" class="form-control" id="prodPrice" placeholder="Enter price" min="0">
                     </div>
                     <div class="form-group">
@@ -553,15 +560,12 @@
                         <input type="number" class="form-control" id="prodStock" placeholder="Enter stock" min="0">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Colors</label>
-                        <input type="text" class="form-control" id="prodColors" placeholder="Red, Blue, Black, White">
+                        <label class="form-label">Category <span class="required">*</span></label>
+                        <select class="form-control" id="prodCategory">
+                            <option value="">-- Select Category --</option>
+                        </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Category <span class="required">*</span></label>
-                    <select class="form-control" id="prodCategory">
-                        <option value="">-- Select Category --</option>
-                    </select>
                 </div>
                 <!-- Seller ID Banner -->
                 <div class="sid-banner" id="sellerIdBanner">
@@ -614,10 +618,24 @@
                     <input type="text" class="form-control" id="prodSizes" placeholder="S, M, L, XL">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Product Images <span class="required">*</span></label>
-                    <input type="file" id="prodImages" class="form-control" multiple accept="image/*" onchange="handleImageUpload(event)">
-                    <div class="img-preview-container" id="imgPreviews"></div>
-                    <small class="text-muted">Images auto-upload ho rahi hain. File select karte hi upload start.</small>
+                    <label class="form-label">Colors (comma separated)</label>
+                    <input type="text" class="form-control" id="prodColors" placeholder="Red, Blue, Black, White">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Images <span class="required">*</span> <span style="font-weight:400;font-size:11px;color:#94a3b8;">Max 6 images</span></label>
+                    <!-- Hidden real file input -->
+                    <input type="file" id="prodImages" style="display:none;" multiple accept="image/*" onchange="handleImageUpload(event)">
+                    <!-- Premium gallery picker button -->
+                    <div id="imgPickerBtn" onclick="document.getElementById('prodImages').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s;margin-bottom:10px;" onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
+                        <div style="font-size:2rem;margin-bottom:8px;">🖼️</div>
+                        <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">Tap to Select Images</div>
+                        <div style="font-size:12px;color:#64748b;">Gallery se photos chunein · Max 6 · JPG/PNG/WEBP</div>
+                        <div style="margin-top:10px;display:inline-flex;gap:8px;">
+                            <span style="background:#2563eb;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">📷 Gallery</span>
+                        </div>
+                    </div>
+                    <div class="img-preview-container" id="imgPreviews" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    <div id="imgUploadStatus" style="font-size:12px;color:#64748b;margin-top:6px;display:none;"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Search Tags / Collections <span style="color:#94a3b8;font-weight:400;font-size:12px;">(Optional)</span></label>
@@ -699,14 +717,21 @@
 
         window._imgbbKey = 'YOUR_IMGBB_API_KEY_HERE';
 
-        // Safe error: never show Firebase internal errors to users
-        function _safeErr(err) {
-            var msg = ((err && (err.message || err.code)) || String(err || '')).toLowerCase();
-            var fbWords = ['permission','firebase','firestore','unavailable','network-request','quota','unauthenticated','auth/','storage/','googleapis','permission denied','permission_denied'];
-            return fbWords.some(function(k){ return msg.indexOf(k) !== -1; })
-                ? 'Unable to connect. Please check your internet and try again.'
-                : (err && err.message ? err.message : 'Something went wrong. Please try again.');
-        }
+        // Auto-load imgbb key from Firebase adminSettings
+        (function loadImgbbKey() {
+            try {
+                var _db2 = window._db || (window.firebase && window.firebase.database);
+                var _ref2 = window._ref || (window.firebase && window.firebase.ref);
+                var _get2 = window._get || (window.firebase && window.firebase.get);
+                if (_db2 && _ref2 && _get2) {
+                    _get2(_ref2(_db2, 'adminSettings/imgbbKey')).then(function(snap) {
+                        if (snap && snap.exists() && snap.val()) {
+                            window._imgbbKey = snap.val();
+                        }
+                    }).catch(function(){});
+                }
+            } catch(e) {}
+        })();
 
         window._state = {
             user: null,
@@ -726,71 +751,89 @@
         window.loadDashboardData = async function() {
             var user = window._state.user;
             if (!user) {
+                console.error('❌ No authenticated user');
                 if (typeof showSellerWelcome === 'function') showSellerWelcome();
                 return;
             }
-
-            // Step 1: Load products (non-blocking)
+            
             try {
-                var prodSnap = await get(ref(db, 'sellerProducts/' + user.uid));
-                window._state.products = prodSnap.exists() ? Object.entries(prodSnap.val()).map(function(e) {
-                    var v = e[1];
-                    return { id: e[0], title: v.name || v.title || '', price: v.price, mrp: v.mrp || v.originalPrice || null,
-                        stock: v.stock, category: v.category, desc: v.desc, fullDesc: v.fullDesc,
-                        images: v.images, tags: v.tags, status: v.status, sizes: v.sizes, colors: v.colors || [],
-                        brand: v.brand || '', brandId: v.brandId || '', brandName: v.brandName || v.brand || '',
-                        brandLogo: v.brandLogo || '', productCode: v.productCode || '' };
+                console.log('📦 Loading products for seller:', user.uid);
+                const prodSnap = await get(ref(db, 'sellerProducts/' + user.uid));
+                
+                window._state.products = prodSnap.exists() ? Object.entries(prodSnap.val()).map(function(entry) {
+                    return { 
+                        id: entry[0], 
+                        title: entry[1].name || entry[1].title || '',
+                        price: entry[1].price, 
+                        stock: entry[1].stock, 
+                        category: entry[1].category, 
+                        desc: entry[1].desc, 
+                        fullDesc: entry[1].fullDesc, 
+                        images: entry[1].images, 
+                        tags: entry[1].tags, 
+                        status: entry[1].status, 
+                        sizes: entry[1].sizes,
+                        brand: entry[1].brand || '',
+                        brandId: entry[1].brandId || '',
+                        brandName: entry[1].brandName || entry[1].brand || '',
+                        brandLogo: entry[1].brandLogo || '',
+                        productCode: entry[1].productCode || ''
+                    };
                 }) : [];
-                console.log('✅ Products:', window._state.products.length);
-            } catch(e1) {
-                console.warn('Products load failed:', e1);
-                window._state.products = [];
-            }
+                console.log('✅ Products loaded:', window._state.products.length);
 
-            // Step 2: Load brands (non-blocking)
-            try {
-                var brandSnap = await get(ref(db, 'brands'));
-                window._state.brands = [];
-                if (brandSnap.exists()) {
-                    brandSnap.forEach(function(c) {
-                        var b = c.val();
-                        if (b && b.name) window._state.brands.push({ id: c.key, name: b.name, logo: b.logo || '', blueTickAdmin: !!b.blueTickAdmin });
-                    });
+                // Load brands for product form dropdown
+                try {
+                    var brandSnap2 = await get(ref(db, 'brands'));
+                    window._state.brands = [];
+                    if (brandSnap2.exists()) {
+                        brandSnap2.forEach(function(c) {
+                            var b = c.val();
+                            if (b && b.name) window._state.brands.push({
+                                id: c.key, name: b.name, logo: b.logo || '',
+                                blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel || 'normal'
+                            });
+                        });
+                    }
+                } catch(be) { window._state.brands = []; }
+
+                console.log('📋 Loading orders...');
+                const orderSnap = await get(ref(db, 'orders'));
+
+                var allOrders = orderSnap.exists() ? Object.entries(orderSnap.val()).map(function(entry) {
+                    return { 
+                        id: entry[0], 
+                        orderId: entry[1].orderId, 
+                        productName: entry[1].productName, 
+                        totalAmount: entry[1].totalAmount, 
+                        status: entry[1].status, 
+                        orderDate: entry[1].orderDate, 
+                        sellerId: entry[1].sellerId, 
+                        userInfo: entry[1].userInfo, 
+                        productImage: entry[1].productImage, 
+                        quantity: entry[1].quantity 
+                    };
+                }) : [];
+
+                window._state.orders = allOrders.filter(function(o) {
+                    var customSid = window._state.sellerData && window._state.sellerData.sellerId;
+                    return o.sellerId === user.uid || (customSid && o.sellerId === customSid) || o.sellerUid === user.uid;
+                });
+                console.log('✅ Orders loaded:', window._state.orders.length);
+
+                // Auto-approve brands check on every dashboard load
+                checkAndAutoApproveBrands(user.uid).catch(function(){});
+                
+                if (typeof navigateTo === 'function') {
+                    navigateTo('dashboard');
                 }
-            } catch(e2) {
-                console.warn('Brands load failed:', e2);
-                window._state.brands = [];
-            }
-
-            // Step 3: Load orders (non-blocking)
-            try {
-                var ordersRef = ref(db, 'orders');
-                var oSnap = await get(query(ordersRef, orderByChild('sellerId'), equalTo(user.uid)));
-                window._state.orders = oSnap.exists() ? Object.entries(oSnap.val()).map(function(e) {
-                    var v = e[1];
-                    return { id: e[0], orderId: v.orderId, productName: v.productName, totalAmount: v.totalAmount,
-                        status: v.status, orderDate: v.orderDate, sellerId: v.sellerId,
-                        userInfo: v.userInfo, productImage: v.productImage, quantity: v.quantity };
-                }) : [];
-                console.log('✅ Orders:', window._state.orders.length);
-            } catch(e3) {
-                console.warn('Orders load failed (permission):', e3);
-                window._state.orders = [];
-            }
-
-            // Step 4: Auto-approve brands (non-blocking, fire and forget)
-            try { if (typeof checkAndAutoApproveBrands === 'function') checkAndAutoApproveBrands(user.uid).catch(function(){}); } catch(e4) {}
-
-            // Step 5: Always render dashboard — no matter what failed above
-            console.log('✅ Rendering dashboard');
-            try {
-                if (typeof renderDashboardPage === 'function') renderDashboardPage();
-                else if (typeof navigateTo === 'function') navigateTo('dashboard');
-            } catch(e5) {
-                console.error('renderDashboardPage failed:', e5);
-                document.getElementById('contentArea').innerHTML =
+                
+            } catch (err) {
+                console.error('❌ Failed to load dashboard data:', err);
+                document.getElementById('contentArea').innerHTML = 
                     '<div style="text-align:center;padding:40px;">' +
-                    '<p style="color:#ef4444;font-weight:600;">⚠️ Dashboard render error.</p>' +
+                    '<p style="color:#ef4444;font-weight:600;">⚠️ Failed to load dashboard data.</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">Error: ' + (err.message || 'Unknown error') + '</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button></div>';
             }
         };
@@ -798,36 +841,22 @@
         var _authResolved = false;
         var _authTimeout = setTimeout(function() {
             if (!_authResolved) {
-                document.getElementById('contentArea').innerHTML =
+                document.getElementById('contentArea').innerHTML = 
                     '<div style="text-align:center;padding:40px;">' +
                     '<div style="font-size:3rem;margin-bottom:12px;">⏱️</div>' +
                     '<p style="color:#ef4444;font-weight:600;font-size:1.1rem;">Connection Timeout</p>' +
                     '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 20px;">Server response slow. Check internet and try again.</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Retry Now</button>' +
-                    '<button class="btn btn-outline" onclick="history.back()" style="margin-left:8px;">← Home</button></div>';
+                    '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Home</button></div>';
             }
-        }, 10000);
-
-        // Hard fallback: if spinner still visible after 6s, force render
-        setTimeout(function() {
-            var ca = document.getElementById('contentArea');
-            if (ca && ca.innerHTML.indexOf('Connecting to Buyzo Cart') !== -1) {
-                if (window._state && window._state.user) {
-                    if (!window._state.products) window._state.products = [];
-                    if (!window._state.orders) window._state.orders = [];
-                    if (!window._state.brands) window._state.brands = [];
-                    if (typeof renderDashboardPage === 'function') renderDashboardPage();
-                    else if (typeof showSellerWelcome === 'function') showSellerWelcome();
-                }
-            }
-        }, 6000);
+        }, 20000);
 
         onAuthStateChanged(auth, async (user) => {
             _authResolved = true;
             clearTimeout(_authTimeout);
             
             if (!user) {
-                history.back();
+                window.location.href = '/';
                 return;
             }
             
@@ -837,36 +866,27 @@
             document.getElementById('headerName').textContent = user.displayName || user.email || 'Seller';
 
             try {
-                const catSnap = await Promise.race([
-                    get(ref(db, 'categories')),
-                    new Promise(function(resolve){ setTimeout(function(){ resolve(null); }, 5000); })
-                ]);
-                if (catSnap && catSnap.exists()) {
-                    window._state.categories = Object.values(catSnap.val()).filter(function(c){ return c && c.name; });
+                const catSnap = await get(ref(db, 'categories'));
+                if (catSnap.exists()) {
+                    var cats = Object.values(catSnap.val()).filter(c => c && c.name);
+                    window._state.categories = cats;
                 } else {
                     window._state.categories = [];
                 }
             } catch(catErr) {
+                console.error('Category load failed:', catErr);
                 window._state.categories = [];
             }
 
-            // Timeout helper — if Firebase read hangs, resolve with null after 8s
-            function _fbGet(path) {
-                return Promise.race([
-                    get(ref(db, path)),
-                    new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 8000); })
-                ]);
-            }
-
             try {
-                var snap = await _fbGet('sellerRequests/' + user.uid);
-
-                if (!snap || !snap.exists()) {
+                const snap = await get(ref(db, 'sellerRequests/' + user.uid));
+                
+                if (!snap.exists()) {
                     if (typeof showSellerWelcome === 'function') showSellerWelcome();
                 } else {
                     const data = snap.val();
                     window._state.sellerData = data;
-
+                    
                     if (data.status === 'approved') {
                         await window.loadDashboardData();
                     } else if (data.status === 'pending') {
@@ -879,13 +899,13 @@
                 }
             } catch (err) {
                 console.error('Dashboard load error:', err);
-                document.getElementById('contentArea').innerHTML =
+                document.getElementById('contentArea').innerHTML = 
                     '<div style="text-align:center;padding:40px;">' +
                     '<div style="font-size:3rem;margin-bottom:12px;">⚠️</div>' +
                     '<p style="color:#ef4444;font-weight:600;font-size:1.1rem;">Dashboard Load Failed</p>' +
-                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0;">' + _safeErr(err) + '</p>' +
+                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0;">Error: ' + (err.message || 'Connection failed') + '</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh Page</button>' +
-                    '<button class="btn btn-outline" onclick="history.back()" style="margin-left:8px;">← Back</button></div>';
+                    '<button class="btn btn-outline" onclick="window.location.href=\'/\'" style="margin-left:8px;">← Back to Store</button></div>';
             }
         });
     </script>
@@ -954,55 +974,6 @@
             }
         });
 
-        // ImgBB key loader
-        var _imgbbKey = null;
-        function loadImgbbKey() {
-            if (_imgbbKey) return Promise.resolve(_imgbbKey);
-            return window._get(window._ref(window._db, 'adminSettings/imgbbApiKey')).then(function(snap) {
-                _imgbbKey = snap.exists() ? snap.val() : null;
-                return _imgbbKey;
-            }).catch(function() { return null; });
-        }
-
-        function closeBrandProfile() {
-            var overlay = document.getElementById('brandProfileOverlay');
-            if (overlay) overlay.style.display = 'none';
-        }
-
-        async function handleBrandLogoUpload(input) {
-            var file = input.files[0];
-            if (!file) return;
-            var statusEl = document.getElementById('imgUploadStatus');
-            var pickerBtn = document.getElementById('imgPickerBtn');
-            var previewBox = document.getElementById('brandLogoPreviewBox');
-            var previewImg = document.getElementById('brandLogoPreviewImg');
-            var hiddenInput = document.getElementById('reqBrandLogo2');
-            if (statusEl) statusEl.textContent = '⏳ Uploading...';
-            if (pickerBtn) pickerBtn.textContent = 'Uploading...';
-            try {
-                var key = await loadImgbbKey();
-                if (!key) { showToast('Image upload not configured', 'error'); if (statusEl) statusEl.textContent = ''; return; }
-                var formData = new FormData();
-                formData.append('image', file);
-                var res = await fetch('https://api.imgbb.com/1/upload?key=' + key, { method: 'POST', body: formData });
-                var json = await res.json();
-                if (json.success) {
-                    var url = json.data.url;
-                    if (hiddenInput) hiddenInput.value = url;
-                    if (previewImg) { previewImg.src = url; }
-                    if (previewBox) previewBox.style.display = 'block';
-                    if (statusEl) statusEl.textContent = '✅ Logo uploaded';
-                    if (pickerBtn) pickerBtn.textContent = 'Change Logo';
-                } else {
-                    throw new Error('Upload failed');
-                }
-            } catch(e) {
-                if (statusEl) statusEl.textContent = '❌ Upload failed. Try again.';
-                if (pickerBtn) pickerBtn.textContent = 'Upload Logo Image';
-                showToast(_safeErr(e), 'error');
-            }
-        }
-
         function navigateTo(page, isBack) {
             isBack = isBack || false;
             if (!isBack) {
@@ -1039,19 +1010,11 @@
             else if (page === 'pending') showPendingPage(window._state.sellerData);
             else if (page === 'rejected') showRejectedPage(window._state.sellerData);
 
-            if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('open'); var _bd=document.getElementById('sidebarBackdrop'); if(_bd) _bd.classList.remove('show'); }
+            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
         }
 
         function toggleSidebar() {
-            var sb = document.getElementById('sidebar');
-            var bd = document.getElementById('sidebarBackdrop');
-            sb.classList.toggle('open');
-            if (bd) bd.classList.toggle('show', sb.classList.contains('open'));
-        }
-        function closeSidebarMobile() {
-            document.getElementById('sidebar').classList.remove('open');
-            var bd = document.getElementById('sidebarBackdrop');
-            if (bd) bd.classList.remove('show');
+            document.getElementById('sidebar').classList.toggle('open');
         }
 
         // ============ TOAST ============
@@ -1094,39 +1057,100 @@
 
         // ============ IMAGE HANDLING ============
         async function handleImageUpload(e) {
-            var files = Array.from(e.target.files);
-            var preview = document.getElementById('imgPreviews');
-            preview.innerHTML = '';
-            window._state.uploadedImages = [];
-            if (!files.length) return;
+            var MAX_IMAGES = 6;
+            var newFiles = Array.from(e.target.files);
+            if (!newFiles.length) return;
 
-            files.forEach(function(file) {
+            var existing = window._state.uploadedImages || [];
+            var remaining = MAX_IMAGES - existing.length;
+            if (remaining <= 0) { showToast('Max ' + MAX_IMAGES + ' images allowed. Remove some first.', 'error'); e.target.value = ''; return; }
+            if (newFiles.length > remaining) {
+                showToast('Only ' + remaining + ' more image(s) allowed. First ' + remaining + ' selected.', 'error');
+                newFiles = newFiles.slice(0, remaining);
+            }
+
+            var preview = document.getElementById('imgPreviews');
+            var statusEl = document.getElementById('imgUploadStatus');
+            var btn = document.getElementById('prodSaveBtn');
+            var pickerBtn = document.getElementById('imgPickerBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
+            if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '⏳ Uploading 0/' + newFiles.length + '...'; }
+
+            // Show local previews immediately
+            var localDivs = [];
+            newFiles.forEach(function(file, idx) {
                 var localUrl = URL.createObjectURL(file);
                 var div = document.createElement('div');
                 div.className = 'img-preview-item';
-                div.innerHTML = '<img src="' + localUrl + '"><div class="upload-progress" style="width:0%;"></div>';
+                div.style.cssText = 'position:relative;width:80px;height:80px;border-radius:10px;overflow:visible;flex-shrink:0;';
+                div.innerHTML =
+                    '<img src="' + localUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;">'
+                    + '<div class="upload-progress" style="position:absolute;bottom:0;left:0;right:0;height:4px;background:#e2e8f0;border-radius:0 0 10px 10px;overflow:hidden;"><div style="height:100%;width:0%;background:#2563eb;transition:width .4s;"></div></div>'
+                    + '<div class="upload-spinner" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.45);border-radius:10px;"><div style="width:20px;height:20px;border:2.5px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div></div>';
                 preview.appendChild(div);
+                localDivs.push(div);
             });
+            if (pickerBtn) pickerBtn.style.display = (existing.length + newFiles.length >= MAX_IMAGES) ? 'none' : '';
 
-            document.getElementById('prodSaveBtn').disabled = true;
-            document.getElementById('prodSaveBtn').textContent = 'Uploading Images...';
+            // Upload one by one with progress
+            var uploadedUrls = [];
+            for (var i = 0; i < newFiles.length; i++) {
+                var div = localDivs[i];
+                var progressBar = div ? div.querySelector('.upload-progress div') : null;
+                if (progressBar) progressBar.style.width = '40%';
+                if (statusEl) statusEl.textContent = '⏳ Uploading ' + (i+1) + '/' + newFiles.length + '...';
+                try {
+                    var url = await uploadImageToImgBB(newFiles[i]);
+                    uploadedUrls.push(url);
+                    if (progressBar) progressBar.style.width = '100%';
+                    var spinner = div ? div.querySelector('.upload-spinner') : null;
+                    if (spinner) spinner.remove();
+                    if (div) {
+                        var bar = div.querySelector('.upload-progress');
+                        if (bar) bar.remove();
+                        // Done badge
+                        var badge = document.createElement('div');
+                        badge.className = 'upload-done';
+                        badge.textContent = '✓';
+                        div.appendChild(badge);
+                        // Delete button
+                        var delBtn = document.createElement('button');
+                        delBtn.style.cssText = 'position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:10;line-height:1;';
+                        delBtn.textContent = '×';
+                        (function(urlVal, divEl) {
+                            delBtn.onclick = function() {
+                                window._state.uploadedImages = window._state.uploadedImages.filter(function(u){ return u !== urlVal; });
+                                divEl.remove();
+                                var pickerB = document.getElementById('imgPickerBtn');
+                                if (pickerB) pickerB.style.display = '';
+                                updateImgStatus();
+                            };
+                        })(url, div);
+                        div.appendChild(delBtn);
+                    }
+                } catch(err) {
+                    if (div) { div.style.border = '2px solid #ef4444'; var sp = div.querySelector('.upload-spinner'); if(sp) sp.remove(); }
+                }
+            }
 
-            var urls = await uploadMultipleImages(files);
-            window._state.uploadedImages = urls;
+            window._state.uploadedImages = (window._state.uploadedImages || []).concat(uploadedUrls);
+            // reset file input so same files can be re-selected
+            e.target.value = '';
+            if (btn) { btn.disabled = false; btn.textContent = 'Save Product'; }
+            if (statusEl) {
+                statusEl.textContent = '✅ ' + window._state.uploadedImages.length + ' image(s) ready';
+                setTimeout(function(){ statusEl.style.display='none'; }, 2500);
+            }
+            showToast('✅ ' + uploadedUrls.length + ' image(s) uploaded!', 'success');
+        }
 
-            var items = preview.querySelectorAll('.img-preview-item');
-            items.forEach(function(item) {
-                var progress = item.querySelector('.upload-progress');
-                if (progress) progress.style.width = '100%';
-                var doneBadge = document.createElement('div');
-                doneBadge.className = 'upload-done';
-                doneBadge.textContent = '✓';
-                item.appendChild(doneBadge);
-            });
-
-            document.getElementById('prodSaveBtn').disabled = false;
-            document.getElementById('prodSaveBtn').textContent = 'Save Product';
-            showToast('✅ ' + urls.length + ' images uploaded!', 'success');
+        function updateImgStatus() {
+            var statusEl = document.getElementById('imgUploadStatus');
+            var cnt = (window._state.uploadedImages || []).length;
+            if (statusEl && cnt > 0) {
+                statusEl.style.display = 'block';
+                statusEl.textContent = cnt + ' image(s) ready';
+            }
         }
 
         // ============ TAG DROPDOWN ============
@@ -1274,10 +1298,16 @@
             if (!q) {
                 filtered = ALL_BANKS; // Show all when empty
             } else {
+                // Sort: exact match → starts with → contains → rest
                 var exact    = ALL_BANKS.filter(function(b){ return b.toLowerCase() === q; });
-                var starts   = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) === 0 && exact.indexOf(b) === -1; });
-                var contains = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) > 0 && starts.indexOf(b) === -1 && exact.indexOf(b) === -1; });
-                filtered = exact.concat(starts).concat(contains);
+                var starts   = ALL_BANKS.filter(function(b){ return b.toLowerCase().startsWith(q) && exact.indexOf(b) === -1; });
+                var contains = ALL_BANKS.filter(function(b){ return b.toLowerCase().indexOf(q) > 0 && exact.indexOf(b) === -1 && starts.indexOf(b) === -1; });
+                // Also include partial word matches (e.g. "hdfc" matches "HDFC Bank")
+                var words    = ALL_BANKS.filter(function(b){
+                    if (exact.indexOf(b)!==-1||starts.indexOf(b)!==-1||contains.indexOf(b)!==-1) return false;
+                    return b.toLowerCase().split(' ').some(function(w){ return w.startsWith(q); });
+                });
+                filtered = exact.concat(starts).concat(words).concat(contains);
             }
 
             if (!filtered.length) {
@@ -1322,42 +1352,76 @@
             document.querySelector('.sidebar-footer').style.display = 'none';
             document.getElementById('pageTitle').textContent = 'Become a Seller';
 
+            var steps = [
+                { n:'1', icon:'📝', color:'#f97316', title:'Fill Application Form',   desc:'Business name, phone number & bank details — takes 5 minutes.' },
+                { n:'2', icon:'🔍', color:'#2563eb', title:'Admin Review',            desc:'Our team verifies your details within 2–3 business days.' },
+                { n:'3', icon:'✅', color:'#7c3aed', title:'Get Approved',            desc:'Email confirmation sent. Seller dashboard unlocks instantly.' },
+                { n:'4', icon:'🚀', color:'#16a34a', title:'List Products & Earn',    desc:'Add products, manage orders, receive payments to your bank.' }
+            ];
+
             document.getElementById('contentArea').innerHTML =
-                '<div style="max-width:580px;margin:0 auto;padding:20px 0;">' +
-                    '<div style="text-align:center;margin-bottom:32px;">' +
-                        '<div style="width:72px;height:72px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px;">🛍️</div>' +
-                        '<h1 style="font-size:1.6rem;font-weight:800;color:#0f172a;margin-bottom:8px;">Start Selling on Buyzo Cart</h1>' +
-                        '<p style="color:#64748b;font-size:0.95rem;max-width:420px;margin:0 auto;">Reach thousands of customers across India. Setup takes just 5 minutes.</p>' +
+                '<div style="max-width:600px;margin:0 auto;padding:20px 0 40px;">' +
+
+                // ── Hero ──
+                '<div class="anim-up" style="text-align:center;margin-bottom:36px;animation-delay:.05s;">' +
+                    '<div style="width:88px;height:88px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;margin:0 auto 20px;box-shadow:0 8px 32px rgba(37,99,235,.3);animation:popIn .4s ease .1s both;">🛍️</div>' +
+                    '<h1 style="font-size:1.75rem;font-weight:900;background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;line-height:1.2;">Start Selling on<br>Buyzo Cart</h1>' +
+                    '<p style="color:#64748b;font-size:0.95rem;max-width:380px;margin:0 auto;line-height:1.6;">Reach thousands of customers across India. Free to join — no monthly fees.</p>' +
+                '</div>' +
+
+                // ── Stats strip ──
+                '<div class="anim-up" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;animation-delay:.1s;">' +
+                    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);">' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#2563eb;">0%</div>' +
+                        '<div style="font-size:11px;color:#64748b;font-weight:600;">Commission</div>' +
                     '</div>' +
-                    '<div class="card" style="margin-bottom:20px;">' +
-                        '<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>' +
-                        '<div class="card-body" style="padding:8px 20px;">' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f97316,#fb923c);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">1</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">📝 Fill Application Form</div><div style="font-size:0.82rem;color:#64748b;">Enter your business name, category, phone number and bank details.</div></div>' +
-                            '</div>' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">2</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">🔍 Admin Review</div><div style="font-size:0.82rem;color:#64748b;">Our team verifies your details. This takes 2–3 business days.</div></div>' +
-                            '</div>' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">3</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">✅ Get Approved</div><div style="font-size:0.82rem;color:#64748b;">You will receive an email once approved. Your seller dashboard will unlock instantly.</div></div>' +
-                            '</div>' +
-                            '<div style="display:flex;gap:16px;padding:14px 0;align-items:flex-start;">' +
-                                '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#4ade80);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">4</div>' +
-                                '<div><div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">🚀 List Products & Earn</div><div style="font-size:0.82rem;color:#64748b;">Add your products, manage orders and receive payments directly to your bank account.</div></div>' +
-                            '</div>' +
-                        '</div>' +
+                    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);">' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#16a34a;">24h</div>' +
+                        '<div style="font-size:11px;color:#64748b;font-weight:600;">Setup Time</div>' +
                     '</div>' +
-                    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center;margin-bottom:20px;">' +
-                        '<div style="font-size:1.4rem;">🔒</div>' +
-                        '<div style="font-size:0.85rem;color:#15803d;"><strong>100% Secure.</strong> Your bank details are encrypted and only used for payment transfers.</div>' +
+                    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);">' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#7c3aed;">∞</div>' +
+                        '<div style="font-size:11px;color:#64748b;font-weight:600;">Products</div>' +
                     '</div>' +
-                    '<div style="text-align:center;">' +
-                        '<button onclick="showApplicationForm(1)" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:14px 36px;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,.35);">Get Started → Fill Form</button>' +
-                        '<div style="margin-top:12px;font-size:0.8rem;color:#94a3b8;">Takes less than 5 minutes · Free to join</div>' +
+                '</div>' +
+
+                // ── Steps card ──
+                '<div class="card anim-up" style="margin-bottom:20px;animation-delay:.15s;">' +
+                    '<div class="card-header"><h3 class="card-title">📋 How It Works</h3></div>' +
+                    '<div class="card-body" style="padding:4px 20px 8px;">' +
+                    steps.map(function(s, i) {
+                        return '<div class="anim-up" style="display:flex;gap:16px;padding:16px 0;'+(i<3?'border-bottom:1px solid var(--border);':'')+';align-items:flex-start;animation-delay:'+(0.18+i*0.08)+'s;">' +
+                            '<div style="width:42px;height:42px;border-radius:12px;background:'+s.color+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,.15);">'+s.icon+'</div>' +
+                            '<div style="flex:1;min-width:0;">' +
+                                '<div style="font-weight:800;font-size:0.9rem;margin-bottom:3px;display:flex;align-items:center;gap:8px;">' +
+                                    '<span style="background:#f1f5f9;color:#64748b;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;">Step '+s.n+'</span>'+s.title+
+                                '</div>' +
+                                '<div style="font-size:0.82rem;color:#64748b;line-height:1.5;">'+s.desc+'</div>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('') +
                     '</div>' +
+                '</div>' +
+
+                // ── Trust strip ──
+                '<div class="anim-up" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:28px;animation-delay:.5s;">' +
+                    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;">' +
+                        '<span style="font-size:1.2rem;">🔒</span>' +
+                        '<div style="font-size:12px;color:#15803d;font-weight:600;line-height:1.4;min-width:0;">Bank details encrypted & secure</div>' +
+                    '</div>' +
+                    '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;">' +
+                        '<span style="font-size:1.2rem;">💸</span>' +
+                        '<div style="font-size:12px;color:#1e40af;font-weight:600;line-height:1.4;min-width:0;">Direct payment to your bank</div>' +
+                    '</div>' +
+                '</div>' +
+
+                // ── CTA ──
+                '<div class="anim-up" style="text-align:center;animation-delay:.55s;">' +
+                    '<button onclick="showApplicationForm(1)" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:16px 44px;border-radius:16px;font-size:1.05rem;font-weight:800;cursor:pointer;box-shadow:0 6px 24px rgba(37,99,235,.4);letter-spacing:.01em;transition:transform .15s;width:100%;max-width:340px;">' +
+                        '🚀 Get Started — Fill Form' +
+                    '</button>' +
+                    '<div style="margin-top:12px;font-size:0.78rem;color:#94a3b8;">Free to join · Takes less than 5 minutes · No hidden charges</div>' +
+                '</div>' +
                 '</div>';
         }
 
@@ -1373,24 +1437,41 @@
         }
 
         function _stepBar(current) {
-            var steps = ['Business Info','Bank Details','Review & Submit'];
-            return '<div style="display:flex;align-items:center;margin-bottom:28px;">' +
-                steps.map(function(label, i) {
-                    var n = i + 1;
-                    var done = n < current, active = n === current;
-                    var circStyle = done
-                        ? 'background:#22c55e;border-color:#22c55e;color:#fff;'
-                        : active ? 'background:#2563eb;border-color:#2563eb;color:#fff;'
-                        : 'background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8;';
-                    var labelStyle = done ? 'color:#22c55e;' : active ? 'color:#2563eb;' : 'color:#94a3b8;';
-                    var circle = '<div style="width:32px;height:32px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;'+circStyle+'">'+(done?'✓':n)+'</div>';
-                    var lbl = '<span style="font-size:0.75rem;font-weight:700;margin-left:8px;white-space:nowrap;'+labelStyle+'">'+label+'</span>';
-                    var line = n < steps.length ? '<div style="flex:1;height:2px;background:'+(done?'#22c55e':'#e2e8f0')+';margin:0 8px;min-width:20px;"></div>' : '';
-                    return '<div style="display:flex;align-items:center;flex:1;">'+circle+lbl+'</div>'+line;
-                }).join('') +
-            '</div>';
+            var cfg = [
+                { label:'Business', icon:'👤' },
+                { label:'Bank',     icon:'🏦' },
+                { label:'Review',   icon:'📋' }
+            ];
+            var html = '<div style="display:flex;align-items:flex-start;justify-content:center;'
+                     + 'margin-bottom:24px;padding:16px 8px 12px;background:#f8fafc;'
+                     + 'border-radius:14px;border:1px solid #e2e8f0;width:100%;box-sizing:border-box;">';
+            cfg.forEach(function(s, i) {
+                var n = i + 1;
+                var done   = n < current;
+                var active = n === current;
+                var bg     = done ? '#22c55e' : active ? '#2563eb' : '#e2e8f0';
+                var fg     = (done||active) ? '#fff' : '#94a3b8';
+                var col    = done ? '#22c55e' : active ? '#2563eb' : '#94a3b8';
+                var fw     = active ? '800' : '600';
+                // Circle
+                html += '<div style="display:flex;flex-direction:column;align-items:center;width:72px;flex-shrink:0;">';
+                html += '<div style="width:38px;height:38px;border-radius:50%;background:'+bg
+                      + ';color:'+fg+';display:flex;align-items:center;justify-content:center;'
+                      + 'font-size:15px;font-weight:800;flex-shrink:0;margin-bottom:6px;">'
+                      + (done ? '✓' : s.icon) + '</div>';
+                html += '<div style="font-size:11px;font-weight:'+fw+';color:'+col
+                      + ';text-align:center;line-height:1.2;word-break:keep-all;">'
+                      + s.label + '</div></div>';
+                // Connector line (between steps)
+                if (i < 2) {
+                    var lc = n < current ? '#22c55e' : '#e2e8f0';
+                    html += '<div style="flex:1;height:2px;background:'+lc
+                          + ';margin-top:19px;border-radius:2px;"></div>';
+                }
+            });
+            html += '</div>';
+            return html;
         }
-
         function _fieldErr(fieldId, errId, show) {
             var f=document.getElementById(fieldId), e=document.getElementById(errId);
             if(f){ f.classList.toggle('error', show); f.classList.toggle('valid', !show && f.value.trim().length > 0); }
@@ -1404,11 +1485,11 @@
             document.querySelector('.sidebar-footer').style.display = 'none';
             document.getElementById('pageTitle').textContent = 'Seller Application — Step ' + step + ' of 3';
 
-            var content = _stepBar(step);
+            var content = '<div class="anim-up" style="animation-delay:.02s;">' + _stepBar(step) + '</div>';
 
             if (step === 1) {
                 content +=
-                    '<div class="card"><div class="card-header"><h3 class="card-title">👤 Business Information</h3></div><div class="card-body">' +
+                    '<div class="card anim-up" style="animation-delay:.1s;"><div class="card-header"><h3 class="card-title">👤 Business Information</h3></div><div class="card-body">' +
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Full Name <span class="required">*</span></label>' +
@@ -1444,27 +1525,24 @@
                                 '<textarea class="form-control" id="appDesc" rows="2" placeholder="Describe what you sell...">'+((_appData.desc)||'')+'</textarea>' +
                             '</div>' +
                         '</div>' +
+                        '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:12px;">' +
+                            '🔐 <strong>KYC Required.</strong> Aadhaar & PAN are used only for identity verification and are stored securely. Never shared with third parties.' +
+                        '</div>' +
                         '<div class="form-row">' +
                             '<div class="form-group">' +
                                 '<label class="form-label">Aadhaar Number <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appAadhaar" type="text" maxlength="12" placeholder="12-digit Aadhaar" value="'+((_appData.aadhaar)||'')+'" oninput="validateAadhaarInput()">' +
+                                '<input class="form-control" id="appAadhaar" type="tel" maxlength="12" placeholder="12-digit Aadhaar" value="'+((_appData.aadhaar)||'')+'" oninput="validateAadhaarInput()" style="letter-spacing:2px;font-family:monospace;font-size:15px;">' +
                                 '<div class="form-error" id="appAadhaarErr">⚠ Enter valid 12-digit Aadhaar number</div>' +
                             '</div>' +
                             '<div class="form-group">' +
-                                '<label class="form-label">PAN Number <span class="required">*</span></label>' +
-                                '<input class="form-control" id="appPAN" type="text" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase;" value="'+((_appData.pan)||'')+'" oninput="validatePANInput()">' +
+                                '<label class="form-label">PAN Card Number <span class="required">*</span></label>' +
+                                '<input class="form-control" id="appPAN" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase;letter-spacing:2px;font-family:monospace;font-size:15px;" value="'+((_appData.pan)||'')+'" oninput="validatePANInput()">' +
                                 '<div class="form-error" id="appPANErr">⚠ Enter valid PAN (e.g. ABCDE1234F)</div>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="form-group">' +
-                            '<label class="form-label">🆔 Seller ID <span class="required">*</span></label>' +
-                            '<input class="form-control" id="appSellerId" placeholder="e.g. rahul_shop, adidas524, sneaker_hub" value="'+((_appData.sellerId)||'')+'" oninput="onSellerIdInput(this.value)" style="border-color:var(--primary);font-family:monospace;font-weight:700;letter-spacing:0.5px;">' +
-                            '<div id="sellerIdPreview" class="sid-preview-box checking" style="display:none;"></div>' +
-                            '<div class="form-error" id="appSellerIdErr">⚠ Seller ID required (letters, numbers, - and _ only)</div>' +
-                            '<small class="text-muted" style="display:block;margin-top:4px;">Unique ID for your seller account. <strong>Cannot be changed later.</strong> Examples: rahul_shop · adidas524 · sneaker_hub_india</small>' +
-                        '</div>' +
+                        // Seller ID field removed
                     '</div></div>' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">' +
+                    '<div class="anim-up" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;animation-delay:.25s;">' +
                         '<button class="btn btn-outline" onclick="showSellerWelcome()">← Back</button>' +
                         '<button class="btn btn-primary" onclick="appNext(1)">Continue → Bank Details</button>' +
                     '</div>';
@@ -1477,7 +1555,7 @@
 
             } else if (step === 2) {
                 content +=
-                    '<div class="card"><div class="card-header"><h3 class="card-title">🏦 Bank Details <small class="text-muted" style="font-weight:400;">(for receiving payments)</small></h3></div><div class="card-body">' +
+                    '<div class="card anim-up" style="animation-delay:.1s;"><div class="card-header"><h3 class="card-title">🏦 Bank Details <small class="text-muted" style="font-weight:400;">(for receiving payments)</small></h3></div><div class="card-body">' +
                         '<div class="form-group bank-dropdown-wrapper">' +
                             '<label class="form-label">Bank Name <span class="required">*</span></label>' +
                             '<input class="form-control" id="appBankDisplay" placeholder="Search and select your bank..." autocomplete="off" value="'+((_appData.bank)||'')+'" onfocus="filterBankDropdown()" oninput="filterBankDropdown()" onclick="filterBankDropdown()">' +
@@ -1497,11 +1575,11 @@
                                 '<div class="form-error" id="appIFSCErr">⚠ Invalid IFSC (format: SBIN0001234)</div>' +
                             '</div>' +
                         '</div>' +
-                        '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:0.82rem;color:#1d4ed8;">' +
-                            '🔒 <strong>100% Secure.</strong> Bank details are encrypted and only used to transfer your earnings.' +
+                        '<div class="anim-up" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:0.82rem;color:#1d4ed8;animation-delay:.2s;">' +
+                            '🔒 <strong>Secure & Confidential.</strong> Bank details are used only for verifying your identity and matching account holder name with your submitted documents. Your data is fully encrypted.' +
                         '</div>' +
                     '</div></div>' +
-                    '<div style="display:flex;justify-content:space-between;margin-top:4px;">' +
+                    '<div class="anim-up" style="display:flex;justify-content:space-between;margin-top:4px;animation-delay:.25s;">' +
                         '<button class="btn btn-outline" onclick="showApplicationForm(1)">← Edit Business Info</button>' +
                         '<button class="btn btn-primary" onclick="appNext(2)">Continue → Review</button>' +
                     '</div>';
@@ -1511,23 +1589,25 @@
             } else if (step === 3) {
                 var d = _appData;
                 content +=
-                    '<div class="card"><div class="card-header"><h3 class="card-title">📋 Review Your Application</h3><span style="font-size:0.8rem;color:#64748b;">Please verify all details before submitting</span></div><div class="card-body">' +
+                    '<div class="card anim-up" style="animation-delay:.1s;"><div class="card-header"><h3 class="card-title">📋 Review Your Application</h3><span style="font-size:0.8rem;color:#64748b;">Please verify all details before submitting</span></div><div class="card-body">' +
                         '<div style="display:grid;gap:0;">' +
                             _reviewRow('Full Name', d.name) +
                             _reviewRow('Phone', d.phone) +
                             _reviewRow('Business Name', d.biz) +
                             _reviewRow('Category', d.cat) +
-                            _reviewRow('🆔 Seller ID', d.sellerId || '—') +
+                            _reviewRow('Aadhaar', d.aadhaar ? '****' + d.aadhaar.slice(-4) : '—') +
+                            _reviewRow('PAN Card', d.pan || '—') +
+                            // Seller ID removed from review
                             (d.gst ? _reviewRow('GST Number', d.gst) : '') +
                             _reviewRow('Bank', d.bank) +
                             _reviewRow('Account Number', '****' + (d.acc || '').slice(-4)) +
                             _reviewRow('IFSC Code', d.ifsc, true) +
                         '</div>' +
                     '</div></div>' +
-                    '<div style="background:#fff8e6;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#92400e;font-size:0.85rem;">' +
+                    '<div class="anim-up" style="background:#fff8e6;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#92400e;font-size:0.85rem;animation-delay:.2s;">' +
                         '📋 <strong>Important:</strong> Double-check all details before submitting. Review takes 2–3 business days. You cannot edit after submitting.' +
                     '</div>' +
-                    '<div style="display:flex;justify-content:space-between;">' +
+                    '<div class="anim-up" style="display:flex;justify-content:space-between;animation-delay:.25s;">' +
                         '<button class="btn btn-outline" onclick="showApplicationForm(2)">← Edit Bank Details</button>' +
                         '<button class="btn btn-success" id="appBtn" onclick="submitApp()">✅ Submit Application</button>' +
                     '</div>';
@@ -1540,17 +1620,99 @@
             return '<div style="display:flex;justify-content:space-between;padding:11px 0;'+(isLast?'':'border-bottom:1px solid var(--border);')+'"><span style="color:#64748b;font-size:0.9rem;">'+label+'</span><strong style="font-size:0.9rem;">'+value+'</strong></div>';
         }
 
+        // Bank name → IFSC prefix mapping
+        var BANK_IFSC_PREFIX = {
+            'State Bank of India': 'SBIN', 'SBI': 'SBIN',
+            'HDFC Bank': 'HDFC',
+            'ICICI Bank': 'ICIC',
+            'Punjab National Bank': 'PUNB', 'PNB': 'PUNB',
+            'Bank of Baroda': 'BARB',
+            'Axis Bank': 'UTIB',
+            'Kotak Mahindra Bank': 'KKBK',
+            'Canara Bank': 'CNRB',
+            'Union Bank of India': 'UBIN',
+            'Bank of India': 'BKID',
+            'Indian Bank': 'IDIB',
+            'Central Bank of India': 'CBIN',
+            'Indian Overseas Bank': 'IOBA',
+            'UCO Bank': 'UCBA',
+            'Bank of Maharashtra': 'MAHB',
+            'Punjab & Sind Bank': 'PSIB',
+            'Federal Bank': 'FDRL',
+            'IDBI Bank': 'IBKL',
+            'IndusInd Bank': 'INDB',
+            'Yes Bank': 'YESB',
+            'RBL Bank': 'RATN',
+            'South Indian Bank': 'SIBL',
+            'Karur Vysya Bank': 'KVBL',
+            'Dhanlaxmi Bank': 'DLXB',
+            'Lakshmi Vilas Bank': 'LAVB',
+            'Jammu & Kashmir Bank': 'JAKA',
+            'Saraswat Bank': 'SRCB',
+            'Bandhan Bank': 'BDBL',
+            'IDFC First Bank': 'IDFB',
+            'AU Small Finance Bank': 'AUBL',
+            'Ujjivan Small Finance Bank': 'UJVN',
+            'Equitas Small Finance Bank': 'ESFB',
+            'Airtel Payments Bank': 'AIRP',
+            'Paytm Payments Bank': 'PYTM',
+            'India Post Payments Bank': 'IPOS',
+            'Fino Payments Bank': 'FINO',
+            'City Union Bank': 'CIUB',
+            'Tamilnad Mercantile Bank': 'TMBL',
+            'Nainital Bank': 'NTBL',
+            'Andhra Bank': 'ANDB',
+            'Corporation Bank': 'CORP',
+            'Syndicate Bank': 'SYNB',
+            'Allahabad Bank': 'ALLA',
+            'Dena Bank': 'BKDN',
+            'Vijaya Bank': 'VIJB',
+        };
+
+        function getExpectedIfscPrefix(bankName) {
+            if (!bankName) return null;
+            // Exact match
+            if (BANK_IFSC_PREFIX[bankName]) return BANK_IFSC_PREFIX[bankName];
+            // Partial match
+            var lc = bankName.toLowerCase();
+            for (var k in BANK_IFSC_PREFIX) {
+                if (lc.indexOf(k.toLowerCase()) !== -1 || k.toLowerCase().indexOf(lc) !== -1) {
+                    return BANK_IFSC_PREFIX[k];
+                }
+            }
+            return null;
+        }
+
         function appLiveValidate(el, type) {
             var v = el.value.trim();
-            var rules = {
-                name: function(v){ return v.length >= 3; },
-                phone: function(v){ return /^\d{10,15}$/.test(v); },
-                biz:  function(v){ return v.length > 0; },
-                cat:  function(v){ return v.length > 0; },
-                acc:  function(v){ return /^\d{6,}$/.test(v); },
-                ifsc: function(v){ return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.toUpperCase()); }
-            };
-            var valid = rules[type] ? rules[type](v) : v.length > 0;
+            var valid;
+            if (type === 'ifsc') {
+                var ifscVal = v.toUpperCase();
+                var basicOk = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscVal);
+                var bankName = document.getElementById('appBank') ? document.getElementById('appBank').value : '';
+                var expectedPrefix = getExpectedIfscPrefix(bankName);
+                var errEl = document.getElementById('appIFSCErr');
+                if (!basicOk) {
+                    valid = false;
+                    if (errEl) errEl.textContent = '⚠ Invalid IFSC format (e.g. PUNB0123456)';
+                } else if (expectedPrefix && !ifscVal.startsWith(expectedPrefix)) {
+                    valid = false;
+                    if (errEl) errEl.textContent = '⚠ ' + (bankName||'This bank') + ' IFSC starts with ' + expectedPrefix + ' (e.g. ' + expectedPrefix + '0123456)';
+                } else {
+                    valid = true;
+                    if (errEl) errEl.textContent = '⚠ Invalid IFSC (format: SBIN0001234)';
+                }
+                el.value = ifscVal; // auto-uppercase
+            } else {
+                var rules = {
+                    name: function(v){ return v.length >= 3; },
+                    phone: function(v){ return /^\d{10,15}$/.test(v); },
+                    biz:  function(v){ return v.length > 0; },
+                    cat:  function(v){ return v.length > 0; },
+                    acc:  function(v){ return /^\d{6,}$/.test(v); }
+                };
+                valid = rules[type] ? rules[type](v) : v.length > 0;
+            }
             el.classList.toggle('error', !valid);
             el.classList.toggle('valid', valid);
             var errId = { name:'appNameErr', phone:'appPhoneErr', biz:'appBizErr', cat:'appCatErr', acc:'appAccErr', ifsc:'appIFSCErr' }[type];
@@ -1563,40 +1725,30 @@
                 var phone    = (document.getElementById('appPhone')    ? document.getElementById('appPhone').value    : '').trim();
                 var biz      = (document.getElementById('appBiz')      ? document.getElementById('appBiz').value      : '').trim();
                 var gst      = (document.getElementById('appGST')      ? document.getElementById('appGST').value      : '').trim().toUpperCase();
-                var aadhaar  = (document.getElementById('appAadhaar')  ? document.getElementById('appAadhaar').value  : '').trim();
-                var pan      = (document.getElementById('appPAN')      ? document.getElementById('appPAN').value      : '').trim().toUpperCase();
                 var cat      = document.getElementById('appCat') ? document.getElementById('appCat').value : '';
                 var desc     = (document.getElementById('appDesc')     ? document.getElementById('appDesc').value     : '').trim();
-                var sellerId = (document.getElementById('appSellerId') ? document.getElementById('appSellerId').value : '').trim().toLowerCase();
+                var sellerId = window._state.user ? window._state.user.uid.slice(0,8) : ('seller_' + Date.now().toString(36)); // auto-generated
                 var ok = true;
                 if (!name || name.length < 3)              { _fieldErr('appName','appNameErr',true);     ok = false; } else _fieldErr('appName','appNameErr',false);
                 if (!phone || !/^\d{10,15}$/.test(phone))  { _fieldErr('appPhone','appPhoneErr',true);   ok = false; } else _fieldErr('appPhone','appPhoneErr',false);
                 if (!biz)                                   { _fieldErr('appBiz','appBizErr',true);       ok = false; } else _fieldErr('appBiz','appBizErr',false);
                 if (!cat)                                   { _fieldErr('appCat','appCatErr',true);       ok = false; } else _fieldErr('appCat','appCatErr',false);
-                if (aadhaar && !/^\d{12}$/.test(aadhaar))  { _fieldErr('appAadhaar','appAadhaarErr',true); ok = false; } else _fieldErr('appAadhaar','appAadhaarErr',false);
-                if (pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) { _fieldErr('appPAN','appPANErr',true); ok = false; } else _fieldErr('appPAN','appPANErr',false);
                 if (gst && !validateGST(gst)) { showToast('Enter valid GST number or leave empty', 'error'); ok = false; }
 
-                // Seller ID validation
-                if (!sellerId || !/^[a-z0-9_-]{3,30}$/.test(sellerId)) {
-                    _fieldErr('appSellerId','appSellerIdErr',true);
-                    showToast('Seller ID must be 3–30 chars: letters, numbers, _ or -', 'error');
-                    ok = false;
-                } else {
-                    _fieldErr('appSellerId','appSellerIdErr',false);
-                    // Check if available (preview must show "available")
-                    var preview = document.getElementById('sellerIdPreview');
-                    if (preview && preview.classList.contains('taken')) {
-                        showToast('Seller ID already taken — choose another', 'error');
-                        ok = false;
-                    } else if (preview && preview.classList.contains('checking')) {
-                        showToast('Wait for Seller ID availability check to complete', 'warning');
-                        ok = false;
-                    }
-                }
+                // Seller ID is auto-generated from user uid
 
+                var aadhaar = (document.getElementById('appAadhaar') ? document.getElementById('appAadhaar').value : '').replace(/\D/g,'');
+                var pan     = (document.getElementById('appPAN')     ? document.getElementById('appPAN').value     : '').toUpperCase().trim();
+                if (!aadhaar || !/^\d{12}$/.test(aadhaar)) {
+                    var ae = document.getElementById('appAadhaar'); if(ae){ae.classList.add('error');} var ae2=document.getElementById('appAadhaarErr'); if(ae2)ae2.classList.add('show');
+                    showToast('Enter valid 12-digit Aadhaar number', 'error'); ok = false;
+                }
+                if (!pan || !/^[A-Z]{5}\d{4}[A-Z]$/.test(pan)) {
+                    var pe = document.getElementById('appPAN'); if(pe){pe.classList.add('error');} var pe2=document.getElementById('appPANErr'); if(pe2)pe2.classList.add('show');
+                    showToast('Enter valid PAN number (e.g. ABCDE1234F)', 'error'); ok = false;
+                }
                 if (!ok) { showToast('Please fix the highlighted fields', 'error'); return; }
-                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, aadhaar: aadhaar, pan: pan, cat: cat, desc: desc, sellerId: sellerId });
+                _appData = Object.assign(_appData, { name: name, phone: phone, biz: biz, gst: gst, cat: cat, desc: desc, sellerId: sellerId, aadhaar: aadhaar, pan: pan });
                 showApplicationForm(2);
             } else if (step === 2) {
                 var bank = (document.getElementById('appBank') ? document.getElementById('appBank').value : '').trim();
@@ -1614,23 +1766,26 @@
 
         function validateAadhaarInput() {
             var el = document.getElementById('appAadhaar');
-            var errEl = document.getElementById('appAadhaarErr');
-            if (!el) return true;
-            var val = el.value.replace(/\D/g, '');
-            el.value = val;
-            var valid = val.length === 12;
-            if (errEl) errEl.style.display = valid || val.length === 0 ? 'none' : 'block';
-            return valid;
+            var err = document.getElementById('appAadhaarErr');
+            if (!el) return;
+            var v = el.value.replace(/\D/g,''); // digits only
+            el.value = v;
+            var valid = /^\d{12}$/.test(v);
+            el.classList.toggle('error', !valid && v.length > 0);
+            el.classList.toggle('valid', valid);
+            if (err) err.classList.toggle('show', !valid && v.length > 0);
         }
 
         function validatePANInput() {
             var el = document.getElementById('appPAN');
-            var errEl = document.getElementById('appPANErr');
-            if (!el) return true;
-            el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            var valid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(el.value);
-            if (errEl) errEl.style.display = valid || el.value.length === 0 ? 'none' : 'block';
-            return valid;
+            var err = document.getElementById('appPANErr');
+            if (!el) return;
+            el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+            var v = el.value;
+            var valid = /^[A-Z]{5}\d{4}[A-Z]$/.test(v);
+            el.classList.toggle('error', !valid && v.length > 0);
+            el.classList.toggle('valid', valid);
+            if (err) err.classList.toggle('show', !valid && v.length > 0);
         }
 
         function validateGSTInput() {
@@ -1728,29 +1883,20 @@
                 showApplicationForm(1);
                 return;
             }
+            // Auto-generate sellerId from uid (Seller ID field removed from UI)
             if (!d.sellerId || !/^[a-z0-9_-]{3,30}$/.test(d.sellerId)) {
-                showToast('Valid Seller ID required — go back to Step 1', 'error');
-                showApplicationForm(1);
-                return;
+                d.sellerId = user.uid.slice(0, 12).toLowerCase().replace(/[^a-z0-9]/g, '_');
             }
             var btn = document.getElementById('appBtn');
             if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting...'; }
             try {
-                // Check sellerId uniqueness one final time before saving
-                var sidCheck = await window._get(window._ref(window._db, 'sellerIds/' + d.sellerId));
-                if (sidCheck.exists() && sidCheck.val().uid !== user.uid) {
-                    showToast('Seller ID "' + d.sellerId + '" just got taken — please choose another', 'error');
-                    if (btn) { btn.disabled = false; btn.textContent = '✅ Submit Application'; }
-                    showApplicationForm(1);
-                    return;
-                }
-                // Reserve the Seller ID
+                // Reserve the Seller ID (uid-based, always unique)
                 await window._set(window._ref(window._db, 'sellerIds/' + d.sellerId), {
                     uid: user.uid, email: user.email, createdAt: Date.now()
                 });
                 // Save seller request including sellerId
                 await window._set(window._ref(window._db, 'sellerRequests/' + user.uid), {
-                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '',
+                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '', aadhaar: d.aadhaar || '', pan: d.pan || '',
                     category: d.cat, description: d.desc || '',
                     bankName: d.bank, accountNumber: d.acc, ifsc: d.ifsc,
                     email: user.email, uid: user.uid,
@@ -2113,6 +2259,10 @@
             document.getElementById('prodActive').checked = true;
             document.getElementById('imgPreviews').innerHTML = '';
             window._state.uploadedImages = [];
+            var _pickerBtn = document.getElementById('imgPickerBtn');
+            if (_pickerBtn) _pickerBtn.style.display = '';
+            var _statusEl = document.getElementById('imgUploadStatus');
+            if (_statusEl) { _statusEl.style.display = 'none'; _statusEl.textContent = ''; }
             document.getElementById('tagPlaceholder').style.display = 'inline';
             document.getElementById('selectedTagsDisplay').innerHTML = '';
             document.getElementById('prodSaveBtn').disabled = false;
@@ -2121,7 +2271,7 @@
             _populateProdCategory();
             loadTagsForDropdown();
             // Show Seller ID (custom, not just UID)
-            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || uid || 'N/A';
+            var customSid = (window._state.sellerData && window._state.sellerData.sellerId) || (window._state.user && window._state.user.uid) || 'N/A';
             var sidEl = document.getElementById('modalSellerId');
             if (sidEl) sidEl.textContent = customSid;
             // Reset brand dropdown
@@ -2145,11 +2295,11 @@
             document.getElementById('prodPrice').value = p.price || '';
             document.getElementById('prodStock').value = p.stock || '';
             document.getElementById('prodCategory').value = p.category || '';
-            if (document.getElementById('prodMrp')) document.getElementById('prodMrp').value = p.mrp || p.originalPrice || '';
-            if (document.getElementById('prodColors')) document.getElementById('prodColors').value = (p.colors || []).join(', ');
             document.getElementById('prodDesc').value = p.desc || '';
             document.getElementById('prodFullDesc').value = p.fullDesc || '';
             document.getElementById('prodSizes').value = (p.sizes || []).join(', ');
+            if (document.getElementById('prodMrp')) document.getElementById('prodMrp').value = p.mrp || p.originalPrice || '';
+            if (document.getElementById('prodColors')) document.getElementById('prodColors').value = (p.colors || []).join(', ');
             document.getElementById('prodTags').value = (p.tags || []).join(', ');
             document.getElementById('prodActive').checked = p.status !== 'inactive';
             window._state.uploadedImages = p.images || [];
@@ -2190,13 +2340,11 @@
         async function saveProduct() {
             var name = (document.getElementById('prodName') ? document.getElementById('prodName').value : '').trim();
             var price = parseFloat(document.getElementById('prodPrice') ? document.getElementById('prodPrice').value : 0);
-            var mrp = parseFloat(document.getElementById('prodMrp') ? document.getElementById('prodMrp').value : 0) || 0;
             var stock = parseInt(document.getElementById('prodStock') ? document.getElementById('prodStock').value : 0) || 0;
             var category = document.getElementById('prodCategory') ? document.getElementById('prodCategory').value : '';
             var desc = (document.getElementById('prodDesc') ? document.getElementById('prodDesc').value : '').trim();
             var fullDesc = (document.getElementById('prodFullDesc') ? document.getElementById('prodFullDesc').value : '').trim();
             var sizes = (document.getElementById('prodSizes') ? document.getElementById('prodSizes').value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-            var colors = (document.getElementById('prodColors') ? document.getElementById('prodColors').value : '').split(',').map(function(c) { return c.trim(); }).filter(Boolean);
             var tags = (document.getElementById('prodTags') ? document.getElementById('prodTags').value : '').split(',').map(function(t) { return t.trim(); }).filter(Boolean);
             var active = document.getElementById('prodActive') ? document.getElementById('prodActive').checked !== false : true;
 
@@ -2220,12 +2368,17 @@
             })();
             var sellerName = (window._state.sellerData && window._state.sellerData.businessName) || window._state.user.displayName || window._state.user.email || 'Seller';
 
+            var mrp = parseFloat(document.getElementById('prodMrp') ? document.getElementById('prodMrp').value : 0) || 0;
+            var colors = (document.getElementById('prodColors') ? document.getElementById('prodColors').value : '').split(',').map(function(c){ return c.trim(); }).filter(Boolean);
+            var selBrand = (window._state.brands || []).find(function(b){ return b.id === brandId; });
+            var brandBlueTickAdmin = selBrand ? !!selBrand.blueTickAdmin : false;
+
             var data = {
                 title: name,
                 name: name,
                 price: price,
-                mrp: mrp || null,
-                originalPrice: mrp || null,
+                mrp: mrp > 0 ? mrp : price,
+                originalPrice: mrp > 0 ? mrp : price,
                 stock: stock,
                 category: category,
                 desc: desc,
@@ -2243,6 +2396,7 @@
                 brandId: brandId,
                 brandName: brandName,
                 brandLogo: brandLogo,
+                blueTickAdmin: brandBlueTickAdmin,
                 productCode: productCode,
                 sellerEmail: window._state.user.email || '',
                 updatedAt: Date.now()
@@ -2284,7 +2438,13 @@
                     sellerName: window._state.user.displayName || window._state.user.email,
                     source: 'seller',
                     brand: brandName,
-                    brandId: brandName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                    brandId: brandId,
+                    brandLogo: brandLogo,
+                    blueTickAdmin: brandBlueTickAdmin,
+                    mrp: mrp > 0 ? mrp : price,
+                    originalPrice: mrp > 0 ? mrp : price,
+                    colors: colors,
+                    sizes: sizes,
                     sellerEmail: window._state.user.email || '',
                     createdAt: data.createdAt || Date.now(),
                     updatedAt: Date.now()
@@ -2436,15 +2596,17 @@
             var norm = val.toLowerCase().replace(/[^a-z0-9]/g,'');
             var warn = document.getElementById('brandDupWarn');
             if (!warn || !norm) { if(warn) warn.style.display='none'; return; }
-            if (PROTECTED_BRANDS_SET.has(norm)) {
-                warn.style.display='block';
-                warn.textContent='⛔ "'+val+'" is a protected brand. Only admin can create it.';
-                return;
-            }
+            // Already exists in store — block
             var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
             if (dup) {
                 warn.style.display='block';
+                warn.style.background='#fee2e2'; warn.style.color='#991b1b';
                 warn.textContent='⚠️ Brand "'+dup.name+'" already exists — select it from the dropdown!';
+            } else if (PROTECTED_BRANDS_SET.has(norm)) {
+                // Famous brand — allow but warn, admin will verify
+                warn.style.display='block';
+                warn.style.background='#fef3c7'; warn.style.color='#92400e';
+                warn.innerHTML='ℹ️ "'+val+'" is a well-known brand. Request will go to admin for verification. <strong>Authorized resellers can apply.</strong>';
             } else {
                 warn.style.display='none';
             }
@@ -2457,7 +2619,7 @@
             var reason = (document.getElementById('reqBrandReason2').value||'').trim();
             if (!name || name.length < 2) { showToast('Brand name enter karo', 'error'); return; }
             var norm = name.toLowerCase().replace(/[^a-z0-9]/g,'');
-            if (PROTECTED_BRANDS_SET.has(norm)) { showToast('Protected brand — request nahi kar sakte', 'error'); return; }
+            // Protected brands allowed — admin will verify ownership
             var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
             if (dup) { showToast('Brand already exists — dropdown se select karo', 'error'); return; }
             var uid = window._state.user && window._state.user.uid;
@@ -2471,7 +2633,7 @@
                 });
                 showToast('Brand request submitted! ✅ Auto-approve in 24 hours if admin doesn\'t review.', 'success');
                 closeModal('brandReqModal');
-            } catch(err) { showToast(_safeErr(err), 'error'); }
+            } catch(err) { showToast('Failed: '+err.message, 'error'); }
         }
 
         // ── BRAND AUTO-APPROVE (24 HOURS) ────────────────────────────────
@@ -2565,7 +2727,7 @@
                 else if (myReq)    _renderBrandReqStatus(myReq, uid);
                 else               _renderNoBrand(uid);
             } catch(err) {
-                ca.innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">_safeErr(err)+'</p><button class="btn btn-primary" onclick="renderBrandPage()" style="margin-top:12px;">Retry</button></div>';
+                ca.innerHTML = '<div style="text-align:center;padding:40px;"><p style="color:#ef4444;">Error: '+err.message+'</p><button class="btn btn-primary" onclick="renderBrandPage()" style="margin-top:12px;">Retry</button></div>';
             }
         }
 
@@ -2800,7 +2962,7 @@
                 showToast('Brand profile updated! ✅','success');
                 var m=document.getElementById('_ebModal'); if(m) m.remove();
                 renderBrandPage();
-            } catch(err) { showToast(_safeErr(err),'error'); }
+            } catch(err) { showToast('Failed: '+err.message,'error'); }
         }
 
         function formatDate(ts) {
@@ -2812,19 +2974,19 @@
             if (!confirm('Confirm this order?')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'confirmed', updatedAt:Date.now() })
                 .then(function() { showToast('Order confirmed!','success'); if(window.loadDashboardData) window.loadDashboardData(); })
-                .catch(function(err) { showToast(_safeErr(err),'error'); });
+                .catch(function(err) { showToast('Error: '+err.message,'error'); });
         }
         function sellerShipOrder(orderId) {
             if (!confirm('Mark as Shipped?')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'shipped', updatedAt:Date.now() })
                 .then(function() { showToast('Marked as Shipped!','success'); if(window.loadDashboardData) window.loadDashboardData(); })
-                .catch(function(err) { showToast(_safeErr(err),'error'); });
+                .catch(function(err) { showToast('Error: '+err.message,'error'); });
         }
         function sellerCancelOrder(orderId) {
             if (!confirm('Cancel this order? Cannot be undone.')) return;
             window._update(window._ref(window._db, 'orders/' + orderId), { status:'cancelled', cancelledBy:'seller', cancelReason:'Cancelled by Seller', cancelledAt:Date.now(), updatedAt:Date.now() })
                 .then(function() { showToast('Order cancelled','info'); if(window.loadDashboardData) window.loadDashboardData(); })
-                .catch(function(err) { showToast(_safeErr(err),'error'); });
+                .catch(function(err) { showToast('Error: '+err.message,'error'); });
         }
         var _sdmOrderId=null, _sdmLink='';
         function openSellerDeliveryModal(orderId) {
@@ -2863,7 +3025,7 @@
                     var msg='Namaste '+name+'!\n\nAapko ek order deliver karna hai:\n'+(order?(order.productName||'Product')+' - '+formatCurrency(order.totalAmount)+'\n':'')+'\nDelivery Link:\n'+link+'\n\nIs link se order Delivered ya Cancel kar sakte hain.\n- '+seller;
                     window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(msg),'_blank');
                 })
-                .catch(function(err){showToast(_safeErr(err),'error');btn.disabled=false;btn.textContent='Generate and Send via WhatsApp';});
+                .catch(function(err){showToast('Error: '+err.message,'error');btn.disabled=false;btn.textContent='Generate and Send via WhatsApp';});
         }
         function copySDMLink(){var inp=document.getElementById('sdmLink');if(!inp||!inp.value)return;if(navigator.clipboard){navigator.clipboard.writeText(inp.value).then(function(){showToast('Link copied!','success');});}else{inp.select();document.execCommand('copy');showToast('Copied!','success');}}
         function resendSDMWA(){
@@ -2887,6 +3049,46 @@
             el.addEventListener('click',function(e){if(e.target===el)closeSDM();});
             document.body.appendChild(el);
         }
+
+
+        // ── Brand Logo Gallery Upload ──
+        async function handleBrandLogoUpload(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            // Show local preview immediately
+            var previewBox = document.getElementById('brandLogoPreviewBox');
+            var previewImg = document.getElementById('brandLogoPreviewImg');
+            var label      = document.getElementById('brandLogoPickerLabel');
+            var localUrl   = URL.createObjectURL(file);
+            if (previewImg) { previewImg.src = localUrl; }
+            if (previewBox) { previewBox.style.display = 'block'; }
+            if (label)      { label.textContent = 'Uploading...'; }
+            // Upload to ImgBB
+            try {
+                var url = await uploadImageToImgBB(file);
+                document.getElementById('reqBrandLogo2').value = url;
+                if (previewImg) previewImg.src = url;
+                if (label) label.textContent = '✅ Logo uploaded — tap to change';
+                showToast('Logo uploaded!', 'success');
+            } catch(err) {
+                if (label) label.textContent = '❌ Upload failed — try URL instead';
+                showToast('Logo upload failed: ' + (err.message || 'Try again'), 'error');
+            }
+            e.target.value = '';
+        }
+
+        // ══════════════════════════════════════════
+        // FIX: closeBrandProfile was missing — caused
+        // brand profile overlay X / backdrop click to crash
+        // ══════════════════════════════════════════
+        function closeBrandProfile() {
+            var overlay = document.getElementById('brandProfileOverlay');
+            if (overlay) overlay.style.display = 'none';
+            var box = document.getElementById('brandProfileBox');
+            if (box) box.innerHTML = '';
+        }
+        window.closeBrandProfile = closeBrandProfile;
+
     </script>
 
     <!-- ══ BRAND REQUEST MODAL ══ -->
@@ -2907,16 +3109,23 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Brand Logo <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
-                    <div id="brandLogoPreviewBox" style="display:none;margin-bottom:8px;">
-                        <img id="brandLogoPreviewImg" src="" alt="Logo preview" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1.5px solid #e2e8f0;">
+                    <!-- Hidden file input -->
+                    <input type="file" id="reqBrandLogoFile" accept="image/*" style="display:none;" onchange="handleBrandLogoUpload(event)">
+                    <!-- Gallery picker button -->
+                    <div onclick="document.getElementById('reqBrandLogoFile').click()"
+                         style="border:2px dashed #cbd5e1;border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s;margin-bottom:8px;"
+                         onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';"
+                         onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
+                        <div id="brandLogoPreviewBox" style="display:none;margin-bottom:8px;">
+                            <img id="brandLogoPreviewImg" src="" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:2px solid #e2e8f0;">
+                        </div>
+                        <div style="font-size:1.4rem;margin-bottom:4px;">🖼️</div>
+                        <div style="font-size:13px;font-weight:600;color:#475569;" id="brandLogoPickerLabel">Tap to select logo from gallery</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">JPG / PNG / WEBP</div>
                     </div>
-                    <label id="brandLogoPickerLabel" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px dashed #e2e8f0;border-radius:10px;font-size:13px;color:#64748b;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span id="imgPickerBtn">Upload Logo Image</span>
-                        <input type="file" id="reqBrandLogoFile" accept="image/*" style="display:none;" onchange="handleBrandLogoUpload(this)">
-                    </label>
-                    <div id="imgUploadStatus" style="font-size:12px;color:#64748b;margin-top:4px;"></div>
-                    <input type="hidden" id="reqBrandLogo2" value="">
+                    <!-- Fallback: URL input -->
+                    <input type="url" class="form-control" id="reqBrandLogo2" placeholder="Or paste image URL (https://...)"
+                           style="font-size:12px;" oninput="if(this.value){document.getElementById('brandLogoPreviewImg').src=this.value;document.getElementById('brandLogoPreviewBox').style.display='block';}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description <span style="color:#94a3b8;font-weight:400;">(Optional)</span></label>
