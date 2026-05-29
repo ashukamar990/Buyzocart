@@ -726,111 +726,71 @@
         window.loadDashboardData = async function() {
             var user = window._state.user;
             if (!user) {
-                console.error('❌ No authenticated user');
                 if (typeof showSellerWelcome === 'function') showSellerWelcome();
                 return;
             }
-            
+
+            // Step 1: Load products (non-blocking)
             try {
-                console.log('📦 Loading products for seller:', user.uid);
-                const prodSnap = await get(ref(db, 'sellerProducts/' + user.uid));
-                
-                window._state.products = prodSnap.exists() ? Object.entries(prodSnap.val()).map(function(entry) {
-                    return { 
-                        id: entry[0], 
-                        title: entry[1].name || entry[1].title || '',
-                        price: entry[1].price, 
-                        stock: entry[1].stock, 
-                        category: entry[1].category, 
-                        desc: entry[1].desc, 
-                        fullDesc: entry[1].fullDesc, 
-                        images: entry[1].images, 
-                        tags: entry[1].tags, 
-                        status: entry[1].status, 
-                        sizes: entry[1].sizes,
-                        brand: entry[1].brand || '',
-                        brandId: entry[1].brandId || '',
-                        brandName: entry[1].brandName || entry[1].brand || '',
-                        brandLogo: entry[1].brandLogo || '',
-                        productCode: entry[1].productCode || ''
-                    };
+                var prodSnap = await get(ref(db, 'sellerProducts/' + user.uid));
+                window._state.products = prodSnap.exists() ? Object.entries(prodSnap.val()).map(function(e) {
+                    var v = e[1];
+                    return { id: e[0], title: v.name || v.title || '', price: v.price, mrp: v.mrp || v.originalPrice || null,
+                        stock: v.stock, category: v.category, desc: v.desc, fullDesc: v.fullDesc,
+                        images: v.images, tags: v.tags, status: v.status, sizes: v.sizes, colors: v.colors || [],
+                        brand: v.brand || '', brandId: v.brandId || '', brandName: v.brandName || v.brand || '',
+                        brandLogo: v.brandLogo || '', productCode: v.productCode || '' };
                 }) : [];
-                console.log('✅ Products loaded:', window._state.products.length);
+                console.log('✅ Products:', window._state.products.length);
+            } catch(e1) {
+                console.warn('Products load failed:', e1);
+                window._state.products = [];
+            }
 
-                // Load brands for product form dropdown
-                try {
-                    var brandSnap2 = await get(ref(db, 'brands'));
-                    window._state.brands = [];
-                    if (brandSnap2.exists()) {
-                        brandSnap2.forEach(function(c) {
-                            var b = c.val();
-                            if (b && b.name) window._state.brands.push({
-                                id: c.key, name: b.name, logo: b.logo || '',
-                                blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel || 'normal'
-                            });
-                        });
-                    }
-                } catch(be) { window._state.brands = []; }
-
-                // Load orders — wrapped separately so dashboard still loads if orders fail
-                try {
-                    console.log('📋 Loading orders...');
-                    var sellerUid = user.uid;
-                    var customSid = window._state.sellerData && window._state.sellerData.sellerId;
-                    var ordersRef = ref(db, 'orders');
-                    var sellerOrdersQuery = query(ordersRef, orderByChild('sellerId'), equalTo(sellerUid));
-                    var orderSnap = await get(sellerOrdersQuery);
-
-                    var allOrders = orderSnap.exists() ? Object.entries(orderSnap.val()).map(function(entry) {
-                        return {
-                            id: entry[0],
-                            orderId: entry[1].orderId,
-                            productName: entry[1].productName,
-                            totalAmount: entry[1].totalAmount,
-                            status: entry[1].status,
-                            orderDate: entry[1].orderDate,
-                            sellerId: entry[1].sellerId,
-                            userInfo: entry[1].userInfo,
-                            productImage: entry[1].productImage,
-                            quantity: entry[1].quantity
-                        };
-                    }) : [];
-
-                    if (customSid && customSid !== sellerUid) {
-                        try {
-                            var customSnap = await get(query(ordersRef, orderByChild('sellerId'), equalTo(customSid)));
-                            if (customSnap.exists()) {
-                                Object.entries(customSnap.val()).forEach(function(entry) {
-                                    if (!allOrders.find(function(o){ return o.id === entry[0]; })) {
-                                        allOrders.push({ id: entry[0], orderId: entry[1].orderId, productName: entry[1].productName, totalAmount: entry[1].totalAmount, status: entry[1].status, orderDate: entry[1].orderDate, sellerId: entry[1].sellerId, userInfo: entry[1].userInfo, productImage: entry[1].productImage, quantity: entry[1].quantity });
-                                    }
-                                });
-                            }
-                        } catch(qe) { console.warn('Custom sellerId query failed', qe); }
-                    }
-                    window._state.orders = allOrders;
-                    console.log('✅ Orders loaded:', window._state.orders.length);
-                } catch(ordErr) {
-                    console.warn('⚠️ Orders could not be loaded (permission):', ordErr);
-                    window._state.orders = []; // dashboard still works, just no orders shown
+            // Step 2: Load brands (non-blocking)
+            try {
+                var brandSnap = await get(ref(db, 'brands'));
+                window._state.brands = [];
+                if (brandSnap.exists()) {
+                    brandSnap.forEach(function(c) {
+                        var b = c.val();
+                        if (b && b.name) window._state.brands.push({ id: c.key, name: b.name, logo: b.logo || '', blueTickAdmin: !!b.blueTickAdmin });
+                    });
                 }
+            } catch(e2) {
+                console.warn('Brands load failed:', e2);
+                window._state.brands = [];
+            }
 
-                // Auto-approve brands check on every dashboard load
-                checkAndAutoApproveBrands(user.uid).catch(function(){});
-                
-                if (typeof navigateTo === 'function') {
-                    navigateTo('dashboard');
-                }
-                
-                console.log('✅ All data loaded');
+            // Step 3: Load orders (non-blocking)
+            try {
+                var ordersRef = ref(db, 'orders');
+                var oSnap = await get(query(ordersRef, orderByChild('sellerId'), equalTo(user.uid)));
+                window._state.orders = oSnap.exists() ? Object.entries(oSnap.val()).map(function(e) {
+                    var v = e[1];
+                    return { id: e[0], orderId: v.orderId, productName: v.productName, totalAmount: v.totalAmount,
+                        status: v.status, orderDate: v.orderDate, sellerId: v.sellerId,
+                        userInfo: v.userInfo, productImage: v.productImage, quantity: v.quantity };
+                }) : [];
+                console.log('✅ Orders:', window._state.orders.length);
+            } catch(e3) {
+                console.warn('Orders load failed (permission):', e3);
+                window._state.orders = [];
+            }
+
+            // Step 4: Auto-approve brands (non-blocking, fire and forget)
+            try { if (typeof checkAndAutoApproveBrands === 'function') checkAndAutoApproveBrands(user.uid).catch(function(){}); } catch(e4) {}
+
+            // Step 5: Always render dashboard — no matter what failed above
+            console.log('✅ Rendering dashboard');
+            try {
                 if (typeof renderDashboardPage === 'function') renderDashboardPage();
-                
-            } catch (err) {
-                console.error('❌ Failed to load dashboard data:', err);
+                else if (typeof navigateTo === 'function') navigateTo('dashboard');
+            } catch(e5) {
+                console.error('renderDashboardPage failed:', e5);
                 document.getElementById('contentArea').innerHTML =
                     '<div style="text-align:center;padding:40px;">' +
-                    '<p style="color:#ef4444;font-weight:600;">⚠️ Failed to load dashboard data.</p>' +
-                    '<p style="color:#64748b;font-size:0.9rem;margin:8px 0 16px;">' + _safeErr(err) + '</p>' +
+                    '<p style="color:#ef4444;font-weight:600;">⚠️ Dashboard render error.</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button></div>';
             }
         };
