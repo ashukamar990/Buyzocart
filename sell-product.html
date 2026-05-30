@@ -151,15 +151,16 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 24px;
+            padding: 0 12px;
             border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 100;
             box-shadow: var(--shadow);
-            gap: 16px;
+            gap: 8px;
+            overflow: hidden;
         }
-        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .topbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
         .menu-toggle {
             display: none;
             background: var(--primary);
@@ -172,19 +173,23 @@
             font-size: 1.1rem;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
-        .topbar-title { font-size: 1.1rem; font-weight: 700; }
-        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .topbar-title { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .user-chip {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             background: var(--bg);
-            padding: 6px 14px;
+            padding: 5px 10px;
             border-radius: 24px;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 500;
+            max-width: 120px;
+            overflow: hidden;
         }
+        .user-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
         .user-avatar {
             width: 28px;
             height: 28px;
@@ -305,17 +310,24 @@
             border-radius: var(--radius);
             width: 100%;
             max-width: 600px;
-            max-height: 85vh;
+            max-height: 90vh;
             overflow-y: auto;
+            overflow-x: hidden;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             animation: modalIn 0.2s ease;
         }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
-        .modal-title { font-size: 1.05rem; font-weight: 700; }
-        .modal-close { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--bg); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
-        .modal-body { padding: 20px; }
-        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 20px; border-top: 1px solid var(--border); }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; flex-wrap: nowrap; gap: 8px; }
+        .modal-title { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .modal-close { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--bg); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .modal-body { padding: 16px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); position: sticky; bottom: 0; background: var(--surface); z-index: 1; }
+        .modal-overlay { padding: 8px !important; }
+        @media (max-width: 480px) {
+            .modal { max-height: 96vh; border-radius: 12px; }
+            .modal-body { padding: 12px; }
+            .form-row { flex-direction: column; gap: 0; }
+        }
 
         .toast {
             position: fixed;
@@ -428,15 +440,17 @@
         .topbar-home-btn {
             display: none;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: var(--primary-light);
             color: var(--primary);
             border: 1.5px solid #bfdbfe;
             border-radius: 8px;
-            padding: 6px 12px;
-            font-size: 0.8rem;
+            padding: 5px 9px;
+            font-size: 0.75rem;
             font-weight: 700;
             cursor: pointer;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
         .topbar-home-btn:hover { background: #dbeafe; }
         .sidebar-mobile-footer {
@@ -518,7 +532,7 @@
                 </button>
                 <div class="user-chip">
                     <div class="user-avatar" id="headerAvatar">S</div>
-                    <span id="headerName">Seller</span>
+                    <span id="headerName" class="user-chip-name">Seller</span>
                 </div>
             </div>
         </header>
@@ -817,7 +831,11 @@
 
                 window._state.orders = allOrders.filter(function(o) {
                     var customSid = window._state.sellerData && window._state.sellerData.sellerId;
-                    return o.sellerId === user.uid || (customSid && o.sellerId === customSid) || o.sellerUid === user.uid;
+                    var myProductIds = new Set((window._state.products||[]).map(function(p){return p.id;}));
+                    return o.sellerId === user.uid 
+                        || (customSid && o.sellerId === customSid) 
+                        || o.sellerUid === user.uid
+                        || (o.productId && myProductIds.has(o.productId));
                 });
                 console.log('✅ Orders loaded:', window._state.orders.length);
 
@@ -1876,7 +1894,11 @@
         }
 
         async function submitApp() {
-            var user = window._state.user;
+            var user = window._state && window._state.user;
+            if (!user) { showToast('Please login first', 'error'); return; }
+            if (!window._db || !window._set || !window._ref) {
+                showToast('Connection error. Please refresh and try again.', 'error'); return;
+            }
             var d = _appData;
             if (!d.name || !d.phone || !d.biz || !d.cat || !d.bank || !d.acc || !d.ifsc) {
                 showToast('Please complete all steps first', 'error');
@@ -1892,14 +1914,15 @@
             try {
                 // Reserve the Seller ID (uid-based, always unique)
                 await window._set(window._ref(window._db, 'sellerIds/' + d.sellerId), {
-                    uid: user.uid, email: user.email, createdAt: Date.now()
+                    uid: user.uid, email: user.email || '', createdAt: Date.now()
                 });
                 // Save seller request including sellerId
                 await window._set(window._ref(window._db, 'sellerRequests/' + user.uid), {
-                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '', aadhaar: d.aadhaar || '', pan: d.pan || '',
+                    name: d.name, phone: d.phone, businessName: d.biz, gst: d.gst || '',
+                    aadhaar: d.aadhaar || '', pan: d.pan || '',
                     category: d.cat, description: d.desc || '',
                     bankName: d.bank, accountNumber: d.acc, ifsc: d.ifsc,
-                    email: user.email, uid: user.uid,
+                    email: user.email || '', uid: user.uid,
                     sellerId: d.sellerId,
                     status: 'pending', appliedAt: Date.now()
                 });
@@ -1908,8 +1931,16 @@
                 showToast('Application submitted! 🎉 We will review within 2–3 days.', 'success');
                 navigateTo('pending');
             } catch (err) {
-                console.error(err);
-                showToast('Failed to submit. Please try again.', 'error');
+                console.error('submitApp error:', err);
+                var msg = err && err.message ? err.message : String(err);
+                // Common Firebase errors
+                if (msg.indexOf('permission') !== -1 || msg.indexOf('PERMISSION_DENIED') !== -1) {
+                    showToast('Permission denied. Please login again and retry.', 'error');
+                } else if (msg.indexOf('network') !== -1 || msg.indexOf('fetch') !== -1) {
+                    showToast('Network error. Check internet and retry.', 'error');
+                } else {
+                    showToast('Submit failed: ' + msg.slice(0, 60), 'error');
+                }
                 if (btn) { btn.disabled = false; btn.textContent = '✅ Submit Application'; }
             }
         }
