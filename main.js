@@ -3566,22 +3566,27 @@
       Promise.all(preloadImages).catch(() => {});
     }
 
+    // ── currentBannerIndex: shared between autoSlide + touch ─────
+    let _bannerCurrentIndex = 0;
+    let _bannerListenersAttached = false; // Duplicate listener guard
+
     function setBannerSlide(index) {
       const track = document.getElementById('bannerTrack');
       const dots = document.querySelectorAll('.banner-dot');
       if (!track || !dots.length) return;
+      _bannerCurrentIndex = index; // Sync shared index
       track.style.transform = `translateX(-${index * 100}%)`;
       dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
     }
 
     function setupBannerAutoSlide() {
       if (banners.length <= 1) return;
-      let currentBannerIndex = 0;
       if (bannerAutoSlideInterval) clearInterval(bannerAutoSlideInterval);
       bannerAutoSlideInterval = setInterval(() => {
         if (!slidePaused) {
-          currentBannerIndex = (currentBannerIndex + 1) % banners.length;
-          setBannerSlide(currentBannerIndex);
+          // Use shared _bannerCurrentIndex (stays in sync with manual swipes)
+          _bannerCurrentIndex = (_bannerCurrentIndex + 1) % banners.length;
+          setBannerSlide(_bannerCurrentIndex);
         }
       }, 3000);
     }
@@ -3589,65 +3594,83 @@
     function setupBannerTouchEvents() {
       const bannerCarousel = document.getElementById('bannerCarousel');
       if (!bannerCarousel) return;
-      let bannerTouchStartX = 0;
-      let bannerTouchEndX = 0;
-      let isBannerDragging = false;
-      bannerCarousel.addEventListener('touchstart', (e) => {
+
+      // ── BUG FIX: Duplicate listener guard ────────────────────
+      // Pehle setupBannerTouchEvents() har renderBannerCarousel()
+      // call pe run hoti thi → multiple listeners → swipe conflict
+      // Fix: Carousel element clone karo to clear old listeners
+      if (_bannerListenersAttached) {
+        const fresh = bannerCarousel.cloneNode(true);
+        bannerCarousel.parentNode.replaceChild(fresh, bannerCarousel);
+        // Re-query after replace
+        _bannerListenersAttached = false;
+      }
+      const carousel = document.getElementById('bannerCarousel');
+      if (!carousel) return;
+      _bannerListenersAttached = true;
+
+      let touchStartX = 0;
+      let touchEndX = 0;   // BUG FIX: reset properly at touchstart
+      let isDragging = false;
+      const SWIPE_THRESHOLD = 40; // px - lower = more sensitive
+
+      // ── Touch (mobile finger swipe) ───────────────────────────
+      carousel.addEventListener('touchstart', (e) => {
         pauseSlide();
-        bannerTouchStartX = e.touches[0].clientX;
-        isBannerDragging = true;
+        touchStartX = e.touches[0].clientX;
+        touchEndX = touchStartX; // BUG FIX: init to same so tap = diff 0
+        isDragging = true;
       }, { passive: true });
-      bannerCarousel.addEventListener('touchmove', (e) => {
-        if (!isBannerDragging) return;
-        bannerTouchEndX = e.touches[0].clientX;
+
+      carousel.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        touchEndX = e.touches[0].clientX;
       }, { passive: true });
-      bannerCarousel.addEventListener('touchend', (e) => {
-        if (!isBannerDragging) return;
-        const diff = bannerTouchStartX - bannerTouchEndX;
-        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
-        if (Math.abs(diff) > 50) {
+
+      carousel.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
           if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
+            // Swipe left → next slide
+            setBannerSlide((_bannerCurrentIndex + 1) % banners.length);
           } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
+            // Swipe right → prev slide
+            setBannerSlide((_bannerCurrentIndex - 1 + banners.length) % banners.length);
           }
         }
-        isBannerDragging = false;
         resumeSlideAfterDelay();
       }, { passive: true });
-      bannerCarousel.addEventListener('mousedown', (e) => {
+
+      // ── Mouse drag (desktop) ──────────────────────────────────
+      carousel.addEventListener('mousedown', (e) => {
         pauseSlide();
-        bannerTouchStartX = e.clientX;
-        isBannerDragging = true;
+        touchStartX = e.clientX;
+        touchEndX = e.clientX;
+        isDragging = true;
+        carousel.style.cursor = 'grabbing';
       });
-      bannerCarousel.addEventListener('mousemove', (e) => {
-        if (!isBannerDragging) return;
-        bannerTouchEndX = e.clientX;
+      carousel.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        touchEndX = e.clientX;
       });
-      bannerCarousel.addEventListener('mouseup', (e) => {
-        if (!isBannerDragging) return;
-        const diff = bannerTouchStartX - bannerTouchEndX;
-        const activeIndex = Array.from(document.querySelectorAll('.banner-dot')).findIndex(dot => dot.classList.contains('active'));
-        if (Math.abs(diff) > 50) {
+      const endMouseDrag = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        carousel.style.cursor = '';
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
           if (diff > 0) {
-            const nextIndex = (activeIndex + 1) % banners.length;
-            setBannerSlide(nextIndex);
+            setBannerSlide((_bannerCurrentIndex + 1) % banners.length);
           } else {
-            const prevIndex = (activeIndex - 1 + banners.length) % banners.length;
-            setBannerSlide(prevIndex);
+            setBannerSlide((_bannerCurrentIndex - 1 + banners.length) % banners.length);
           }
         }
-        isBannerDragging = false;
         resumeSlideAfterDelay();
-      });
-      bannerCarousel.addEventListener('mouseleave', () => {
-        if (isBannerDragging) {
-          isBannerDragging = false;
-          resumeSlideAfterDelay();
-        }
-      });
+      };
+      carousel.addEventListener('mouseup', endMouseDrag);
+      carousel.addEventListener('mouseleave', endMouseDrag);
     }
 
     function setupPriceSlider(minThumb, maxThumb, track, range, minInput, maxInput) {
@@ -4557,6 +4580,37 @@
       try { localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() })); } catch(e) {}
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  ULTIMATE BANDWIDTH SAVER: Static JSON → Firebase Fallback
+    //
+    //  PROBLEM ROOT CAUSE (12.24GB kaise hua):
+    //    - Firebase Realtime DB = 9.84MB data
+    //    - Puraane onValue() listeners → 100+ users × 9.84MB = 1GB+
+    //    - Koi caching nahi tha → har page open pe full download
+    //    - 1 mahine mein ~1200+ full downloads = 12.24GB
+    //
+    //  PERMANENT FIX (ye wali approach):
+    //    1. Public data (products, categories, banners, settings)
+    //       → static /data/store-data.json file se load karo
+    //       → CDN/hosting se serve hoti hai → Firebase bandwidth ZERO
+    //    2. Firebase sirf user data ke liye (orders, addresses, auth)
+    //       → Ye bahut chota hota hai (<1KB per user request)
+    //    3. Agar JSON file nahi mili → Firebase fallback (cache ke saath)
+    //
+    //  SETUP: Admin panel se "Export to JSON" button (neeche add kiya)
+    //         aur /data/store-data.json apni hosting pe upload karo
+    // ════════════════════════════════════════════════════════════
+    const STATIC_DATA_URL = './data/store-data.json'; // Apni hosting pe rakho
+    let _staticDataPromise = null; // Ek baar fetch, baar baar use
+
+    function _fetchStaticData() {
+      if (_staticDataPromise) return _staticDataPromise;
+      _staticDataPromise = fetch(STATIC_DATA_URL + '?v=' + (Math.floor(Date.now() / (60 * 60 * 1000)))) // 1hr cache bust
+        .then(r => { if (!r.ok) throw new Error('Static file not found'); return r.json(); })
+        .catch(() => null); // Silently fail → Firebase fallback
+      return _staticDataPromise;
+    }
+
     function fetchLiveData(forceRefresh) {
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
@@ -4566,6 +4620,69 @@
       const ref = window.firebase.ref;
       const get = window.firebase.get;
 
+      // ── STEP 1: Try static JSON file first (ZERO Firebase bandwidth) ──
+      _fetchStaticData().then(staticData => {
+        if (staticData) {
+          // ✅ Static JSON se load hua → Firebase bandwidth ZERO
+          _applyStaticData(staticData);
+          // Admin settings bhi static se agar available ho
+          if (staticData.settings) {
+            adminSettings = { ...adminSettings, ...staticData.settings };
+            _bzCacheSet(CACHE_KEYS.SETTINGS, adminSettings);
+            updateAdminSettingsUI();
+          }
+          return; // Firebase ke liye koi bandwidth use nahi
+        }
+
+        // ── STEP 2: Static file nahi mili → Firebase with TTL cache ──
+        _fetchFromFirebase(database, ref, get, forceRefresh);
+      });
+    }
+
+    function _applyStaticData(data) {
+      // Products
+      if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+        products = data.products.map(p => ({
+          ...p,
+          images: p.images ? (Array.isArray(p.images) ? p.images : [p.images])
+            : (p.image ? [p.image] : p.img ? [p.img] : p.imageUrl ? [p.imageUrl] : [])
+        }));
+        window.products = products;
+        _bzCacheSet(CACHE_KEYS.PRODUCTS, products);
+        const cp = document.querySelector('.page.active')?.id;
+        if (cp === 'homePage') {
+          renderProducts(products, 'homeProductGrid');
+          const tp = products.filter(p => p.isTrending || p.trending);
+          renderProductSlider(tp.length ? tp.slice(0,10) : products.slice(0,10), 'productSlider');
+        } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(); }
+        else if (cp === 'searchResultsPage' && window.currentSearchQuery) {
+          const r = searchProducts(window.currentSearchQuery); window.currentSearchResults = r; renderSearchResults(r, window.currentSearchQuery);
+        }
+      }
+      // Categories
+      if (data.categories && Array.isArray(data.categories)) {
+        categories = data.categories;
+        _bzCacheSet(CACHE_KEYS.CATEGORIES, categories);
+        if (document.getElementById('homePage')?.classList.contains('active') || document.getElementById('productsPage')?.classList.contains('active')) {
+          renderCategories(); renderCategoryCircles();
+        }
+      }
+      // Banners
+      if (data.banners && Array.isArray(data.banners)) {
+        banners = data.banners;
+        _bzCacheSet(CACHE_KEYS.BANNERS, banners);
+        if (document.getElementById('homePage')?.classList.contains('active')) renderBannerCarousel();
+      }
+      // Out of stock
+      if (data.outOfStock) window.outOfStockItems = data.outOfStock;
+      // Brands
+      if (data.brands) {
+        window._brandsData = {};
+        Object.keys(data.brands).forEach(k => { window._brandsData[k] = data.brands[k]; });
+      }
+    }
+
+    function _fetchFromFirebase(database, ref, get, forceRefresh) {
       // ── PRODUCTS: Cache check pehle ──────────────────────────
       const cachedProds = forceRefresh ? null : _bzCacheGet(CACHE_KEYS.PRODUCTS, _BZ_TTL.PRODUCTS);
       if (cachedProds && cachedProds.length > 0) {
@@ -7649,6 +7766,9 @@
             if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') - 1);
             showToast('Unfollowed ' + brandName);
             var sb = document.getElementById('bpStickyFollowBtn');
+            if (sb) { sb.textContent = '+ Follow'; sb.style.background = '#2563eb'; sb.style.color = '#fff'; }
+            setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
+            var sb = document.getElementById('bpStickyFollowBtn');
             if (sb && sb !== btn) { sb.textContent = '+ Follow'; sb.style.background = '#2563eb'; sb.style.color = '#fff'; }
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
           });
@@ -7658,6 +7778,9 @@
             var cnt = document.getElementById('brandFollowerCount');
             if (cnt) cnt.textContent = parseInt(cnt.textContent || '0') + 1;
             showToast('Following ' + brandName + '! 🎉', 'success');
+            var sb2 = document.getElementById('bpStickyFollowBtn');
+            if (sb2) { sb2.textContent = '✓ Following'; sb2.style.background = '#f1f5f9'; sb2.style.color = '#64748b'; }
+            setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);
             var sb = document.getElementById('bpStickyFollowBtn');
             if (sb && sb !== btn) { sb.textContent = '✓ Following'; sb.style.background = '#f1f5f9'; sb.style.color = '#64748b'; }
             setTimeout(function() { if (typeof loadFollowingProducts === 'function') loadFollowingProducts(); }, 400);

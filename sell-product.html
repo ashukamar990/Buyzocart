@@ -131,8 +131,8 @@
         .bank-dropdown { border:1.5px solid var(--primary) !important; animation:slideDown .18s ease; }
         .bank-option:first-child { font-weight:700; }
         /* Seller ID Banner */
-        .sid-banner { background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1.5px solid #bfdbfe; border-radius:10px; padding:10px 14px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
-        .sid-val { font-family:monospace; font-size:12px; font-weight:800; color:#1e40af; word-break:break-all; }
+        .sid-banner { background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1.5px solid #bfdbfe; border-radius:10px; padding:8px 12px; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+        .sid-val { font-family:monospace; font-size:11px; font-weight:800; color:#1e40af; word-break:break-all; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; }
         /* Brand Profile Page */
         .brand-cover { height:160px; border-radius:16px; overflow:hidden; position:relative; }
         .brand-avatar-box { width:84px; height:84px; border-radius:20px; border:4px solid #fff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:800; color:#fff; box-shadow:0 4px 20px rgba(0,0,0,.15); overflow:hidden; cursor:pointer; }
@@ -303,7 +303,7 @@
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-info { background: #dbeafe; color: #1d4ed8; }
 
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: flex-start; justify-content: center; padding: 8px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .modal-overlay.active { display: flex; }
         .modal {
             background: var(--surface);
@@ -501,6 +501,12 @@
             <a onclick="navigateTo('brand')" id="navBrand">
                 <i class="fas fa-award"></i> My Brand
             </a>
+            <a onclick="navigateTo('reviews')" id="navReviews">
+                <i class="fas fa-star"></i> Reviews
+            </a>
+            <a onclick="navigateTo('analytics')" id="navAnalytics">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
             <a onclick="navigateTo('settings')" id="navSettings">
                 <i class="fas fa-cog"></i> Settings
             </a>
@@ -581,14 +587,14 @@
                     </div>
                 </div>
                 </div>
-                <!-- Seller ID Banner -->
-                <div class="sid-banner" id="sellerIdBanner">
-                    <span style="font-size:1.2rem;">🆔</span>
-                    <div style="flex:1;">
-                        <div style="font-size:11px;color:#64748b;font-weight:600;">Your Seller ID (auto-attached to every product)</div>
-                        <div class="sid-val" id="modalSellerId">Loading...</div>
+                <!-- Seller ID Banner — compact -->
+                <div class="sid-banner" id="sellerIdBanner" style="padding:7px 12px;">
+                    <span>🆔</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:10px;color:#64748b;font-weight:600;">Seller ID <span style="font-weight:400;">(auto-attached)</span></div>
+                        <div class="sid-val" id="modalSellerId" title="Click to copy" style="cursor:pointer;max-width:100%;" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent).then(()=>showToast('Copied!','success'))">Loading...</div>
                     </div>
-                    <button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('modalSellerId').textContent).then(()=>showToast('Seller ID copied!','success'))" title="Copy" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:14px;padding:4px;">📋</button>
+                    <button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('modalSellerId').textContent).then(()=>showToast('Copied!','success'))" title="Copy" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:14px;padding:4px;flex-shrink:0;">📋</button>
                 </div>
 
                 <!-- Brand Dropdown -->
@@ -1003,7 +1009,7 @@
             document.querySelectorAll('.sidebar-nav a').forEach(function(a) {
                 a.classList.remove('active');
             });
-            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', earnings: 'navEarnings', similar: 'navSimilar', settings: 'navSettings', brand: 'navBrand', apply: 'navDashboard' };
+            var navMap = { dashboard: 'navDashboard', products: 'navProducts', orders: 'navOrders', earnings: 'navEarnings', similar: 'navSimilar', settings: 'navSettings', brand: 'navBrand', reviews: 'navReviews', analytics: 'navAnalytics', apply: 'navDashboard' };
             var navId = navMap[page];
             if (navId) document.getElementById(navId).classList.add('active');
 
@@ -1022,6 +1028,8 @@
             else if (page === 'products') renderProductsPage();
             else if (page === 'orders') renderOrdersPage();
             else if (page === 'similar') renderSimilarPage();
+            else if (page === 'reviews') renderReviewsPage();
+            else if (page === 'analytics') renderAnalyticsPage();
             else if (page === 'earnings') renderEarningsPage();
             else if (page === 'settings') renderSettingsPage();
             else if (page === 'apply') showApplicationForm();
@@ -2042,7 +2050,7 @@
                     '<div class="stat-card" onclick="navigateTo(\'products\')"><div class="stat-card-icon" style="background:#eff6ff;">📦</div><div class="stat-card-value">' + p.length + '</div><div class="stat-card-label">My Products</div></div>' +
                     '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#f0fdf4;">📋</div><div class="stat-card-value">' + o.length + '</div><div class="stat-card-label">Total Orders</div></div>' +
                     '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#fff8e6;">⏳</div><div class="stat-card-value">' + pending + '</div><div class="stat-card-label">Pending Orders</div></div>' +
-                    '<div class="stat-card" onclick="navigateTo(\'orders\')"><div class="stat-card-icon" style="background:#f5f3ff;">💰</div><div class="stat-card-value" style="font-size:1.2rem;">' + formatCurrency(earnings) + '</div><div class="stat-card-label">Earnings (Delivered)</div></div>' +
+                    '<div class="stat-card" onclick="navigateTo(\'earnings\')"><div class="stat-card-icon" style="background:#f5f3ff;">💰</div><div class="stat-card-value" style="font-size:1.2rem;">' + formatCurrency(earnings) + '</div><div class="stat-card-label">Total Sells</div></div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
                     '<div class="card"><div class="card-header"><h3 class="card-title">📦 Recent Products</h3><button class="btn btn-primary btn-sm" onclick="navigateTo(\'products\')">View All</button></div><div class="card-body">' + renderProductMiniList(p.slice(0, 5)) + '</div></div>' +
@@ -2723,6 +2731,102 @@
         // ════════════════════════════════════════════
         var _myBrandData = null;
 
+        function renderReviewsPage() {
+            var myProdIds = new Set((window._state.products||[]).map(function(p){return p.id;}));
+            document.getElementById('contentArea').innerHTML = '<div style="text-align:center;padding:40px;"><div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;"></div><p style="color:#64748b;">Loading reviews...</p></div>';
+            if (!window._db) { document.getElementById('contentArea').innerHTML = '<p class="text-muted" style="text-align:center;padding:40px;">Connecting...</p>'; return; }
+            window._get(window._ref(window._db, 'reviews')).then(function(snap) {
+                var reviews = [];
+                if (snap && snap.exists()) {
+                    snap.forEach(function(c) {
+                        var v = c.val();
+                        if (v && myProdIds.has(v.productId)) reviews.push(Object.assign({id:c.key}, v));
+                    });
+                }
+                reviews.sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+                var avg = reviews.length ? (reviews.reduce(function(s,r){return s+(r.rating||0);},0)/reviews.length).toFixed(1) : '—';
+                var fiveS = reviews.filter(function(r){return r.rating===5;}).length;
+                document.getElementById('contentArea').innerHTML =
+                    '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">' +
+                        '<div class="stat-card"><div class="stat-card-icon" style="background:#fff8e6;">⭐</div><div class="stat-card-value">'+avg+'</div><div class="stat-card-label">Avg Rating</div></div>' +
+                        '<div class="stat-card"><div class="stat-card-icon" style="background:#f0fdf4;">💬</div><div class="stat-card-value">'+reviews.length+'</div><div class="stat-card-label">Total Reviews</div></div>' +
+                        '<div class="stat-card"><div class="stat-card-icon" style="background:#eff6ff;">🌟</div><div class="stat-card-value">'+fiveS+'</div><div class="stat-card-label">5-Star</div></div>' +
+                    '</div>' +
+                    '<div class="card"><div class="card-header"><h3 class="card-title">💬 Customer Reviews</h3></div><div class="card-body">' +
+                    (reviews.length === 0 ?
+                        '<div style="text-align:center;padding:40px;color:#94a3b8;"><div style="font-size:3rem;margin-bottom:12px;">💬</div><div style="font-weight:700;margin-bottom:6px;">No reviews yet</div><p style="font-size:13px;">Reviews appear here after customers purchase your products.</p></div>'
+                    :
+                        reviews.map(function(r) {
+                            var stars = [1,2,3,4,5].map(function(i){return i<=(r.rating||0)?'★':'☆';}).join('');
+                            return '<div style="padding:14px 0;border-bottom:1px solid var(--border);">'
+                                +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+                                +'<div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">'+(r.userName||'?').charAt(0).toUpperCase()+'</div>'
+                                +'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">'+(r.userName||'Customer')+'</div>'
+                                +'<div style="font-size:11px;color:#94a3b8;">'+formatDate(r.createdAt)+'</div></div>'
+                                +'<div style="color:#f59e0b;font-size:15px;">'+stars+'</div></div>'
+                                +'<div style="font-size:13px;color:#475569;margin-bottom:6px;">'+(r.comment||'No comment')+'</div>'
+                                +'<div style="font-size:11px;color:#94a3b8;background:#f8fafc;padding:4px 8px;border-radius:6px;display:inline-block;">📦 '+(r.productName||'Product')+'</div>'
+                                +'</div>';
+                        }).join('')
+                    ) + '</div></div>';
+            }).catch(function(err){ document.getElementById('contentArea').innerHTML = '<p class="text-muted" style="text-align:center;padding:40px;">Error: '+err.message+'</p>'; });
+        }
+
+        function renderAnalyticsPage() {
+            var prods   = window._state.products || [];
+            var orders  = window._state.orders   || [];
+            var delivered = orders.filter(function(o){ return (o.status||'').toLowerCase()==='delivered'; });
+            var pending   = orders.filter(function(o){ return ['placed','pending','confirmed'].indexOf((o.status||'').toLowerCase())!==-1; });
+            var cancelled = orders.filter(function(o){ return (o.status||'').toLowerCase()==='cancelled'; });
+            var totalRev  = delivered.reduce(function(s,o){ return s+(parseFloat(o.totalAmount)||0); },0);
+            var avgOrder  = delivered.length ? (totalRev/delivered.length) : 0;
+            var activeProds   = prods.filter(function(p){ return (p.status||'active')==='active'; }).length;
+            var inactiveProds = prods.length - activeProds;
+            var prodSales = {};
+            orders.forEach(function(o) {
+                var key = o.productId || o.productName || 'Unknown';
+                if (!prodSales[key]) prodSales[key] = { name: o.productName||key, count:0, revenue:0 };
+                prodSales[key].count++;
+                if ((o.status||'').toLowerCase()==='delivered') prodSales[key].revenue += (parseFloat(o.totalAmount)||0);
+            });
+            var topProds = Object.values(prodSales).sort(function(a,b){ return b.count-a.count; }).slice(0,5);
+            var maxCount = topProds.length ? topProds[0].count : 1;
+            var orderItems = [
+                {label:'✅ Delivered', count:delivered.length, col:'#22c55e'},
+                {label:'⏳ Pending',   count:pending.length,   col:'#f59e0b'},
+                {label:'❌ Cancelled', count:cancelled.length, col:'#ef4444'}
+            ];
+            document.getElementById('contentArea').innerHTML =
+                '<div class="stats-grid">' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#f0fdf4;">💰</div><div class="stat-card-value" style="color:#16a34a;">'+formatCurrency(totalRev)+'</div><div class="stat-card-label">Total Revenue</div></div>' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#eff6ff;">📋</div><div class="stat-card-value">'+orders.length+'</div><div class="stat-card-label">Total Orders</div></div>' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#f5f3ff;">💳</div><div class="stat-card-value">'+formatCurrency(avgOrder)+'</div><div class="stat-card-label">Avg Order</div></div>' +
+                    '<div class="stat-card"><div class="stat-card-icon" style="background:#fef2f2;">❌</div><div class="stat-card-value">'+cancelled.length+'</div><div class="stat-card-label">Cancelled</div></div>' +
+                '</div>' +
+                '<div class="card" style="margin-bottom:16px;"><div class="card-header"><h3 class="card-title">📊 Order Breakdown</h3></div><div class="card-body">' +
+                orderItems.map(function(item){
+                    var pct = orders.length ? Math.round(item.count/orders.length*100) : 0;
+                    return '<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px;font-weight:600;"><span>'+item.label+'</span><span>'+item.count+' ('+pct+'%)</span></div>'
+                        +'<div style="height:8px;background:#f1f5f9;border-radius:999px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+item.col+';border-radius:999px;transition:width .6s;"></div></div></div>';
+                }).join('') +
+                '</div></div>' +
+                '<div class="card" style="margin-bottom:16px;"><div class="card-header"><h3 class="card-title">🏆 Top Products</h3></div><div class="card-body">' +
+                (topProds.length ?
+                    topProds.map(function(p,i){
+                        var pct = Math.round((p.count/maxCount)*100);
+                        return '<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px;"><span style="font-weight:600;">'+(i+1)+'. '+p.name+'</span><span style="color:#64748b;">'+p.count+' orders</span></div>'
+                            +'<div style="height:7px;background:#f1f5f9;border-radius:999px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#2563eb,#7c3aed);border-radius:999px;"></div></div></div>';
+                    }).join('')
+                : '<p class="text-muted" style="text-align:center;padding:20px;">No orders yet</p>') +
+                '</div></div>' +
+                '<div class="card"><div class="card-header"><h3 class="card-title">📦 Product Health</h3></div><div class="card-body">' +
+                    '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+                        '<div style="flex:1;min-width:120px;text-align:center;padding:16px;background:#f0fdf4;border-radius:12px;"><div style="font-size:1.8rem;font-weight:900;color:#16a34a;">'+activeProds+'</div><div style="font-size:12px;color:#64748b;font-weight:600;">Active</div></div>' +
+                        '<div style="flex:1;min-width:120px;text-align:center;padding:16px;background:#fef2f2;border-radius:12px;"><div style="font-size:1.8rem;font-weight:900;color:#ef4444;">'+inactiveProds+'</div><div style="font-size:12px;color:#64748b;font-weight:600;">Inactive</div></div>' +
+                    '</div>' +
+                '</div></div>';
+        }
+
         async function renderBrandPage() {
             var uid = window._state.user && window._state.user.uid;
             var ca = document.getElementById('contentArea');
@@ -2969,31 +3073,96 @@
             var el = document.createElement('div');
             el.id = '_ebModal';
             el.className = 'modal-overlay active';
+
+            var curLogo   = _myBrandData.logo   || '';
+            var curBanner = _myBrandData.banner  || '';
+            var curDesc   = (_myBrandData.description||'').replace(/"/g,'&quot;');
+
             el.innerHTML =
-                '<div class="modal" style="max-width:480px;">'
-                    +'<div class="modal-header"><h3 class="modal-title">✏️ Edit Brand Profile</h3><button class="modal-close" onclick="document.getElementById(\'_ebModal\').remove()">&times;</button></div>'
+                '<div class="modal" style="max-width:500px;">'
+                    +'<div class="modal-header"><h3 class="modal-title">✏️ Edit Brand Profile</h3>'
+                    +'<button class="modal-close" onclick="document.getElementById(\'_ebModal\').remove()">&times;</button></div>'
                     +'<div class="modal-body">'
-                        +'<div class="form-group"><label class="form-label">Description</label><textarea class="form-control" id="ebDesc" rows="3">'+(_myBrandData.description||'')+'</textarea></div>'
-                        +'<div class="form-group"><label class="form-label">Logo URL</label><input class="form-control" id="ebLogo" value="'+(_myBrandData.logo||'')+'" placeholder="https://..."></div>'
-                        +'<div class="form-group"><label class="form-label">Banner URL</label><input class="form-control" id="ebBanner" value="'+(_myBrandData.banner||'')+'" placeholder="https://..."></div>'
+
+                    // Description
+                    +'<div class="form-group"><label class="form-label">Description</label>'
+                    +'<textarea class="form-control" id="ebDesc" rows="3" placeholder="Describe your brand...">'+(_myBrandData.description||'')+'</textarea></div>'
+
+                    // Logo picker
+                    +'<div class="form-group"><label class="form-label">Brand Logo</label>'
+                    +'<input type="file" id="ebLogoFile" accept="image/*" style="display:none;" onchange="handleEbImageUpload(this,\'ebLogo\',\'ebLogoPreview\')">'
+                    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+                    +'<div id="ebLogoPreview" style="width:64px;height:64px;border-radius:12px;border:2px solid #e2e8f0;overflow:hidden;flex-shrink:0;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:24px;">'
+                    +(curLogo ? '<img src="'+curLogo+'" style="width:100%;height:100%;object-fit:cover;">' : '🏷️')
                     +'</div>'
-                    +'<div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById(\'_ebModal\').remove()">Cancel</button><button class="btn btn-primary" onclick="saveBrandEdits()">Save Changes</button></div>'
+                    +'<div style="flex:1;">'
+                    +'<button onclick="document.getElementById(\'ebLogoFile\').click()" style="width:100%;padding:9px;border:2px dashed #cbd5e1;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:600;color:#2563eb;font-family:inherit;margin-bottom:6px;">📷 Choose from Gallery</button>'
+                    +'<input class="form-control" id="ebLogo" value="'+curLogo+'" placeholder="Or paste URL" style="font-size:12px;" oninput="var p=document.getElementById(\'ebLogoPreview\');if(this.value)p.innerHTML=\'<img src=\\\'+this.value+\'\\\' style=\\\"width:100%;height:100%;object-fit:cover;\\\">\';">'
+                    +'</div></div></div>'
+
+                    // Banner picker
+                    +'<div class="form-group"><label class="form-label">Brand Banner / Cover</label>'
+                    +'<input type="file" id="ebBannerFile" accept="image/*" style="display:none;" onchange="handleEbImageUpload(this,\'ebBanner\',\'ebBannerPreview\')">'
+                    +'<div id="ebBannerPreview" onclick="document.getElementById(\'ebBannerFile\').click()" style="width:100%;height:100px;border-radius:10px;border:2px dashed #cbd5e1;background:#f8fafc;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;margin-bottom:8px;position:relative;">'
+                    +(curBanner ? '<img src="'+curBanner+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"><div style="position:relative;background:rgba(0,0,0,.4);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">📷 Change Banner</div>'
+                        : '<div style="font-size:1.5rem;">🖼️</div><div style="font-size:12px;font-weight:600;color:#2563eb;margin-top:4px;">Tap to select banner</div>')
+                    +'</div>'
+                    +'<input class="form-control" id="ebBanner" value="'+curBanner+'" placeholder="Or paste banner URL" style="font-size:12px;" oninput="var p=document.getElementById(\'ebBannerPreview\');if(this.value)p.innerHTML=\'<img src=\\\'+this.value+\'\\\' style=\\\"width:100%;height:100%;object-fit:cover;position:absolute;inset:0;\\\">\';">'
+                    +'</div>'
+
+                    +'</div>'
+                    +'<div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById(\'_ebModal\').remove()">Cancel</button>'
+                    +'<button class="btn btn-primary" id="ebSaveBtn" onclick="saveBrandEdits()">Save Changes</button></div>'
                 +'</div>';
             el.addEventListener('click', function(e){ if(e.target===el) el.remove(); });
             document.body.appendChild(el);
         }
 
+        async function handleEbImageUpload(input, targetId, previewId) {
+            var file = input.files && input.files[0];
+            if (!file) return;
+            var saveBtn = document.getElementById('ebSaveBtn');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Uploading...'; }
+            try {
+                var url = await uploadImageToImgBB(file);
+                var inp = document.getElementById(targetId);
+                if (inp) inp.value = url;
+                var prev = document.getElementById(previewId);
+                if (prev) {
+                    if (targetId === 'ebLogo') {
+                        prev.innerHTML = '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">';
+                    } else {
+                        prev.innerHTML = '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"><div style=\'position:relative;background:rgba(0,0,0,.4);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;\'>📷 Change Banner</div>';
+                    }
+                }
+                showToast('Image uploaded!', 'success');
+            } catch(err) { showToast('Upload failed: '+(err.message||'Try again'), 'error'); }
+            finally { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; } input.value = ''; }
+        }
+
         async function saveBrandEdits() {
             if (!_myBrandData) return;
-            var desc   = (document.getElementById('ebDesc').value||'').trim();
-            var logo   = (document.getElementById('ebLogo').value||'').trim();
-            var banner = (document.getElementById('ebBanner').value||'').trim();
+            var desc   = ((document.getElementById('ebDesc')   ? document.getElementById('ebDesc').value   : '') || '').trim();
+            var logo   = ((document.getElementById('ebLogo')   ? document.getElementById('ebLogo').value   : '') || '').trim();
+            var banner = ((document.getElementById('ebBanner') ? document.getElementById('ebBanner').value : '') || '').trim();
+            var saveBtn = document.getElementById('ebSaveBtn');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Saving...'; }
             try {
-                await window._update(window._ref(window._db,'brands/'+_myBrandData.id),{description:desc,logo:logo,banner:banner,updatedAt:Date.now()});
-                showToast('Brand profile updated! ✅','success');
-                var m=document.getElementById('_ebModal'); if(m) m.remove();
+                var updates = { description: desc, updatedAt: Date.now() };
+                if (logo)   updates.logo   = logo;
+                if (banner) updates.banner = banner;
+                await window._update(window._ref(window._db, 'brands/' + _myBrandData.id), updates);
+                // Update local cache
+                _myBrandData.description = desc;
+                if (logo)   _myBrandData.logo   = logo;
+                if (banner) _myBrandData.banner = banner;
+                showToast('Brand profile updated! ✅', 'success');
+                var m = document.getElementById('_ebModal'); if (m) m.remove();
                 renderBrandPage();
-            } catch(err) { showToast('Failed: '+err.message,'error'); }
+            } catch(err) {
+                showToast('Failed: ' + (err.message || 'Try again'), 'error');
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+            }
         }
 
         function formatDate(ts) {
