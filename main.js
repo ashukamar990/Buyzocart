@@ -4780,6 +4780,29 @@
       document.getElementById('newsletterEmail').value = '';
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay').textContent;
+      const btn = document.getElementById('copyOrderIdBtn');
+      if (!orderId || !btn) return;
+
+      const btnText = btn.querySelector('.btn-text');
+      const originalText = btnText ? btnText.textContent : 'Copy';
+
+      navigator.clipboard.writeText(orderId).then(() => {
+        if (btnText) btnText.textContent = '✅ Copied!';
+        btn.classList.add('success');
+        showToast('Order ID copied to clipboard!', 'success');
+
+        setTimeout(() => {
+          if (btnText) btnText.textContent = originalText;
+          btn.classList.remove('success');
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+        showToast('Failed to copy Order ID', 'error');
+      });
+    }
+
     function setupHeaderSearchScroll() {
       const headerSearchContainer = document.getElementById('headerSearchContainer');
       if (!headerSearchContainer) return;
@@ -4934,6 +4957,7 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
