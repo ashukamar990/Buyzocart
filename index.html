@@ -862,19 +862,19 @@
       </div>
 
       <div class="trending-section">
-        <div class="trending-header">
-          <h2 class="trending-title">Trending Now</h2>
+        <div class="trending-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <h2 class="trending-title">🔥 Trending Now</h2>
+          <a id="trendingSeeAll" onclick="showPage('productsPage')" style="font-size:12px;color:var(--primary,#2563eb);cursor:pointer;font-weight:700;background:#eff4ff;padding:5px 12px;border-radius:20px;display:none;">See all →</a>
         </div>
         <div class="slider-container">
-          <div class="slider-track" id="productSlider">
-          </div>
+          <div class="slider-track" id="productSlider"></div>
         </div>
       </div>
 
       <!-- ══ POPULAR BRANDS (from Firebase) ══ -->
       <div id="homePopularBrandsSection" style="display:none;padding:0 0 4px;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 4px 10px;">
-          <h2 style="margin:0;font-size:1.05rem;font-weight:800;">🔥 Popular Brands</h2>
+          <h2 style="margin:0;font-size:1.05rem;font-weight:800;">🏷️ Popular Brands</h2>
           <div style="display:flex;align-items:center;gap:8px;">
             <button id="homePopularBrandsToggle" onclick="bzToggleHomeSection('homePopularBrandsGrid','homePopularBrandsToggle')" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff4ff;border:none;border-radius:20px;padding:4px 10px;cursor:pointer;">Hide</button>
             <a onclick="showPage('brandsPage');setTimeout(function(){loadBrandsPage&&loadBrandsPage();},80);" style="font-size:12px;color:var(--primary,#2563eb);cursor:pointer;font-weight:600;">See all →</a>
@@ -896,10 +896,13 @@
         <div class="product-grid" id="followingProductsGrid"></div>
       </div>
 
+      <!-- ══ CATEGORY ══ -->
       <div class="category-circles">
-        <h2 class="category-circles-title">Shop by Category</h2>
-        <div class="category-circles-container" id="categoryCirclesContainer">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <h2 class="category-circles-title" style="margin:0;">Shop by Category</h2>
+          <a id="categorySeeAll" onclick="showPage('productsPage')" style="font-size:12px;color:var(--primary,#2563eb);cursor:pointer;font-weight:700;background:#eff4ff;padding:5px 12px;border-radius:20px;display:none;">See all →</a>
         </div>
+        <div class="category-circles-container" id="categoryCirclesContainer"></div>
       </div>
 
       <div class="steps center">
@@ -909,19 +912,54 @@
         <div class="step-pill disabled" id="pill-pay">4 • Payment</div>
       </div>
 
-      <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <h2 style="margin:0">Featured Products</h2>
+      <!-- ══ FEATURED PRODUCTS ══ -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px;" class="card-panel">
+        <h2 style="margin:0;font-size:1.1rem;font-weight:800;">✨ Featured Products</h2>
       </div>
 
-      <div class="product-grid" id="homeProductGrid">
+      <!-- Grid 1: first 20 products — compact 2-col -->
+      <div class="product-grid bz-grid-compact" id="homeProductGrid">
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
         <div class="product-card-skeleton"><div class="skeleton-box sk-img"></div><div class="sk-body"><div class="skeleton-box sk-title"></div><div class="skeleton-box sk-price"></div></div></div>
       </div>
 
+      <!-- Grid 2: next 20 products — 3-col mini style -->
+      <div id="homeProductGrid2Wrap" style="display:none;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 0 10px;">
+          <div style="flex:1;height:1px;background:var(--border,#e2e8f0);"></div>
+          <span style="font-size:11px;font-weight:700;color:var(--muted,#94a3b8);white-space:nowrap;">MORE PRODUCTS</span>
+          <div style="flex:1;height:1px;background:var(--border,#e2e8f0);"></div>
+        </div>
+        <div class="bz-grid-3col" id="homeProductGrid2"></div>
+      </div>
+
+      <!-- Grid 3: remaining — horizontal slider style -->
+      <div id="homeProductGrid3Wrap" style="display:none;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 0 10px;">
+          <div style="flex:1;height:1px;background:var(--border,#e2e8f0);"></div>
+          <span style="font-size:11px;font-weight:700;color:var(--muted,#94a3b8);white-space:nowrap;">YOU MIGHT ALSO LIKE</span>
+          <div style="flex:1;height:1px;background:var(--border,#e2e8f0);"></div>
+        </div>
+        <div class="slider-container">
+          <div class="slider-track" id="homeProductSlider3"></div>
+        </div>
+      </div>
+
+      <!-- See More button -->
+      <div id="homeProductSeeMoreWrap" style="display:none;padding:18px 0 4px;text-align:center;">
+        <button onclick="bzHomeSeeMore()" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:13px 36px;border-radius:50px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3);letter-spacing:.01em;">
+          🛍️ See More Products
+        </button>
+      </div>
+
+      <!-- ══ RECENTLY VIEWED ══ -->
       <div class="recently-viewed" id="recentlyViewedSection" style="display:none;">
-        <h2 class="recently-viewed-title">Recently Viewed</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h2 class="recently-viewed-title" style="margin:0;">Recently Viewed</h2>
+          <a id="recentlySeeAll" onclick="showPage('productsPage')" style="font-size:12px;color:var(--primary,#2563eb);cursor:pointer;font-weight:700;background:#eff4ff;padding:5px 12px;border-radius:20px;display:none;">See all →</a>
+        </div>
         <div class="slider-container">
           <div class="slider-track" id="recentlyViewedSlider"></div>
         </div>
@@ -935,7 +973,6 @@
           <button class="newsletter-btn" id="subscribeBtn">Subscribe</button>
         </div>
       </div>
-    </section>
 
     <section class="page" id="productsPage">
       <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -2111,6 +2148,7 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
   </button>
 
+
   <script>
     // hide/show toggle for home page brand sections
     window.bzToggleHomeSection = function(gridId, btnId) {
@@ -2118,9 +2156,56 @@
       var btn  = document.getElementById(btnId);
       if (!grid || !btn) return;
       var hidden = grid.style.display === 'none';
-      // Restore the correct display type, not just ''
       grid.style.display = hidden ? (grid.dataset.bzDisplay || 'flex') : 'none';
       btn.textContent = hidden ? 'Hide' : 'Show';
+    };
+
+    /* ═══════════════════════════════════════════════════
+       BZ HOME MULTI-GRID + SEE-MORE SYSTEM
+    ═══════════════════════════════════════════════════ */
+    window.bzPopulateHomeGrids = function(allProds) {
+      if (!allProds) return;
+      var total = allProds.length;
+
+      /* Grid 2: products 20–39 (3-col mini) */
+      var g2 = allProds.slice(20, 40);
+      var wrap2 = document.getElementById('homeProductGrid2Wrap');
+      var grid2 = document.getElementById('homeProductGrid2');
+      if (g2.length && wrap2 && grid2 && typeof createProductCard === 'function') {
+        wrap2.style.display = 'block';
+        grid2.innerHTML = '';
+        g2.forEach(function(p){ if(p) grid2.appendChild(createProductCard(p)); });
+      }
+
+      /* Grid 3: products 40–59 (horizontal slider) */
+      var g3 = allProds.slice(40, 60);
+      var wrap3 = document.getElementById('homeProductGrid3Wrap');
+      if (g3.length && wrap3 && typeof renderProductSlider === 'function') {
+        wrap3.style.display = 'block';
+        renderProductSlider(g3, 'homeProductSlider3');
+      }
+
+      /* See More button: show if total > 20 */
+      var seeMoreWrap = document.getElementById('homeProductSeeMoreWrap');
+      if (seeMoreWrap) seeMoreWrap.style.display = total > 20 ? 'block' : 'none';
+
+      /* Trending See All: show if > 10 */
+      var tsa = document.getElementById('trendingSeeAll');
+      if (tsa) tsa.style.display = total > 10 ? 'inline-block' : 'none';
+    };
+
+    window.bzHomeSeeMore = function() {
+      if (typeof showPage === 'function') showPage('productsPage');
+    };
+
+    window.bzCheckCategorySeeAll = function(count) {
+      var el = document.getElementById('categorySeeAll');
+      if (el) el.style.display = count > 15 ? 'inline-block' : 'none';
+    };
+
+    window.bzCheckRecentlySeeAll = function(count) {
+      var el = document.getElementById('recentlySeeAll');
+      if (el) el.style.display = count > 10 ? 'inline-block' : 'none';
     };
 
     (function(){

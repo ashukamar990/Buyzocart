@@ -3251,7 +3251,10 @@
         return;
       }
       section.style.display = 'block';
-      renderProductSlider(recentlyViewedProducts, 'recentlyViewedSlider');
+      renderProductSlider(recentlyViewedProducts.slice(0, 35), 'recentlyViewedSlider');
+      if (typeof window.bzCheckRecentlySeeAll === 'function') {
+        window.bzCheckRecentlySeeAll(recentlyViewedProducts.length);
+      }
     }
 
     function filterByCategory(categoryId) {
@@ -3380,7 +3383,9 @@
       const container = document.getElementById('categoryCirclesContainer');
       if (!container) return;
       const fragment = document.createDocumentFragment();
-      categories.forEach(category => {
+      const MAX_CAT = 15;
+      const visible = categories.slice(0, MAX_CAT);
+      visible.forEach(category => {
         const circle = document.createElement('div');
         circle.className = 'category-circle';
         circle.innerHTML = `
@@ -3392,6 +3397,10 @@
       });
       container.innerHTML = '';
       container.appendChild(fragment);
+      // Show see-all if more than 15
+      if (typeof window.bzCheckCategorySeeAll === 'function') {
+        window.bzCheckCategorySeeAll(categories.length);
+      }
 
       // ── AUTO HORIZONTAL SLIDE: Categories ──────────────────────
       // Problem: Categories static rehti thi, zyada categories
@@ -3511,17 +3520,22 @@
         } else ratingMap[p.id] = 0;
       });
       const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
+      // For homeProductGrid: only render first 20, rest go to multi-grid
+      const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
       container.innerHTML = '';
-      if (!sorted || sorted.length === 0) {
-        // productGrid and searchResultsGrid have their own HTML empty-state elements
+      if (!toRender || toRender.length === 0) {
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
           container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
         return;
       }
       const fragment = document.createDocumentFragment();
-      sorted.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+      toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
       container.appendChild(fragment);
+      // Populate multi-grid sections for home page
+      if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
+        setTimeout(function() { window.bzPopulateHomeGrids(sorted); }, 100);
+      }
     }
 
     function renderBannerCarousel() {
@@ -4653,7 +4667,7 @@
         if (cp === 'homePage') {
           renderProducts(products, 'homeProductGrid');
           const tp = products.filter(p => p.isTrending || p.trending);
-          renderProductSlider(tp.length ? tp.slice(0,10) : products.slice(0,10), 'productSlider');
+          renderProductSlider((tp.length ? tp : products).slice(0, 35), 'productSlider');
         } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(); }
         else if (cp === 'searchResultsPage' && window.currentSearchQuery) {
           const r = searchProducts(window.currentSearchQuery); window.currentSearchResults = r; renderSearchResults(r, window.currentSearchQuery);
@@ -4693,7 +4707,7 @@
         if (cp === 'homePage') {
           renderProducts(products, 'homeProductGrid');
           const tp = products.filter(p => p.isTrending || p.trending);
-          renderProductSlider(tp.length ? tp.slice(0,10) : products.slice(0,10), 'productSlider');
+          renderProductSlider((tp.length ? tp : products).slice(0, 35), 'productSlider');
         } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(); }
         else if (cp === 'searchResultsPage' && window.currentSearchQuery) {
           const r = searchProducts(window.currentSearchQuery); window.currentSearchResults = r; renderSearchResults(r, window.currentSearchQuery);
@@ -4720,7 +4734,7 @@
               renderProducts(products, 'homeProductGrid');
               let trendingProducts = products.filter(p => p.isTrending || p.trending);
               if (!trendingProducts.length) trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
-              renderProductSlider(trendingProducts.length ? trendingProducts : products.slice(0, 10), 'productSlider');
+              renderProductSlider((trendingProducts.length ? trendingProducts : products).slice(0, 35), 'productSlider');
             } else if (currentPage === 'productsPage') {
               renderProducts(products, 'productGrid'); updateProductsCount();
             } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
@@ -4819,7 +4833,7 @@
         renderProducts(products, 'homeProductGrid');
         renderProducts(products, 'productGrid');
         const trending = products.filter(p => p.isTrending || p.trending).slice(0, 10);
-        renderProductSlider(trending.length > 0 ? trending : products.slice(0, 10), 'productSlider');
+        renderProductSlider((trending.length > 0 ? trending : products).slice(0, 35), 'productSlider');
         updateProductsCount();
       }
       const cachedCategories = cacheManager.get(CACHE_KEYS.CATEGORIES);
