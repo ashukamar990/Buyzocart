@@ -3512,18 +3512,20 @@
       const container = document.getElementById(containerId);
       if (!container) return;
       const ratingMap = {};
-      productsToRender.forEach(p => {
+      (productsToRender || []).forEach(p => {
+        if (!p) return;
         const productReviews = reviews.filter(r => r.productId === p.id);
         if (productReviews.length) {
           const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
           ratingMap[p.id] = sum / productReviews.length;
         } else ratingMap[p.id] = 0;
       });
-      const sorted = [...productsToRender].sort((a, b) => getProductScore(b) - getProductScore(a));
-      // For homeProductGrid: only render first 20, rest go to multi-grid
+      const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b) - getProductScore(a));
+      // ONLY homeProductGrid gets first-20 limit — all other grids show everything
       const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
       container.innerHTML = '';
       if (!toRender || toRender.length === 0) {
+        // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
           container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
@@ -3532,9 +3534,9 @@
       const fragment = document.createDocumentFragment();
       toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
       container.appendChild(fragment);
-      // Populate multi-grid sections for home page
+      // Populate multi-grid sections for home page only
       if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
-        setTimeout(function() { window.bzPopulateHomeGrids(sorted); }, 100);
+        setTimeout(function() { window.bzPopulateHomeGrids(sorted); }, 120);
       }
     }
 
@@ -7978,6 +7980,10 @@
       }
       _attachToSearchInput();
     })();
+
+    window.createProductCard   = createProductCard;
+    window.renderProductSlider = renderProductSlider;
+    window.renderProducts      = renderProducts;
 
     // Menu onclick handler — safe wrapper
     window._openBrandsPage = function() {
