@@ -579,6 +579,27 @@
                 <button class="modal-close" onclick="closeModal('productModal')">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- ── PRODUCT IMAGE (shown first, most important) ── -->
+                <div class="form-group">
+                    <label class="form-label">Product Images <span class="required">*</span> <span style="font-weight:400;font-size:11px;color:#94a3b8;">Up to 6 images</span></label>
+                    <input type="file" id="prodImages" style="display:none;" multiple accept="image/*" onchange="handleImageUpload(event)">
+                    <div id="imgPickerBtn" onclick="document.getElementById('prodImages').click()"
+                         style="border:2px dashed #cbd5e1;border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .25s;margin-bottom:10px;position:relative;"
+                         onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';"
+                         onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
+                        <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 12px;">📸</div>
+                        <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">Tap to Add Product Images</div>
+                        <div style="font-size:12px;color:#64748b;margin-bottom:12px;">Select photos from your gallery · JPG / PNG / WEBP</div>
+                        <span style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:8px 22px;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(37,99,235,0.35);">
+                            <i class="fas fa-camera"></i> Choose Photos
+                        </span>
+                    </div>
+                    <div class="img-preview-container" id="imgPreviews" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    <div id="imgUploadStatus" style="font-size:12px;color:#64748b;margin-top:6px;display:none;"></div>
+                </div>
+
+                <div style="height:1px;background:#f1f5f9;margin:4px 0 18px;"></div>
+
                 <div class="form-group">
                     <label class="form-label">Product Name <span class="required">*</span></label>
                     <input type="text" class="form-control" id="prodName" placeholder="Enter product name">
@@ -660,22 +681,6 @@
                     <input type="text" class="form-control" id="prodColors" placeholder="Red, Blue, Black, White">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Product Images <span class="required">*</span> <span style="font-weight:400;font-size:11px;color:#94a3b8;">Max 6 images</span></label>
-                    <!-- Hidden real file input -->
-                    <input type="file" id="prodImages" style="display:none;" multiple accept="image/*" onchange="handleImageUpload(event)">
-                    <!-- Premium gallery picker button -->
-                    <div id="imgPickerBtn" onclick="document.getElementById('prodImages').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s;margin-bottom:10px;" onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
-                        <div style="font-size:2rem;margin-bottom:8px;">🖼️</div>
-                        <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">Tap to Select Images</div>
-                        <div style="font-size:12px;color:#64748b;">Gallery se photos chunein · Max 6 · JPG/PNG/WEBP</div>
-                        <div style="margin-top:10px;display:inline-flex;gap:8px;">
-                            <span style="background:#2563eb;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">📷 Gallery</span>
-                        </div>
-                    </div>
-                    <div class="img-preview-container" id="imgPreviews" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-                    <div id="imgUploadStatus" style="font-size:12px;color:#64748b;margin-top:6px;display:none;"></div>
-                </div>
-                <div class="form-group">
                     <label class="form-label">Search Tags / Collections <span style="color:#94a3b8;font-weight:400;font-size:12px;">(Optional)</span></label>
                     <div class="tag-chip-container" id="tagChipContainer" onclick="toggleTagDropdown()">
                         <span class="tag-chip-placeholder" id="tagPlaceholder">Click to select tags...</span>
@@ -691,7 +696,7 @@
                         </div>
                     </div>
                     <input type="hidden" id="prodTags">
-                    <small class="text-muted" style="margin-top:4px;display:block;">Firebase mein jo tags already hain woh yahan dikhenge</small>
+                    <small class="text-muted" style="margin-top:4px;display:block;">Tags already available in the store will appear here</small>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="prodActive" checked>
@@ -2323,7 +2328,7 @@
             document.getElementById('tagPlaceholder').style.display = 'inline';
             document.getElementById('selectedTagsDisplay').innerHTML = '';
             document.getElementById('prodSaveBtn').disabled = false;
-            document.getElementById('prodSaveBtn').textContent = 'Save Product';
+            document.getElementById('prodSaveBtn').innerHTML = '<i class="fas fa-save"></i> Save Product';
             document.getElementById('productModal').classList.add('active');
             _populateProdCategory();
             loadTagsForDropdown();
@@ -2368,7 +2373,7 @@
                 return '<span class="tag-chip">' + t + '<span class="remove-chip" onclick="event.stopPropagation();removeTagChipByName(\'' + t.replace(/'/g, "\\'") + '\')">&times;</span></span>';
             }).join('');
             document.getElementById('prodSaveBtn').disabled = false;
-            document.getElementById('prodSaveBtn').textContent = 'Save Product';
+            document.getElementById('prodSaveBtn').innerHTML = '<i class="fas fa-save"></i> Save Product';
             document.getElementById('productModal').classList.add('active');
             _populateProdCategory(p.category || '');
             loadTagsForDropdown();
@@ -2416,7 +2421,7 @@
             var brandName = brandInput ? brandInput.value.trim() : '';
             var brandId   = document.getElementById('prodBrandId') ? document.getElementById('prodBrandId').value.trim() : '';
             var brandLogo = document.getElementById('prodBrandLogo') ? document.getElementById('prodBrandLogo').value.trim() : '';
-            if (!brandName || !brandId) { showToast('Brand select karo dropdown se', 'error'); return; }
+            if (!brandName || !brandId) { showToast('Please select a brand from the dropdown', 'error'); return; }
 
             var productCode = (function() {
                 var n = Math.floor(100 + Math.random() * 900).toString();
@@ -2461,7 +2466,7 @@
 
             var btn = document.getElementById('prodSaveBtn');
             btn.disabled = true;
-            btn.textContent = 'Saving...';
+            btn.innerHTML = '⏳ Saving...';
 
             try {
                 var productId;
@@ -2515,7 +2520,7 @@
                 console.error(err);
                 showToast('Failed to save. Try again.', 'error');
                 btn.disabled = false;
-                btn.textContent = 'Save Product';
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Product';
             }
         }
 
@@ -2674,11 +2679,11 @@
             var logo   = (document.getElementById('reqBrandLogo2').value||'').trim();
             var desc   = (document.getElementById('reqBrandDesc2').value||'').trim();
             var reason = (document.getElementById('reqBrandReason2').value||'').trim();
-            if (!name || name.length < 2) { showToast('Brand name enter karo', 'error'); return; }
+            if (!name || name.length < 2) { showToast('Please enter a brand name', 'error'); return; }
             var norm = name.toLowerCase().replace(/[^a-z0-9]/g,'');
             // Protected brands allowed — admin will verify ownership
             var dup = (window._state.brands||[]).find(function(b){ return b.name.toLowerCase().replace(/[^a-z0-9]/g,'') === norm; });
-            if (dup) { showToast('Brand already exists — dropdown se select karo', 'error'); return; }
+            if (dup) { showToast('Brand already exists — please select it from the dropdown', 'error'); return; }
             var uid = window._state.user && window._state.user.uid;
             if (!uid) { showToast('Login required', 'error'); return; }
             try {
@@ -3085,7 +3090,7 @@
         }
 
         function _editBrandProfileModal() {
-            if (!_myBrandData) { showToast('Brand data load ho rahi hai, thoda wait karo', 'error'); return; }
+            if (!_myBrandData) { showToast('Brand data is loading, please wait a moment', 'error'); return; }
             var existing = document.getElementById('_ebModal');
             if (existing) existing.remove();
             var el = document.createElement('div');
@@ -3106,7 +3111,7 @@
                     // Description
                     +'<div style="margin-bottom:18px;">'
                         +'<label style="display:block;margin-bottom:7px;font-size:0.82rem;font-weight:700;color:#374151;">Brand Description</label>'
-                        +'<textarea class="form-control" id="ebDesc" rows="3" placeholder="Apni brand ke baare mein likhein...">'+(_myBrandData.description||'')+'</textarea>'
+                        +'<textarea class="form-control" id="ebDesc" rows="3" placeholder="Describe your brand...">'+(_myBrandData.description||'')+'</textarea>'
                     +'</div>'
 
                     // Logo picker
@@ -3118,8 +3123,8 @@
                                 +(curLogo ? '<img src="'+curLogo+'" style="width:100%;height:100%;object-fit:cover;">' : '🏷️')
                             +'</div>'
                             +'<div style="flex:1;">'
-                                +'<button onclick="document.getElementById(\'ebLogoFile\').click()" style="width:100%;padding:10px;border:2px dashed #cbd5e1;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;color:#2563eb;font-family:inherit;margin-bottom:8px;transition:all .2s;" onmouseover="this.style.borderColor=\'#2563eb\';this.style.background=\'#eff6ff\';" onmouseout="this.style.borderColor=\'#cbd5e1\';this.style.background=\'#f8fafc\';">📷 Gallery se logo chunein</button>'
-                                +'<input class="form-control" id="ebLogo" value="'+curLogo+'" placeholder="Ya URL paste karein..." style="font-size:12px;" oninput="var p=document.getElementById(\'ebLogoPreview\');if(this.value)p.innerHTML=\'<img src=\\\'+this.value+\'\\\' style=\\\"width:100%;height:100%;object-fit:cover;\\\">\';">'
+                                +'<button onclick="document.getElementById(\'ebLogoFile\').click()" style="width:100%;padding:10px;border:2px dashed #cbd5e1;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;color:#2563eb;font-family:inherit;margin-bottom:8px;transition:all .2s;" onmouseover="this.style.borderColor=\'#2563eb\';this.style.background=\'#eff6ff\';" onmouseout="this.style.borderColor=\'#cbd5e1\';this.style.background=\'#f8fafc\';">📷 Choose Logo from Gallery</button>'
+                                +'<input class="form-control" id="ebLogo" value="'+curLogo+'" placeholder="Or paste image URL..." style="font-size:12px;" oninput="var p=document.getElementById(\'ebLogoPreview\');if(this.value)p.innerHTML=\'<img src=\\\'+this.value+\'\\\' style=\\\"width:100%;height:100%;object-fit:cover;\\\">\';">'
                             +'</div>'
                         +'</div>'
                     +'</div>'
@@ -3130,10 +3135,10 @@
                         +'<input type="file" id="ebBannerFile" accept="image/*" style="display:none;" onchange="handleEbImageUpload(this,\'ebBanner\',\'ebBannerPreview\')">'
                         +'<div id="ebBannerPreview" onclick="document.getElementById(\'ebBannerFile\').click()" style="width:100%;height:110px;border-radius:12px;border:2px dashed #cbd5e1;background:#f8fafc;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;margin-bottom:8px;position:relative;transition:all .2s;" onmouseover="this.style.borderColor=\'#2563eb\';this.style.background=\'#eff6ff\';" onmouseout="this.style.borderColor=\'#cbd5e1\';this.style.background=\'#f8fafc\';">'
                             +(curBanner
-                                ? '<img src="'+curBanner+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"><div style="position:relative;background:rgba(0,0,0,.45);color:#fff;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;backdrop-filter:blur(2px);">📷 Banner badlein</div>'
-                                : '<div style="font-size:1.8rem;">🖼️</div><div style="font-size:13px;font-weight:700;color:#2563eb;margin-top:6px;">Tap karo banner choose karne ke liye</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">JPG / PNG / WEBP</div>')
+                                ? '<img src="'+curBanner+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"><div style="position:relative;background:rgba(0,0,0,.45);color:#fff;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;backdrop-filter:blur(2px);">📷 Change Banner</div>'
+                                : '<div style="font-size:1.8rem;">🖼️</div><div style="font-size:13px;font-weight:700;color:#2563eb;margin-top:6px;">Tap to select a banner image</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">JPG / PNG / WEBP</div>')
                         +'</div>'
-                        +'<input class="form-control" id="ebBanner" value="'+curBanner+'" placeholder="Ya banner URL paste karein..." style="font-size:12px;" oninput="var p=document.getElementById(\'ebBannerPreview\');if(this.value)p.style.backgroundImage=\'url(\'+this.value+\')\';p.style.backgroundSize=\'cover\';p.style.backgroundPosition=\'center\';">'
+                        +'<input class="form-control" id="ebBanner" value="'+curBanner+'" placeholder="Or paste banner URL..." style="font-size:12px;" oninput="var p=document.getElementById(\'ebBannerPreview\');if(this.value)p.style.backgroundImage=\'url(\'+this.value+\')\';p.style.backgroundSize=\'cover\';p.style.backgroundPosition=\'center\';">'
                     +'</div>'
 
                     +'</div>'
@@ -3236,7 +3241,7 @@
             var name=(document.getElementById('sdmName').value||'').trim()||'Delivery Partner';
             var phone=(document.getElementById('sdmPhone').value||'').trim();
             var code=document.getElementById('sdmCode').value||'91';
-            if(!phone){showToast('WhatsApp number enter karo','error');return;}
+            if(!phone){showToast('Please enter a WhatsApp number','error');return;}
             var btn=document.getElementById('sdmGenBtn');btn.disabled=true;btn.textContent='Creating...';
             var sid='ds_'+Date.now()+'_'+Math.random().toString(36).substr(2,7);
             window._set(window._ref(window._db,'deliverySessions/'+sid),{sessionId:sid,deliveryBoyName:name,whatsapp:code+phone,orderIds:[_sdmOrderId],status:'active',createdAt:Date.now(),lastAccessed:null})
@@ -3250,7 +3255,7 @@
                     var order=null,orders=window._state.orders||[];
                     for(var i=0;i<orders.length;i++){if(orders[i].id===_sdmOrderId){order=orders[i];break;}}
                     var seller=(window._state.sellerData&&window._state.sellerData.businessName)?window._state.sellerData.businessName:'Seller';
-                    var msg='Namaste '+name+'!\n\nAapko ek order deliver karna hai:\n'+(order?(order.productName||'Product')+' - '+formatCurrency(order.totalAmount)+'\n':'')+'\nDelivery Link:\n'+link+'\n\nIs link se order Delivered ya Cancel kar sakte hain.\n- '+seller;
+                    var msg='Hello '+name+'!\n\nYou have an order to deliver:\n'+(order?(order.productName||'Product')+' - '+formatCurrency(order.totalAmount)+'\n':'')+'\nDelivery Link:\n'+link+'\n\nUse this link to mark the order as Delivered or Cancelled.\n- '+seller;
                     window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(msg),'_blank');
                 })
                 .catch(function(err){showToast('Error: '+err.message,'error');btn.disabled=false;btn.textContent='Generate and Send via WhatsApp';});
@@ -3260,7 +3265,7 @@
             var name=(document.getElementById('sdmName').value||'').trim()||'Partner';
             var phone=(document.getElementById('sdmPhone').value||'').trim();
             var code=document.getElementById('sdmCode').value||'91';
-            if(!_sdmLink){showToast('Pehle generate karo','error');return;}
+            if(!_sdmLink){showToast('Please generate the link first','error');return;}
             window.open('https://wa.me/'+(code+phone).replace(/[^0-9]/g,'')+'?text='+encodeURIComponent('Delivery Link:\n'+_sdmLink),'_blank');
         }
         function buildSDM(){
@@ -3269,7 +3274,7 @@
             el.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;">'
                 +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;font-size:1rem;font-weight:700;">Send to Delivery Boy</h3><button onclick="closeSDM()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#64748b;">x</button></div>'
                 +'<div id="sdmPreview" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;"></div>'
-                +'<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Delivery Boy Name</label><input type="text" id="sdmName" placeholder="Rahul Kumar" class="form-control"></div>'
+                +'<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Delivery Partner Name</label><input type="text" id="sdmName" placeholder="e.g. Raj Kumar" class="form-control"></div>'
                 +'<div style="margin-bottom:14px;"><label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">WhatsApp Number *</label><div style="display:flex;gap:8px;"><select id="sdmCode" class="form-control" style="width:80px;"><option value="91">+91</option><option value="1">+1</option><option value="44">+44</option><option value="971">+971</option></select><input type="tel" id="sdmPhone" placeholder="9876543210" class="form-control" maxlength="12"></div></div>'
                 +'<div id="sdmLinkBox" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px;">Link Ready</div><input type="text" id="sdmLink" readonly class="form-control" style="font-size:11px;margin-bottom:8px;"><div style="display:flex;gap:8px;"><button onclick="copySDMLink()" class="btn btn-outline btn-sm" style="flex:1;">Copy</button><button onclick="resendSDMWA()" class="btn btn-sm" style="flex:1;background:#25d366;color:#fff;border:none;cursor:pointer;border-radius:8px;font-weight:600;">WhatsApp</button></div></div>'
                 +'<button id="sdmGenBtn" onclick="generateSDMLink()" class="btn btn-primary" style="width:100%;">Generate and Send via WhatsApp</button>'
