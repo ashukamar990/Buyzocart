@@ -893,6 +893,7 @@
       });
     }
 
+    window.filterProductsByTag = filterProductsByTag;
     function filterProductsByTag(tag) {
       if (!tag) return;
       const tagLower = tag.toLowerCase().trim();
@@ -1354,13 +1355,19 @@
       } else if (productBadge) {
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
+      const _cardBrandId = product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+      const _cardBrandName = (product.brand||'').replace(/'/g,'');
+      const _cardBrandLogo = product.brandLogo || product.brandIcon || '';
+      const _cardBrandVerified = !!(product.blueTickAdmin);
+      const _BT_CARD = _cardBrandVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;background:#2563eb;border-radius:50%;margin-left:2px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"7\" height=\"7\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></span>') : '';
+      const _brandOverlay = product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;cursor:pointer;" title="View Brand">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div>` : '';
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}')">
+        <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
           ${badgeHtml}
+          ${_brandOverlay}
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
-          ${product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_')}','${(product.brand||'').replace(/'/g,'')}');" style="font-size:11px;color:#2563eb;margin:-2px 0 5px;display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:pointer;" title="View Brand"><span class="product-card-brand">${product.brand}</span></div>` : ''}
           <div class="product-card-rating">
             <div class="product-card-stars">${generateStarRating(rating)}</div>
             <div class="product-card-review-count">(${product.reviewCount || '0'})</div>
@@ -3037,6 +3044,7 @@
               <div class="order-product-title">${order.productName || 'Product'}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount || 0)}</div>
               <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
+              ${order.sellerId ? `<div style="font-size:10px;color:var(--muted,#94a3b8);font-family:monospace;font-weight:700;margin-top:4px;background:var(--surface2,#f8fafc);padding:2px 6px;border-radius:5px;display:inline-block;">🏪 ${order.sellerId}</div>` : ''}
             </div>
           </div>
           ${trackingHtml}
@@ -3272,7 +3280,12 @@
       const category = categories.find(c => c.id === categoryId || c.name === categoryId);
       if (!category) return;
       currentCategoryFilter = category.id;
-      let filteredProducts = products.filter(product => product.category === category.id || product.category === category.name);
+      const catId = category.id; const catName = (category.name||'').toLowerCase();
+      let filteredProducts = products.filter(product => {
+        const pc = (product.category||'').toLowerCase();
+        const pci = (product.categoryId||'');
+        return pci === catId || pc === catName || pci === catName || pc === catId.toLowerCase();
+      });
       const ratingMap = {};
       filteredProducts.forEach(p => {
         const productReviews = reviews.filter(r => r.productId === p.id);
@@ -3293,7 +3306,13 @@
 
     function applyPriceFilter() {
       const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
-      const maxPrice = parseFloat(document.getElementById('maxPrice').value) || 10000;
+      const inputMax = parseFloat(document.getElementById('maxPrice').value);
+      const maxProductPrice = products.length ? Math.max(...products.map(p => parsePrice(p.price) || 0)) : 100000;
+      const maxPrice = (inputMax && inputMax > 0) ? Math.min(inputMax, maxProductPrice * 10) : maxProductPrice;
+      const minEl = document.getElementById('minPrice');
+      const maxEl = document.getElementById('maxPrice');
+      if (minEl) minEl.max = (maxProductPrice * 2).toString();
+      if (maxEl) maxEl.max = (maxProductPrice * 2).toString();
       let filteredProducts = products;
       if (currentCategoryFilter) filteredProducts = filteredProducts.filter(product => product.category === currentCategoryFilter);
       filteredProducts = filteredProducts.filter(product => {
@@ -3330,13 +3349,26 @@
 
     function resetAllFilters() {
       resetPriceFilter();
+      const minInput = document.getElementById('minPrice');
+      const maxInput = document.getElementById('maxPrice');
+      // Reset to actual max product price
+      const maxProductPrice = products.length ? Math.max(...products.map(p => parsePrice(p.price) || 0)) : 10000;
+      if (minInput) minInput.value = '0';
+      if (maxInput) maxInput.value = maxProductPrice.toString();
+      const minThumb = document.getElementById('priceMinThumb');
+      const maxThumb = document.getElementById('priceMaxThumb');
+      const range = document.getElementById('priceSliderRange');
+      if (minThumb) minThumb.style.left = '0%';
+      if (maxThumb) maxThumb.style.left = '100%';
+      if (range) { range.style.left = '0%'; range.style.width = '100%'; }
       document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
-      const allPill = Array.from(document.querySelectorAll('.category-pill')).find(p => p.textContent === 'All');
+      const allPill = Array.from(document.querySelectorAll('.category-pill')).find(p => p.textContent === 'All' || p.dataset.catId === 'all');
       if (allPill) allPill.classList.add('active');
       currentCategoryFilter = null;
       renderProducts(products, 'productGrid');
       updateProductsCount();
     }
+    window.resetAllFilters = resetAllFilters;
 
     function updateProductsCount() {
       const container = document.getElementById('productGrid');
@@ -7003,7 +7035,7 @@
           }
         });
 
-        _siteBrandsAll = Object.values(brandMap).filter(function(b) { return b.productCount > 0 || b.blueTickAdmin; });
+        _siteBrandsAll = Object.values(brandMap).filter(function(b) { return b.productCount > 0 || b.blueTickAdmin || b.name; }); // show ALL brands
         _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
         _siteBrandsAll._followedSet = followedSet;
 
@@ -7110,7 +7142,7 @@
         }
 
         _siteBrandsAll = Object.values(brandMap)
-          .filter(function(b) { return b.products.length > 0 || b.blueTickAdmin; });
+          .filter(function(b) { return b.products.length > 0 || b.blueTickAdmin || b.name; }); // show ALL brands
         _siteBrandsAll.sort(function(a, b) { return _brandScore(b) - _brandScore(a); });
         _siteBrandsAll._followedSet = followedSet;
         // Cache for search suggestions & following strip
@@ -7236,6 +7268,8 @@
 
       // ── Popular (verified or high score) ──
       var popular  = brands.filter(function(b) { return b.blueTickAdmin || b.verificationLevel === 'premium' || _brandScore(b) > 50; });
+      var newBrands = brands.filter(function(b) { return !b.blueTickAdmin && _brandScore(b) <= 50 && b.products.length > 0; });
+      var verified  = brands.filter(function(b) { return b.blueTickAdmin || b.verificationLevel === 'premium'; });
       var nonPop   = brands.filter(function(b) { return !b.blueTickAdmin && b.verificationLevel !== 'premium' && _brandScore(b) <= 50; });
 
       // ── Suggested (top unverified not followed) ──
