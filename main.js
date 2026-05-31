@@ -2113,83 +2113,32 @@
 
     function loadSimilarProducts(product) {
       const adminSimilarIds = (product.similarFromAdmin && Array.isArray(product.similarFromAdmin)) ? product.similarFromAdmin : [];
-      let similarProducts = products
-        .filter(p => p.id !== product.id && p.category === product.category && !adminSimilarIds.includes(p.id))
+      const adminSimilar = adminSimilarIds.map(id => products.find(p => p.id === id)).filter(Boolean);
+      const catNorm = (product.category || '').toLowerCase().trim();
+      const autoSimilar = products
+        .filter(p => p.id !== product.id && (p.category||'').toLowerCase().trim() === catNorm && !adminSimilarIds.includes(p.id))
+        .sort((a, b) => getProductScore(b) - getProductScore(a))
         .slice(0, 20);
-      const ratingMap = {};
-      similarProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else {
-          ratingMap[p.id] = 0;
-        }
-      });
-      similarProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
-      const firstRow = similarProducts.slice(0, 10);
-      const secondRow = similarProducts.slice(10, 20);
+      const similarProducts = [...adminSimilar, ...autoSimilar].slice(0, 20);
       const container = document.getElementById('similarProductsSlider');
       if (!container) return;
       container.innerHTML = '';
-      const fragment = document.createDocumentFragment();
-      const rowDiv = document.createElement('div');
-      rowDiv.style.display = 'flex';
-      rowDiv.style.flexDirection = 'column';
-      rowDiv.style.gap = '20px';
-      rowDiv.style.width = '100%';
-      const row1Div = document.createElement('div');
-      row1Div.style.display = 'flex';
-      row1Div.style.overflowX = 'auto';
-      row1Div.style.gap = '15px';
-      row1Div.style.paddingBottom = '10px';
+      if (!similarProducts.length) {
+        container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:8px 0;">No similar products found.</p>';
+        return;
+      }
+      // Use same slider style as trending products
+      const sliderWrap = document.createElement('div');
+      sliderWrap.className = 'slider-container';
+      sliderWrap.style.cssText = 'margin:0;padding-bottom:4px;';
+      const sliderTrack = document.createElement('div');
+      sliderTrack.className = 'slider-track';
+      sliderTrack.id = 'similarSliderInner';
+      sliderWrap.appendChild(sliderTrack);
+      container.appendChild(sliderWrap);
+      renderProductSlider(similarProducts, 'similarSliderInner');
       row1Div.style.scrollbarWidth = 'none';
       row1Div.style.msOverflowStyle = 'none';
-      row1Div.className = 'slider-track';
-      const row2Div = document.createElement('div');
-      row2Div.style.display = 'flex';
-      row2Div.style.overflowX = 'auto';
-      row2Div.style.gap = '15px';
-      row2Div.style.paddingBottom = '10px';
-      row2Div.style.scrollbarWidth = 'none';
-      row2Div.style.msOverflowStyle = 'none';
-      row2Div.className = 'slider-track';
-      firstRow.forEach(p => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
-        sliderItem.style.minWidth = '160px';
-        sliderItem.style.maxWidth = '160px';
-        sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 120px; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
-          <div class="slider-item-body">
-            <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
-            <div class="slider-item-price">${formatPrice(p.price)}</div>
-          </div>
-        `;
-        sliderItem.addEventListener('click', () => showProductDetail(p));
-        row1Div.appendChild(sliderItem);
-      });
-      secondRow.forEach(p => {
-        const sliderItem = document.createElement('div');
-        sliderItem.className = 'slider-item';
-        sliderItem.style.minWidth = '160px';
-        sliderItem.style.maxWidth = '160px';
-        sliderItem.innerHTML = `
-          <div class="slider-item-img" style="background-image: url('${getProductImage(p)}'); height: 120px; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #f8fafc;"></div>
-          <div class="slider-item-body">
-            <div class="slider-item-title">${p.name || p.title || 'Product'}</div>
-            <div class="slider-item-price">${formatPrice(p.price)}</div>
-          </div>
-        `;
-        sliderItem.addEventListener('click', () => showProductDetail(p));
-        row2Div.appendChild(sliderItem);
-      });
-      if (firstRow.length > 0) rowDiv.appendChild(row1Div);
-      if (secondRow.length > 0) rowDiv.appendChild(row2Div);
-      if (firstRow.length === 0 && secondRow.length === 0) {
-        rowDiv.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No similar products found</p>';
-      }
-      container.appendChild(rowDiv);
     }
 
     function loadSimilarProductsSmall(product) {
@@ -3280,11 +3229,13 @@
       const category = categories.find(c => c.id === categoryId || c.name === categoryId);
       if (!category) return;
       currentCategoryFilter = category.id;
-      const catId = category.id; const catName = (category.name||'').toLowerCase();
-      let filteredProducts = products.filter(product => {
-        const pc = (product.category||'').toLowerCase();
-        const pci = (product.categoryId||'');
-        return pci === catId || pc === catName || pci === catName || pc === catId.toLowerCase();
+      const catId   = category.id || '';
+      const catName = (category.name || '').toLowerCase().trim();
+      let filteredProducts = products.filter(function(product) {
+        var pc  = (product.category || product.categoryName || '').toLowerCase().trim();
+        var pci = (product.categoryId || '').toLowerCase().trim();
+        // Match by name (most common), by Firebase id, or by id stored as category value
+        return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName;
       });
       const ratingMap = {};
       filteredProducts.forEach(p => {
@@ -3348,42 +3299,49 @@
     }
 
     function resetAllFilters() {
-      resetPriceFilter();
-      const minInput = document.getElementById('minPrice');
-      const maxInput = document.getElementById('maxPrice');
-      // Reset to actual max product price
-      const maxProductPrice = products.length ? Math.max(...products.map(p => parsePrice(p.price) || 0)) : 10000;
+      currentCategoryFilter = null;
+      // Reset price inputs
+      var minInput = document.getElementById('minPrice');
+      var maxInput = document.getElementById('maxPrice');
       if (minInput) minInput.value = '0';
-      if (maxInput) maxInput.value = maxProductPrice.toString();
-      const minThumb = document.getElementById('priceMinThumb');
-      const maxThumb = document.getElementById('priceMaxThumb');
-      const range = document.getElementById('priceSliderRange');
+      if (maxInput) maxInput.value = '100000';
+      // Reset slider thumbs
+      var minThumb = document.getElementById('priceMinThumb');
+      var maxThumb = document.getElementById('priceMaxThumb');
+      var sliderRange = document.getElementById('priceSliderRange');
       if (minThumb) minThumb.style.left = '0%';
       if (maxThumb) maxThumb.style.left = '100%';
-      if (range) { range.style.left = '0%'; range.style.width = '100%'; }
-      document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
-      const allPill = Array.from(document.querySelectorAll('.category-pill')).find(p => p.textContent === 'All' || p.dataset.catId === 'all');
-      if (allPill) allPill.classList.add('active');
-      currentCategoryFilter = null;
+      if (sliderRange) { sliderRange.style.left = '0%'; sliderRange.style.width = '100%'; }
+      // Reset category pills
+      document.querySelectorAll('.category-pill').forEach(function(pill) {
+        pill.classList.remove('active');
+        if (pill.textContent.trim() === 'All' || pill.getAttribute('data-cat-id') === 'all') {
+          pill.classList.add('active');
+        }
+      });
+      // Show all products
       renderProducts(products, 'productGrid');
+      // Hide noProductsMessage
+      var noMsg = document.getElementById('noProductsMessage');
+      if (noMsg) noMsg.style.display = 'none';
       updateProductsCount();
     }
     window.resetAllFilters = resetAllFilters;
 
     function updateProductsCount() {
       const container = document.getElementById('productGrid');
-      const noProductsMessage = document.getElementById('noProductsMessage');
+      const noMsg = document.getElementById('noProductsMessage');
       const productsCount = document.getElementById('productsCount');
-      if (!container || !noProductsMessage || !productsCount) return;
+      if (!container) return;
       const visibleProducts = container.querySelectorAll('.product-card').length;
-      if (visibleProducts === 0) {
-        noProductsMessage.style.display = 'block';
-        productsCount.innerHTML = '';
-      } else {
-        noProductsMessage.style.display = 'none';
-        productsCount.innerHTML = '';
+      if (noMsg) noMsg.style.display = visibleProducts === 0 ? 'block' : 'none';
+      if (productsCount) {
+        productsCount.innerHTML = visibleProducts > 0
+          ? `<span style="font-size:13px;color:var(--muted);">${visibleProducts} product${visibleProducts===1?'':'s'} found</span>`
+          : '';
       }
     }
+    window.updateProductsCount = updateProductsCount;
 
     function renderCategories() {
       const container = document.getElementById('categoriesContainer');
