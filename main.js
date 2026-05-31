@@ -4968,6 +4968,34 @@
           }
         });
       }
+      document.getElementById('newsletterEmail')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNewsletterSubscription();
+        }
+      });
+      ['loginEmail', 'loginPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleLogin();
+          }
+        });
+      });
+      ['signupName', 'signupEmail', 'signupPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSignup();
+          }
+        });
+      });
+      document.getElementById('forgotPasswordEmail')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleResetPassword();
+        }
+      });
     }
 
     function setupFileUpload() {
