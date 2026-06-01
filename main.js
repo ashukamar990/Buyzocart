@@ -2834,6 +2834,29 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay')?.textContent;
+      if (!orderId) return;
+
+      const btn = document.getElementById('copyOrderIdBtn');
+      if (btn.getAttribute('data-copying') === 'true') return;
+
+      const originalHtml = btn.innerHTML;
+      btn.setAttribute('data-copying', 'true');
+
+      navigator.clipboard.writeText(orderId).then(() => {
+        showToast('Order ID copied to clipboard!', 'success');
+        btn.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+          btn.innerHTML = originalHtml;
+          btn.removeAttribute('data-copying');
+        }, 2000);
+      }).catch(() => {
+        btn.removeAttribute('data-copying');
+        showToast('Failed to copy Order ID', 'error');
+      });
+    }
+
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
     // PROBLEM: onValue() lagaya tha orders pe → user ke saare orders
     //          ki continuous TCP connection (persistent watcher)
@@ -5068,6 +5091,7 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
