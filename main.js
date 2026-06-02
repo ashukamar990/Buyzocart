@@ -663,7 +663,11 @@
           <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
-        card.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
+        card.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          try { closeSearchPanel(); } catch(e2){}
+          setTimeout(function() { showProductDetail(product); }, 50);
+        });
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
@@ -1352,7 +1356,8 @@
         badgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
       } else if (isTrending) {
         badgeHtml = `<div class="professional-badge">TRENDING</div>`;
-      } else if (productBadge) {
+      } else if (productBadge && !(/^\d{3}[A-Z]{3}$/.test(productBadge))) {
+        // Suppress auto-generated codes (3 digits + 3 letters = private codes like 905XYZ)
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       const _cardBrandId = product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
@@ -3226,15 +3231,26 @@
         updateProductsCount();
         return;
       }
-      const category = categories.find(c => c.id === categoryId || c.name === categoryId);
-      if (!category) return;
+      const category = categories.find(c => c.id === categoryId || c.name === categoryId || c.name.toLowerCase() === (categoryId||'').toLowerCase());
+      if (!category) {
+        // Fallback: treat categoryId as a name string
+        const catNameFallback = (categoryId||'').toLowerCase().trim();
+        const filtered2 = products.filter(function(p) {
+          return (p.category||'').toLowerCase().trim() === catNameFallback;
+        });
+        if (filtered2.length > 0) {
+          renderProducts(filtered2, 'productGrid');
+          updateProductsCount();
+        }
+        return;
+      }
       currentCategoryFilter = category.id;
       const catId   = category.id || '';
       const catName = (category.name || '').toLowerCase().trim();
       let filteredProducts = products.filter(function(product) {
         var pc  = (product.category || product.categoryName || '').toLowerCase().trim();
         var pci = (product.categoryId || '').toLowerCase().trim();
-        // Match by name (most common), by Firebase id, or by id stored as category value
+        // Products save category by NAME — this is the primary match
         return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName;
       });
       const ratingMap = {};
@@ -3362,7 +3378,7 @@
         const categoryPill = document.createElement('div');
         categoryPill.className = 'category-pill';
         categoryPill.textContent = category.name || 'Category';
-        categoryPill.addEventListener('click', () => filterByCategory(category.id));
+        categoryPill.addEventListener('click', () => filterByCategory(category.name || category.id));
         fragment.appendChild(categoryPill);
       });
       container.innerHTML = '';
@@ -3382,7 +3398,7 @@
           <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
           <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
-        circle.addEventListener('click', () => filterByCategory(category.id));
+        circle.addEventListener('click', () => filterByCategory(category.name || category.id));
         fragment.appendChild(circle);
       });
       container.innerHTML = '';
