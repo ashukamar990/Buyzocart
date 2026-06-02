@@ -663,11 +663,8 @@
           <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
-        card.addEventListener('click', function(e) {
-          e.preventDefault(); e.stopPropagation();
-          try { closeSearchPanel(); } catch(e2){}
-          setTimeout(function() { showProductDetail(product); }, 50);
-        });
+        card.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
+        card.addEventListener('touchend', (e) => { e.preventDefault(); showProductDetail(product); closeSearchPanel(); }, { passive: false });
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
@@ -1356,8 +1353,7 @@
         badgeHtml = `<div class="professional-badge" style="background:#22c55e;">FEATURED</div>`;
       } else if (isTrending) {
         badgeHtml = `<div class="professional-badge">TRENDING</div>`;
-      } else if (productBadge && !(/^\d{3}[A-Z]{3}$/.test(productBadge))) {
-        // Suppress auto-generated codes (3 digits + 3 letters = private codes like 905XYZ)
+      } else if (productBadge) {
         badgeHtml = `<div class="product-card-badge">${productBadge}</div>`;
       }
       const _cardBrandId = product.brandId || (product.brand||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
@@ -2448,6 +2444,8 @@
           paymentMethod: paymentMethod,
           status: 'placed',
           orderDate: Date.now(),
+          sellerId: currentProduct.sellerId || currentProduct.sellerUid || '',
+          sellerUid: currentProduct.sellerUid || currentProduct.sellerId || '',
           userInfo: userInfo,
           address: {
             name: userInfo.fullName || '',
@@ -2998,7 +2996,7 @@
               <div class="order-product-title">${order.productName || 'Product'}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount || 0)}</div>
               <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
-              ${order.sellerId ? `<div style="font-size:10px;color:var(--muted,#94a3b8);font-family:monospace;font-weight:700;margin-top:4px;background:var(--surface2,#f8fafc);padding:2px 6px;border-radius:5px;display:inline-block;">🏪 ${order.sellerId}</div>` : ''}
+              
             </div>
           </div>
           ${trackingHtml}
@@ -3231,27 +3229,18 @@
         updateProductsCount();
         return;
       }
-      const category = categories.find(c => c.id === categoryId || c.name === categoryId || c.name.toLowerCase() === (categoryId||'').toLowerCase());
-      if (!category) {
-        // Fallback: treat categoryId as a name string
-        const catNameFallback = (categoryId||'').toLowerCase().trim();
-        const filtered2 = products.filter(function(p) {
-          return (p.category||'').toLowerCase().trim() === catNameFallback;
-        });
-        if (filtered2.length > 0) {
-          renderProducts(filtered2, 'productGrid');
-          updateProductsCount();
-        }
-        return;
-      }
+      const category = categories.find(c => c.id === categoryId || c.name === categoryId);
+      if (!category) return;
       currentCategoryFilter = category.id;
       const catId   = category.id || '';
       const catName = (category.name || '').toLowerCase().trim();
       let filteredProducts = products.filter(function(product) {
         var pc  = (product.category || product.categoryName || '').toLowerCase().trim();
         var pci = (product.categoryId || '').toLowerCase().trim();
-        // Products save category by NAME — this is the primary match
-        return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName;
+        // Match by name (most common), by Firebase id, or by id stored as category value
+        // Also support contains-match for seller products that may use slightly different values
+        return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName
+          || pc.includes(catName) || catName.includes(pc) || pci.includes(catId.toLowerCase());
       });
       const ratingMap = {};
       filteredProducts.forEach(p => {
@@ -3378,7 +3367,7 @@
         const categoryPill = document.createElement('div');
         categoryPill.className = 'category-pill';
         categoryPill.textContent = category.name || 'Category';
-        categoryPill.addEventListener('click', () => filterByCategory(category.name || category.id));
+        categoryPill.addEventListener('click', () => filterByCategory(category.id));
         fragment.appendChild(categoryPill);
       });
       container.innerHTML = '';
@@ -3398,7 +3387,7 @@
           <div class="category-circle-image" style="background-image: url('${getProductImage(category)}')"></div>
           <div class="category-circle-name">${category.name || 'Category'}</div>
         `;
-        circle.addEventListener('click', () => filterByCategory(category.name || category.id));
+        circle.addEventListener('click', () => filterByCategory(category.id));
         fragment.appendChild(circle);
       });
       container.innerHTML = '';
@@ -5229,7 +5218,21 @@
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
         chip.addEventListener('click', function() {
           var cat = categories && categories.find(function(c) { return c.name === tag; });
-          if (cat) filterByCategory(cat.id);
+          if (cat) {
+            filterByCategory(cat.id);
+          } else {
+            // Tag se seedha product search karo
+            showPage('productsPage');
+            var tagFiltered = products.filter(function(p) {
+              var pCat = (p.category || '').toLowerCase();
+              var pTags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : (p.tags || '').toLowerCase();
+              var pName = (p.name || p.title || '').toLowerCase();
+              var tagLow = tag.toLowerCase();
+              return pCat.includes(tagLow) || pTags.includes(tagLow) || pName.includes(tagLow);
+            });
+            renderProducts(tagFiltered.length ? tagFiltered : products, 'productGrid');
+            updateProductsCount();
+          }
         });
         container.appendChild(chip);
       });
