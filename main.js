@@ -664,7 +664,6 @@
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
         card.addEventListener('click', () => { showProductDetail(product); closeSearchPanel(); });
-        card.addEventListener('touchend', (e) => { e.preventDefault(); showProductDetail(product); closeSearchPanel(); }, { passive: false });
         imageRow.appendChild(card);
       });
       suggestionsContainer.appendChild(imageRow);
@@ -1361,7 +1360,7 @@
       const _cardBrandLogo = product.brandLogo || product.brandIcon || '';
       const _cardBrandVerified = !!(product.blueTickAdmin);
       const _BT_CARD = _cardBrandVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;background:#2563eb;border-radius:50%;margin-left:2px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"7\" height=\"7\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></span>') : '';
-      const _brandOverlay = product.brand ? `<div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;cursor:pointer;" title="View Brand">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div>` : '';
+      const _brandOverlay = product.brand ? `<div class="_brand-overlay-btn" onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;cursor:pointer;" title="View Brand">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div>` : '';
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
           ${badgeHtml}
@@ -1398,11 +1397,22 @@
       `;
       if (!product.id) product.id = productId;
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) return;
-        e.preventDefault();
-        e.stopPropagation();
+        if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn') || e.target.closest('._brand-overlay-btn')) return;
         showProductDetail(product);
       });
+      card.addEventListener('touchend', (e) => {
+        if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn') || e.target.closest('._brand-overlay-btn')) return;
+        // Only fire if it was a tap (not a scroll)
+        if (Math.abs((e.changedTouches[0]?.clientX || 0) - (card._touchStartX || 0)) < 10 &&
+            Math.abs((e.changedTouches[0]?.clientY || 0) - (card._touchStartY || 0)) < 10) {
+          e.preventDefault();
+          showProductDetail(product);
+        }
+      }, { passive: false });
+      card.addEventListener('touchstart', (e) => {
+        card._touchStartX = e.touches[0]?.clientX || 0;
+        card._touchStartY = e.touches[0]?.clientY || 0;
+      }, { passive: true });
       const wishlistBtn = card.querySelector('.wishlist-btn');
       wishlistBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2444,8 +2454,6 @@
           paymentMethod: paymentMethod,
           status: 'placed',
           orderDate: Date.now(),
-          sellerId: currentProduct.sellerId || currentProduct.sellerUid || '',
-          sellerUid: currentProduct.sellerUid || currentProduct.sellerId || '',
           userInfo: userInfo,
           address: {
             name: userInfo.fullName || '',
@@ -2996,7 +3004,7 @@
               <div class="order-product-title">${order.productName || 'Product'}</div>
               <div class="order-product-price">${formatPrice(order.totalAmount || 0)}</div>
               <div class="order-product-meta">Qty: ${order.quantity || 1} | Size: ${order.size || 'N/A'}</div>
-              
+              ${order.sellerId ? `<div style="font-size:10px;color:var(--muted,#94a3b8);font-family:monospace;font-weight:700;margin-top:4px;background:var(--surface2,#f8fafc);padding:2px 6px;border-radius:5px;display:inline-block;">🏪 ${order.sellerId}</div>` : ''}
             </div>
           </div>
           ${trackingHtml}
@@ -3238,9 +3246,7 @@
         var pc  = (product.category || product.categoryName || '').toLowerCase().trim();
         var pci = (product.categoryId || '').toLowerCase().trim();
         // Match by name (most common), by Firebase id, or by id stored as category value
-        // Also support contains-match for seller products that may use slightly different values
-        return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName
-          || pc.includes(catName) || catName.includes(pc) || pci.includes(catId.toLowerCase());
+        return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName;
       });
       const ratingMap = {};
       filteredProducts.forEach(p => {
@@ -5218,21 +5224,7 @@
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
         chip.addEventListener('click', function() {
           var cat = categories && categories.find(function(c) { return c.name === tag; });
-          if (cat) {
-            filterByCategory(cat.id);
-          } else {
-            // Tag se seedha product search karo
-            showPage('productsPage');
-            var tagFiltered = products.filter(function(p) {
-              var pCat = (p.category || '').toLowerCase();
-              var pTags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : (p.tags || '').toLowerCase();
-              var pName = (p.name || p.title || '').toLowerCase();
-              var tagLow = tag.toLowerCase();
-              return pCat.includes(tagLow) || pTags.includes(tagLow) || pName.includes(tagLow);
-            });
-            renderProducts(tagFiltered.length ? tagFiltered : products, 'productGrid');
-            updateProductsCount();
-          }
+          if (cat) filterByCategory(cat.id);
         });
         container.appendChild(chip);
       });
