@@ -810,8 +810,31 @@
     }
 
     // ========== LOAD CURRENCY ==========
+    // BANDWIDTH FIX: pehle localStorage cache check karo (main.js wala)
     async function loadCurrency() {
       try {
+        // main.js ka cache check karo pehle (zero Firebase read)
+        const cached = localStorage.getItem('bz_settings');
+        if (cached) {
+          const p = JSON.parse(cached);
+          const s = p.data || p;
+          if (s && s.currencySymbol) {
+            const display = document.getElementById('currencyDisplay');
+            if (display) display.textContent = (s.currencySymbol || '₹') + ' ' + (s.currencyCode || 'INR');
+            return; // Cache hit — no Firebase read
+          }
+        }
+        // Static JSON se bhi try karo
+        const staticCached = localStorage.getItem('bz_static_json_v2');
+        if (staticCached) {
+          const p = JSON.parse(staticCached);
+          if (p && p.settings && p.settings.currencySymbol) {
+            const display = document.getElementById('currencyDisplay');
+            if (display) display.textContent = (p.settings.currencySymbol || '₹') + ' ' + (p.settings.currencyCode || 'INR');
+            return; // Cache hit — no Firebase read
+          }
+        }
+        // Fallback: Firebase (sirf jab cache nahi mila)
         const snap = await get(ref(db, 'adminSettings'));
         if (snap.exists()) {
           const s = snap.val();
@@ -836,31 +859,35 @@
     }
 
     // ========== REAL-TIME LISTENERS ==========
+    // BANDWIDTH FIX: onValue() persistent listeners hataye → get() use karo
+    // Ye teen onValue() listeners baar baar data download karte the (addresses,
+    // wishlist, orders) — ab sirf tab fetch hoga jab user us page pe click kare.
     function setupRealTimeListeners(user) {
-      // Real-time address updates
-      const addrRef = query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid));
-      onValue(addrRef, (snap) => {
-        const container = document.getElementById('savedAddresses');
-        if (!container || !document.getElementById('addressPage').classList.contains('active')) return;
-        renderAddressList(snap, container);
-      });
-
-      // Real-time wishlist updates
-      const wishRef = ref(db, 'wishlist/' + user.uid);
-      onValue(wishRef, (snap) => {
-        const container = document.getElementById('wishlistItems');
-        if (!container || !document.getElementById('wishlistPage').classList.contains('active')) return;
-        renderWishlistItems(snap, container);
-      });
-
-      // Real-time order updates (both as buyer and seller)
-      const ordersRef = query(ref(db, 'orders'), orderByChild('userId'), equalTo(user.uid));
-      onValue(ordersRef, (snap) => {
-        const container = document.getElementById('ordersList');
-        if (!container || !document.getElementById('ordersPage').classList.contains('active')) return;
-        renderOrdersList(snap, container);
-      });
+      // Ab koi persistent listeners nahi — page navigation pe load hoga
+      // accShowSubPage override kiya hai neeche taaki sirf on-demand fetch ho
+      _bzAccUser = user;
     }
+
+    // On-demand fetch: sirf tab jab page actually visit ho
+    let _bzAccUser = null;
+    let _bzAccLoaded = { addresses: false, wishlist: false, orders: false };
+
+    const _origAccShowSubPage = window.accShowSubPage;
+    window.accShowSubPage = function(pageId) {
+      if (typeof _origAccShowSubPage === 'function') _origAccShowSubPage(pageId);
+      if (!_bzAccUser) return;
+      // Sirf pehli baar fetch karo per session
+      if (pageId === 'addressPage' && !_bzAccLoaded.addresses) {
+        _bzAccLoaded.addresses = true;
+        loadAddresses(_bzAccUser);
+      } else if (pageId === 'wishlistPage' && !_bzAccLoaded.wishlist) {
+        _bzAccLoaded.wishlist = true;
+        loadWishlist(_bzAccUser);
+      } else if (pageId === 'ordersPage' && !_bzAccLoaded.orders) {
+        _bzAccLoaded.orders = true;
+        loadOrders(_bzAccUser);
+      }
+    };
 
     // ========== CHECK SELLER STATUS ==========
     async function checkSellerStatus(user) {

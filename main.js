@@ -4590,10 +4590,10 @@
     //      onValue() hataya, sirf get() use ho raha hai.
     // ────────────────────────────────────────────────────────────
     const _BZ_TTL = {
-      PRODUCTS:   60 * 60 * 1000,  // 1 ghanta
-      CATEGORIES: 60 * 60 * 1000,
-      BANNERS:    60 * 60 * 1000,
-      SETTINGS:   30 * 60 * 1000,
+      PRODUCTS:   6 * 60 * 60 * 1000,  // 6 ghante (static JSON use hoga, Firebase fallback ke liye)
+      CATEGORIES: 6 * 60 * 60 * 1000,
+      BANNERS:    6 * 60 * 60 * 1000,
+      SETTINGS:   2 * 60 * 60 * 1000,  // 2 ghante
     };
 
     function _bzCacheGet(key, ttl) {
@@ -4629,13 +4629,41 @@
     //  SETUP: Admin panel se "Export to JSON" button (neeche add kiya)
     //         aur /data/store-data.json apni hosting pe upload karo
     // ════════════════════════════════════════════════════════════
-    const STATIC_DATA_URL = './data/store-data.json'; // Apni hosting pe rakho
-    let _staticDataPromise = null; // Ek baar fetch, baar baar use
+    const STATIC_DATA_URL = './data/store-data.json'; // Hosting pe rakho
+    const _STATIC_LS_KEY = 'bz_static_json_v2';
+    const _STATIC_LS_TS  = 'bz_static_json_ts';
+    const _STATIC_TTL    = 6 * 60 * 60 * 1000; // 6 ghante localStorage cache
+    let _staticDataPromise = null; // Session mein ek baar fetch
 
     function _fetchStaticData() {
       if (_staticDataPromise) return _staticDataPromise;
-      _staticDataPromise = fetch(STATIC_DATA_URL + '?v=' + (Math.floor(Date.now() / (60 * 60 * 1000)))) // 1hr cache bust
+      // Pehle localStorage check karo (6hr TTL)
+      try {
+        const ts = parseInt(localStorage.getItem(_STATIC_LS_TS) || '0');
+        if (ts && (Date.now() - ts) < _STATIC_TTL) {
+          const cached = localStorage.getItem(_STATIC_LS_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.products && parsed.products.length > 0) {
+              _staticDataPromise = Promise.resolve(parsed);
+              return _staticDataPromise;
+            }
+          }
+        }
+      } catch(e) {}
+      // localStorage miss → fetch from hosting (6hr cache bust)
+      const bust = Math.floor(Date.now() / _STATIC_TTL);
+      _staticDataPromise = fetch(STATIC_DATA_URL + '?v=' + bust)
         .then(r => { if (!r.ok) throw new Error('Static file not found'); return r.json(); })
+        .then(data => {
+          if (!data || !data.products) throw new Error('Invalid JSON');
+          // Save to localStorage for next 6hrs
+          try {
+            localStorage.setItem(_STATIC_LS_KEY, JSON.stringify(data));
+            localStorage.setItem(_STATIC_LS_TS, Date.now().toString());
+          } catch(e) {}
+          return data;
+        })
         .catch(() => null); // Silently fail → Firebase fallback
       return _staticDataPromise;
     }
@@ -4704,10 +4732,19 @@
       }
       // Out of stock
       if (data.outOfStock) window.outOfStockItems = data.outOfStock;
-      // Brands
+      // Brands — __bzBrandsCache bhi populate karo (search ke liye)
       if (data.brands) {
         window._brandsData = {};
         Object.keys(data.brands).forEach(k => { window._brandsData[k] = data.brands[k]; });
+        window.__bzBrandsCache = Object.keys(data.brands).map(k => ({ id: k, ...data.brands[k] }));
+        sessionStorage.setItem('bz_brands_loaded', '1');
+      }
+      // OutOfStock session flag
+      if (data.outOfStock) sessionStorage.setItem('bz_oos_loaded', '1');
+      // ProductStats
+      if (data.productStats) {
+        window._productStats = data.productStats;
+        sessionStorage.setItem('bz_pstats_loaded', '1');
       }
     }
 

@@ -843,18 +843,30 @@
                 }) : [];
                 console.log('✅ Products loaded:', window._state.products.length);
 
-                // Load brands for product form dropdown
+                // Load brands — static JSON cache se pehle (zero Firebase read)
                 try {
-                    var brandSnap2 = await get(ref(db, 'brands'));
-                    window._state.brands = [];
-                    if (brandSnap2.exists()) {
-                        brandSnap2.forEach(function(c) {
-                            var b = c.val();
-                            if (b && b.name) window._state.brands.push({
-                                id: c.key, name: b.name, logo: b.logo || '',
-                                blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel || 'normal'
+                    var _cachedBrands = null;
+                    try {
+                        var _sc = localStorage.getItem('bz_static_json_v2');
+                        if (_sc) { var _sp = JSON.parse(_sc); if (_sp && _sp.brands) _cachedBrands = _sp.brands; }
+                    } catch(e) {}
+                    if (_cachedBrands && Object.keys(_cachedBrands).length > 0) {
+                        window._state.brands = Object.keys(_cachedBrands).map(function(k) {
+                            var b = _cachedBrands[k];
+                            return { id: k, name: b.name || '', logo: b.logo || '', blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel || 'normal' };
+                        }).filter(function(b) { return b.name; });
+                    } else {
+                        var brandSnap2 = await get(ref(db, 'brands'));
+                        window._state.brands = [];
+                        if (brandSnap2.exists()) {
+                            brandSnap2.forEach(function(c) {
+                                var b = c.val();
+                                if (b && b.name) window._state.brands.push({
+                                    id: c.key, name: b.name, logo: b.logo || '',
+                                    blueTickAdmin: !!b.blueTickAdmin, verificationLevel: b.verificationLevel || 'normal'
+                                });
                             });
-                        });
+                        }
                     }
                 } catch(be) { window._state.brands = []; }
 
@@ -935,13 +947,23 @@
             document.getElementById('headerAvatar').textContent = initials;
             document.getElementById('headerName').textContent = user.displayName || user.email || 'Seller';
 
+            // Categories — static JSON cache se pehle (zero Firebase read)
             try {
-                const catSnap = await get(ref(db, 'categories'));
-                if (catSnap.exists()) {
-                    var cats = Object.values(catSnap.val()).filter(c => c && c.name);
-                    window._state.categories = cats;
+                var _catCached = null;
+                try {
+                    var _sc2 = localStorage.getItem('bz_static_json_v2');
+                    if (_sc2) { var _sp2 = JSON.parse(_sc2); if (_sp2 && _sp2.categories && _sp2.categories.length > 0) _catCached = _sp2.categories; }
+                } catch(e) {}
+                if (_catCached) {
+                    window._state.categories = _catCached.filter(function(c) { return c && c.name; });
                 } else {
-                    window._state.categories = [];
+                    const catSnap = await get(ref(db, 'categories'));
+                    if (catSnap.exists()) {
+                        var cats = Object.values(catSnap.val()).filter(c => c && c.name);
+                        window._state.categories = cats;
+                    } else {
+                        window._state.categories = [];
+                    }
                 }
             } catch(catErr) {
                 console.error('Category load failed:', catErr);
