@@ -3542,9 +3542,14 @@
       const fragment = document.createDocumentFragment();
       toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
       container.appendChild(fragment);
-      // Populate multi-grid sections for home page only
+      // Populate multi-grid sections for home page only (debounced, uses requestIdleCallback if available)
       if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
-        setTimeout(function() { window.bzPopulateHomeGrids(sorted); }, 120);
+        var _populateFn = function() { window.bzPopulateHomeGrids(sorted); };
+        if (typeof requestIdleCallback === 'function') {
+          requestIdleCallback(_populateFn, { timeout: 2000 });
+        } else {
+          setTimeout(_populateFn, 500);
+        }
       }
     }
 
@@ -3612,7 +3617,7 @@
           _bannerCurrentIndex = (_bannerCurrentIndex + 1) % banners.length;
           setBannerSlide(_bannerCurrentIndex);
         }
-      }, 3000);
+      }, 5000);
     }
 
     function setupBannerTouchEvents() {
@@ -3786,7 +3791,7 @@
           currentSlide = (currentSlide + 1) % totalSlides;
           slider.scrollTo({ left: currentSlide * slides[0].offsetWidth, behavior: 'smooth' });
         }
-      }, 4000);
+      }, 5000);
     }
 
     function showLoginModal() {
@@ -6943,7 +6948,7 @@
         return;
       }
       var fb = window.firebase;
-      if (!fb || !fb.database) { setTimeout(bzPreloadBrands, 1200); return; }
+      if (!fb || !fb.database) { setTimeout(bzPreloadBrands, 2000); return; } // retry once
       var database = fb.database;
       var ref      = fb.ref;
       var get      = fb.get;
@@ -7031,16 +7036,24 @@
     }
     window.bzPreloadBrands = bzPreloadBrands;
 
-    // Run preloader: once after auth resolves, and once after a short delay as fallback
+    // Run preloader ONCE — after auth resolves OR after 4s fallback (not both)
+    var _bzPreloadDone = false;
     (function schedulePreload() {
       var fb = window.firebase;
       if (fb && fb.auth && typeof fb.onAuthStateChanged === 'function') {
         fb.onAuthStateChanged(fb.auth, function() {
-          setTimeout(bzPreloadBrands, 300);
+          if (_bzPreloadDone) return;
+          _bzPreloadDone = true;
+          setTimeout(bzPreloadBrands, 500);
         });
       }
-      // Fallback — always run after 2s regardless of auth
-      setTimeout(bzPreloadBrands, 2000);
+      // Fallback — only if auth callback never fires
+      setTimeout(function() {
+        if (!_bzPreloadDone) {
+          _bzPreloadDone = true;
+          bzPreloadBrands();
+        }
+      }, 4000);
     })();
 
     // ── Brands Page Loader ──
@@ -7869,6 +7882,7 @@
     window.loadFollowingProducts = loadFollowingProducts;
 
     // ── Home Page Popular Brands Renderer ──
+    var _bzHomeRendered = false;
     function bzRenderHomePopularBrands() {
       var sec = document.getElementById('homePopularBrandsSection');
       var grid = document.getElementById('homePopularBrandsGrid');
@@ -7934,8 +7948,15 @@
     }
     window.bzInjectVerifiedTicks = bzInjectVerifiedTicks;
     // Run on DOM mutations
-    new MutationObserver(function() { bzInjectVerifiedTicks(); })
-      .observe(document.body, { childList: true, subtree: true });
+    // Throttled MutationObserver — max once per 3 seconds
+    var _bzTickThrottle = null;
+    new MutationObserver(function() {
+      if (_bzTickThrottle) return;
+      _bzTickThrottle = setTimeout(function() {
+        bzInjectVerifiedTicks();
+        _bzTickThrottle = null;
+      }, 3000);
+    }).observe(document.body, { childList: true, subtree: false }); // subtree:false = much less firing
 
     // ── Global Verified Tick Injector ── end
 
