@@ -730,6 +730,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getDatabase, ref, set, get, update, remove, query, orderByChild, equalTo, push, onValue } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCHFUx3Y1L3mvyLyDMHVKQE6eXi50_fewE",
@@ -744,6 +745,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app);
+        const storage = getStorage(app);
 
         window._db = db;
         window._auth = auth;
@@ -757,6 +759,22 @@
         window._equalTo = equalTo;
         window._push = push;
         window._onValue = onValue;
+
+        // Firebase Storage — for image uploads (no base64 in DB)
+        window.firebase = window.firebase || {};
+        window.firebase.storage     = storage;
+        window.firebase.storageRef  = storageRef;
+        window.firebase.uploadBytes = uploadBytes;
+        window.firebase.getDownloadURL = getDownloadURL;
+        window.firebase.database    = db;
+        window.firebase.auth        = auth;
+        window.firebase.ref         = ref;
+        window.firebase.set         = set;
+        window.firebase.get         = get;
+        window.firebase.update      = update;
+        window.firebase.remove      = remove;
+        window.firebase.push        = push;
+        window.firebase.onAuthStateChanged = onAuthStateChanged;
 
         window._imgbbKey = 'YOUR_IMGBB_API_KEY_HERE';
 
@@ -966,36 +984,61 @@
         // ============ IMGBB IMAGE UPLOAD ============
         async function uploadImageToImgBB(file) {
             const apiKey = window._imgbbKey;
-            if (!apiKey || apiKey === 'YOUR_IMGBB_API_KEY_HERE') {
-                return new Promise((resolve) => {
+
+            // Helper: Upload to Firebase Storage (proper CDN URL, no base64 in DB)
+            async function uploadToFirebaseStorage(file) {
+                var fb = window.firebase;
+                if (!fb || !fb.storage) throw new Error('Firebase Storage not available');
+                var storage = fb.storage;
+                var storageRef = fb.storageRef;
+                var uploadBytes = fb.uploadBytes;
+                var getDownloadURL = fb.getDownloadURL;
+                if (!storageRef || !uploadBytes || !getDownloadURL) throw new Error('Storage methods missing');
+                var filename = 'products/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + (file.name.split('.').pop() || 'jpg');
+                var ref = storageRef(storage, filename);
+                var snapshot = await uploadBytes(ref, file);
+                var url = await getDownloadURL(snapshot.ref);
+                return url;
+            }
+
+            // Try ImgBB first if key is set
+            if (apiKey && apiKey !== 'YOUR_IMGBB_API_KEY_HERE') {
+                return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = e => resolve(e.target.result);
+                    reader.onload = async (e) => {
+                        const base64 = e.target.result.split(',')[1];
+                        const formData = new FormData();
+                        formData.append('key', apiKey);
+                        formData.append('image', base64);
+                        try {
+                            const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
+                            const data = await res.json();
+                            if (data.success) {
+                                resolve(data.data.url);
+                            } else {
+                                // ImgBB failed — try Firebase Storage
+                                try { resolve(await uploadToFirebaseStorage(file)); }
+                                catch(fe) { reject(new Error('ImgBB failed: ' + (data.error?.message || 'unknown'))); }
+                            }
+                        } catch (err) {
+                            // Network error — try Firebase Storage
+                            try { resolve(await uploadToFirebaseStorage(file)); }
+                            catch(fe) { reject(err); }
+                        }
+                    };
+                    reader.onerror = () => reject(new Error('File read failed'));
                     reader.readAsDataURL(file);
                 });
             }
 
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const base64 = e.target.result.split(',')[1];
-                    const formData = new FormData();
-                    formData.append('key', apiKey);
-                    formData.append('image', base64);
-                    try {
-                        const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
-                        const data = await res.json();
-                        if (data.success) {
-                            resolve(data.data.url);
-                        } else {
-                            resolve(e.target.result);
-                        }
-                    } catch (err) {
-                        resolve(e.target.result);
-                    }
-                };
-                reader.onerror = () => resolve('');
-                reader.readAsDataURL(file);
-            });
+            // No ImgBB key — use Firebase Storage directly
+            try {
+                var url = await uploadToFirebaseStorage(file);
+                return url;
+            } catch(storageErr) {
+                // Last resort: show clear error (never save base64 to DB)
+                throw new Error('Image upload failed. Please set ImgBB API key in Firebase adminSettings/imgbbKey, or check Firebase Storage rules.\n\nError: ' + storageErr.message);
+            }
         }
 
         async function uploadMultipleImages(files) {
