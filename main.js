@@ -335,6 +335,31 @@
       }, 3000);
     }
 
+    /**
+     * Helper to copy text to clipboard with UI feedback.
+     * @param {string} text - The string to copy.
+     * @param {HTMLElement} btn - The button triggering the copy.
+     * @param {string} [msg="Copied!"] - Success toast message.
+     */
+    function bzCopyText(text, btn, msg = 'Copied to clipboard!') {
+      if (!text || !btn || btn.dataset.copying === 'true') return;
+      btn.dataset.copying = 'true';
+      const originalInner = btn.innerHTML;
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(msg, 'success');
+        btn.innerHTML = '<span style="font-size:11px;font-weight:700;color:var(--success);">✅ Copied!</span>';
+        setTimeout(() => {
+          btn.innerHTML = originalInner;
+          btn.dataset.copying = 'false';
+        }, 2000);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+        showToast('Failed to copy', 'error');
+        btn.dataset.copying = 'false';
+      });
+    }
+
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -5128,6 +5153,10 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay').textContent;
+        bzCopyText(orderId, this, 'Order ID copied!');
+      });
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
@@ -5719,12 +5748,18 @@
       }
     }
 
-    function copyOfferCode(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        showToast('Offer code "' + code + '" copied!', 'success');
-      }).catch(() => {
-        showToast('Code: ' + code, 'success');
-      });
+    function copyOfferCode(code, btn) {
+      if (!btn) {
+        // Fallback for direct onclick on span
+        navigator.clipboard.writeText(code).then(() => {
+          showToast('Offer code "' + code + '" copied!', 'success');
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          showToast('Failed to copy', 'error');
+        });
+        return;
+      }
+      bzCopyText(code, btn, 'Offer code "' + code + '" copied!');
     }
 
     function loadOffersFromDB() {
@@ -5754,7 +5789,7 @@
             ${code ? `<div class="offer-code-box">
               <span class="offer-code-label">Use Code:</span>
               <span class="offer-code" onclick="copyOfferCode('${code}')">${code}</span>
-              <button class="offer-copy-btn" onclick="copyOfferCode('${code}')">📋 Copy</button>
+              <button class="offer-copy-btn" onclick="copyOfferCode('${code}', this)">📋 Copy</button>
             </div>` : ''}
             ${offer.savings ? `<div class="offer-savings">${offer.savings}</div>` : ''}
             <button class="offer-shop-btn" onclick="showPage('productsPage');">Shop Now →</button>
