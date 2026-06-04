@@ -2883,19 +2883,42 @@
         return;
       }
 
-      // ── Cache miss → single Firebase query (not N+1) ─────────
+      // ── Cache miss → fetch orders via userOrders index then individual reads ─
       try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'orders'),
-            window.firebase.orderByChild('userId'),
-            window.firebase.equalTo(uid)
-          )
-        );
         let orders = [];
-        if (snapshot.exists()) {
-          snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
+
+        // Primary: userOrders/{uid} se orderIds fetch karo, phir each order read
+        const userOrdersSnap = await window.firebase.get(
+          window.firebase.ref(window.firebase.database, 'userOrders/' + uid)
+        );
+
+        if (userOrdersSnap.exists()) {
+          const orderIds = Object.keys(userOrdersSnap.val());
+          const orderPromises = orderIds.map(oid =>
+            window.firebase.get(window.firebase.ref(window.firebase.database, 'orders/' + oid))
+              .then(s => s.exists() ? { id: oid, ...s.val() } : null)
+              .catch(() => null)
+          );
+          const results = await Promise.all(orderPromises);
+          orders = results.filter(Boolean);
+        } else {
+          // Fallback: direct query (works if rules allow auth users)
+          try {
+            const snapshot = await window.firebase.get(
+              window.firebase.query(
+                window.firebase.ref(window.firebase.database, 'orders'),
+                window.firebase.orderByChild('userId'),
+                window.firebase.equalTo(uid)
+              )
+            );
+            if (snapshot.exists()) {
+              snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
+            }
+          } catch (qErr) {
+            console.warn('Orders query fallback failed:', qErr.code);
+          }
         }
+
         orders.sort((a, b) => (b.orderDate || 0) - (a.orderDate || 0));
         _bzCacheSet(cacheKey, orders);
         if (!orders.length) {
