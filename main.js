@@ -947,6 +947,12 @@
       updateBottomNav();
       updateStepPills();
 
+      // ── Update desktop top nav active state ──
+      const dnMap = { homePage: 'dnHome', productsPage: 'dnProducts', myOrdersPage: 'dnOrders', userPage: 'dnAccount' };
+      document.querySelectorAll('.desktop-nav-item').forEach(el => el.classList.remove('active'));
+      const dnId = dnMap[pageId];
+      if (dnId) { const dnEl = document.getElementById(dnId); if (dnEl) dnEl.classList.add('active'); }
+
       // Robust scroll reset to handle browser navigation edge cases
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
