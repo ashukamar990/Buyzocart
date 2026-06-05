@@ -1409,8 +1409,15 @@
       if (!product.id) product.id = productId;
       card.addEventListener('click', (e) => {
         if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) return;
+        isDragging = false; // ensure global state is clean
         showProductDetail(product);
       });
+      card.addEventListener('touchend', (e) => {
+        if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) return;
+        e.preventDefault();
+        isDragging = false;
+        showProductDetail(product);
+      }, { passive: false });
       const wishlistBtn = card.querySelector('.wishlist-btn');
       wishlistBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1458,7 +1465,19 @@
     function initProductDetailSwipe() {
       const mainImage = document.getElementById('mainProductImage');
       if (!mainImage) return;
-      
+      // Purane listeners hata do pehle — duplicate attach hone se isDragging leak hota tha
+      mainImage.removeEventListener('touchstart', handleTouchStart);
+      mainImage.removeEventListener('touchmove', handleTouchMove);
+      mainImage.removeEventListener('touchend', handleTouchEnd);
+      mainImage.removeEventListener('mousedown', handleMouseDown);
+      mainImage.removeEventListener('mousemove', handleMouseMove);
+      mainImage.removeEventListener('mouseup', handleMouseUp);
+      mainImage.removeEventListener('mouseleave', handleMouseLeave);
+      // Reset global state
+      isDragging = false;
+      slideStartX = 0;
+      slideEndX = 0;
+      // Ab fresh attach karo
       mainImage.addEventListener('touchstart', handleTouchStart, { passive: true });
       mainImage.addEventListener('touchmove', handleTouchMove, { passive: false });
       mainImage.addEventListener('touchend', handleTouchEnd);
@@ -4619,10 +4638,10 @@
     //      onValue() hataya, sirf get() use ho raha hai.
     // ────────────────────────────────────────────────────────────
     const _BZ_TTL = {
-      PRODUCTS:   5 * 60 * 1000,   // 5 minute (admin change turant dikhega)
-      CATEGORIES: 5 * 60 * 1000,
-      BANNERS:    5 * 60 * 1000,
-      SETTINGS:   5 * 60 * 1000,
+      PRODUCTS:   6 * 60 * 60 * 1000,  // 6 ghante (static JSON use hoga, Firebase fallback ke liye)
+      CATEGORIES: 6 * 60 * 60 * 1000,
+      BANNERS:    6 * 60 * 60 * 1000,
+      SETTINGS:   2 * 60 * 60 * 1000,  // 2 ghante
     };
 
     function _bzCacheGet(key, ttl) {
@@ -4661,21 +4680,12 @@
     const STATIC_DATA_URL = './data/store-data.json'; // Hosting pe rakho
     const _STATIC_LS_KEY = 'bz_static_json_v2';
     const _STATIC_LS_TS  = 'bz_static_json_ts';
-    const _STATIC_TTL    = 5 * 60 * 1000; // 5 minute cache (admin changes turant dikhenge)
+    const _STATIC_TTL    = 6 * 60 * 60 * 1000; // 6 ghante localStorage cache
     let _staticDataPromise = null; // Session mein ek baar fetch
 
     function _fetchStaticData() {
-      // 5 min ke baad promise reset karo taaki fresh fetch ho
-      if (_staticDataPromise) {
-        try {
-          const ts = parseInt(localStorage.getItem(_STATIC_LS_TS) || '0');
-          if (ts && (Date.now() - ts) < _STATIC_TTL) {
-            return _staticDataPromise; // Cache valid hai
-          }
-          _staticDataPromise = null; // Cache expire — reset karo
-        } catch(e) { _staticDataPromise = null; }
-      }
-      // Pehle localStorage check karo (5 min TTL)
+      if (_staticDataPromise) return _staticDataPromise;
+      // Pehle localStorage check karo (6hr TTL)
       try {
         const ts = parseInt(localStorage.getItem(_STATIC_LS_TS) || '0');
         if (ts && (Date.now() - ts) < _STATIC_TTL) {
@@ -4689,13 +4699,13 @@
           }
         }
       } catch(e) {}
-      // localStorage miss → fetch from hosting (5 min cache bust)
+      // localStorage miss → fetch from hosting (6hr cache bust)
       const bust = Math.floor(Date.now() / _STATIC_TTL);
       _staticDataPromise = fetch(STATIC_DATA_URL + '?v=' + bust)
         .then(r => { if (!r.ok) throw new Error('Static file not found'); return r.json(); })
         .then(data => {
           if (!data || !data.products) throw new Error('Invalid JSON');
-          // Save to localStorage for next 5 min
+          // Save to localStorage for next 6hrs
           try {
             localStorage.setItem(_STATIC_LS_KEY, JSON.stringify(data));
             localStorage.setItem(_STATIC_LS_TS, Date.now().toString());
