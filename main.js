@@ -8104,6 +8104,7 @@
     })();
 
     window.createProductCard   = createProductCard;
+    window.showProductDetail   = showProductDetail;
     window.renderProductSlider = renderProductSlider;
     window.renderProducts      = renderProducts;
 
