@@ -534,7 +534,7 @@
       background-color: #1e293b !important;
     }
 
-    /* Detail page main image — bahut badi */
+    /* Detail page main image */
     .main-product-image,
     #mainProductImage {
       height: 400px !important;
@@ -548,8 +548,13 @@
       overflow: hidden !important;
       cursor: zoom-in !important;
     }
+    /* Dark mode: keep a light-ish bg so images are visible, not black */
     [data-theme="dark"] .main-product-image,
     [data-theme="dark"] #mainProductImage {
+      background-color: #1e293b !important;
+    }
+    /* Ensure background-image is never overridden to empty in dark mode */
+    [data-theme="dark"] #mainProductImage[style*="background-image"] {
       background-color: #1e293b !important;
     }
 
@@ -2093,10 +2098,12 @@
       const next = cur === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('theme', next);
+      /* sync icon: dark→show sun, light→show moon */
       const sun = document.querySelector('.theme-toggle-btn .sun-icon');
       const moon = document.querySelector('.theme-toggle-btn .moon-icon');
-      if (sun) sun.style.display = next === 'dark' ? 'none' : 'block';
-      if (moon) moon.style.display = next === 'dark' ? 'block' : 'none';
+      if (sun)  sun.style.display  = next === 'dark' ? 'block' : 'none';
+      if (moon) moon.style.display = next === 'dark' ? 'none'  : 'block';
+      if (typeof window._bzSyncThemeIcons === 'function') window._bzSyncThemeIcons(next);
     }
     (function() {
       const t = localStorage.getItem('theme') || 'light';
@@ -2104,8 +2111,9 @@
       if (t === 'dark') {
         const sun = document.querySelector('.theme-toggle-btn .sun-icon');
         const moon = document.querySelector('.theme-toggle-btn .moon-icon');
-        if (sun) sun.style.display = 'none';
-        if (moon) moon.style.display = 'block';
+        /* dark mode: show sun (click to go light), hide moon */
+        if (sun) sun.style.display = 'block';
+        if (moon) moon.style.display = 'none';
       }
     })();
 
@@ -2244,23 +2252,22 @@
     };
 
     (function(){
+      /* Single source of truth for theme — reads localStorage, applies, syncs icons */
       var saved = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', saved);
-      var btn = document.getElementById('themeToggleBtn');
-      if (!btn) return;
-      function updateIcons(t) {
-        var sun = btn.querySelector('.sun-icon'), moon = btn.querySelector('.moon-icon');
-        if (t === 'dark') { sun.style.display='block'; moon.style.display='none'; }
-        else              { sun.style.display='none';  moon.style.display='block'; }
+      function _syncIcons(t) {
+        var btn = document.getElementById('themeToggleBtn');
+        if (!btn) return;
+        var sun  = btn.querySelector('.sun-icon');
+        var moon = btn.querySelector('.moon-icon');
+        /* In DARK mode: show sun icon (so user can click to go light)
+           In LIGHT mode: show moon icon (so user can click to go dark) */
+        if (sun)  sun.style.display  = (t === 'dark') ? 'block' : 'none';
+        if (moon) moon.style.display = (t === 'dark') ? 'none'  : 'block';
       }
-      updateIcons(saved);
-      btn.addEventListener('click', function(){
-        var cur = document.documentElement.getAttribute('data-theme');
-        var next = cur === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        updateIcons(next);
-      });
+      _syncIcons(saved);
+      /* Override the inline toggleTheme to also sync these icons */
+      window._bzSyncThemeIcons = _syncIcons;
     })();
 
     (function(){
