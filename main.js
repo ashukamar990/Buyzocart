@@ -926,12 +926,10 @@
       localStorage.setItem('theme', newTheme);
       const sun  = document.querySelector('.theme-toggle-btn .sun-icon');
       const moon = document.querySelector('.theme-toggle-btn .moon-icon');
-      /* dark→show sun (click to go light); light→show moon (click to go dark) */
-      if (sun)  { sun.removeAttribute('style');  sun.style.display  = newTheme === 'dark' ? 'block' : 'none'; }
-      if (moon) { moon.removeAttribute('style'); moon.style.display = newTheme === 'dark' ? 'none'  : 'block'; }
+      if (sun)  { sun.removeAttribute('style');  sun.style.display  = newTheme === 'dark' ? 'none'  : ''; }
+      if (moon) { moon.removeAttribute('style'); moon.style.display = newTheme === 'dark' ? ''      : 'none'; }
       const cb = document.getElementById('darkModeToggle');
       if (cb) cb.checked = (newTheme === 'dark');
-      if (typeof window._bzSyncThemeIcons === 'function') window._bzSyncThemeIcons(newTheme);
     }
 
     function showPage(pageId) {
@@ -3260,44 +3258,27 @@
         updateProductsCount();
         return;
       }
-      /* Normalise helper — strips emoji/punctuation for fuzzy match */
-      function norm(s) { return (s||'').toLowerCase().replace(/[^\w\s]/g,'').trim(); }
-
-      const category = categories.find(c =>
-        c.id === categoryId ||
-        c.name === categoryId ||
-        norm(c.name) === norm(categoryId) ||
-        (c.name||'').toLowerCase().trim() === (categoryId||'').toLowerCase().trim()
-      );
-
+      const category = categories.find(c => c.id === categoryId || c.name === categoryId || c.name.toLowerCase() === (categoryId||'').toLowerCase());
       if (!category) {
-        /* Fallback: treat categoryId as a name/keyword string */
-        const catNameFallback = norm(categoryId);
+        // Fallback: treat categoryId as a name string
+        const catNameFallback = (categoryId||'').toLowerCase().replace(/[^\w\s]/g,'').trim();
         const filtered2 = products.filter(function(p) {
-          return norm(p.category) === catNameFallback ||
-                 norm(p.category).includes(catNameFallback) ||
-                 norm(p.categoryName||'') === catNameFallback;
+          var pc = (p.category||'').toLowerCase().replace(/[^\w\s]/g,'').trim();
+          return pc === catNameFallback || pc.includes(catNameFallback);
         });
-        /* Always navigate & show results (even if empty) */
         showPage('productsPage');
         renderProducts(filtered2, 'productGrid');
         updateProductsCount();
-        if (filtered2.length === 0) {
-          var pg = document.getElementById('productGrid');
-          if (pg) pg.innerHTML = '<div style="text-align:center;padding:40px 16px;"><div style="font-size:48px;margin-bottom:12px;">🔍</div><h3 style="margin:0 0 8px;font-size:1rem;font-weight:800;">No products in "'+categoryId+'"</h3><p style="color:var(--muted-light,#94a3b8);margin:0;font-size:0.85rem;">Try a different category or <span style="color:#2563eb;cursor:pointer;font-weight:700;" onclick="filterByCategory(\'all\')">view all products</span></p></div>';
-        }
         return;
       }
-
       currentCategoryFilter = category.id;
       const catId   = category.id || '';
-      const catName = norm(category.name);
+      const catName = (category.name || '').toLowerCase().trim();
       let filteredProducts = products.filter(function(product) {
-        var pc  = norm(product.category || product.categoryName || '');
+        var pc  = (product.category || product.categoryName || '').toLowerCase().trim();
         var pci = (product.categoryId || '').toLowerCase().trim();
-        return pc === catName || pc === catId.toLowerCase() ||
-               pci === catId.toLowerCase() || pci === catName ||
-               pc.includes(catName) || catName.includes(pc);
+        // Products save category by NAME — this is the primary match
+        return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName;
       });
       const ratingMap = {};
       filteredProducts.forEach(p => {
@@ -3311,18 +3292,14 @@
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(function(pill) {
         pill.classList.remove('active');
-        var pillText = norm(pill.textContent);
-        var catNm = norm(category.name);
+        var pillText = pill.textContent.trim().replace(/[^a-zA-Z0-9\s]/g,'').trim();
+        var catNm = (category.name||'').trim().replace(/[^a-zA-Z0-9\s]/g,'').trim();
         if (pillText === catNm || pill.textContent.trim() === (category.name||'').trim()) {
           pill.classList.add('active');
         }
       });
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount();
-      if (filteredProducts.length === 0) {
-        var pg2 = document.getElementById('productGrid');
-        if (pg2) pg2.innerHTML = '<div style="text-align:center;padding:40px 16px;"><div style="font-size:48px;margin-bottom:12px;">🔍</div><h3 style="margin:0 0 8px;font-size:1rem;font-weight:800;">No products in "'+category.name+'"</h3><p style="color:var(--muted-light,#94a3b8);margin:0;font-size:0.85rem;">Try a different category or <span style="color:#2563eb;cursor:pointer;font-weight:700;" onclick="filterByCategory(\'all\')">view all products</span></p></div>';
-      }
     }
 
     function applyPriceFilter() {
@@ -5324,22 +5301,20 @@
         chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
-        function _handleTagClick(e) {
+        function handleTagClick(e) {
           e.preventDefault();
           e.stopPropagation();
-          /* First try exact category name match */
           var cat = categories && categories.find(function(c) {
-            return (c.name || '').toLowerCase().trim() === (tag || '').toLowerCase().trim();
+            return (c.name||'').toLowerCase().trim() === (tag||'').toLowerCase().trim();
           });
           if (cat) {
             filterByCategory(cat.id || cat.name);
           } else {
-            /* Fallback: treat as keyword search / tag filter */
             filterProductsByTag(tag);
           }
         }
-        chip.addEventListener('click', _handleTagClick);
-        chip.addEventListener('touchend', _handleTagClick, { passive: false });
+        chip.addEventListener('click', handleTagClick);
+        chip.addEventListener('touchend', handleTagClick, { passive: false });
         container.appendChild(chip);
       });
     }
