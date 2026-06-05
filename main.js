@@ -1409,13 +1409,19 @@
       if (!product.id) product.id = productId;
       card.addEventListener('click', (e) => {
         if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) return;
-        isDragging = false; // ensure global state is clean
         showProductDetail(product);
       });
+      let _cardTouchStartX = 0, _cardTouchStartY = 0;
+      card.addEventListener('touchstart', (e) => {
+        _cardTouchStartX = e.touches[0].clientX;
+        _cardTouchStartY = e.touches[0].clientY;
+      }, { passive: true });
       card.addEventListener('touchend', (e) => {
         if (e.target.closest('.wishlist-btn') || e.target.closest('.share-btn')) return;
+        const dx = Math.abs(e.changedTouches[0].clientX - _cardTouchStartX);
+        const dy = Math.abs(e.changedTouches[0].clientY - _cardTouchStartY);
+        if (dx > 10 || dy > 10) return;
         e.preventDefault();
-        isDragging = false;
         showProductDetail(product);
       }, { passive: false });
       const wishlistBtn = card.querySelector('.wishlist-btn');
