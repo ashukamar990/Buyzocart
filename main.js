@@ -2836,11 +2836,28 @@
       if (viewAllBtn) viewAllBtn.addEventListener('click', showAllRatings);
     }
 
+    function bzCopyText(text, button, successMsg = 'Copied to clipboard') {
+      if (!text || !button || button.hasAttribute('data-copying')) return;
+      if (!navigator.clipboard) {
+        showToast('Clipboard not supported', 'error');
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        const originalHTML = button.innerHTML;
+        button.setAttribute('data-copying', 'true');
+        button.innerHTML = '✅ Copied!';
+        showToast(successMsg, 'success');
+        setTimeout(() => {
+          button.innerHTML = originalHTML;
+          button.removeAttribute('data-copying');
+        }, 2000);
+      }).catch(() => showToast('Failed to copy', 'error'));
+    }
+
     function copyShareLink() {
-      const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const shareLink = document.getElementById('productShareLink')?.value;
+      const btn = document.getElementById('copyShareLink');
+      if (shareLink && btn) bzCopyText(shareLink, btn, 'Link copied!');
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5157,6 +5174,10 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay')?.textContent;
+        if (orderId) bzCopyText(orderId, this, 'Order ID copied!');
+      });
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
