@@ -3261,14 +3261,14 @@
       const category = categories.find(c => c.id === categoryId || c.name === categoryId || c.name.toLowerCase() === (categoryId||'').toLowerCase());
       if (!category) {
         // Fallback: treat categoryId as a name string
-        const catNameFallback = (categoryId||'').toLowerCase().replace(/[^\w\s]/g,'').trim();
+        const catNameFallback = (categoryId||'').toLowerCase().trim();
         const filtered2 = products.filter(function(p) {
-          var pc = (p.category||'').toLowerCase().replace(/[^\w\s]/g,'').trim();
-          return pc === catNameFallback || pc.includes(catNameFallback);
+          return (p.category||'').toLowerCase().trim() === catNameFallback;
         });
-        showPage('productsPage');
-        renderProducts(filtered2, 'productGrid');
-        updateProductsCount();
+        if (filtered2.length > 0) {
+          renderProducts(filtered2, 'productGrid');
+          updateProductsCount();
+        }
         return;
       }
       currentCategoryFilter = category.id;
@@ -4619,10 +4619,10 @@
     //      onValue() hataya, sirf get() use ho raha hai.
     // ────────────────────────────────────────────────────────────
     const _BZ_TTL = {
-      PRODUCTS:   6 * 60 * 60 * 1000,  // 6 ghante (static JSON use hoga, Firebase fallback ke liye)
-      CATEGORIES: 6 * 60 * 60 * 1000,
-      BANNERS:    6 * 60 * 60 * 1000,
-      SETTINGS:   2 * 60 * 60 * 1000,  // 2 ghante
+      PRODUCTS:   5 * 60 * 1000,   // 5 minute (admin change turant dikhega)
+      CATEGORIES: 5 * 60 * 1000,
+      BANNERS:    5 * 60 * 1000,
+      SETTINGS:   5 * 60 * 1000,
     };
 
     function _bzCacheGet(key, ttl) {
@@ -4661,12 +4661,21 @@
     const STATIC_DATA_URL = './data/store-data.json'; // Hosting pe rakho
     const _STATIC_LS_KEY = 'bz_static_json_v2';
     const _STATIC_LS_TS  = 'bz_static_json_ts';
-    const _STATIC_TTL    = 6 * 60 * 60 * 1000; // 6 ghante localStorage cache
+    const _STATIC_TTL    = 5 * 60 * 1000; // 5 minute cache (admin changes turant dikhenge)
     let _staticDataPromise = null; // Session mein ek baar fetch
 
     function _fetchStaticData() {
-      if (_staticDataPromise) return _staticDataPromise;
-      // Pehle localStorage check karo (6hr TTL)
+      // 5 min ke baad promise reset karo taaki fresh fetch ho
+      if (_staticDataPromise) {
+        try {
+          const ts = parseInt(localStorage.getItem(_STATIC_LS_TS) || '0');
+          if (ts && (Date.now() - ts) < _STATIC_TTL) {
+            return _staticDataPromise; // Cache valid hai
+          }
+          _staticDataPromise = null; // Cache expire — reset karo
+        } catch(e) { _staticDataPromise = null; }
+      }
+      // Pehle localStorage check karo (5 min TTL)
       try {
         const ts = parseInt(localStorage.getItem(_STATIC_LS_TS) || '0');
         if (ts && (Date.now() - ts) < _STATIC_TTL) {
@@ -4680,13 +4689,13 @@
           }
         }
       } catch(e) {}
-      // localStorage miss → fetch from hosting (6hr cache bust)
+      // localStorage miss → fetch from hosting (5 min cache bust)
       const bust = Math.floor(Date.now() / _STATIC_TTL);
       _staticDataPromise = fetch(STATIC_DATA_URL + '?v=' + bust)
         .then(r => { if (!r.ok) throw new Error('Static file not found'); return r.json(); })
         .then(data => {
           if (!data || !data.products) throw new Error('Invalid JSON');
-          // Save to localStorage for next 6hrs
+          // Save to localStorage for next 5 min
           try {
             localStorage.setItem(_STATIC_LS_KEY, JSON.stringify(data));
             localStorage.setItem(_STATIC_LS_TS, Date.now().toString());
@@ -5296,25 +5305,14 @@
         ? searchTags : cats.map(function(c) { return c.name || ''; }).filter(Boolean);
       tags.forEach(function(tag) {
         var chip = document.createElement('button');
-        chip.type = 'button';
         chip.textContent = tag;
-        chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
+        chip.style.cssText = 'padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;';
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
-        function handleTagClick(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var cat = categories && categories.find(function(c) {
-            return (c.name||'').toLowerCase().trim() === (tag||'').toLowerCase().trim();
-          });
-          if (cat) {
-            filterByCategory(cat.id || cat.name);
-          } else {
-            filterProductsByTag(tag);
-          }
-        }
-        chip.addEventListener('click', handleTagClick);
-        chip.addEventListener('touchend', handleTagClick, { passive: false });
+        chip.addEventListener('click', function() {
+          var cat = categories && categories.find(function(c) { return c.name === tag; });
+          if (cat) filterByCategory(cat.id);
+        });
         container.appendChild(chip);
       });
     }
