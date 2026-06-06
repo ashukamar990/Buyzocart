@@ -13,3 +13,6 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+## 2024-05-22 - Standardized Clipboard Feedback
+**Learning:** Providing immediate, in-place visual feedback (like changing button text to "✅ Copied!") after an asynchronous clipboard action significantly reduces user uncertainty compared to just a global toast.
+**Action:** Use a centralized helper for clipboard operations that manages button state and provides success/error feedback consistently.
