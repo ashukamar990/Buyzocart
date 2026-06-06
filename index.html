@@ -2036,7 +2036,7 @@
 
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+    import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push, limitToLast } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -2053,7 +2053,7 @@
     const database = getDatabase(app);
     const auth = getAuth(app);
     
-    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
+    window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push, limitToLast, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
     
   </script>
 
@@ -2063,27 +2063,22 @@
 
   <script src="main.js" defer></script>
   <script>
-    /* Bootstrap: fires initApp() only after main.js has fully loaded.
-       Uses window._bzInitAppCalled guard (set in main.js bootstrap)
-       so it never double-fires if main.js already triggered it.       */
+    /* Bootstrap: fires window.initApp() after main.js (defer) has executed.
+       initApp is inside the main IIFE in main.js and exposed as window.initApp.
+       The _bzInitAppCalled guard prevents double-firing.                      */
     (function() {
-      var mainScript = document.querySelector('script[src="main.js"]');
       function _tryInit() {
         if (window._bzInitAppCalled) return;
-        if (typeof initApp === 'function') {
+        if (typeof window.initApp === 'function') {
           window._bzInitAppCalled = true;
-          initApp();
+          window.initApp();
         }
       }
-      if (mainScript) {
-        mainScript.addEventListener('load', _tryInit);
-      }
-      /* Fallback: if script already executed (cached), fire on DOMContentLoaded */
+      /* defer scripts finish before DOMContentLoaded fires — safe to call then */
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-          setTimeout(_tryInit, 0);
-        });
+        document.addEventListener('DOMContentLoaded', function() { _tryInit(); });
       } else {
+        /* DOM already ready (e.g. script is cached and runs synchronously) */
         setTimeout(_tryInit, 0);
       }
     })();

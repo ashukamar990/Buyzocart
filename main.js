@@ -8119,6 +8119,7 @@
     window.showProductDetail   = showProductDetail;
     window.renderProductSlider = renderProductSlider;
     window.renderProducts      = renderProducts;
+    window.initApp             = initApp;
 
     // Menu onclick handler — safe wrapper
     window._openBrandsPage = function() {
@@ -8382,13 +8383,14 @@
    this block to avoid double-initialisation.
    ============================================================ */
 (function bootstrapInitApp() {
-  if (typeof initApp !== 'function') return; // safety guard
+  // initApp is inside the main IIFE closure, exposed via window.initApp
+  if (typeof window.initApp !== 'function') return;
 
   function _runInit() {
-    // Prevent double-init if host HTML also calls initApp()
+    // Prevent double-init
     if (window._bzInitAppCalled) return;
     window._bzInitAppCalled = true;
-    initApp();
+    window.initApp();
   }
 
   if (document.readyState === 'loading') {
