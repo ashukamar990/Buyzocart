@@ -335,6 +335,32 @@
       }, 3000);
     }
 
+    /**
+     * Centralized clipboard helper with visual feedback.
+     * @param {string} text - Text to copy.
+     * @param {HTMLElement} button - Button element that triggered the copy.
+     * @param {string} [successMsg="Copied to clipboard!"] - Message to show in toast.
+     */
+    function bzCopyText(text, button, successMsg = 'Copied to clipboard!') {
+      if (!text || !navigator.clipboard) return;
+      if (button && button.hasAttribute('data-copying')) return;
+
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          showToast(successMsg, 'success');
+          if (button) {
+            button.setAttribute('data-copying', 'true');
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+              button.innerHTML = originalHTML;
+              button.removeAttribute('data-copying');
+            }, 2000);
+          }
+        })
+        .catch(() => showToast('Failed to copy', 'error'));
+    }
+
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -2863,9 +2889,8 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const btn = document.getElementById('copyShareLink');
+      bzCopyText(shareLink?.value, btn, 'Share link copied!');
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5155,6 +5180,10 @@
       document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay')?.textContent;
+        bzCopyText(orderId, this, 'Order ID copied!');
+      });
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
