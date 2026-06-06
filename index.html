@@ -2055,9 +2055,6 @@
     
     window.firebase = { app, database, auth, ref, set, get, update, remove, onValue, query, orderByChild, equalTo, push, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup };
     
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
-    });
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
@@ -2065,6 +2062,32 @@
   <script src="security.js" defer></script>
 
   <script src="main.js" defer></script>
+  <script>
+    /* Bootstrap: fires initApp() only after main.js has fully loaded.
+       Uses window._bzInitAppCalled guard (set in main.js bootstrap)
+       so it never double-fires if main.js already triggered it.       */
+    (function() {
+      var mainScript = document.querySelector('script[src="main.js"]');
+      function _tryInit() {
+        if (window._bzInitAppCalled) return;
+        if (typeof initApp === 'function') {
+          window._bzInitAppCalled = true;
+          initApp();
+        }
+      }
+      if (mainScript) {
+        mainScript.addEventListener('load', _tryInit);
+      }
+      /* Fallback: if script already executed (cached), fire on DOMContentLoaded */
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(_tryInit, 0);
+        });
+      } else {
+        setTimeout(_tryInit, 0);
+      }
+    })();
+  </script>
 
 
   <div id="progressBar"></div>

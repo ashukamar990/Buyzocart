@@ -1766,6 +1766,7 @@
       _FV.panX   = 0; _FV.panY = 0;
 
       const viewer = document.getElementById('fullscreenViewer');
+      if (!viewer) return;
       viewer.classList.add('active');
       document.body.style.overflow = 'hidden';
 
@@ -1782,7 +1783,7 @@
     }
 
     function fvClose() {
-      document.getElementById('fullscreenViewer').classList.remove('active');
+      document.getElementById('fullscreenViewer')?.classList.remove('active');
       document.body.style.overflow = '';
       fvUnbindEvents();
       _FV.zoom = 1; _FV.panX = 0; _FV.panY = 0;
@@ -1972,7 +1973,8 @@
         _FV.dragging  = true;
         _FV.dragStartX = e.clientX - _FV.panX;
         _FV.dragStartY = e.clientY - _FV.panY;
-        document.getElementById('fullscreenViewer').style.cursor = 'grabbing';
+        const fvEl = document.getElementById('fullscreenViewer');
+        if (fvEl) fvEl.style.cursor = 'grabbing';
       }
     }
     function fvOnMouseMove(e) {
@@ -1984,7 +1986,8 @@
     }
     function fvOnMouseUp() {
       _FV.dragging = false;
-      document.getElementById('fullscreenViewer').style.cursor = '';
+      const fvEl = document.getElementById('fullscreenViewer');
+      if (fvEl) fvEl.style.cursor = '';
     }
     function fvOnWheel(e) {
       e.preventDefault();
@@ -1995,6 +1998,7 @@
     function fvBindEvents() {
       const v = document.getElementById('fullscreenViewer');
       const c = document.getElementById('viewerContainer');
+      if (!v || !c) return;
       document.getElementById('viewerClose')?.addEventListener('click', fvClose);
       document.getElementById('viewerPrev')?.addEventListener('click', () => fvGoTo(_FV.index - 1));
       document.getElementById('viewerNext')?.addEventListener('click', () => fvGoTo(_FV.index + 1));
@@ -3099,7 +3103,7 @@
         }
       } catch(e) { /* proceed anyway */ }
 
-      document.getElementById('cancellationModal').classList.add('active');
+      document.getElementById('cancellationModal')?.classList.add('active');
       document.getElementById('confirmCancel').onclick = async function() {
         const checkedReason = document.querySelector('input[name="cancelReason"]:checked');
         const reason = checkedReason ? checkedReason.value : 'Not specified';
@@ -3113,7 +3117,7 @@
             cancelledAt: Date.now()
           });
           showToast('Order cancelled successfully', 'success');
-          document.getElementById('cancellationModal').classList.remove('active');
+          document.getElementById('cancellationModal')?.classList.remove('active');
           showMyOrders();
         } catch (error) {
           console.error('Error cancelling order:', error);
@@ -3123,15 +3127,20 @@
     }
 
     function showReturnReplaceModal(orderId) {
-      document.getElementById('returnReplaceModal').classList.add('active');
-      document.getElementById('confirmReturnReplace').onclick = async function() {
-        const option = document.querySelector('input[name="returnReplaceReason"]:checked').value;
+      const rrModal = document.getElementById('returnReplaceModal');
+      if (!rrModal) return;
+      rrModal.classList.add('active');
+      const confirmBtn = document.getElementById('confirmReturnReplace');
+      if (!confirmBtn) return;
+      confirmBtn.onclick = async function() {
+        const checkedReason = document.querySelector('input[name="returnReplaceReason"]:checked');
+        const option = checkedReason ? checkedReason.value : 'return';
         try {
           await window.firebase.update(window.firebase.ref(window.firebase.database, 'orders/' + orderId), {
             status: option === 'return' ? 'return-requested' : 'replace-requested'
           });
           showToast(`${option === 'return' ? 'Return' : 'Replace'} request submitted`, 'success');
-          document.getElementById('returnReplaceModal').classList.remove('active');
+          rrModal.classList.remove('active');
           showMyOrders();
         } catch (error) {
           console.error('Error submitting request:', error);
@@ -5217,8 +5226,8 @@
           window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
         });
       }
-      document.getElementById('cancelCancel')?.addEventListener('click', () => document.getElementById('cancellationModal').classList.remove('active'));
-      document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal').classList.remove('active'));
+      document.getElementById('cancelCancel')?.addEventListener('click', () => document.getElementById('cancellationModal')?.classList.remove('active'));
+      document.getElementById('cancelReturnReplace')?.addEventListener('click', () => document.getElementById('returnReplaceModal')?.classList.remove('active'));
     }
 
 
@@ -6088,10 +6097,17 @@
     (function applyPerfOptimizations() {
       const origAddEventListener = EventTarget.prototype.addEventListener;
       EventTarget.prototype.addEventListener = function(type, fn, opts) {
+        // Only auto-upgrade to passive when the caller has not explicitly opted out (passive: false).
+        // touchend is excluded because product-card touchend calls e.preventDefault() intentionally.
         if (['scroll', 'touchstart', 'touchmove', 'wheel'].includes(type)) {
-          if (opts === undefined || opts === false) opts = { passive: true };
-          else if (opts === true) opts = { capture: true, passive: true };
-          else if (typeof opts === 'object' && opts.passive === undefined) opts.passive = true;
+          const callerForcedActive =
+            (typeof opts === 'object' && opts !== null && opts.passive === false) ||
+            opts === false;
+          if (!callerForcedActive) {
+            if (opts === undefined) opts = { passive: true };
+            else if (opts === true) opts = { capture: true, passive: true };
+            else if (typeof opts === 'object' && opts.passive === undefined) opts.passive = true;
+          }
         }
         origAddEventListener.call(this, type, fn, opts);
       };
@@ -6355,10 +6371,12 @@
       setTimeout(connectToFirebase, 1000);
       return;
     }
-    const db = firebase.database();
+    const db = firebase.database;
+    const { ref, query, orderByChild, limitToLast, onValue } = firebase;
 
     // Listen for new notifications in real-time
-    db.ref('adminNotifications').orderByChild('timestamp').limitToLast(5).on('value', snap => {
+    const notifQuery = query(ref(db, 'adminNotifications'), orderByChild('timestamp'), limitToLast(5));
+    onValue(notifQuery, snap => {
       if (!snap.exists()) return;
 
       let newest = null;
@@ -6590,11 +6608,8 @@
     const user = typeof currentUser !== 'undefined' ? currentUser : null;
     if (!firebase || !user) return;
 
-    firebase.database()
-      .ref('addresses')
-      .orderByChild('userId')
-      .equalTo(user.uid)
-      .get()
+    const { database: db, ref, query, orderByChild, equalTo, get } = firebase;
+    get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)))
       .then(snap => {
         if (!snap.exists()) return;
         const list = [];
@@ -6926,12 +6941,9 @@
     // Save to Firebase if user is logged in
     const firebase = window.firebase;
     if (firebase && uid) {
+      const { database: db, ref, query, orderByChild, equalTo, get, update, push } = firebase;
       // Check for duplicates
-      firebase.database()
-        .ref('addresses')
-        .orderByChild('userId')
-        .equalTo(uid)
-        .get()
+      get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(uid)))
         .then(snap => {
           let isDuplicate = false;
           snap.forEach(child => {
@@ -6939,14 +6951,14 @@
             if (a.street === fields.street && a.pincode === fields.pincode) {
               isDuplicate = true;
               // Make this the default
-              firebase.database().ref('addresses/' + child.key).update({ isDefault: true });
+              update(ref(db, 'addresses/' + child.key), { isDefault: true });
             } else {
-              firebase.database().ref('addresses/' + child.key).update({ isDefault: false });
+              update(ref(db, 'addresses/' + child.key), { isDefault: false });
             }
           });
           if (!isDuplicate) {
             fields.userId = uid;
-            firebase.database().ref('addresses').push(fields).then(() => {
+            push(ref(db, 'addresses'), fields).then(() => {
               localStorage.setItem('bz_address_updated', Date.now().toString());
             });
           }
@@ -8354,3 +8366,34 @@
 
 
 // End of main-patch.js
+
+
+/* ============================================================
+   BOOTSTRAP — initApp() entry point
+   ============================================================
+   initApp() is defined inside main.js but must be triggered
+   from outside after Firebase SDKs are loaded.
+   This guard fires it via DOMContentLoaded (or immediately
+   if the DOM is already ready) so the storefront initialises
+   even when the host HTML has no explicit initApp() call.
+
+   If your storefront HTML already calls initApp() manually
+   (e.g. <script>initApp();</script> at the bottom), remove
+   this block to avoid double-initialisation.
+   ============================================================ */
+(function bootstrapInitApp() {
+  if (typeof initApp !== 'function') return; // safety guard
+
+  function _runInit() {
+    // Prevent double-init if host HTML also calls initApp()
+    if (window._bzInitAppCalled) return;
+    window._bzInitAppCalled = true;
+    initApp();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _runInit);
+  } else {
+    _runInit();
+  }
+})();
