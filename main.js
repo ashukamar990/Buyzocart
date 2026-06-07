@@ -688,13 +688,56 @@
     function showSearchSuggestions(query) {
       const suggestionsContainer = document.getElementById('searchSuggestions');
       if (!suggestionsContainer) return;
+
+      // ── URL / Product-ID detection — show exact product + similar products ──
+      var _directProduct = null;
+      var _isUrlQuery = false;
+      var _qTrim = query.trim();
+      if (_qTrim.includes('#p/') || _qTrim.includes('buyzo') || _qTrim.includes('buyzocart')) {
+        _isUrlQuery = true;
+        // Extract slug from URL
+        var _slug = null;
+        var _hashIdx = _qTrim.indexOf('#p/');
+        if (_hashIdx !== -1) _slug = _qTrim.substring(_hashIdx + 3).split(/[?&#]/)[0];
+        if (_slug) {
+          var _pid = (typeof _slugToId === 'function') ? _slugToId(_slug) : null;
+          if (_pid) _directProduct = products.find(function(p){ return p.id === _pid; });
+          if (!_directProduct) _directProduct = products.find(function(p){ return p.id === _slug || p.productId === _slug; });
+        }
+      }
+      // Also check raw ID (no URL)
+      if (!_directProduct && /^[A-Za-z0-9_-]{4,24}$/.test(_qTrim) && !_qTrim.includes(' ')) {
+        _directProduct = products.find(function(p){ return (p.id||'') === _qTrim || (p.productId||'') === _qTrim; });
+        if (_directProduct) _isUrlQuery = true;
+      }
+
       const results = searchProducts(query);
 
       // Show typo correction notice
       const normalized = _normalizeQuery(query);
-      const wasCorrected = normalized !== query.toLowerCase().trim();
+      const wasCorrected = normalized !== query.toLowerCase().trim() && !_isUrlQuery;
 
-      const topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 3);
+      var topThree;
+      if (_directProduct) {
+        // Build: exact product first, then similar products, then other results
+        var _simIds = [];
+        if (_directProduct.similarProducts && typeof _directProduct.similarProducts === 'object') {
+          _simIds = Object.keys(_directProduct.similarProducts);
+        } else if (Array.isArray(_directProduct.similarFromAdmin)) {
+          _simIds = _directProduct.similarFromAdmin;
+        }
+        var _simProds = _simIds.map(function(sid){ return products.find(function(p){ return p.id === sid; }); }).filter(Boolean);
+        // Fallback: same category products
+        if (_simProds.length < 4) {
+          var _catProds = products.filter(function(p){
+            return p.id !== _directProduct.id && (p.category === _directProduct.category || p.categoryId === _directProduct.categoryId);
+          }).slice(0, 6);
+          _catProds.forEach(function(cp){ if (!_simProds.find(function(s){ return s.id === cp.id; })) _simProds.push(cp); });
+        }
+        topThree = [_directProduct].concat(_simProds).slice(0, 8);
+      } else {
+        topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+      }
       suggestionsContainer.innerHTML = '';
 
       // Show correction banner
@@ -720,17 +763,27 @@
         }
         return;
       }
+      // If direct product found via URL/ID, show a highlighted label
+      if (_directProduct) {
+        const directBanner = document.createElement('div');
+        directBanner.style.cssText = 'padding:6px 14px;font-size:12px;color:#059669;background:#ecfdf5;border-bottom:1px solid #a7f3d0;display:flex;align-items:center;gap:6px;';
+        directBanner.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Product found — tap to open · Similar products shown next';
+        suggestionsContainer.appendChild(directBanner);
+      }
       const imageRow = document.createElement('div');
-      imageRow.style.cssText = 'display:flex; gap:8px; padding:10px 10px 4px; overflow-x:auto;';
-      topThree.forEach(product => {
+      imageRow.style.cssText = 'display:flex;gap:8px;padding:10px 10px 6px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;';
+      topThree.forEach((product, _cardIdx) => {
         const card = document.createElement('div');
-        card.style.cssText = 'flex:0 0 80px; cursor:pointer; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--surface);';
+        const _isFirst = _cardIdx === 0 && _directProduct && product.id === _directProduct.id;
+        card.style.cssText = 'flex:0 0 90px;cursor:pointer;border-radius:10px;overflow:hidden;border:' + (_isFirst ? '2px solid #2563eb' : '1px solid var(--border)') + ';background:var(--surface);box-shadow:' + (_isFirst ? '0 2px 10px rgba(37,99,235,.18)' : '0 1px 4px rgba(0,0,0,.06)') + ';transition:box-shadow .15s;position:relative;';
         const ratingVal = calculateProductRating(product.id);
         card.innerHTML = `
-          <div style="height:72px; background-image:url('${getProductImage(product)}'); background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#f8fafc;"></div>
-          <div style="padding:4px 5px; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${product.name || product.title || ''}</div>
-          <div style="padding:0 5px 4px; font-size:11px; color:var(--accent); font-weight:700;">${formatPrice(product.price)}</div>
-          ${ratingVal > 0 ? `<div style="padding:0 5px 4px; font-size:10px; color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
+          <div style="position:relative;height:80px;background-image:url('${getProductImage(product)}');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f8fafc;">
+            ${_isFirst ? '<div style=\'position:absolute;top:4px;right:4px;background:#2563eb;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;\'>✓</div>' : ''}
+          </div>
+          <div style="padding:4px 5px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="padding:0 5px 5px;font-size:11px;color:var(--accent);font-weight:700;">${formatPrice(product.price)}</div>
+          ${ratingVal > 0 ? `<div style="padding:0 5px 4px;font-size:10px;color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
         card.addEventListener('click', function(e) {
           e.preventDefault(); e.stopPropagation();
@@ -2727,8 +2780,12 @@
             };
             await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
             savedAddresses.push({ id: addressId, ...addressData });
-            // Invalidate address cache taaki next load fresh data aaye
+            savedAddresses.sort(function(a,b){ return (b.isDefault?1:0)-(a.isDefault?1:0)||b.createdAt-a.createdAt; });
+            // Invalidate BOTH cache keys
             _bzInvalidateAddressCache();
+            if (typeof cacheManager !== 'undefined') {
+              try { cacheManager.delete(CACHE_KEYS.ADDRESSES); } catch(e2){}
+            }
           }
         } catch (e) {}
       }
@@ -4670,16 +4727,24 @@
       try {
         const addressId = 'address_' + Date.now();
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        // Update in-memory array
         savedAddresses.push({ id: addressId, ...addressData });
-        cacheManager.set(CACHE_KEYS.ADDRESSES, savedAddresses);
+        savedAddresses.sort(function(a,b){ return (b.isDefault?1:0)-(a.isDefault?1:0)||b.createdAt-a.createdAt; });
+        // Invalidate BOTH cache keys to force fresh load next time
+        _bzInvalidateAddressCache();
+        if (typeof cacheManager !== 'undefined') {
+          try { cacheManager.delete(CACHE_KEYS.ADDRESSES); } catch(e2){}
+        }
         showToast('Address saved successfully ✓', 'success');
-        await loadSavedAddresses();
-        // Show saved addresses section, collapse new form
+        // Directly render without waiting for Firebase re-fetch
         var savedSec = document.getElementById('savedAddressesSection');
-        var newForm = document.getElementById('newAddressForm');
         if (savedSec) savedSec.style.display = 'block';
+        renderSavedAddresses();
+        // Auto-select and fill the new address
+        fillAddressForm({ id: addressId, ...addressData });
+        userInfo = { fullName: fullname, mobile, pincode, city, state, house };
         // Scroll saved section into view
-        if (savedSec) { setTimeout(function(){ savedSec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); }
+        if (savedSec) { setTimeout(function(){ savedSec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150); }
       } catch (error) {
         console.error('Error saving address:', error);
         showToast('Failed to save address', 'error');
