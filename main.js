@@ -1626,12 +1626,39 @@
       const productPrice = formatPrice(freshProduct.price);
       const productDescription = freshProduct.description || freshProduct.desc || '';
       const productFullDesc = freshProduct.fullDescription || freshProduct.fullDesc || freshProduct.details || productDescription;
-      const productSku = freshProduct.sku || freshProduct.SKU || 'N/A';
+      const productSku = freshProduct.sku || freshProduct.SKU || '';
       if (elements.detailTitle) elements.detailTitle.textContent = productName;
       if (elements.detailPrice) elements.detailPrice.textContent = productPrice;
-      if (elements.detailDesc) elements.detailDesc.textContent = productDescription;
-      if (elements.detailFullDesc) elements.detailFullDesc.textContent = productFullDesc;
-      if (elements.detailSku) elements.detailSku.textContent = 'SKU: ' + productSku;
+      if (elements.detailDesc) {
+        if (productDescription) {
+          elements.detailDesc.textContent = productDescription;
+          elements.detailDesc.style.display = '';
+        } else {
+          elements.detailDesc.textContent = '';
+          elements.detailDesc.style.display = 'none';
+        }
+      }
+      if (elements.detailFullDesc) {
+        // Only show fullDesc if it's different from shortDesc
+        const showFull = productFullDesc && productFullDesc !== productDescription;
+        if (showFull) {
+          elements.detailFullDesc.textContent = productFullDesc;
+          elements.detailFullDesc.style.display = '';
+        } else {
+          elements.detailFullDesc.textContent = '';
+          elements.detailFullDesc.style.display = 'none';
+        }
+      }
+      // SKU: only show if actually set, never show "N/A"
+      if (elements.detailSku) {
+        if (productSku && productSku !== 'N/A') {
+          elements.detailSku.textContent = 'SKU: ' + productSku;
+          elements.detailSku.style.display = '';
+        } else {
+          elements.detailSku.textContent = '';
+          elements.detailSku.style.display = 'none';
+        }
+      }
       if (elements.breadcrumbProductName) elements.breadcrumbProductName.textContent = productName;
 
       // ── Brand name in detail ──
@@ -1647,15 +1674,11 @@
         var bData = (window._brandsData||{})[bBrandId] || {};
         var _isVerified = bData.blueTickAdmin;
         var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="9" height="9"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>') : '';
-        brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 10px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>'
-          + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'
-          + '<span>Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11px;">'+(freshProduct.id||'').toUpperCase()+'</code></span>'
-          + '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+freshProduct.id+'\').then(function(){showToast(\'Product ID copied!\',\'success\')})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:0;" title="Copy">📋</button>'
-          + '</div>';
+        brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
         brandBadgeEl.style.display = 'block';
       } else {
-        brandBadgeEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Product ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">'+(freshProduct.id||'').toUpperCase()+'</code></div>';
-        brandBadgeEl.style.display = 'block';
+        brandBadgeEl.innerHTML = '';
+        brandBadgeEl.style.display = 'none';
       }
       if (elements.mainProductImage && currentProductImages.length > 0) {
         elements.mainProductImage.style.backgroundImage = `url('${currentProductImages[0]}')`;
@@ -1786,7 +1809,23 @@
         return;
       }
 
-      grid.innerHTML = primaryItems.join('');
+      // Primary grid — show max 6 items, rest behind "Show More"
+      const SHOW_MAX = 6;
+      if (primaryItems.length <= SHOW_MAX) {
+        grid.innerHTML = primaryItems.join('');
+      } else {
+        const visible = primaryItems.slice(0, SHOW_MAX).join('');
+        const hidden = primaryItems.slice(SHOW_MAX).join('');
+        grid.innerHTML = visible
+          + `<div id="bzHiddenHighlights" style="display:none;grid-column:1/-1;">`
+          + `<div class="product-highlights-grid" style="margin-top:8px;">${hidden}</div>`
+          + `</div>`
+          + `<div style="grid-column:1/-1;margin-top:6px;">`
+          + `<button onclick="window.bzTogglePrimaryHighlights(this)" style="background:none;border:none;color:#2563eb;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;padding:0;">`
+          + `<span>Show More</span>`
+          + `<svg id="bzHLIcon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>`
+          + `</button></div>`;
+      }
       section.style.display = 'block';
 
       if (addSection && addGrid) {
@@ -1820,6 +1859,17 @@
       if (!content) return;
       var isOpen = content.style.display !== 'none';
       content.style.display = isOpen ? 'none' : 'block';
+      if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
+    };
+
+    window.bzTogglePrimaryHighlights = function(btn) {
+      var hidden = document.getElementById('bzHiddenHighlights');
+      if (!hidden) return;
+      var isOpen = hidden.style.display !== 'none';
+      hidden.style.display = isOpen ? 'none' : 'block';
+      var span = btn.querySelector('span');
+      var icon = btn.querySelector('svg');
+      if (span) span.textContent = isOpen ? 'Show More' : 'Show Less';
       if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
     };
 
@@ -2487,19 +2537,25 @@
       document.getElementById('spFullDesc').textContent = currentProduct.fullDescription || currentProduct.fullDesc || currentProduct.details || currentProduct.description || '';
       const sizeOptionsContainer = document.getElementById('sizeOptions');
       sizeOptionsContainer.innerHTML = '';
-      const sizesFromProduct = currentProduct.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
-      sizesFromProduct.forEach(sizeVal => {
-        const opt = document.createElement('div');
-        opt.className = 'size-option';
-        opt.setAttribute('data-value', sizeVal);
-        opt.textContent = sizeVal;
-        opt.addEventListener('click', function() {
-          document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
-          this.classList.add('selected');
-          document.getElementById('sizeValidationError')?.classList.remove('show');
+      const sizesFromProduct = currentProduct.sizes || [];
+      const sizeSection = document.getElementById('sizeSection');
+      if (sizesFromProduct.length > 0) {
+        if (sizeSection) sizeSection.style.display = 'block';
+        sizesFromProduct.forEach(sizeVal => {
+          const opt = document.createElement('div');
+          opt.className = 'size-option';
+          opt.setAttribute('data-value', sizeVal);
+          opt.textContent = sizeVal;
+          opt.addEventListener('click', function() {
+            document.querySelectorAll('#sizeOptions .size-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('sizeValidationError')?.classList.remove('show');
+          });
+          sizeOptionsContainer.appendChild(opt);
         });
-        sizeOptionsContainer.appendChild(opt);
-      });
+      } else {
+        if (sizeSection) sizeSection.style.display = 'none';
+      }
       document.getElementById('qtySelect').value = 1;
       initOrderPageGallery();
       showPage('orderPage');
@@ -2528,10 +2584,10 @@
       track.style.cssText = 'display:flex;height:100%;width:100%;transition:transform 0.3s ease;will-change:transform;';
       productImages.forEach(src => {
         const slide = document.createElement('div');
-        slide.style.cssText = 'flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+        slide.style.cssText = 'flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;';
         const img = document.createElement('img');
         img.src = src;
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;';
+        img.style.cssText = 'width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;';
         img.draggable = false;
         slide.appendChild(img);
         track.appendChild(slide);
@@ -2554,8 +2610,44 @@
       }, { passive: true });
       const prevBtn = galleryMain.querySelector('.carousel-control.prev');
       const nextBtn = galleryMain.querySelector('.carousel-control.next');
-      if (prevBtn) prevBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx - 1); };
-      if (nextBtn) nextBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx + 1); };
+      if (prevBtn) { prevBtn.style.cssText = 'display:flex!important;position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:10;background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);'; prevBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx - 1); }; }
+      if (nextBtn) { nextBtn.style.cssText = 'display:flex!important;position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:10;background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);'; nextBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx + 1); }; }
+      // Dots below gallery
+      if (dotsContainer && productImages.length > 1) {
+        dotsContainer.innerHTML = '';
+        dotsContainer.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0 4px;';
+        const dots = productImages.map((_, i) => {
+          const d = document.createElement('span');
+          d.style.cssText = i === 0
+            ? 'width:18px;height:8px;border-radius:4px;background:#2563eb;display:inline-block;transition:all 0.25s;'
+            : 'width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;transition:all 0.25s;';
+          d.onclick = () => _ogGoTo(i);
+          dotsContainer.appendChild(d);
+          return d;
+        });
+        const origGoTo = _ogGoTo;
+        function _ogGoToWithDots(idx) {
+          origGoTo(idx);
+          dots.forEach((d, i) => {
+            d.style.width = i === _ogIdx ? '18px' : '8px';
+            d.style.borderRadius = i === _ogIdx ? '4px' : '50%';
+            d.style.background = i === _ogIdx ? '#2563eb' : '#cbd5e1';
+          });
+        }
+        galleryMain.removeEventListener('touchstart', null);
+        galleryMain.addEventListener('touchstart', e => {
+          _ogTx = e.touches[0].clientX; _ogTy = e.touches[0].clientY; _ogDragging = true;
+        }, { passive: true });
+        galleryMain.addEventListener('touchend', e => {
+          if (!_ogDragging) return; _ogDragging = false;
+          const dx = e.changedTouches[0].clientX - _ogTx;
+          const dy = Math.abs(e.changedTouches[0].clientY - _ogTy);
+          if (Math.abs(dx) > 40 && dy < 60) _ogGoToWithDots(dx < 0 ? _ogIdx + 1 : _ogIdx - 1);
+        }, { passive: true });
+        if (prevBtn) prevBtn.onclick = e => { e.stopPropagation(); _ogGoToWithDots(_ogIdx - 1); };
+        if (nextBtn) nextBtn.onclick = e => { e.stopPropagation(); _ogGoToWithDots(_ogIdx + 1); };
+        dots.forEach((d, i) => { d.onclick = () => _ogGoToWithDots(i); });
+      }
       _ogGoTo(0);
     }
 
