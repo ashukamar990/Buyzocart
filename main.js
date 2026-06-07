@@ -1404,15 +1404,10 @@
       const _BT_CARD = _cardBrandVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;background:#2563eb;border-radius:50%;margin-left:2px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"7\" height=\"7\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></span>') : '';
       const _brandOverlay = product.brand ? `<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;pointer-events:none;" title="View Brand"><div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="display:flex;align-items:center;gap:5px;cursor:pointer;pointer-events:auto;">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div></div>` : '';
       const _cardImages = getProductImages(product);
-      // Image count indicator (bottom-right corner, only if multiple images)
-      const _imgCountHtml = _cardImages.length > 1
-        ? `<div class="pc-img-count-badge">${_cardImages.length} <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`
-        : '';
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
           ${badgeHtml}
           ${_brandOverlay}
-          ${_imgCountHtml}
         </div>
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
