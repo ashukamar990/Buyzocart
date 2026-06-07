@@ -2764,6 +2764,10 @@
         showToast('Please fill in all required fields', 'error');
         return;
       }
+      if (mobile.replace(/[^0-9]/g,'').length !== 10) {
+        showToast('Mobile number must be exactly 10 digits', 'error');
+        return;
+      }
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
 
       if (currentUser) {
@@ -4666,13 +4670,13 @@
         radio.addEventListener('click', function(e) {
           e.stopPropagation();
           fillAddressForm(address);
-          userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+          userInfo = { fullName: address.name||address.fullName||'', mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street||address.house||'' };
         });
         addressCard.addEventListener('click', function(e) {
           if (e.target.type !== 'radio') {
             radio.checked = true;
             fillAddressForm(address);
-            userInfo = { fullName: address.name, mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street };
+            userInfo = { fullName: address.name||address.fullName||'', mobile: address.mobile, pincode: address.pincode, city: address.city, state: address.state, house: address.street||address.house||'' };
           }
         });
         const editBtn = addressCard.querySelector('.edit-address');
@@ -4690,16 +4694,26 @@
     }
 
     function fillAddressForm(address) {
-      document.getElementById('fullname').value = address.name;
-      document.getElementById('mobile').value = address.mobile;
-      document.getElementById('pincode').value = address.pincode;
-      document.getElementById('city').value = address.city;
-      document.getElementById('state').value = address.state;
-      document.getElementById('house').value = address.street;
-      document.getElementById('addressType').value = address.type || 'home';
+      if (!address) return;
+      // Support both 'name' and legacy 'fullName' field
+      document.getElementById('fullname').value  = address.name || address.fullName || '';
+      document.getElementById('mobile').value    = address.mobile || '';
+      document.getElementById('pincode').value   = address.pincode || '';
+      document.getElementById('city').value      = address.city || '';
+      document.getElementById('state').value     = address.state || '';
+      document.getElementById('house').value     = address.street || address.house || '';
+      var addrTypeEl = document.getElementById('addressType');
+      if (addrTypeEl) addrTypeEl.value = address.type || 'home';
     }
 
     async function saveUserInfoAndAddress() {
+      // Guard: if saveBtn is in edit mode (_bzEditId set), don't create new address
+      var _saveBtn = document.getElementById('saveUserInfo');
+      if (_saveBtn && _saveBtn._bzEditId) {
+        // Trigger the edit handler instead
+        if (typeof _saveBtn.onclick === 'function') { _saveBtn.onclick(); }
+        return;
+      }
       const fullname = document.getElementById('fullname').value;
       const mobile = document.getElementById('mobile').value;
       const pincode = document.getElementById('pincode').value;
@@ -4709,6 +4723,10 @@
       const addressType = document.getElementById('addressType').value;
       if (!fullname || !mobile || !pincode || !city || !state || !house) {
         showToast('Please fill in all required fields', 'error');
+        return;
+      }
+      if (mobile.replace(/[^0-9]/g,'').length !== 10) {
+        showToast('Mobile number must be exactly 10 digits', 'error');
         return;
       }
       userInfo = { fullName: fullname, mobile, pincode, city, state, house };
@@ -5738,7 +5756,22 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
-      document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
+      // Use onclick (not addEventListener) so editAddress can safely override without double-fire
+      var _saveUserInfoBtn = document.getElementById('saveUserInfo');
+      if (_saveUserInfoBtn) _saveUserInfoBtn.onclick = saveUserInfoAndAddress;
+
+      // Mobile number: only digits, max 10
+      var _mobileInput = document.getElementById('mobile');
+      if (_mobileInput) {
+        _mobileInput.addEventListener('input', function() {
+          var val = this.value.replace(/[^0-9]/g, '');
+          if (val.length > 10) val = val.slice(0, 10);
+          this.value = val;
+        });
+        _mobileInput.addEventListener('keypress', function(e) {
+          if (!/[0-9]/.test(e.key)) e.preventDefault();
+        });
+      }
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
       function _resolveProductHash(hash) {
