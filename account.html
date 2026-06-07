@@ -938,15 +938,73 @@
       accOpenModal('alertModal');
     };
 
+    // ========== ADDRESS DATA HELPERS (localStorage) ==========
+    function accGetLocalAddresses() {
+      try {
+        const data = localStorage.getItem('bz_addresses');
+        return data ? JSON.parse(data) : [];
+      } catch (e) { return []; }
+    }
+
+    function accSaveAddressToLocal(address) {
+      let addresses = accGetLocalAddresses();
+      const idToMatch = address.id;
+      const contentStreet = (address.street || '').trim().toLowerCase();
+      const contentPincode = (address.pincode || '').trim();
+      let existingId = idToMatch;
+
+      addresses = addresses.filter(a => {
+        const sameId = idToMatch && a.id === idToMatch;
+        const sameContent = (a.street || '').trim().toLowerCase() === contentStreet &&
+                            (a.pincode || '').trim() === contentPincode;
+        if (sameContent && !existingId) existingId = a.id;
+        return !sameId && !sameContent;
+      });
+
+      const finalAddress = {
+        ...address,
+        id: existingId || 'addr_' + Date.now(),
+        updatedAt: Date.now()
+      };
+
+      addresses.unshift(finalAddress);
+      const finalAddresses = addresses.map((a, idx) => ({ ...a, isDefault: idx === 0 }));
+      localStorage.setItem('bz_addresses', JSON.stringify(finalAddresses));
+      return true;
+    }
+
+    function accDeleteAddressFromLocal(id) {
+      let addresses = accGetLocalAddresses();
+      const initialLength = addresses.length;
+      addresses = addresses.filter(a => a.id !== id);
+      if (addresses.length < initialLength) {
+        if (addresses.length > 0 && !addresses.some(a => a.isDefault)) addresses[0].isDefault = true;
+        localStorage.setItem('bz_addresses', JSON.stringify(addresses));
+        return true;
+      }
+      return false;
+    }
+
+    function accSetDefaultAddressLocal(id) {
+      let addresses = accGetLocalAddresses();
+      const target = addresses.find(a => a.id === id);
+      if (!target) return false;
+      addresses = addresses.filter(a => a.id !== id);
+      addresses.unshift({ ...target, isDefault: true });
+      const finalAddresses = addresses.map((a, idx) => ({ ...a, isDefault: idx === 0 }));
+      localStorage.setItem('bz_addresses', JSON.stringify(finalAddresses));
+      return true;
+    }
+
     // ========== ADDRESS RENDERING ==========
-    function renderAddressList(snap, container) {
+    function renderAddressList(container) {
       container.innerHTML = '';
-      if (!snap.exists()) {
+      const addresses = accGetLocalAddresses();
+      if (addresses.length === 0) {
         container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">No saved addresses</div><div class="empty-state-description">Add an address to speed up checkout</div></div>';
         return;
       }
-      snap.forEach(child => {
-        const a = { id: child.key, ...child.val() };
+      addresses.forEach(a => {
         const card = document.createElement('div');
         card.className = 'address-card' + (a.isDefault ? ' default' : '');
         card.innerHTML = `
@@ -1031,13 +1089,7 @@
     async function loadAddresses(user) {
       const container = document.getElementById('savedAddresses');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;"></div></div>';
-      try {
-        const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
-        renderAddressList(snap, container);
-      } catch (e) {
-        container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Could not load addresses.</p>';
-      }
+      renderAddressList(container);
     }
 
     // ========== LOAD WISHLIST (Initial) ==========
@@ -1202,38 +1254,26 @@
 
       // Save Address
       if (e.target.id === 'saveAddress') {
-        const user = window._accCurrentUser;
-        if (!user) { accShowToast('Please login first', 'error'); return; }
         const addr = {
+          id: _editingAddressId,
           name: document.getElementById('addressName')?.value?.trim() || '',
           mobile: document.getElementById('addressMobile')?.value?.trim() || '',
           pincode: document.getElementById('addressPincode')?.value?.trim() || '',
           city: document.getElementById('addressCity')?.value?.trim() || '',
           state: document.getElementById('addressState')?.value?.trim() || '',
           street: document.getElementById('addressStreet')?.value?.trim() || '',
-          type: document.getElementById('addressType')?.value || 'home',
-          userId: user.uid,
-          updatedAt: Date.now()
+          type: document.getElementById('addressType')?.value || 'home'
         };
         if (!addr.name || !addr.mobile || !addr.pincode || !addr.city || !addr.state || !addr.street) {
           accShowToast('All fields required', 'error');
           return;
         }
-        const btn = e.target;
-        btn.disabled = true; btn.textContent = 'Saving...';
-        try {
-          if (_editingAddressId) {
-            await update(ref(db, 'addresses/' + _editingAddressId), addr);
-          } else {
-            addr.createdAt = Date.now();
-            await push(ref(db, 'addresses'), addr);
-          }
+        if (accSaveAddressToLocal(addr)) {
           accShowToast('Address saved! ✅', 'success');
           accHideAddressForm();
-        } catch (err) {
+          renderAddressList(document.getElementById('savedAddresses'));
+        } else {
           accShowToast('Failed to save', 'error');
-        } finally {
-          btn.disabled = false; btn.textContent = 'Save Address';
         }
       }
 
@@ -1276,22 +1316,19 @@
       // Edit Address (delegated)
       if (e.target.classList.contains('edit-addr')) {
         const id = e.target.getAttribute('data-id');
-        try {
-          const snap = await get(ref(db, 'addresses/' + id));
-          if (snap.exists()) {
-            accShowAddressForm({ id, ...snap.val() });
-          }
-        } catch (err) {}
+        const addresses = accGetLocalAddresses();
+        const address = addresses.find(a => a.id === id);
+        if (address) accShowAddressForm(address);
       }
 
       // Delete Address (delegated)
       if (e.target.classList.contains('delete-addr')) {
         const id = e.target.getAttribute('data-id');
-        accShowAlert('Delete Address', 'Are you sure?', async () => {
-          try {
-            await remove(ref(db, 'addresses/' + id));
+        accShowAlert('Delete Address', 'Are you sure?', () => {
+          if (accDeleteAddressFromLocal(id)) {
             accShowToast('Deleted', 'success');
-          } catch (err) {
+            renderAddressList(document.getElementById('savedAddresses'));
+          } else {
             accShowToast('Failed', 'error');
           }
         });
@@ -1300,15 +1337,10 @@
       // Set Default Address (delegated)
       if (e.target.classList.contains('default-addr')) {
         const id = e.target.getAttribute('data-id');
-        const user = window._accCurrentUser;
-        if (!user) { accShowToast('Please login first', 'error'); return; }
-        try {
-          const snap = await get(query(ref(db, 'addresses'), orderByChild('userId'), equalTo(user.uid)));
-          const updates = {};
-          snap.forEach(child => { updates['addresses/' + child.key + '/isDefault'] = (child.key === id); });
-          await update(ref(db), updates);
+        if (accSetDefaultAddressLocal(id)) {
           accShowToast('Default set!', 'success');
-        } catch (err) {
+          renderAddressList(document.getElementById('savedAddresses'));
+        } else {
           accShowToast('Failed', 'error');
         }
       }
