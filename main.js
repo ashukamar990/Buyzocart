@@ -4772,32 +4772,56 @@
       document.getElementById('newAddressForm').style.display = 'block';
       const saveBtn = document.getElementById('saveUserInfo');
       saveBtn.textContent = 'Update Address';
+      // Mark form as "edit mode" so saveUserInfoAndAddress doesn't run
+      saveBtn._bzEditId = address.id;
+      saveBtn._bzEditIsDefault = address.isDefault;
       saveBtn.onclick = async function() {
-        const fullname = document.getElementById('fullname').value;
-        const mobile = document.getElementById('mobile').value;
-        const pincode = document.getElementById('pincode').value;
-        const city = document.getElementById('city').value;
-        const state = document.getElementById('state').value;
-        const house = document.getElementById('house').value;
+        const fullname = document.getElementById('fullname').value.trim();
+        const mobile = document.getElementById('mobile').value.trim();
+        const pincode = document.getElementById('pincode').value.trim();
+        const city = document.getElementById('city').value.trim();
+        const state = document.getElementById('state').value.trim();
+        const house = document.getElementById('house').value.trim();
         const addressType = document.getElementById('addressType').value;
+        if (!fullname || !mobile || !pincode || !city || !state || !house) {
+          showToast('Please fill in all required fields', 'error');
+          return;
+        }
         const addressData = {
-          name: fullname,
-          mobile: mobile,
-          pincode: pincode,
-          city: city,
-          state: state,
-          street: house,
-          type: addressType,
+          name: fullname, mobile, pincode, city, state,
+          street: house, type: addressType,
           userId: currentUser.uid,
-          isDefault: address.isDefault
+          isDefault: saveBtn._bzEditIsDefault,
+          createdAt: address.createdAt || Date.now()
         };
         try {
-          await window.firebase.update(window.firebase.ref(window.firebase.database, 'addresses/' + address.id), addressData);
-          showToast('Address updated successfully', 'success');
+          // UPDATE existing address — never create a new one
+          await window.firebase.set(
+            window.firebase.ref(window.firebase.database, 'addresses/' + saveBtn._bzEditId),
+            addressData
+          );
+          // Update in-memory array directly
+          const idx = savedAddresses.findIndex(function(a){ return a.id === saveBtn._bzEditId; });
+          if (idx !== -1) savedAddresses[idx] = Object.assign({ id: saveBtn._bzEditId }, addressData);
+          // Invalidate cache
+          _bzInvalidateAddressCache();
+          if (typeof cacheManager !== 'undefined') {
+            try { cacheManager.delete(CACHE_KEYS.ADDRESSES); } catch(e2){}
+          }
+          showToast('Address updated ✓', 'success');
+          // Restore button to original state
+          saveBtn.textContent = 'Save This Address';
+          saveBtn.onclick = null;  // Remove edit handler
+          saveBtn._bzEditId = null;
+          // Show updated saved addresses
+          renderSavedAddresses();
           document.getElementById('savedAddressesSection').style.display = 'block';
-          document.getElementById('newAddressForm').style.display = 'block';
-          _bzInvalidateAddressCache(); // Cache invalidate → next loadSavedAddresses fresh data layega
-          await loadSavedAddresses();
+          // Auto-fill updated address
+          fillAddressForm(Object.assign({ id: saveBtn._bzEditId }, addressData));
+          userInfo = { fullName: fullname, mobile, pincode, city, state, house };
+          // Scroll to saved section
+          var _ss = document.getElementById('savedAddressesSection');
+          if (_ss) setTimeout(function(){ _ss.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
         } catch (error) {
           console.error('Error updating address:', error);
           showToast('Failed to update address', 'error');
@@ -4807,28 +4831,48 @@
 
     function deleteAddressConfirmation(address) {
       document.getElementById('alertTitle').textContent = 'Delete Address';
-      document.getElementById('alertMessage').textContent = `Are you sure you want to delete address for ${address.name}?`;
+      document.getElementById('alertMessage').textContent = 'Are you sure you want to delete this address for ' + address.name + '?';
       document.getElementById('alertModal').classList.add('active');
-      document.getElementById('alertConfirmBtn').onclick = async function() {
+      // Use onclick — safely overrides confirmLogout without stacking listeners
+      var _confirmBtn = document.getElementById('alertConfirmBtn');
+      var _cancelBtn  = document.getElementById('alertCancelBtn');
+      _confirmBtn.onclick = async function() {
         document.getElementById('alertModal').classList.remove('active');
+        // Restore confirmLogout for future modal uses
+        _confirmBtn.onclick = confirmLogout;
         if (!currentUser) { showToast('Please log in again', 'error'); return; }
         try {
           await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
+          // Remove from in-memory array immediately — no re-fetch needed
+          savedAddresses = savedAddresses.filter(function(a){ return a.id !== address.id; });
+          // Invalidate cache
+          _bzInvalidateAddressCache();
+          if (typeof cacheManager !== 'undefined') {
+            try { cacheManager.delete(CACHE_KEYS.ADDRESSES); } catch(e2){}
+          }
           showToast('Address deleted', 'success');
-          _bzInvalidateAddressCache(); // Cache invalidate → fresh data aayega
-          await loadSavedAddresses();
-          const _sas = document.getElementById('savedAddressesSection');
-          const _naf = document.getElementById('newAddressForm');
-          if (_sas) _sas.style.display = savedAddresses.length ? 'block' : 'none';
-          if (_naf) _naf.style.display = 'block';
+          // Re-render directly
+          var _sas = document.getElementById('savedAddressesSection');
+          var _naf = document.getElementById('newAddressForm');
+          if (savedAddresses.length > 0) {
+            if (_sas) _sas.style.display = 'block';
+            renderSavedAddresses();
+            // Auto-fill the first remaining address
+            fillAddressForm(savedAddresses[0]);
+            userInfo = { fullName: savedAddresses[0].name, mobile: savedAddresses[0].mobile, pincode: savedAddresses[0].pincode, city: savedAddresses[0].city, state: savedAddresses[0].state, house: savedAddresses[0].street };
+          } else {
+            if (_sas) _sas.style.display = 'none';
+            if (_naf) _naf.style.display = 'block';
+          }
         } catch (error) {
           console.error('Error deleting address:', error);
-          // Never sign out on address delete error
           showToast('Could not delete address. Please try again.', 'error');
         }
       };
-      document.getElementById('alertCancelBtn').onclick = function() {
+      _cancelBtn.onclick = function() {
         document.getElementById('alertModal').classList.remove('active');
+        // Restore confirmLogout
+        _confirmBtn.onclick = confirmLogout;
       };
     }
 
@@ -5653,7 +5697,9 @@
       document.getElementById('resetPasswordBtn')?.addEventListener('click', handleResetPassword);
       document.getElementById('mobileLogoutBtn')?.addEventListener('click', showLogoutConfirmation);
       document.getElementById('alertCancelBtn')?.addEventListener('click', () => document.getElementById('alertModal').classList.remove('active'));
-      document.getElementById('alertConfirmBtn')?.addEventListener('click', confirmLogout);
+      // Use onclick (not addEventListener) so other modals can safely override it
+      var _alertConfirmBtn = document.getElementById('alertConfirmBtn');
+      if (_alertConfirmBtn) _alertConfirmBtn.onclick = confirmLogout;
       document.getElementById('productImageModalClose')?.addEventListener('click', () => document.getElementById('productImageModal').classList.remove('active'));
       document.getElementById('productImageModalPrev')?.addEventListener('click', prevProductModalImage);
       document.getElementById('productImageModalNext')?.addEventListener('click', nextProductModalImage);
