@@ -1018,7 +1018,7 @@
           break;
         case 'productsPage':
           renderProducts(products, 'productGrid');
-          updateProductsCount();
+          updateProductsCount(false);
           break;
         case 'homePage':
           renderProducts(products, 'homeProductGrid');
@@ -1404,16 +1404,16 @@
       const _BT_CARD = _cardBrandVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;background:#2563eb;border-radius:50%;margin-left:2px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"7\" height=\"7\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></span>') : '';
       const _brandOverlay = product.brand ? `<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;pointer-events:none;" title="View Brand"><div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="display:flex;align-items:center;gap:5px;cursor:pointer;pointer-events:auto;">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div></div>` : '';
       const _cardImages = getProductImages(product);
-      const _cardDotsHtml = _cardImages.length > 1
-        ? `<div class="pc-img-dots">${_cardImages.map((_, i) =>
-            `<span class="pc-img-dot${i === 0 ? ' active' : ''}"></span>`).join('')}</div>`
+      // Image count indicator (bottom-right corner, only if multiple images)
+      const _imgCountHtml = _cardImages.length > 1
+        ? `<div class="pc-img-count-badge">${_cardImages.length} <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`
         : '';
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
           ${badgeHtml}
           ${_brandOverlay}
+          ${_imgCountHtml}
         </div>
-        ${_cardDotsHtml}
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
@@ -1699,12 +1699,160 @@
       loadSimilarProducts(freshProduct);
       loadSimilarProductsSmall(freshProduct);
       loadProductReviews(freshProduct.id);
+      renderProductHighlights(freshProduct);
       if (currentUser) addToRecentlyViewed(freshProduct.id);
       showPage('productDetailPage');
       const _slugUrl = _productShareUrl(freshProduct.id);
       window.history.replaceState(null, '', _slugUrl);
       window.scrollTo(0, 0);
     }
+
+    /* ══════════════════════════════════════════════════
+       PRODUCT HIGHLIGHTS — Firebase se flexible fields
+    ══════════════════════════════════════════════════ */
+    function renderProductHighlights(product) {
+      const section = document.getElementById('productHighlightsSection');
+      const grid = document.getElementById('productHighlightsGrid');
+      const addSection = document.getElementById('productAdditionalDetails');
+      const addGrid = document.getElementById('additionalDetailsGrid');
+      if (!section || !grid) return;
+
+      // Primary highlight fields (always shown in main grid)
+      const PRIMARY_KEYS = ['color','fabric','material','fit','shape','length','style','type','gender'];
+      // Additional detail fields (shown in expandable section)
+      const ADDITIONAL_KEYS = [
+        'neck','neckType','printOrPatternType','pattern','comboOf','combo',
+        'ornamentation','stitchType','sleeveLenth','sleeveLength','sleeveStyling',
+        'sleeveType','occasion','genericName','countryOfOrigin','brand',
+        'size','sleeve','waistRise','wash','care','weight','dimensions'
+      ];
+      // Fields to completely skip
+      const SKIP_KEYS = [
+        'id','productId','_id','key','name','title','description','desc',
+        'fullDescription','fullDesc','details','price','originalPrice',
+        'images','image','imageUrl','image1','image2','image3','image4','image5',
+        'badge','tag','isTrending','trending','isFeatured','featured',
+        'sku','SKU','quantity','stock','inventory','reviewCount',
+        'brandId','brandLogo','brandIcon','blueTickAdmin','categoryId','category',
+        'categoryName','timestamps','createdAt','updatedAt','soldCount',
+        'views','clicks'
+      ];
+
+      function formatKey(k) {
+        return k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).trim();
+      }
+      function makeItem(label, value) {
+        return `<div class="highlight-item"><div class="highlight-label">${label}</div><div class="highlight-value">${value}</div></div>`;
+      }
+
+      const primaryItems = [];
+      const additionalItems = [];
+      const usedKeys = new Set();
+
+      // Process PRIMARY fields first
+      PRIMARY_KEYS.forEach(function(key) {
+        const val = product[key] || product[key.charAt(0).toUpperCase() + key.slice(1)];
+        if (val && String(val).trim()) {
+          primaryItems.push(makeItem(formatKey(key), String(val).trim()));
+          usedKeys.add(key.toLowerCase());
+        }
+      });
+
+      // Process ADDITIONAL fields
+      ADDITIONAL_KEYS.forEach(function(key) {
+        const val = product[key] || product[key.charAt(0).toUpperCase() + key.slice(1)];
+        const kLow = key.toLowerCase();
+        if (val && String(val).trim() && !usedKeys.has(kLow)) {
+          additionalItems.push(makeItem(formatKey(key), String(val).trim()));
+          usedKeys.add(kLow);
+        }
+      });
+
+      // Any other custom fields from product (not in skip list)
+      Object.keys(product).forEach(function(key) {
+        const kLow = key.toLowerCase();
+        if (usedKeys.has(kLow)) return;
+        if (SKIP_KEYS.some(function(s) { return s.toLowerCase() === kLow; })) return;
+        const val = product[key];
+        if (!val || typeof val === 'object') return;
+        const strVal = String(val).trim();
+        if (!strVal || strVal === 'undefined' || strVal === 'null' || strVal === 'N/A') return;
+        // If it looks like a primary highlight, put it there, else additional
+        if (primaryItems.length < 6) {
+          primaryItems.push(makeItem(formatKey(key), strVal));
+        } else {
+          additionalItems.push(makeItem(formatKey(key), strVal));
+        }
+        usedKeys.add(kLow);
+      });
+
+      if (primaryItems.length === 0 && additionalItems.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      grid.innerHTML = primaryItems.join('');
+      section.style.display = 'block';
+
+      if (addSection && addGrid) {
+        if (additionalItems.length > 0) {
+          addGrid.innerHTML = additionalItems.join('');
+          addSection.style.display = 'block';
+          // Reset toggle state
+          var toggleContent = document.getElementById('additionalDetailsContent');
+          var toggleIcon = document.getElementById('additionalToggleIcon');
+          if (toggleContent) toggleContent.style.display = 'none';
+          if (toggleIcon) toggleIcon.style.transform = '';
+        } else {
+          addSection.style.display = 'none';
+        }
+      }
+
+      // Store highlights text for copy
+      window._bzHighlightsCopyText = [...primaryItems, ...additionalItems].map(function(html) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var label = tmp.querySelector('.highlight-label');
+        var value = tmp.querySelector('.highlight-value');
+        return (label ? label.textContent : '') + ': ' + (value ? value.textContent : '');
+      }).join('\n');
+    }
+    window.renderProductHighlights = renderProductHighlights;
+
+    window.bzToggleAdditional = function() {
+      var content = document.getElementById('additionalDetailsContent');
+      var icon = document.getElementById('additionalToggleIcon');
+      if (!content) return;
+      var isOpen = content.style.display !== 'none';
+      content.style.display = isOpen ? 'none' : 'block';
+      if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
+    };
+
+    window.bzCopyHighlights = function() {
+      var text = window._bzHighlightsCopyText || '';
+      if (!text) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+          if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
+        });
+      } else {
+        var el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
+      }
+    };
+
+    window.bzMoreInfo = function() {
+      var product = window.currentProduct;
+      if (!product) return;
+      // Scroll to description
+      var desc = document.getElementById('detailFullDesc');
+      if (desc) desc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     function initProductDetailGallery(product) {
       const mainImage = document.getElementById('mainProductImage');
@@ -3323,7 +3471,7 @@
           if (pill.textContent === 'All') pill.classList.add('active');
         });
         renderProducts(products, 'productGrid');
-        updateProductsCount();
+        updateProductsCount(false);
         return;
       }
       const category = categories.find(c => c.id === categoryId || c.name === categoryId || c.name.toLowerCase() === (categoryId||'').toLowerCase());
@@ -3335,7 +3483,7 @@
         });
         if (filtered2.length > 0) {
           renderProducts(filtered2, 'productGrid');
-          updateProductsCount();
+          updateProductsCount(true);
         }
         return;
       }
@@ -3367,7 +3515,7 @@
         }
       });
       renderProducts(filteredProducts, 'productGrid');
-      updateProductsCount();
+      updateProductsCount(true);
     }
 
     function applyPriceFilter() {
@@ -3395,7 +3543,7 @@
       });
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
-      updateProductsCount();
+      updateProductsCount(true);
     }
 
     function resetPriceFilter() {
@@ -3439,11 +3587,11 @@
       // Hide noProductsMessage
       var noMsg = document.getElementById('noProductsMessage');
       if (noMsg) noMsg.style.display = 'none';
-      updateProductsCount();
+      updateProductsCount(false);
     }
     window.resetAllFilters = resetAllFilters;
 
-    function updateProductsCount() {
+    function updateProductsCount(isFiltered) {
       const container = document.getElementById('productGrid');
       const noMsg = document.getElementById('noProductsMessage');
       const productsCount = document.getElementById('productsCount');
@@ -3451,9 +3599,12 @@
       const visibleProducts = container.querySelectorAll('.product-card').length;
       if (noMsg) noMsg.style.display = visibleProducts === 0 ? 'block' : 'none';
       if (productsCount) {
-        productsCount.innerHTML = visibleProducts > 0
-          ? `<span style="font-size:13px;color:var(--muted);">${visibleProducts} product${visibleProducts===1?'':'s'} found</span>`
-          : '';
+        // Count sirf tab dikhao jab filter/category/search active ho — default "All" pe nahi
+        if (isFiltered && visibleProducts > 0) {
+          productsCount.innerHTML = `<span style="font-size:13px;color:var(--muted);">${visibleProducts} product${visibleProducts===1?'':'s'} found</span>`;
+        } else {
+          productsCount.innerHTML = '';
+        }
       }
     }
     window.updateProductsCount = updateProductsCount;
@@ -3470,7 +3621,7 @@
         document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
         allCategory.classList.add('active');
         renderProducts(products, 'productGrid');
-        updateProductsCount();
+        updateProductsCount(false);
       });
       fragment.appendChild(allCategory);
       categories.forEach(category => {
@@ -4814,7 +4965,7 @@
           renderProducts(products, 'homeProductGrid');
           const tp = products.filter(p => p.isTrending || p.trending);
           renderProductSlider((tp.length ? tp : products).slice(0, 35), 'productSlider');
-        } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(); }
+        } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(false); }
         else if (cp === 'searchResultsPage' && window.currentSearchQuery) {
           const r = searchProducts(window.currentSearchQuery); window.currentSearchResults = r; renderSearchResults(r, window.currentSearchQuery);
         }
@@ -4863,7 +5014,7 @@
           renderProducts(products, 'homeProductGrid');
           const tp = products.filter(p => p.isTrending || p.trending);
           renderProductSlider((tp.length ? tp : products).slice(0, 35), 'productSlider');
-        } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(); }
+        } else if (cp === 'productsPage') { renderProducts(products, 'productGrid'); updateProductsCount(false); }
         else if (cp === 'searchResultsPage' && window.currentSearchQuery) {
           const r = searchProducts(window.currentSearchQuery); window.currentSearchResults = r; renderSearchResults(r, window.currentSearchQuery);
         }
@@ -4891,7 +5042,7 @@
               if (!trendingProducts.length) trendingProducts = [...products].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
               renderProductSlider((trendingProducts.length ? trendingProducts : products).slice(0, 35), 'productSlider');
             } else if (currentPage === 'productsPage') {
-              renderProducts(products, 'productGrid'); updateProductsCount();
+              renderProducts(products, 'productGrid'); updateProductsCount(false);
             } else if (currentPage === 'searchResultsPage' && window.currentSearchQuery) {
               const filteredResults = searchProducts(window.currentSearchQuery);
               window.currentSearchResults = filteredResults; renderSearchResults(filteredResults, window.currentSearchQuery);
@@ -4989,7 +5140,7 @@
         renderProducts(products, 'productGrid');
         const trending = products.filter(p => p.isTrending || p.trending).slice(0, 10);
         renderProductSlider((trending.length > 0 ? trending : products).slice(0, 35), 'productSlider');
-        updateProductsCount();
+        updateProductsCount(false);
       }
       const cachedCategories = cacheManager.get(CACHE_KEYS.CATEGORIES);
       if (cachedCategories && cachedCategories.length > 0) {
