@@ -612,6 +612,38 @@
 
     function performSearch(query) {
       if (!query.trim()) return;
+      const q = query.trim();
+
+      // ── PRODUCT ID / SHARE LINK DETECTION ──
+      // Case 1: full share link (contains #p/)
+      let directProductId = null;
+      if (q.includes('#p/')) {
+        const slug = q.split('#p/')[1].split(/[?&#]/)[0];
+        if (slug) directProductId = _slugToId(slug) || slug;
+      }
+      // Case 2: raw product ID (exact match in products array — no spaces, looks like a Firebase key)
+      if (!directProductId) {
+        const exactMatch = products.find(p => {
+          const pid = p.id || p.productId || '';
+          return pid && pid.toLowerCase() === q.toLowerCase();
+        });
+        if (exactMatch) directProductId = exactMatch.id || exactMatch.productId;
+      }
+      // Case 3: slug-only (no # prefix)
+      if (!directProductId && q.length >= 4 && q.length <= 20 && /^[a-zA-Z0-9_-]+$/.test(q)) {
+        const fromSlug = _slugToId(q);
+        if (fromSlug) directProductId = fromSlug;
+      }
+
+      if (directProductId) {
+        const product = products.find(p => p.id === directProductId || p.productId === directProductId || String(p.id) === String(directProductId));
+        if (product) {
+          try { closeSearchPanel(); } catch(e){}
+          setTimeout(function() { showProductDetail(product); }, 50);
+          return;
+        }
+      }
+
       document.getElementById('searchPanelInput').blur();
       addToRecentSearches(query);
       const results = searchProducts(query);
@@ -2595,59 +2627,51 @@
       galleryMain.appendChild(track);
 
       let _ogIdx = 0, _ogTx = 0, _ogTy = 0, _ogDragging = false;
+      let _ogDots = [];
+
       function _ogGoTo(idx) {
         _ogIdx = Math.max(0, Math.min(productImages.length - 1, idx));
         track.style.transform = `translateX(-${_ogIdx * 100}%)`;
+        // Update dots whenever navigation happens
+        _ogDots.forEach((d, i) => {
+          d.style.width = i === _ogIdx ? '18px' : '8px';
+          d.style.height = i === _ogIdx ? '8px' : '8px';
+          d.style.borderRadius = i === _ogIdx ? '4px' : '50%';
+          d.style.background = i === _ogIdx ? '#2563eb' : '#cbd5e1';
+        });
       }
-      galleryMain.addEventListener('touchstart', e => {
-        _ogTx = e.touches[0].clientX; _ogTy = e.touches[0].clientY; _ogDragging = true;
-      }, { passive: true });
-      galleryMain.addEventListener('touchend', e => {
-        if (!_ogDragging) return; _ogDragging = false;
-        const dx = e.changedTouches[0].clientX - _ogTx;
-        const dy = Math.abs(e.changedTouches[0].clientY - _ogTy);
-        if (Math.abs(dx) > 40 && dy < 60) _ogGoTo(dx < 0 ? _ogIdx + 1 : _ogIdx - 1);
-      }, { passive: true });
+
       const prevBtn = galleryMain.querySelector('.carousel-control.prev');
       const nextBtn = galleryMain.querySelector('.carousel-control.next');
       if (prevBtn) { prevBtn.style.cssText = 'display:flex!important;position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:10;background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);'; prevBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx - 1); }; }
       if (nextBtn) { nextBtn.style.cssText = 'display:flex!important;position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:10;background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);'; nextBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx + 1); }; }
+
       // Dots below gallery
       if (dotsContainer && productImages.length > 1) {
         dotsContainer.innerHTML = '';
         dotsContainer.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0 4px;';
-        const dots = productImages.map((_, i) => {
+        _ogDots = productImages.map((_, i) => {
           const d = document.createElement('span');
           d.style.cssText = i === 0
-            ? 'width:18px;height:8px;border-radius:4px;background:#2563eb;display:inline-block;transition:all 0.25s;'
-            : 'width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;transition:all 0.25s;';
+            ? 'width:18px;height:8px;border-radius:4px;background:#2563eb;display:inline-block;transition:all 0.25s;cursor:pointer;'
+            : 'width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;transition:all 0.25s;cursor:pointer;';
           d.onclick = () => _ogGoTo(i);
           dotsContainer.appendChild(d);
           return d;
         });
-        const origGoTo = _ogGoTo;
-        function _ogGoToWithDots(idx) {
-          origGoTo(idx);
-          dots.forEach((d, i) => {
-            d.style.width = i === _ogIdx ? '18px' : '8px';
-            d.style.borderRadius = i === _ogIdx ? '4px' : '50%';
-            d.style.background = i === _ogIdx ? '#2563eb' : '#cbd5e1';
-          });
-        }
-        galleryMain.removeEventListener('touchstart', null);
-        galleryMain.addEventListener('touchstart', e => {
-          _ogTx = e.touches[0].clientX; _ogTy = e.touches[0].clientY; _ogDragging = true;
-        }, { passive: true });
-        galleryMain.addEventListener('touchend', e => {
-          if (!_ogDragging) return; _ogDragging = false;
-          const dx = e.changedTouches[0].clientX - _ogTx;
-          const dy = Math.abs(e.changedTouches[0].clientY - _ogTy);
-          if (Math.abs(dx) > 40 && dy < 60) _ogGoToWithDots(dx < 0 ? _ogIdx + 1 : _ogIdx - 1);
-        }, { passive: true });
-        if (prevBtn) prevBtn.onclick = e => { e.stopPropagation(); _ogGoToWithDots(_ogIdx - 1); };
-        if (nextBtn) nextBtn.onclick = e => { e.stopPropagation(); _ogGoToWithDots(_ogIdx + 1); };
-        dots.forEach((d, i) => { d.onclick = () => _ogGoToWithDots(i); });
       }
+
+      // Single touchstart/touchend — updates dots via _ogGoTo
+      const _ogTouchStart = e => { _ogTx = e.touches[0].clientX; _ogTy = e.touches[0].clientY; _ogDragging = true; };
+      const _ogTouchEnd = e => {
+        if (!_ogDragging) return; _ogDragging = false;
+        const dx = e.changedTouches[0].clientX - _ogTx;
+        const dy = Math.abs(e.changedTouches[0].clientY - _ogTy);
+        if (Math.abs(dx) > 40 && dy < 60) _ogGoTo(dx < 0 ? _ogIdx + 1 : _ogIdx - 1);
+      };
+      galleryMain.addEventListener('touchstart', _ogTouchStart, { passive: true });
+      galleryMain.addEventListener('touchend', _ogTouchEnd, { passive: true });
+
       _ogGoTo(0);
     }
 
@@ -3866,20 +3890,49 @@
       const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b) - getProductScore(a));
       // ONLY homeProductGrid gets first-20 limit — all other grids show everything
       const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
-      // PERFORMANCE: batch DOM writes in one RAF
+      // PERFORMANCE: chunk rendering for productGrid & searchResultsGrid to prevent hang
+      const CHUNK_SIZE = 20;
+      const needsChunking = (containerId === 'productGrid' || containerId === 'searchResultsGrid') && toRender.length > CHUNK_SIZE;
+
       requestAnimationFrame(() => {
       container.innerHTML = '';
       if (!toRender || toRender.length === 0) {
-        // productGrid and searchResultsGrid have their own HTML empty-state elements
         if (containerId !== 'productGrid' && containerId !== 'searchResultsGrid') {
-          container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">🛍️</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
+          container.innerHTML = '<div class="card-panel center" style="padding:40px 16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><div style="font-size:52px;">\uD83D\uDECD\uFE0F</div><h3 style="margin:0;font-size:1rem;font-weight:800;">No products yet</h3><p style="color:var(--muted-light);margin:0;font-size:0.85rem;text-align:center;max-width:200px;">Products will appear here once added</p></div></div>';
         }
         return;
       }
-      const fragment = document.createDocumentFragment();
-      toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
-      container.appendChild(fragment);
-      // Populate multi-grid sections for home page only (debounced, uses requestIdleCallback if available)
+      if (needsChunking) {
+        const firstChunk = toRender.slice(0, CHUNK_SIZE);
+        const fragment = document.createDocumentFragment();
+        firstChunk.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        container.appendChild(fragment);
+        let chunkStart = CHUNK_SIZE;
+        function renderNextChunk() {
+          if (chunkStart >= toRender.length) return;
+          const chunk = toRender.slice(chunkStart, chunkStart + CHUNK_SIZE);
+          const frag = document.createDocumentFragment();
+          chunk.forEach(product => { if (product) frag.appendChild(createProductCard(product)); });
+          container.appendChild(frag);
+          chunkStart += CHUNK_SIZE;
+          if (chunkStart < toRender.length) {
+            if (typeof requestIdleCallback === 'function') {
+              requestIdleCallback(renderNextChunk, { timeout: 500 });
+            } else {
+              setTimeout(renderNextChunk, 50);
+            }
+          }
+        }
+        if (typeof requestIdleCallback === 'function') {
+          requestIdleCallback(renderNextChunk, { timeout: 500 });
+        } else {
+          setTimeout(renderNextChunk, 50);
+        }
+      } else {
+        const fragment = document.createDocumentFragment();
+        toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        container.appendChild(fragment);
+      }
       if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
         var _populateFn = function() { window.bzPopulateHomeGrids(sorted); };
         if (typeof requestIdleCallback === 'function') {
@@ -5479,6 +5532,11 @@
       }
       window.addEventListener('hashchange', function() {
         const hash = window.location.hash.substring(1);
+        // Brand hash: #brand/<brandId>
+        if (hash.startsWith('brand/')) {
+          const bid = hash.substring(6);
+          if (bid) { showBrandProfile(bid, bid); return; }
+        }
         if (hash && document.getElementById(hash)) showPage(hash);
         const productId = _resolveProductHash(hash);
         if (productId) {
@@ -5488,17 +5546,31 @@
       });
       if (window.location.hash) {
         const hash = window.location.hash.substring(1);
-        const pageId = hash.split('?')[0];
-        if (document.getElementById(pageId)) showPage(pageId);
-        const productId = _resolveProductHash(hash);
-        if (productId) {
-          const checkProducts = setInterval(() => {
-            if (products.length > 0) {
-              const product = products.find(p => p.id === productId || String(p.id) === String(productId));
-              if (product) showProductDetail(product);
-              clearInterval(checkProducts);
-            }
-          }, 100);
+        // Brand hash on load
+        if (hash.startsWith('brand/')) {
+          const bid = hash.substring(6);
+          if (bid) {
+            const checkBrands = setInterval(() => {
+              if (typeof showBrandProfile === 'function') {
+                clearInterval(checkBrands);
+                showBrandProfile(bid, bid);
+              }
+            }, 100);
+            setTimeout(() => clearInterval(checkBrands), 8000);
+          }
+        } else {
+          const pageId = hash.split('?')[0];
+          if (document.getElementById(pageId)) showPage(pageId);
+          const productId = _resolveProductHash(hash);
+          if (productId) {
+            const checkProducts = setInterval(() => {
+              if (products.length > 0) {
+                const product = products.find(p => p.id === productId || String(p.id) === String(productId));
+                if (product) showProductDetail(product);
+                clearInterval(checkProducts);
+              }
+            }, 100);
+          }
         }
       }
       const whatsappLink = document.querySelector('a[href*="wa.me"]');
@@ -5619,8 +5691,13 @@
         chip.addEventListener('mouseenter', function() { this.style.background='#2563eb';this.style.color='#fff';this.style.borderColor='#2563eb'; });
         chip.addEventListener('mouseleave', function() { this.style.background='#f8fafc';this.style.color='#475569';this.style.borderColor='#e2e8f0'; });
         chip.addEventListener('click', function() {
-          var cat = categories && categories.find(function(c) { return c.name === tag; });
-          if (cat) filterByCategory(cat.id);
+          var cat = categories && categories.find(function(c) { return c.name === tag || (c.name||'').toLowerCase() === tag.toLowerCase(); });
+          if (cat) {
+            filterByCategory(cat.id || cat.name);
+          } else {
+            // Fallback: filter by tag as name string directly
+            filterByCategory(tag);
+          }
         });
         container.appendChild(chip);
       });
@@ -7706,6 +7783,9 @@
       // Remember which page opened the brand profile
       var activePage = document.querySelector('.page.active');
       window._brandProfileReturnPage = activePage ? activePage.id : 'homePage';
+      // Update URL so share link goes to this brand
+      var _bzBrandUrl = window.location.origin + window.location.pathname.replace('index.html','') + '#brand/' + brandId;
+      window.history.replaceState(null, '', _bzBrandUrl);
       // If opened from search panel, close it first
       var sp = document.getElementById('searchPanel');
       if (sp && sp.classList.contains('active')) {
@@ -7755,11 +7835,13 @@
       Promise.all([
         _fb.get(_fb.ref(_fb.database, 'brands/' + brandId)),
         _fb.get(_fb.ref(_fb.database, 'brandFollowers/' + brandId)),
-        _fb.get(_fb.ref(_fb.database, 'reviews')).catch(function(){ return null; })
+        _fb.get(_fb.ref(_fb.database, 'reviews')).catch(function(){ return null; }),
+        _fb.get(_fb.ref(_fb.database, 'brandFollowers')).catch(function(){ return null; })
       ]).then(function(res) {
-        var bd         = res[0].exists() ? res[0].val() : {};
-        var followSnap = res[1];
-        var reviewsSnap= res[2];
+        var bd             = res[0].exists() ? res[0].val() : {};
+        var followSnap     = res[1];
+        var reviewsSnap    = res[2];
+        var allFollowSnap  = res[3];   // used to find brands THIS brand follows
         var name       = bd.name || brandName || 'Brand';
         var isVerified = !!bd.blueTickAdmin;
         var level      = bd.verificationLevel || 'normal';
@@ -7777,6 +7859,23 @@
           followers = Object.keys(followSnap.val()).filter(function(k){ return !!followSnap.val()[k]; }).length;
         }
         var isFollowing = !!(currentUser && followSnap.exists() && followSnap.val() && followSnap.val()[currentUser.uid]);
+
+        // Brands this brand follows (allFollowSnap: brandFollowers/<otherBrandId>/<brandId>)
+        var followingBrands = [];
+        if (allFollowSnap && allFollowSnap.exists()) {
+          var allFollowData = allFollowSnap.val() || {};
+          Object.keys(allFollowData).forEach(function(otherBrandId) {
+            var followData = allFollowData[otherBrandId] || {};
+            // Check if brandId is among the followers of otherBrandId
+            if (followData[brandId] && otherBrandId !== brandId) {
+              // Find brand info from cache
+              var otherBrand = (window.__bzBrandsCache || []).find(function(b) { return b.id === otherBrandId; });
+              if (otherBrand) followingBrands.push(otherBrand);
+              else followingBrands.push({ id: otherBrandId, name: followData[brandId].brandName || otherBrandId });
+            }
+          });
+        }
+        var followingCount = followingBrands.length;
 
         // Products
         var brandProds = products.filter(function(p) {
@@ -7902,15 +8001,11 @@
         +'<div style="position:relative;max-width:640px;margin:0 auto;">'
           +'<div style="height:190px;'+bannerBg+'position:relative;overflow:hidden;">'
             + bannerOverlay
-            // Decorative circles when no banner
             +(!bannerUrl?'<div style="position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.1);"></div><div style="position:absolute;right:40px;bottom:-60px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08);"></div>':'')
           +'</div>'
-          // Logo
           +'<div id="bpLogoHolder" style="position:absolute;bottom:-36px;left:18px;width:80px;height:80px;border-radius:22px;border:4px solid #fff;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.22);cursor:pointer;z-index:5;">'
             + logoHtml
           +'</div>'
-          // Verified badge on logo (small)
-          // Verified badge shown beside name only (no duplicate on logo)
         +'</div>'
 
         // ── BRAND IDENTITY ──
@@ -7924,7 +8019,7 @@
               +'</div>'
               +'<div style="font-size:12px;color:#94a3b8;font-weight:600;margin-top:1px;">'+username+'</div>'
               +(desc?'<p style="font-size:13px;color:#475569;margin:8px 0 0;line-height:1.6;max-width:380px;">'+desc+'</p>':'')
-              +(website?'<a href="'+website+'" target="_blank" style="font-size:12px;color:'+themeColor+';font-weight:700;text-decoration:none;margin-top:4px;display:inline-block;">🔗 '+website.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>':'')
+              +(website?'<a href="'+website+'" target="_blank" style="font-size:12px;color:'+themeColor+';font-weight:700;text-decoration:none;margin-top:4px;display:inline-block;">\uD83D\uDD17 '+website.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>':'')
             +'</div>'
           +'</div>'
         +'</div>'
@@ -7933,13 +8028,13 @@
         +'<div style="max-width:640px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
           +'<div style="display:flex;gap:8px;">'
             + statCard('<span id="brandFollowerCount">'+fmtNum(followers)+'</span>','Followers', themeColor)
+            +(followingCount?statCard('<span id="brandFollowingCount" style="cursor:pointer;" onclick="window._bpTab(\'Following\')">'+fmtNum(followingCount)+'</span>','Following','#7c3aed'):'')
             + statCard(fmtNum(brandProds.length),'Products','#0f172a')
-            +(avgRating?statCard('<span style="color:#f59e0b;">★</span>'+avgRating,'Rating','#f59e0b'):'')
-            +(totalReviews?statCard(fmtNum(totalReviews),'Reviews','#7c3aed'):'')
+            +(avgRating?statCard('<span style="color:#f59e0b;">\u2605</span>'+avgRating,'Rating','#f59e0b'):'')
           +'</div>'
         +'</div>'
 
-        // ── ACTION BUTTONS ──
+        // ── ACTION BUTTONS ── (Follow + Shop Now + Share)
         +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
           + followBtn
           +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;transition:all .2s;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
@@ -7947,12 +8042,12 @@
         +'</div>'
 
         // ── OFFERS ──
-        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🎁</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
+        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">\uD83C\uDF81</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
 
-        // Search bar removed
+                // Search bar removed
         +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
           +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
-            +['Products','Trending','Reviews','About'].map(function(t,i){
+            +['Products','Trending','Following','Reviews','About'].map(function(t,i){
               return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:12px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
             }).join('')
           +'</div>'
@@ -7983,6 +8078,35 @@
                   + trending.map(bpProductCard).join('')
                 +'</div>'
               : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No trending products yet</div>')
+          +'</div>'
+
+          // Following tab — brands that this brand follows
+          +'<div id="bpTabContentFollowing" style="display:none;padding:16px;">'
+            +(followingBrands.length
+              ? '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">'
+                + followingBrands.map(function(fb){
+                    var fbColor = '#2563eb';
+                    var fbLogo = fb.logo || '';
+                    var fbName = fb.name || 'Brand';
+                    var fbInitials = fbName.slice(0,2).toUpperCase();
+                    var fbLogoHtml = fbLogo
+                      ? '<img src="'+fbLogo+'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;" onerror="this.style.display=\'none\'">'
+                      : '<div style="width:40px;height:40px;border-radius:10px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">'+fbInitials+'</div>';
+                    return '<div onclick="showBrandProfile(\''+fb.id+'\',\''+fbName.replace(/'/g,'')+'\')" style="background:#fff;border-radius:14px;border:1px solid #f1f5f9;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:box-shadow .2s;" onmouseenter="this.style.boxShadow=\'0 4px 16px rgba(37,99,235,.15)\'" onmouseleave="this.style.boxShadow=\'0 1px 4px rgba(0,0,0,.06)\'">'
+                      + fbLogoHtml
+                      +'<div style="flex:1;min-width:0;">'
+                        +'<div style="font-size:13px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+fbName+'</div>'
+                        +(fb.category?'<div style="font-size:10px;color:#94a3b8;margin-top:2px;">'+fb.category+'</div>':'')
+                      +'</div>'
+                      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>'
+                    +'</div>';
+                  }).join('')
+                +'</div>'
+              : '<div style="text-align:center;padding:40px 20px;">'
+                  +'<div style="font-size:48px;margin-bottom:12px;opacity:.35;">🏷️</div>'
+                  +'<div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">No following yet</div>'
+                  +'<div style="font-size:13px;color:#94a3b8;">This brand hasn\'t followed any other brands.</div>'
+                +'</div>')
           +'</div>'
 
           // Reviews tab
@@ -8062,7 +8186,7 @@
 
         // ── Tab switch logic ──
         window._bpTab = function(tab) {
-          ['Products','Trending','Reviews','About'].forEach(function(t) {
+          ['Products','Trending','Following','Reviews','About'].forEach(function(t) {
             var el = document.getElementById('bpTabContent'+t);
             var btn = document.getElementById('bpTab'+t);
             if (el) el.style.display = t===tab?'block':'none';
