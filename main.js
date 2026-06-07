@@ -35,6 +35,37 @@
       RECENT_SEARCHES: 'bz_recent_searches'
     };
 
+
+    /* ── Short URL slug utility ────────────────────────────────────
+       Converts any product ID to a stable 6-char slug.
+       Links become: buyzocart.shop/#p/Xk9mQ2
+       Mapping stored in localStorage for deep link resolution.
+    ─────────────────────────────────────────────────────────────── */
+    const _slugMap  = JSON.parse(localStorage.getItem('bz_slug_map')  || '{}');
+    const _idMap    = JSON.parse(localStorage.getItem('bz_id_map')    || '{}');
+    const _SLUG_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+
+    function _makeSlug(id) {
+      if (_idMap[id]) return _idMap[id];
+      let h = 5381;
+      for (let i = 0; i < id.length; i++) h = ((h << 5) + h) ^ id.charCodeAt(i);
+      h = Math.abs(h);
+      let slug = '';
+      const base = _SLUG_CHARS.length;
+      for (let i = 0; i < 6; i++) { slug += _SLUG_CHARS[h % base]; h = Math.floor(h / base); }
+      while (_slugMap[slug] && _slugMap[slug] !== id) slug += _SLUG_CHARS[Math.floor(Math.random() * base)];
+      _slugMap[slug] = id;
+      _idMap[id]     = slug;
+      try { localStorage.setItem('bz_slug_map', JSON.stringify(_slugMap)); } catch(e) {}
+      try { localStorage.setItem('bz_id_map',   JSON.stringify(_idMap));   } catch(e) {}
+      return slug;
+    }
+    function _slugToId(slug) { return _slugMap[slug] || null; }
+    function _productShareUrl(productId) {
+      const base = window.location.origin + window.location.pathname.replace('index.html', '');
+      return base + '#p/' + _makeSlug(String(productId));
+    }
+
     const cacheManager = {
       set(key, data, ttl = 60 * 60 * 1000) {
         const item = { data, timestamp: Date.now(), ttl };
@@ -1372,11 +1403,17 @@
       const _cardBrandVerified = !!(product.blueTickAdmin);
       const _BT_CARD = _cardBrandVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;background:#2563eb;border-radius:50%;margin-left:2px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"7\" height=\"7\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></span>') : '';
       const _brandOverlay = product.brand ? `<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;pointer-events:none;" title="View Brand"><div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="display:flex;align-items:center;gap:5px;cursor:pointer;pointer-events:auto;">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div></div>` : '';
+      const _cardImages = getProductImages(product);
+      const _cardDotsHtml = _cardImages.length > 1
+        ? `<div class="pc-img-dots">${_cardImages.map((_, i) =>
+            `<span class="pc-img-dot${i === 0 ? ' active' : ''}"></span>`).join('')}</div>`
+        : '';
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
           ${badgeHtml}
           ${_brandOverlay}
         </div>
+        ${_cardDotsHtml}
         <div class="product-card-body">
           <div class="product-card-title">${productName}</div>
           <div class="product-card-rating">
@@ -1437,7 +1474,7 @@
 
     function shareProduct(product) {
       const productId = product.id || product.productId || product._id;
-      const shareLink = window.location.origin + window.location.pathname.replace('index.html', '') + '#productDetailPage?product=' + productId;
+      const shareLink = _productShareUrl(productId);
       if (navigator.share) {
         navigator.share({
           title: product.name || product.title,
@@ -1644,7 +1681,7 @@
       }
       const shareLink = document.getElementById('productShareLink');
       if (shareLink) {
-        const url = window.location.origin + window.location.pathname + '#productDetailPage?product=' + freshProduct.id;
+        const url = _productShareUrl(freshProduct.id);
         shareLink.value = url;
       }
       const wishlistBtn = document.getElementById('detailWishlistBtn');
@@ -1664,6 +1701,8 @@
       loadProductReviews(freshProduct.id);
       if (currentUser) addToRecentlyViewed(freshProduct.id);
       showPage('productDetailPage');
+      const _slugUrl = _productShareUrl(freshProduct.id);
+      window.history.replaceState(null, '', _slugUrl);
       window.scrollTo(0, 0);
     }
 
@@ -1785,21 +1824,9 @@
         slide.className = 'viewer-slide';
         slide.id = 'vslide_' + i;
         const img = document.createElement('img');
-        // ── OPTIMIZATION: Lazy loading ───────────────────────────
-        // First image eager (above fold), rest lazy (bandwidth save)
-        if (i === 0) {
-          img.src = src;
-        } else {
-          img.dataset.src = src;
-          img.loading = 'lazy';
-          // IntersectionObserver se load hoga jab slide visible ho
-          if (window._lazyObserver) {
-            img.src = ''; // placeholder
-            window._lazyObserver.observe(img);
-          } else {
-            img.src = src;
-          }
-        }
+        // Always load all images eagerly in fullscreen viewer —
+        // lazy loading causes black slides when swiping.
+        img.src = src;
         img.draggable = false;
         img.alt = 'Product image ' + (i+1);
         slide.appendChild(img);
@@ -2339,36 +2366,58 @@
       if (!currentProduct) return;
       const galleryMain = document.getElementById('galleryMain');
       const dotsContainer = document.getElementById('orderCarouselDots');
-      if (!galleryMain || !dotsContainer) return;
+      if (!galleryMain) return;
       const productImages = getProductImages(currentProduct);
       if (productImages.length === 0) productImages.push(getProductImage(currentProduct));
-      galleryMain.style.backgroundImage = `url('${productImages[0]}')`;
-      dotsContainer.innerHTML = '';
-      productImages.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
-        dot.addEventListener('click', () => setOrderPageImage(index, productImages));
-        dotsContainer.appendChild(dot);
+
+      // Remove dots completely
+      if (dotsContainer) dotsContainer.innerHTML = '';
+
+      // Build img-based swipe slider
+      galleryMain.style.backgroundImage = '';
+      galleryMain.style.overflow = 'hidden';
+      galleryMain.style.position = 'relative';
+      const oldTrack = galleryMain.querySelector('.og-track');
+      if (oldTrack) oldTrack.remove();
+
+      const track = document.createElement('div');
+      track.className = 'og-track';
+      track.style.cssText = 'display:flex;height:100%;width:100%;transition:transform 0.3s ease;will-change:transform;';
+      productImages.forEach(src => {
+        const slide = document.createElement('div');
+        slide.style.cssText = 'flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;';
+        img.draggable = false;
+        slide.appendChild(img);
+        track.appendChild(slide);
       });
+      galleryMain.appendChild(track);
+
+      let _ogIdx = 0, _ogTx = 0, _ogTy = 0, _ogDragging = false;
+      function _ogGoTo(idx) {
+        _ogIdx = Math.max(0, Math.min(productImages.length - 1, idx));
+        track.style.transform = `translateX(-${_ogIdx * 100}%)`;
+      }
+      galleryMain.addEventListener('touchstart', e => {
+        _ogTx = e.touches[0].clientX; _ogTy = e.touches[0].clientY; _ogDragging = true;
+      }, { passive: true });
+      galleryMain.addEventListener('touchend', e => {
+        if (!_ogDragging) return; _ogDragging = false;
+        const dx = e.changedTouches[0].clientX - _ogTx;
+        const dy = Math.abs(e.changedTouches[0].clientY - _ogTy);
+        if (Math.abs(dx) > 40 && dy < 60) _ogGoTo(dx < 0 ? _ogIdx + 1 : _ogIdx - 1);
+      }, { passive: true });
       const prevBtn = galleryMain.querySelector('.carousel-control.prev');
       const nextBtn = galleryMain.querySelector('.carousel-control.next');
-      if (prevBtn) prevBtn.onclick = () => {
-        const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
-        const newIndex = (activeIndex - 1 + productImages.length) % productImages.length;
-        setOrderPageImage(newIndex, productImages);
-      };
-      if (nextBtn) nextBtn.onclick = () => {
-        const activeIndex = Array.from(dotsContainer.children).findIndex(dot => dot.classList.contains('active'));
-        const newIndex = (activeIndex + 1) % productImages.length;
-        setOrderPageImage(newIndex, productImages);
-      };
+      if (prevBtn) prevBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx - 1); };
+      if (nextBtn) nextBtn.onclick = e => { e.stopPropagation(); _ogGoTo(_ogIdx + 1); };
+      _ogGoTo(0);
     }
 
     function setOrderPageImage(index, productImages) {
-      const galleryMain = document.getElementById('galleryMain');
-      const dots = document.querySelectorAll('#orderCarouselDots .carousel-dot');
-      if (galleryMain && productImages[index]) galleryMain.style.backgroundImage = `url('${productImages[index]}')`;
-      dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+      // Legacy no-op — initOrderPageGallery handles everything now
     }
 
     function toUserInfo() {
@@ -3579,6 +3628,8 @@
       const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b) - getProductScore(a));
       // ONLY homeProductGrid gets first-20 limit — all other grids show everything
       const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
+      // PERFORMANCE: batch DOM writes in one RAF
+      requestAnimationFrame(() => {
       container.innerHTML = '';
       if (!toRender || toRender.length === 0) {
         // productGrid and searchResultsGrid have their own HTML empty-state elements
@@ -3599,6 +3650,7 @@
           setTimeout(_populateFn, 500);
         }
       }
+      });
     }
 
     function renderBannerCarousel() {
@@ -4717,6 +4769,9 @@
     }
 
     function fetchLiveData(forceRefresh) {
+      const _now = Date.now();
+      if (!forceRefresh && fetchLiveData._lastCall && (_now - fetchLiveData._lastCall) < 800) return;
+      fetchLiveData._lastCall = _now;
       if (!window.firebase || !window.firebase.database) {
         console.error('Firebase not initialized');
         return;
@@ -5179,23 +5234,29 @@
       document.getElementById('saveUserInfo')?.addEventListener('click', saveUserInfoAndAddress);
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
+      function _resolveProductHash(hash) {
+        if (hash.startsWith('p/')) return _slugToId(hash.substring(2));
+        if (hash.includes('productDetailPage?product=')) return hash.split('=')[1];
+        return null;
+      }
       window.addEventListener('hashchange', function() {
         const hash = window.location.hash.substring(1);
         if (hash && document.getElementById(hash)) showPage(hash);
-        if (hash.includes('productDetailPage?product=')) {
-          const productId = hash.split('=')[1];
-          const product = products.find(p => p.id === productId);
+        const productId = _resolveProductHash(hash);
+        if (productId) {
+          const product = products.find(p => p.id === productId || String(p.id) === String(productId));
           if (product) showProductDetail(product);
         }
       });
       if (window.location.hash) {
-        const pageId = window.location.hash.substring(1);
+        const hash = window.location.hash.substring(1);
+        const pageId = hash.split('?')[0];
         if (document.getElementById(pageId)) showPage(pageId);
-        if (window.location.hash.includes('productDetailPage?product=')) {
-          const productId = window.location.hash.split('=')[1];
+        const productId = _resolveProductHash(hash);
+        if (productId) {
           const checkProducts = setInterval(() => {
             if (products.length > 0) {
-              const product = products.find(p => p.id === productId);
+              const product = products.find(p => p.id === productId || String(p.id) === String(productId));
               if (product) showProductDetail(product);
               clearInterval(checkProducts);
             }
@@ -5755,15 +5816,20 @@
       setupSearchInput();
       setupViewAllRatings();
       updateAdminSettingsUI();
-      if (window.location.hash && window.location.hash.includes('productDetailPage?product=')) {
-        const productId = window.location.hash.split('=')[1];
-        const checkProducts = setInterval(() => {
-          if (products.length > 0) {
-            const product = products.find(p => p.id === productId);
-            if (product) showProductDetail(product);
-            clearInterval(checkProducts);
-          }
-        }, 100);
+      if (window.location.hash) {
+        const _hash3 = window.location.hash.substring(1);
+        const _pid3 = typeof _resolveProductHash === 'function'
+          ? _resolveProductHash(_hash3)
+          : (_hash3.includes('productDetailPage?product=') ? _hash3.split('=')[1] : null);
+        if (_pid3) {
+          const _chk3 = setInterval(() => {
+            if (products.length > 0) {
+              const _p3 = products.find(p => p.id === _pid3 || String(p.id) === String(_pid3));
+              if (_p3) showProductDetail(_p3);
+              clearInterval(_chk3);
+            }
+          }, 100);
+        }
       }
     }
 
