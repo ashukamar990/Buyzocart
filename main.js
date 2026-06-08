@@ -4580,57 +4580,67 @@
     async function loadSavedAddresses() {
       if (!currentUser) return;
       const uid = currentUser.uid;
-      const cacheKey = 'bz_addr_' + uid;
+      const savedAddressesSection = document.getElementById('savedAddressesSection');
 
-      // ── Cache check pehle ─────────────────────────────────────
-      const cached = _bzCacheGet(cacheKey, 5 * 60 * 1000);
-      if (cached) {
-        try { savedAddresses = cached; } catch(e) {}
-        const savedAddressesSection = document.getElementById('savedAddressesSection');
-        if (cached.length > 0) {
-          if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-          renderSavedAddresses();
-          const defaultAddr = savedAddresses[0];
-          if (defaultAddr) {
-            fillAddressForm(defaultAddr);
-            userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
-            document.querySelectorAll('input[name="savedAddress"]').forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
-          }
-        } else if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-        return; // Zero Firebase read
-      }
-
-      // ── Cache miss → Firebase se fetch ───────────────────────
       try {
-        const snapshot = await window.firebase.get(
-          window.firebase.query(
-            window.firebase.ref(window.firebase.database, 'addresses'),
-            window.firebase.orderByChild('userId'),
-            window.firebase.equalTo(currentUser.uid)
-          )
-        );
-        const savedAddressesSection = document.getElementById('savedAddressesSection');
-        if (!snapshot.exists()) {
+        // Always fetch fresh from Firebase — no cache (cache was causing reload issues)
+        // Try indexed query first, fallback to full scan
+        var snapshot = null;
+        try {
+          snapshot = await window.firebase.get(
+            window.firebase.query(
+              window.firebase.ref(window.firebase.database, 'addresses'),
+              window.firebase.orderByChild('userId'),
+              window.firebase.equalTo(uid)
+            )
+          );
+        } catch(queryErr) {
+          // Index not set — fallback: fetch all and filter client-side
+          snapshot = await window.firebase.get(
+            window.firebase.ref(window.firebase.database, 'addresses')
+          );
+        }
+
+        if (!snapshot || !snapshot.exists()) {
           if (savedAddressesSection) savedAddressesSection.style.display = 'none';
           savedAddresses = [];
-          _bzCacheSet(cacheKey, []);
           return;
         }
+
         const addressesObj = snapshot.val();
-        const addresses = Object.keys(addressesObj).map(key => ({ id: key, ...addressesObj[key] }));
-        savedAddresses = addresses.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
-        _bzCacheSet(cacheKey, savedAddresses); // Cache mein save karo
-        if (addresses.length > 0) {
+        // Filter by userId — handles both indexed and full-scan results
+        const addresses = Object.keys(addressesObj)
+          .map(key => ({ id: key, ...addressesObj[key] }))
+          .filter(a => a.userId === uid || a.userId === undefined);
+        // If fallback gave us all addresses, strictly filter
+        const myAddresses = addresses.filter(a => a.userId === uid);
+        savedAddresses = (myAddresses.length > 0 ? myAddresses : addresses)
+          .sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt||0) - (a.createdAt||0));
+
+        if (savedAddresses.length > 0) {
           if (savedAddressesSection) savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-          const defaultAddr = savedAddresses[0];
+          const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
           if (defaultAddr) {
             fillAddressForm(defaultAddr);
-            userInfo = { fullName: defaultAddr.name, mobile: defaultAddr.mobile, pincode: defaultAddr.pincode, city: defaultAddr.city, state: defaultAddr.state, house: defaultAddr.street };
-            const radios = document.querySelectorAll('input[name="savedAddress"]');
-            radios.forEach(r => { if (r.value === defaultAddr.id) r.checked = true; });
+            userInfo = {
+              fullName: defaultAddr.name || defaultAddr.fullName || '',
+              mobile: defaultAddr.mobile || '',
+              pincode: defaultAddr.pincode || '',
+              city: defaultAddr.city || '',
+              state: defaultAddr.state || '',
+              house: defaultAddr.street || defaultAddr.house || ''
+            };
+            requestAnimationFrame(function() {
+              document.querySelectorAll('input[name="savedAddress"]').forEach(r => {
+                if (r.value === defaultAddr.id) r.checked = true;
+              });
+            });
           }
-        } else if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+        } else {
+          if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+          savedAddresses = [];
+        }
       } catch (error) {
         console.error('Error loading addresses:', error);
       }
@@ -8111,17 +8121,24 @@
         var isFollowing = !!(currentUser && followSnap.exists() && followSnap.val() && followSnap.val()[currentUser.uid]);
 
         // Brands this brand follows (allFollowSnap: brandFollowers/<otherBrandId>/<brandId>)
+        // "Following" = brands that the owner of THIS brand has followed
+        // brandFollowers/<otherBrandId>/<ownerUid> = { userId, brandId, followedAt }
+        var _ownerUid = bd.requestedBy || bd.ownerId || bd.userId || bd.uid || '';
         var followingBrands = [];
-        if (allFollowSnap && allFollowSnap.exists()) {
+        if (allFollowSnap && allFollowSnap.exists() && _ownerUid) {
           var allFollowData = allFollowSnap.val() || {};
           Object.keys(allFollowData).forEach(function(otherBrandId) {
+            if (otherBrandId === brandId) return; // skip self
             var followData = allFollowData[otherBrandId] || {};
-            // Check if brandId is among the followers of otherBrandId
-            if (followData[brandId] && otherBrandId !== brandId) {
-              // Find brand info from cache
+            // Check if owner's UID followed this brand
+            if (followData[_ownerUid]) {
               var otherBrand = (window.__bzBrandsCache || []).find(function(b) { return b.id === otherBrandId; });
-              if (otherBrand) followingBrands.push(otherBrand);
-              else followingBrands.push({ id: otherBrandId, name: followData[brandId].brandName || otherBrandId });
+              if (otherBrand) {
+                followingBrands.push(otherBrand);
+              } else {
+                var fEntry = followData[_ownerUid] || {};
+                followingBrands.push({ id: otherBrandId, name: fEntry.brandName || otherBrandId });
+              }
             }
           });
         }
@@ -8187,8 +8204,14 @@
         var safeName = name.replace(/'/g,'').replace(/"/g,'');
 
         // Brand owner check — hide follow button for own brand
-        var brandOwnerId = bd.ownerId || bd.userId || bd.uid || bd.sellerId || bd.createdBy || '';
-        var isOwnBrand = !!(currentUser && brandOwnerId && currentUser.uid === brandOwnerId);
+        var brandOwnerId = bd.requestedBy || bd.ownerId || bd.userId || bd.uid || bd.sellerId || bd.createdBy || '';
+        // Also check via sellerData — sellerId is uid.slice(0,12) so check prefix match too
+        var _uid = currentUser ? currentUser.uid : '';
+        var isOwnBrand = !!(currentUser && (
+          (brandOwnerId && brandOwnerId === _uid) ||
+          (brandOwnerId && _uid.startsWith(brandOwnerId)) ||
+          (brandOwnerId && brandOwnerId.startsWith(_uid.slice(0,12)))
+        ));
 
         // Follow button
         var followBtn = '';
