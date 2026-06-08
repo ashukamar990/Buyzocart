@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2024-06-08 - Accessible Icon Buttons & Clipboard UX
+**Learning:** Icon-only interactive elements must be semantic `<button>` elements with `aria-label` to be keyboard and screen reader accessible. Providing instant visual feedback (like "✅ Copied!") on the button itself significantly improves the perceived responsiveness of clipboard operations.
+**Action:** Standardize all icon-only interactions as buttons with ARIA labels and use the `bzCopyText` helper for copy interactions.

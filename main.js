@@ -364,6 +364,24 @@
       }, 3000);
     }
 
+    /**
+     * Standardised helper for clipboard operations with visual feedback.
+     */
+    function bzCopyText(text, button, successMsg = 'Copied!') {
+      if (!text || !button || button.hasAttribute('data-copying')) return;
+      const old = button.innerHTML; button.setAttribute('data-copying', 'true');
+      const done = () => {
+        button.innerHTML = '✅ ' + successMsg;
+        setTimeout(() => { button.innerHTML = old; button.removeAttribute('data-copying'); }, 2000);
+      };
+      navigator.clipboard.writeText(text).then(() => { done(); showToast(successMsg); })
+        .catch(() => {
+          const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el);
+          el.select(); document.execCommand('copy'); document.body.removeChild(el);
+          done(); showToast(successMsg);
+        });
+    }
+
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -3236,9 +3254,9 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      if (shareLink) {
+        bzCopyText(shareLink.value, document.getElementById('copyShareLink'), 'Link copied!');
+      }
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5756,6 +5774,10 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay').textContent;
+        bzCopyText(orderId, this, 'ID Copied!');
+      });
       // Use onclick (not addEventListener) so editAddress can safely override without double-fire
       var _saveUserInfoBtn = document.getElementById('saveUserInfo');
       if (_saveUserInfoBtn) _saveUserInfoBtn.onclick = saveUserInfoAndAddress;
