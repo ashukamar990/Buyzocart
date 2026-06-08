@@ -6800,7 +6800,8 @@
         }).catch(() => {});
       }
 
-      // ── Addresses: loadSavedAddresses() already has TTL cache ─
+      // ── Addresses: force fresh load on every auth (reload fix) ─
+      localStorage.removeItem('bz_addr_' + uid); // clear stale cache
       loadSavedAddresses();
 
       // ❌ REMOVED: onValue(userRef) — user data changes rarely
@@ -8185,10 +8186,19 @@
         // Safe name for onclick attrs
         var safeName = name.replace(/'/g,'').replace(/"/g,'');
 
+        // Brand owner check — hide follow button for own brand
+        var brandOwnerId = bd.ownerId || bd.userId || bd.uid || bd.sellerId || bd.createdBy || '';
+        var isOwnBrand = !!(currentUser && brandOwnerId && currentUser.uid === brandOwnerId);
+
         // Follow button
-        var followBtn = currentUser
-          ? '<button id="brandFollowBtn" onclick="window.toggleBrandFollow(\''+brandId+'\',\''+safeName+'\',this)" style="flex:1;padding:11px 0;border-radius:24px;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;transition:all .2s;'+(isFollowing?'background:#f1f5f9;color:#64748b;':'background:'+themeColor+';color:#fff;')+'">'+(isFollowing?'✓ Following':'+ Follow')+'</button>'
-          : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="flex:1;padding:11px 0;border-radius:24px;background:'+themeColor+';color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">+ Follow</button>';
+        var followBtn = '';
+        if (!isOwnBrand) {
+          followBtn = currentUser
+            ? '<button id="brandFollowBtn" onclick="window.toggleBrandFollow(\'' + brandId + '\',\'' + safeName + '\',this)" style="flex:1;padding:11px 0;border-radius:24px;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;transition:all .2s;' + (isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:' + themeColor + ';color:#fff;') + '">' + (isFollowing ? '&#10003; Following' : '+ Follow') + '</button>'
+            : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="flex:1;padding:11px 0;border-radius:24px;background:' + themeColor + ';color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">+ Follow</button>';
+        } else {
+          followBtn = '<button onclick="showPage(\'sellProductPage\')" style="flex:1;padding:11px 0;border-radius:24px;border:none;background:' + themeColor + ';color:#fff;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">&#9881;&#65039; Manage Brand</button>';
+        }
 
         // Share button
         var shareBtn = '<button onclick="if(navigator.share){navigator.share({title:\''+safeName+'\',url:window.location.href})}else{navigator.clipboard&&navigator.clipboard.writeText(window.location.href);if(typeof showToast===\'function\')showToast(\'Link copied!\',\'success\');}" style="width:44px;height:44px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
@@ -8242,7 +8252,7 @@
           +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
             +'<button onclick="showPage(window._brandProfileReturnPage||\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
             +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
-            + shareBtn
+            +'<button onclick="window._bpTab(\'Followers\')" title="Followers" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">&#128101;</button>'
           +'</div>'
         +'</div>'
 
@@ -8276,10 +8286,10 @@
         // ── STATS ROW ──
         +'<div style="max-width:640px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
           +'<div style="display:flex;gap:8px;">'
-            + statCard('<span id="brandFollowerCount">'+fmtNum(followers)+'</span>','Followers', themeColor)
-            +(followingCount?statCard('<span id="brandFollowingCount" style="cursor:pointer;" onclick="window._bpTab(\'Following\')">'+fmtNum(followingCount)+'</span>','Following','#7c3aed'):'')
-            + statCard(fmtNum(brandProds.length),'Products','#0f172a')
-            +(avgRating?statCard('<span style="color:#f59e0b;">\u2605</span>'+avgRating,'Rating','#f59e0b'):'')
+            + statCard('<span id="brandFollowerCount" style="cursor:pointer;" onclick="window._bpTab(\'Followers\')">' + fmtNum(followers) + '</span>', 'Followers', themeColor)
+            + statCard(fmtNum(brandProds.length), 'Products', '#0f172a')
+            + statCard('<span id="brandFollowingCount" style="cursor:pointer;" onclick="window._bpTab(\'Following\')">' + fmtNum(followingCount) + '</span>', 'Following', '#7c3aed')
+            + (avgRating ? statCard('<span style="color:#f59e0b;">&#9733;</span>' + avgRating, 'Rating', '#f59e0b') : '')
           +'</div>'
         +'</div>'
 
@@ -8296,7 +8306,7 @@
                 // Search bar removed
         +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
           +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
-            +['Products','Trending','Following','Reviews','About'].map(function(t,i){
+            +['Products','Trending','Followers','Following','Reviews','About'].map(function(t,i){
               return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:12px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
             }).join('')
           +'</div>'
@@ -8327,6 +8337,50 @@
                   + trending.map(bpProductCard).join('')
                 +'</div>'
               : '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No trending products yet</div>')
+          +'</div>'
+
+          // Followers tab — show who follows this brand
+          +'<div id="bpTabContentFollowers" style="display:none;padding:16px;">'
+          +(function(){
+            if (!followSnap.exists() || !followSnap.val()) {
+              return '<div style="text-align:center;padding:40px 20px;">'
+                + '<div style="font-size:48px;margin-bottom:12px;opacity:.3;">&#128101;</div>'
+                + '<div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">No followers yet</div>'
+                + '<div style="font-size:13px;color:#94a3b8;">Share this brand page to get followers!</div>'
+                + '</div>';
+            }
+            var fData = followSnap.val();
+            var fKeys = Object.keys(fData).filter(function(k){ return !!fData[k]; });
+            if (!fKeys.length) {
+              return '<div style="text-align:center;padding:40px 20px;">'
+                + '<div style="font-size:48px;margin-bottom:12px;opacity:.3;">&#128101;</div>'
+                + '<div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">No followers yet</div>'
+                + '<div style="font-size:13px;color:#94a3b8;">Share this brand page to get followers!</div>'
+                + '</div>';
+            }
+            var colors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626'];
+            return '<div style="display:flex;flex-direction:column;gap:8px;">'
+              + fKeys.map(function(uid){
+                  var fi = fData[uid] || {};
+                  var fName = fi.displayName || fi.name || fi.username || '';
+                  var fPhoto = fi.photoURL || fi.photo || '';
+                  var fInit = (fName || uid).slice(0,2).toUpperCase();
+                  var fColor = colors[uid.charCodeAt(0)%5];
+                  var fDate = fi.followedAt ? new Date(fi.followedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : '';
+                  var avatar = fPhoto
+                    ? '<img src="'+fPhoto+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+                    : '<div style="width:42px;height:42px;border-radius:50%;background:'+fColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;">'+fInit+'</div>';
+                  return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-radius:12px;border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.05);">'
+                    + avatar
+                    + '<div style="flex:1;min-width:0;">'
+                      + (fName ? '<div style="font-size:14px;font-weight:700;color:#0f172a;">'+fName+'</div>' : '')
+                      + '<div style="font-size:11px;color:#94a3b8;margin-top:1px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+uid+'</div>'
+                    + '</div>'
+                    + (fDate ? '<div style="font-size:10px;color:#cbd5e1;flex-shrink:0;">'+fDate+'</div>' : '')
+                  + '</div>';
+                }).join('')
+              + '</div>';
+          }())
           +'</div>'
 
           // Following tab — brands that this brand follows
@@ -8435,7 +8489,7 @@
 
         // ── Tab switch logic ──
         window._bpTab = function(tab) {
-          ['Products','Trending','Following','Reviews','About'].forEach(function(t) {
+          ['Products','Trending','Followers','Following','Reviews','About'].forEach(function(t) {
             var el = document.getElementById('bpTabContent'+t);
             var btn = document.getElementById('bpTab'+t);
             if (el) el.style.display = t===tab?'block':'none';
