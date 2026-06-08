@@ -2783,6 +2783,11 @@
               createdAt: Date.now()
             };
             await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+            // Write to index so loadSavedAddresses can find it
+            await window.firebase.set(
+              window.firebase.ref(window.firebase.database, 'userAddressIndex/' + currentUser.uid + '/' + addressId),
+              true
+            ).catch(function(){});
             savedAddresses.push({ id: addressId, ...addressData });
             savedAddresses.sort(function(a,b){ return (b.isDefault?1:0)-(a.isDefault?1:0)||b.createdAt-a.createdAt; });
             // Invalidate BOTH cache keys
@@ -4583,44 +4588,54 @@
       const savedAddressesSection = document.getElementById('savedAddressesSection');
 
       try {
-        // Always fetch fresh from Firebase — no cache (cache was causing reload issues)
-        // Try indexed query first, fallback to full scan
-        var snapshot = null;
+        // ── STRATEGY: Rules allow reading individual $addressId if userId matches ──
+        // Root addresses/ node is admin-only — so we CANNOT query it directly.
+        // Instead: fetch address IDs from userAddressIndex/<uid>, then fetch each one.
+        var addressIds = [];
+
+        // Step 1: Get address index for this user
+        var indexSnap = await window.firebase.get(
+          window.firebase.ref(window.firebase.database, 'userAddressIndex/' + uid)
+        );
+        if (indexSnap && indexSnap.exists()) {
+          var indexData = indexSnap.val();
+          addressIds = typeof indexData === 'object'
+            ? Object.keys(indexData).filter(function(k){ return !!indexData[k]; })
+            : [];
+        }
+
+        // Step 2: Fetch each address individually (rules allow $addressId read if userId matches)
+        var fetchedAddresses = [];
+        if (addressIds.length > 0) {
+          var fetches = addressIds.map(function(addrId) {
+            return window.firebase.get(
+              window.firebase.ref(window.firebase.database, 'addresses/' + addrId)
+            ).then(function(snap) {
+              if (snap && snap.exists()) {
+                var d = snap.val();
+                if (d.userId === uid) return Object.assign({ id: addrId }, d);
+              }
+              return null;
+            }).catch(function(){ return null; });
+          });
+          var results = await Promise.all(fetches);
+          fetchedAddresses = results.filter(Boolean);
+        }
+
+        // Step 3: Sort — default first, then by createdAt
+        savedAddresses = fetchedAddresses.sort(function(a, b) {
+          return (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt||0) - (a.createdAt||0);
+        });
+
+        // Step 4: Persist index in localStorage as backup (for faster reload)
         try {
-          snapshot = await window.firebase.get(
-            window.firebase.query(
-              window.firebase.ref(window.firebase.database, 'addresses'),
-              window.firebase.orderByChild('userId'),
-              window.firebase.equalTo(uid)
-            )
-          );
-        } catch(queryErr) {
-          // Index not set — fallback: fetch all and filter client-side
-          snapshot = await window.firebase.get(
-            window.firebase.ref(window.firebase.database, 'addresses')
-          );
-        }
-
-        if (!snapshot || !snapshot.exists()) {
-          if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-          savedAddresses = [];
-          return;
-        }
-
-        const addressesObj = snapshot.val();
-        // Filter by userId — handles both indexed and full-scan results
-        const addresses = Object.keys(addressesObj)
-          .map(key => ({ id: key, ...addressesObj[key] }))
-          .filter(a => a.userId === uid || a.userId === undefined);
-        // If fallback gave us all addresses, strictly filter
-        const myAddresses = addresses.filter(a => a.userId === uid);
-        savedAddresses = (myAddresses.length > 0 ? myAddresses : addresses)
-          .sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || (b.createdAt||0) - (a.createdAt||0));
+          localStorage.setItem('bz_addrIds_' + uid, JSON.stringify(addressIds));
+        } catch(e) {}
 
         if (savedAddresses.length > 0) {
           if (savedAddressesSection) savedAddressesSection.style.display = 'block';
           renderSavedAddresses();
-          const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+          var defaultAddr = savedAddresses.find(function(a){ return a.isDefault; }) || savedAddresses[0];
           if (defaultAddr) {
             fillAddressForm(defaultAddr);
             userInfo = {
@@ -4632,7 +4647,7 @@
               house: defaultAddr.street || defaultAddr.house || ''
             };
             requestAnimationFrame(function() {
-              document.querySelectorAll('input[name="savedAddress"]').forEach(r => {
+              document.querySelectorAll('input[name="savedAddress"]').forEach(function(r) {
                 if (r.value === defaultAddr.id) r.checked = true;
               });
             });
@@ -4755,6 +4770,11 @@
       try {
         const addressId = 'address_' + Date.now();
         await window.firebase.set(window.firebase.ref(window.firebase.database, 'addresses/' + addressId), addressData);
+        // Write address ID to user's index — so loadSavedAddresses can find it
+        await window.firebase.set(
+          window.firebase.ref(window.firebase.database, 'userAddressIndex/' + currentUser.uid + '/' + addressId),
+          true
+        ).catch(function(){});
         // Update in-memory array
         savedAddresses.push({ id: addressId, ...addressData });
         savedAddresses.sort(function(a,b){ return (b.isDefault?1:0)-(a.isDefault?1:0)||b.createdAt-a.createdAt; });
@@ -4828,6 +4848,11 @@
             window.firebase.ref(window.firebase.database, 'addresses/' + saveBtn._bzEditId),
             addressData
           );
+          // Ensure index entry exists
+          await window.firebase.set(
+            window.firebase.ref(window.firebase.database, 'userAddressIndex/' + currentUser.uid + '/' + saveBtn._bzEditId),
+            true
+          ).catch(function(){});
           // Update in-memory array directly
           const idx = savedAddresses.findIndex(function(a){ return a.id === saveBtn._bzEditId; });
           if (idx !== -1) savedAddresses[idx] = Object.assign({ id: saveBtn._bzEditId }, addressData);
@@ -4871,6 +4896,17 @@
         if (!currentUser) { showToast('Please log in again', 'error'); return; }
         try {
           await window.firebase.remove(window.firebase.ref(window.firebase.database, 'addresses/' + address.id));
+          // Remove from index too
+          await window.firebase.remove(
+            window.firebase.ref(window.firebase.database, 'userAddressIndex/' + currentUser.uid + '/' + address.id)
+          ).catch(function(){});
+          // Update localStorage index
+          try {
+            var _idxKey = 'bz_addrIds_' + currentUser.uid;
+            var _ids = JSON.parse(localStorage.getItem(_idxKey) || '[]');
+            _ids = _ids.filter(function(id){ return id !== address.id; });
+            localStorage.setItem(_idxKey, JSON.stringify(_ids));
+          } catch(e) {}
           // Remove from in-memory array immediately — no re-fetch needed
           savedAddresses = savedAddresses.filter(function(a){ return a.id !== address.id; });
           // Invalidate cache
@@ -8038,11 +8074,48 @@
     // ══════════════════════════════════════
     window._currentBrandId = null;
 
+    // Brand navigation stack — back button ke liye
+    if (!window._bzBrandStack) window._bzBrandStack = [];
+
+    window._bzOpenManageBrand = function() {
+      // Open sell-product.html — brand management section
+      var spLink = document.querySelector('a[href*="sell-product"]');
+      if (spLink) {
+        spLink.click();
+      } else {
+        // Try direct navigation
+        var base = window.location.href.split('#')[0].replace('index.html', '');
+        window.location.href = base + 'sell-product.html#myBrand';
+      }
+    };
+
+    window._bzBrandBack = function() {
+      if (window._bzBrandStack && window._bzBrandStack.length > 0) {
+        // Go back to previous brand in stack
+        var prev = window._bzBrandStack.pop();
+        showBrandProfile(prev.brandId, prev.brandName);
+      } else {
+        // Go back to the page that opened the brand profile
+        var retPage = window._brandProfileReturnPage || 'homePage';
+        // Restore URL
+        window.history.replaceState(null, '', window.location.pathname);
+        showPage(retPage);
+      }
+    };
+
     function showBrandProfile(brandId, brandName) {
       window._currentBrandId = brandId;
-      // Remember which page opened the brand profile
+      // Push current state to stack for back navigation
       var activePage = document.querySelector('.page.active');
-      window._brandProfileReturnPage = activePage ? activePage.id : 'homePage';
+      var currentPageId = activePage ? activePage.id : 'homePage';
+      // If already on brand profile, push the previous brand to stack
+      if (currentPageId === 'brandProfilePage' && window._currentBrandId) {
+        window._bzBrandStack.push({ brandId: window._currentBrandId, brandName: window._currentBrandName || '' });
+      } else {
+        window._bzBrandStack = []; // Reset stack when entering from non-brand page
+        window._brandProfileReturnPage = currentPageId;
+      }
+      window._currentBrandName = brandName;
       // Update URL so share link goes to this brand
       var _bzBrandUrl = window.location.origin + window.location.pathname.replace('index.html','') + '#brand/' + brandId;
       window.history.replaceState(null, '', _bzBrandUrl);
@@ -8065,7 +8138,7 @@
       // ── Skeleton loading state ──
       page.innerHTML = `
         <div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;border-bottom:1px solid #f1f5f9;">
-          <button onclick="showPage(window._brandProfileReturnPage||'brandsPage')" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <button onclick="window._bzBrandBack()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
           <div style="height:18px;width:120px;background:#f1f5f9;border-radius:6px;animation:bpShim 1.4s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);"></div>
@@ -8220,7 +8293,7 @@
             ? '<button id="brandFollowBtn" onclick="window.toggleBrandFollow(\'' + brandId + '\',\'' + safeName + '\',this)" style="flex:1;padding:11px 0;border-radius:24px;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;transition:all .2s;' + (isFollowing ? 'background:#f1f5f9;color:#64748b;' : 'background:' + themeColor + ';color:#fff;') + '">' + (isFollowing ? '&#10003; Following' : '+ Follow') + '</button>'
             : '<button onclick="typeof showLoginModal===\'function\'&&showLoginModal()" style="flex:1;padding:11px 0;border-radius:24px;background:' + themeColor + ';color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">+ Follow</button>';
         } else {
-          followBtn = '<button onclick="showPage(\'sellProductPage\')" style="flex:1;padding:11px 0;border-radius:24px;border:none;background:' + themeColor + ';color:#fff;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">&#9881;&#65039; Manage Brand</button>';
+          followBtn = '<button onclick="window._bzOpenManageBrand()" style="flex:1;padding:11px 0;border-radius:24px;border:none;background:' + themeColor + ';color:#fff;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">&#9881;&#65039; Manage Brand</button>';
         }
 
         // Share button
@@ -8273,7 +8346,7 @@
         // ── STICKY TOP BAR ──
         '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">'
           +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
-            +'<button onclick="showPage(window._brandProfileReturnPage||\'brandsPage\');" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
+            +'<button onclick="window._bzBrandBack()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
             +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
             +'<button onclick="window._bpTab(\'Followers\')" title="Followers" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">&#128101;</button>'
           +'</div>'
@@ -8411,21 +8484,22 @@
             +(followingBrands.length
               ? '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">'
                 + followingBrands.map(function(fb){
-                    var fbColor = '#2563eb';
-                    var fbLogo = fb.logo || '';
+                    var _fbColors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626'];
+                    var fbColor = fb.themeColor || fb.color || _fbColors[(fb.name||'').charCodeAt(0)%5] || '#2563eb';
+                    var fbLogo = fb.logo || fb.logoUrl || fb.icon || fb.brandIcon || fb.brandLogo || '';
                     var fbName = fb.name || 'Brand';
+                    var fbVerified = !!(fb.blueTickAdmin || fb.verified || fb.isVerified);
                     var fbInitials = fbName.slice(0,2).toUpperCase();
                     var fbLogoHtml = fbLogo
-                      ? '<img src="'+fbLogo+'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;" onerror="this.style.display=\'none\'">'
-                      : '<div style="width:40px;height:40px;border-radius:10px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">'+fbInitials+'</div>';
-                    return '<div onclick="showBrandProfile(\''+fb.id+'\',\''+fbName.replace(/'/g,'')+'\')" style="background:#fff;border-radius:14px;border:1px solid #f1f5f9;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:box-shadow .2s;" onmouseenter="this.style.boxShadow=\'0 4px 16px rgba(37,99,235,.15)\'" onmouseleave="this.style.boxShadow=\'0 1px 4px rgba(0,0,0,.06)\'">'
-                      + fbLogoHtml
-                      +'<div style="flex:1;min-width:0;">'
-                        +'<div style="font-size:13px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+fbName+'</div>'
-                        +(fb.category?'<div style="font-size:10px;color:#94a3b8;margin-top:2px;">'+fb.category+'</div>':'')
-                      +'</div>'
-                      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>'
-                    +'</div>';
+                      ? '<div style=\"width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;border:2px solid #f1f5f9;\"><img src=\"'+fbLogo+'\" style=\"width:100%;height:100%;object-fit:cover;\" onerror=\"this.parentNode.innerHTML=&quot;<div style=&apos;width:44px;height:44px;border-radius:12px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;&apos;>'+fbInitials+'</div>&quot;\"></div>'
+                      : '<div style=\"width:44px;height:44px;border-radius:12px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;\">'+fbInitials+'</div>';
+                    var fbBlueTick = fbVerified
+                      ? '<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" style=\"margin-left:3px;flex-shrink:0;\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"#2563eb\"/><path d=\"M8 12l3 3 5-5\" stroke=\"#fff\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>'
+                      : '';
+                    var _fbId = fb.id || '';
+                    var _fbNameSafe = fbName.replace(/'/g,'').replace(/"/g,'');
+                    return '<div onclick=\"(function(){showBrandProfile(\''+_fbId+'\',\''+_fbNameSafe+'\');})()\" style=\"background:#fff;border-radius:14px;border:1px solid #f1f5f9;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:box-shadow .2s;\" onmouseenter=\"this.style.boxShadow=\'0 4px 16px rgba(37,99,235,.15)\';\" onmouseleave=\"this.style.boxShadow=\'0 1px 4px rgba(0,0,0,.06);\'\">'                      + fbLogoHtml
+                      +'<div style=\"flex:1;min-width:0;\">'                        +'<div style=\"font-size:13px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;\">'+fbName+fbBlueTick+'</div>'                        +(fb.category?'<div style=\"font-size:10px;color:#94a3b8;margin-top:2px;\">'+fb.category+'</div>':'')                      +'</div>'                      +'<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"2.5\"><path d=\"M9 18l6-6-6-6\"/></svg>'                    +'</div>';
                   }).join('')
                 +'</div>'
               : '<div style="text-align:center;padding:40px 20px;">'
