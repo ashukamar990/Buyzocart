@@ -7955,23 +7955,24 @@
         : '';
 
       var el = document.createElement('div');
-      el.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:12px;cursor:pointer;transition:border-color .18s,box-shadow .18s;';
+      el.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:16px;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s;';
       el.innerHTML =
-        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
-          + '<div style="width:42px;height:42px;border-radius:10px;background:' + color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">' + logoInner + '</div>'
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+          + '<div style="width:52px;height:52px;border-radius:14px;background:' + color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">' + logoInner + '</div>'
           + '<div style="flex:1;min-width:0;">'
-            + '<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:2px;">' + b.name + (b.blueTickAdmin ? _BT : '') + '</div>'
+            + '<div style="font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px;color:#0f172a;">' + b.name + (b.blueTickAdmin ? _BT : '') + '</div>'
+            + (b.category ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + b.category + '</div>' : '')
           + '</div>'
         + '</div>'
-        + '<div style="font-size:11px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;">'
-          + '<span>📦 ' + (b.products ? b.products.length : 0) + '</span>'
-          + (b.followers ? '<span>❤️ ' + b.followers + '</span>' : '')
-          + (b.rating ? '<span>⭐ ' + b.rating + '</span>' : '')
+        + '<div style="font-size:12px;color:#64748b;display:flex;gap:10px;flex-wrap:wrap;background:#f8fafc;border-radius:10px;padding:8px 10px;">'
+          + '<span style="display:flex;align-items:center;gap:4px;">📦 <strong>' + (b.products ? b.products.length : 0) + '</strong></span>'
+          + (b.followers ? '<span style="display:flex;align-items:center;gap:4px;">❤️ <strong>' + b.followers + '</strong></span>' : '')
+          + (b.rating ? '<span style="display:flex;align-items:center;gap:4px;">⭐ <strong>' + b.rating + '</strong></span>' : '')
         + '</div>'
         + followBtn;
 
-      el.addEventListener('mouseenter', function() { this.style.borderColor = '#2563eb'; this.style.boxShadow = '0 4px 16px rgba(37,99,235,.12)'; });
-      el.addEventListener('mouseleave', function() { this.style.borderColor = '#e2e8f0'; this.style.boxShadow = 'none'; });
+      el.addEventListener('mouseenter', function() { this.style.borderColor = '#2563eb'; this.style.boxShadow = '0 6px 20px rgba(37,99,235,.14)'; this.style.transform = 'translateY(-3px)'; });
+      el.addEventListener('mouseleave', function() { this.style.borderColor = '#e2e8f0'; this.style.boxShadow = 'none'; this.style.transform = 'none'; });
       el.addEventListener('click', function(e) {
         if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
         window.showBrandProfile(b.id, b.name);
@@ -8434,78 +8435,145 @@
         }
 
         // ─────────────── RENDER PAGE ───────────────
+        // Inject desktop-responsive styles once
+        if (!document.getElementById('_bpDesktopStyle')) {
+          var _bpSt = document.createElement('style');
+          _bpSt.id = '_bpDesktopStyle';
+          _bpSt.textContent = [
+            '#brandProfilePage{background:#f1f5f9}',
+            '.bp-topbar-inner{max-width:1100px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:12px}',
+            '.bp-hero{max-width:1100px;margin:0 auto}',
+            '.bp-hero-banner{height:240px}',
+            '.bp-identity{background:#fff;border-radius:20px;margin:0 20px;margin-top:-32px;position:relative;z-index:2;padding:24px 28px 20px;box-shadow:0 4px 24px rgba(0,0,0,.09)}',
+            '.bp-desktop-grid{display:grid;grid-template-columns:1fr;gap:20px;max-width:1100px;margin:20px auto 0;padding:0 20px 80px}',
+            '.bp-sidebar{display:none}',
+            '.bp-main-col{min-width:0}',
+            '.bp-stat{flex:1;text-align:center;padding:14px 10px;background:#f8fafc;border-radius:14px;border:1px solid #f1f5f9}',
+            '.bp-tabs-bar{background:#fff;border-radius:14px;overflow:hidden;border:1px solid #f1f5f9;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}',
+            '.bp-tabs-inner{display:flex;overflow-x:auto;scrollbar-width:none}',
+            '.bp-tabs-inner::-webkit-scrollbar{display:none}',
+            '.bp-tab-content-wrap{background:#fff;border-radius:16px;border:1px solid #f1f5f9;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden}',
+            '.bp-product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}',
+            '.bp-action-row{display:flex;gap:10px;align-items:center;margin-top:14px}',
+            '@media(min-width:768px){',
+            '.bp-hero-banner{height:300px}',
+            '.bp-desktop-grid{grid-template-columns:280px 1fr}',
+            '.bp-sidebar{display:block}',
+            '.bp-product-grid{grid-template-columns:repeat(3,1fr)}',
+            '.bp-action-row-mobile{display:none!important}',
+            '}',
+            '@media(min-width:1024px){',
+            '.bp-product-grid{grid-template-columns:repeat(4,1fr)}',
+            '.bp-hero-banner{height:340px}',
+            '}',
+            // Brand cards grid - desktop responsive
+            '#popularBrandsGrid.bz-bg,#suggestedBrandsGrid.bz-bg,#otherBrandsGrid.bz-bg{display:grid!important;flex-direction:unset!important;flex-wrap:unset!important;overflow:visible!important;grid-template-columns:repeat(2,1fr);gap:14px}',
+            '@media(min-width:600px){#popularBrandsGrid.bz-bg,#suggestedBrandsGrid.bz-bg,#otherBrandsGrid.bz-bg{grid-template-columns:repeat(3,1fr)}}',
+            '@media(min-width:900px){#popularBrandsGrid.bz-bg,#suggestedBrandsGrid.bz-bg,#otherBrandsGrid.bz-bg{grid-template-columns:repeat(4,1fr)}}',
+            '@media(min-width:1200px){#popularBrandsGrid.bz-bg,#suggestedBrandsGrid.bz-bg,#otherBrandsGrid.bz-bg{grid-template-columns:repeat(5,1fr)}}'
+          ].join('');
+          document.head.appendChild(_bpSt);
+        }
+
+        // Apply desktop grid class to brand grids
+        ['popularBrandsGrid','suggestedBrandsGrid','otherBrandsGrid'].forEach(function(gid){
+          var gel = document.getElementById(gid);
+          if (gel && !gel.classList.contains('bz-bg')) gel.classList.add('bz-bg');
+        });
+
         page.style.animation = 'bpFadeIn .35s ease';
         page.innerHTML =
 
         // ── STICKY TOP BAR ──
-        '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">'
-          +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
-            +'<button onclick="window._bzBrandBack()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
-            +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
-            +'<button onclick="if(navigator.share){navigator.share({title:\''+safeName+'\',url:window.location.href})}else{navigator.clipboard&&navigator.clipboard.writeText(window.location.href);if(typeof showToast===\'function\')showToast(\'Link copied!\',\'success\');}" title="Share" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>'
+        '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,0,0,.07);">'
+          +'<div class="bp-topbar-inner">'
+            +'<button onclick="window._bzBrandBack()" style="width:38px;height:38px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .18s;" onmouseenter="this.style.borderColor=\'#2563eb\';" onmouseleave="this.style.borderColor=\'#e2e8f0\';"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
+            +'<span style="font-weight:800;font-size:16px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+(isVerified?' '+BTSMALL:'')+'</span>'
+            +'<button onclick="if(navigator.share){navigator.share({title:\''+safeName+'\',url:window.location.href})}else{navigator.clipboard&&navigator.clipboard.writeText(window.location.href);if(typeof showToast===\'function\')showToast(\'Link copied!\',\'success\');}" title="Share" style="width:38px;height:38px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .18s;" onmouseenter="this.style.borderColor=\'#2563eb\';" onmouseleave="this.style.borderColor=\'#e2e8f0\';"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>'
           +'</div>'
         +'</div>'
 
-        // ── HERO BANNER ──
-        +'<div style="position:relative;max-width:640px;margin:0 auto;">'
-          +'<div style="height:190px;'+bannerBg+'position:relative;overflow:hidden;">'
+        // ── HERO BANNER (full width) ──
+        +'<div class="bp-hero">'
+          +'<div class="bp-hero-banner" style="'+bannerBg+'position:relative;overflow:hidden;">'
             + bannerOverlay
-            +(!bannerUrl?'<div style="position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.1);"></div><div style="position:absolute;right:40px;bottom:-60px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08);"></div>':'')
-          +'</div>'
-          +'<div id="bpLogoHolder" style="position:absolute;bottom:-36px;left:18px;width:80px;height:80px;border-radius:22px;border:4px solid #fff;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.22);cursor:pointer;z-index:5;">'
-            + logoHtml
+            +(!bannerUrl?'<div style="position:absolute;right:-40px;top:-40px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);"></div><div style="position:absolute;right:80px;bottom:-80px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06);"></div>':'')
           +'</div>'
         +'</div>'
 
-        // ── BRAND IDENTITY ──
-        +'<div style="max-width:640px;margin:0 auto;background:#fff;padding:46px 18px 16px;border-bottom:1px solid #f1f5f9;">'
-          +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;">'
-            +'<div style="flex:1;min-width:0;">'
-              +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-                +'<span style="font-size:1.2rem;font-weight:900;color:#0f172a;">'+name+'</span>'
-                +(isVerified?'<span title="Verified Brand" style="cursor:pointer;">'+BT+'</span>':'')
-                +(level==='premium'?'<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:800;">PRO</span>':'')
+        // ── BRAND IDENTITY CARD ──
+        +'<div class="bp-identity">'
+          +'<div style="display:flex;align-items:flex-end;gap:18px;margin-top:-60px;margin-bottom:14px;flex-wrap:wrap;">'
+            +'<div style="width:90px;height:90px;border-radius:22px;border:4px solid #fff;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.2);flex-shrink:0;">'
+              + logoHtml
+            +'</div>'
+            +'<div style="flex:1;min-width:160px;padding-bottom:4px;">'
+              +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
+                +'<span style="font-size:1.4rem;font-weight:900;color:#0f172a;">'+name+'</span>'
+                +(isVerified?'<span title="Verified Brand">'+BT+'</span>':'')
+                +(level==='premium'?'<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:800;">⭐ PRO</span>':'')
               +'</div>'
-              +'<div style="font-size:12px;color:#94a3b8;font-weight:600;margin-top:1px;">'+username+'</div>'
-              +(desc?'<p style="font-size:13px;color:#475569;margin:8px 0 0;line-height:1.6;max-width:380px;">'+desc+'</p>':'')
-              +(website?'<a href="'+website+'" target="_blank" style="font-size:12px;color:'+themeColor+';font-weight:700;text-decoration:none;margin-top:4px;display:inline-block;">\uD83D\uDD17 '+website.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>':'')
+              +'<div style="font-size:13px;color:#94a3b8;font-weight:600;">'+username+'</div>'
+            +'</div>'
+            // Desktop action buttons (right side, hidden on mobile)
+            +'<div class="bp-action-row-desktop" style="display:flex;gap:8px;flex-shrink:0;align-self:flex-end;padding-bottom:2px;">'
+              +'<style>.bp-action-row-desktop{display:flex}@media(max-width:767px){.bp-action-row-desktop{display:none!important}}</style>'
+              + followBtn
+              +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="padding:10px 20px;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;white-space:nowrap;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
+              + suggestBtn
             +'</div>'
           +'</div>'
-        +'</div>'
-
-        // ── STATS ROW ──
-        +'<div style="max-width:640px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
-          +'<div style="display:flex;gap:8px;">'
-            + statCard('<span id="brandFollowerCount" style="cursor:pointer;" onclick="window._bpTab(\'Followers\')">' + fmtNum(followers) + '</span>', 'Followers', themeColor)
-            + statCard(fmtNum(brandProds.length), 'Products', '#0f172a')
-            + statCard('<span id="brandFollowingCount" style="cursor:pointer;" onclick="window._bpTab(\'Following\')">' + fmtNum(followingCount) + '</span>', 'Following', '#7c3aed')
-            + (avgRating ? statCard('<span style="color:#f59e0b;">&#9733;</span>' + avgRating, 'Rating', '#f59e0b') : '')
+          +(desc?'<p style="font-size:14px;color:#475569;margin:0 0 10px;line-height:1.65;max-width:600px;">'+desc+'</p>':'')
+          +(website?'<a href="'+website+'" target="_blank" style="font-size:13px;color:'+themeColor+';font-weight:700;text-decoration:none;">\uD83D\uDD17 '+website.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>':'')
+          // Stats
+          +'<div style="display:flex;gap:10px;margin:14px 0 4px;">'
+            + statCard('<span style="cursor:pointer;" onclick="window._bpTab(\'Followers\')">'+fmtNum(followers)+'</span>','Followers',themeColor)
+            + statCard(fmtNum(brandProds.length),'Products','#0f172a')
+            + statCard('<span style="cursor:pointer;" onclick="window._bpTab(\'Following\')">'+fmtNum(followingCount)+'</span>','Following','#7c3aed')
+            + (avgRating?statCard('<span style="color:#f59e0b;">&#9733;</span>'+avgRating,'Rating','#f59e0b'):'')
           +'</div>'
-        +'</div>'
-
-        // ── ACTION BUTTONS ── (Follow + Shop Now + Suggest)
-        +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
-          + followBtn
-          +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;transition:all .2s;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
-          + suggestBtn
-        +'</div>'
-
-        // ── OFFERS ──
-        +(offers?'<div style="max-width:640px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">\uD83C\uDF81</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
-
-                // Search bar removed
-        +'<div id="bpTabsBar" style="max-width:640px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
-          +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
-            +['Products','Trending','Followers','Following','Reviews','About'].map(function(t,i){
-              return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:12px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
-            }).join('')
+          // Mobile action buttons
+          +'<div class="bp-action-row-mobile" style="display:flex;gap:10px;align-items:center;margin-top:12px;">'
+            + followBtn
+            +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
+            + suggestBtn
           +'</div>'
+          // Offers
+          +(offers?'<div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:14px;"><div style="font-size:20px;">\uD83C\uDF81</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div>':'')
         +'</div>'
 
-        // ── TAB CONTENTS ──
-        +'<div style="max-width:640px;margin:0 auto;">'
+        // ── DESKTOP GRID: Sidebar + Main ──
+        +'<div class="bp-desktop-grid">'
 
-          // Products tab
+          // Sidebar (desktop only)
+          +'<div class="bp-sidebar">'
+            +'<div style="background:#fff;border-radius:16px;padding:20px;border:1px solid #f1f5f9;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:16px;position:sticky;top:70px;">'
+              +'<div style="font-weight:800;font-size:14px;margin-bottom:12px;color:#0f172a;display:flex;align-items:center;gap:8px;">🏷️ Brand Info</div>'
+              +'<div style="font-size:13px;color:#64748b;">'
+                +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;"><span>Brand ID</span><code style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;color:#475569;">'+brandId.slice(-8).toUpperCase()+'</code></div>'
+                +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;"><span>Status</span><span style="font-weight:700;color:'+(isVerified?'#2563eb':'#94a3b8')+'">'+(isVerified?'✓ Verified':'Unverified')+'</span></div>'
+                +(level==='premium'?'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;"><span>Tier</span><span style="font-weight:700;color:#f59e0b;">⭐ Premium</span></div>':'')
+                +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;"><span>Followers</span><strong style="color:'+themeColor+';">'+fmtNum(followers)+'</strong></div>'
+                +'<div style="display:flex;justify-content:space-between;padding:8px 0;"><span>Products</span><strong>'+brandProds.length+'</strong></div>'
+              +'</div>'
+              +(desc?'<div style="margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;"><div style="font-weight:700;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">About</div><p style="font-size:13px;color:#475569;line-height:1.65;margin:0;">'+desc+'</p></div>':'')
+              +(website?'<div style="margin-top:10px;"><a href="'+website+'" target="_blank" style="font-size:13px;color:'+themeColor+';font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;">🔗 <span>'+website.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</span></a></div>':'')
+            +'</div>'
+          +'</div>'
+
+          // Main column ─ tabs + content
+          +'<div class="bp-main-col">'
+            +'<div class="bp-tabs-bar">'
+              +'<div class="bp-tabs-inner">'
+                +['Products','Trending','Followers','Following','Reviews','About'].map(function(t,i){
+                  return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:13px 20px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
+                }).join('')
+              +'</div>'
+            +'</div>'
+
+            +'<div class="bp-tab-content-wrap">'
+
+// Products tab
           +'<div id="bpTabContentProducts" style="padding:16px;">'
             +(brandProds.length
               ? '<div id="bpProductGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">'
