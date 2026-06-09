@@ -8106,6 +8106,88 @@
       }
     };
 
+    // ── Suggest Brand to friends (Instagram +👤 style) ──
+    window._bzSuggestBrand = function(brandId, brandName, brandUrl) {
+      var existing = document.getElementById('_bzSuggestSheet');
+      if (existing) existing.remove();
+
+      var overlay = document.createElement('div');
+      overlay.id = '_bzSuggestSheet';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;animation:_bsFadeIn .18s ease;';
+
+      var waMsg = encodeURIComponent('Check out this brand on Buyzo Cart: *' + brandName + '*\n' + brandUrl);
+      var waUrl = 'https://wa.me/?text=' + waMsg;
+
+      overlay.innerHTML =
+        '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px 32px;animation:_bsSlideUp .22s cubic-bezier(.34,1.2,.64,1);">'
+          // Handle bar
+          +'<div style="width:40px;height:4px;background:#e2e8f0;border-radius:99px;margin:0 auto 18px;"></div>'
+          // Title
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">'
+            +'<div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;">'
+              +'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>'
+            +'</div>'
+            +'<div>'
+              +'<div style="font-weight:800;font-size:15px;color:#0f172a;">Suggest Brand</div>'
+              +'<div style="font-size:12px;color:#94a3b8;margin-top:1px;">Share <strong style="color:#475569;">' + brandName + '</strong> with friends</div>'
+            +'</div>'
+          +'</div>'
+          // Options
+          +'<div style="display:flex;flex-direction:column;gap:10px;">'
+            // WhatsApp
+            +'<a href="'+waUrl+'" target="_blank" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;text-decoration:none;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background=\'#dcfce7\';" onmouseleave="this.style.background=\'#f0fdf4\';">'
+              +'<div style="width:40px;height:40px;border-radius:12px;background:#25d366;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+                +'<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>'
+              +'</div>'
+              +'<div>'
+                +'<div style="font-weight:700;font-size:14px;color:#15803d;">Share on WhatsApp</div>'
+                +'<div style="font-size:11px;color:#64748b;margin-top:1px;">Send brand link to friends & family</div>'
+              +'</div>'
+              +'<svg style="margin-left:auto;flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>'
+            +'</a>'
+            // Copy Link
+            +'<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+brandUrl+'\').then(function(){if(typeof showToast===\'function\')showToast(\'Brand link copied! 🎉\',\'success\');});document.getElementById(\'_bzSuggestSheet\').remove();" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;cursor:pointer;width:100%;text-align:left;font-family:inherit;transition:background .15s;" onmouseenter="this.style.background=\'#eff6ff\';this.style.borderColor=\'#bfdbfe\';" onmouseleave="this.style.background=\'#f8fafc\';this.style.borderColor=\'#e2e8f0\';">'
+              +'<div style="width:40px;height:40px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+                +'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+              +'</div>'
+              +'<div>'
+                +'<div style="font-weight:700;font-size:14px;color:#0f172a;">Copy Link</div>'
+                +'<div style="font-size:11px;color:#64748b;margin-top:1px;">Copy brand page link to clipboard</div>'
+              +'</div>'
+              +'<svg style="margin-left:auto;flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>'
+            +'</button>'
+            // Native share (mobile only)
+            +'<button onclick="if(navigator.share){navigator.share({title:\''+brandName+' on Buyzo Cart\',url:\''+brandUrl+'\'});document.getElementById(\'_bzSuggestSheet\').remove();}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;cursor:pointer;width:100%;text-align:left;font-family:inherit;transition:background .15s;" onmouseenter="this.style.background=\'#f5f3ff\';this.style.borderColor=\'#ddd6fe\';" onmouseleave="this.style.background=\'#f8fafc\';this.style.borderColor=\'#e2e8f0\';">'
+              +'<div style="width:40px;height:40px;border-radius:12px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+                +'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>'
+              +'</div>'
+              +'<div>'
+                +'<div style="font-weight:700;font-size:14px;color:#0f172a;">More Options</div>'
+                +'<div style="font-size:11px;color:#64748b;margin-top:1px;">Share via other apps</div>'
+              +'</div>'
+              +'<svg style="margin-left:auto;flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>'
+            +'</button>'
+          +'</div>'
+          // Cancel
+          +'<button onclick="document.getElementById(\'_bzSuggestSheet\').remove()" style="width:100%;margin-top:14px;padding:12px;border-radius:14px;border:none;background:#f1f5f9;color:#64748b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>'
+        +'</div>';
+
+      // Inject animation styles once
+      if (!document.getElementById('_bzSuggestStyle')) {
+        var st = document.createElement('style');
+        st.id = '_bzSuggestStyle';
+        st.textContent = '@keyframes _bsFadeIn{from{opacity:0}to{opacity:1}} @keyframes _bsSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}';
+        document.head.appendChild(st);
+      }
+
+      // Close on backdrop click
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.remove();
+      });
+
+      document.body.appendChild(overlay);
+    };
+
     function showBrandProfile(brandId, brandName) {
       // Push current state to stack for back navigation
       var activePage = document.querySelector('.page.active');
@@ -8301,8 +8383,15 @@
           followBtn = '<button onclick="window._bzOpenManageBrand()" style="flex:1;padding:11px 0;border-radius:24px;border:none;background:' + themeColor + ';color:#fff;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;">&#9881;&#65039; Manage Brand</button>';
         }
 
-        // Share button
-        var shareBtn = '<button onclick="if(navigator.share){navigator.share({title:\''+safeName+'\',url:window.location.href})}else{navigator.clipboard&&navigator.clipboard.writeText(window.location.href);if(typeof showToast===\'function\')showToast(\'Link copied!\',\'success\');}" style="width:44px;height:44px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
+        // Suggest Brand button (Instagram +👤 style) — share brand link with friends
+        var suggestBtn = '<button onclick="window._bzSuggestBrand(\''+brandId+'\',\''+safeName+'\',window.location.href)" title="Suggest to friends" style="width:44px;height:44px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .2s,background .2s;" onmouseenter="this.style.borderColor=\'#2563eb\';this.style.background=\'#eff6ff\';" onmouseleave="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\';">'
+          +'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+            +'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>'
+            +'<circle cx="9" cy="7" r="4"/>'
+            +'<line x1="19" y1="8" x2="19" y2="14"/>'
+            +'<line x1="22" y1="11" x2="16" y2="11"/>'
+          +'</svg>'
+        +'</button>';
 
         // Stats
         function fmtNum(n) { n=parseInt(n)||0; return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'K':n+''; }
@@ -8353,7 +8442,7 @@
           +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
             +'<button onclick="window._bzBrandBack()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
             +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
-            +'<button onclick="window._bpTab(\'Followers\')" title="Followers" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">&#128101;</button>'
+            +'<button onclick="if(navigator.share){navigator.share({title:\''+safeName+'\',url:window.location.href})}else{navigator.clipboard&&navigator.clipboard.writeText(window.location.href);if(typeof showToast===\'function\')showToast(\'Link copied!\',\'success\');}" title="Share" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>'
           +'</div>'
         +'</div>'
 
@@ -8394,11 +8483,11 @@
           +'</div>'
         +'</div>'
 
-        // ── ACTION BUTTONS ── (Follow + Shop Now + Share)
+        // ── ACTION BUTTONS ── (Follow + Shop Now + Suggest)
         +'<div style="max-width:640px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
           + followBtn
           +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;transition:all .2s;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
-          + shareBtn
+          + suggestBtn
         +'</div>'
 
         // ── OFFERS ──
