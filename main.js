@@ -5706,6 +5706,26 @@
           }
         });
       }
+      // Add Enter key support for common forms
+      [
+        { inputId: 'newsletterEmail', btnId: 'subscribeBtn' },
+        { inputId: 'loginEmail', btnId: 'loginBtn' },
+        { inputId: 'loginPassword', btnId: 'loginBtn' },
+        { inputId: 'signupName', btnId: 'signupBtn' },
+        { inputId: 'signupEmail', btnId: 'signupBtn' },
+        { inputId: 'signupPassword', btnId: 'signupBtn' },
+        { inputId: 'forgotPasswordEmail', btnId: 'resetPasswordBtn' }
+      ].forEach(pair => {
+        const input = document.getElementById(pair.inputId);
+        if (input) {
+          input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              document.getElementById(pair.btnId)?.click();
+            }
+          });
+        }
+      });
     }
 
     function setupFileUpload() {
