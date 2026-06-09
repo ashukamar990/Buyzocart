@@ -8006,12 +8006,16 @@
         followingRow.innerHTML = followed.map(function(b) {
           var color = _brandColor(b.name);
           var initials = b.name.slice(0, 2).toUpperCase();
-          var logo = b.logo
-            ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.display=\'none\'">'
+          // Show actual logo if available; fallback to initials with color
+          var logoInner = b.logo
+            ? '<img src="' + b.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" onerror="this.style.display=\'none\'">'
             : '<div style="width:52px;height:52px;border-radius:10px;background:' + color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;">' + initials + '</div>';
-          return '<div onclick="window.showBrandProfile(\'' + b.id + '\',\'' + b.name.replace(/'/g, '') + '\')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;">'
-            + '<div style="width:52px;height:52px;border-radius:10px;border:2px solid #2563eb;overflow:hidden;">' + logo + '</div>'
-            + '<span style="font-size:10px;font-weight:700;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + b.name + '</span>'
+          var _BT = window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;background:#2563eb;border-radius:50%;margin-left:2px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="7" height="7"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+          var blueTick = b.blueTickAdmin ? _BT : '';
+          var isPremium = b.verificationLevel === 'premium';
+          return '<div onclick="window.showBrandProfile(\'' + b.id + '\',\'' + b.name.replace(/'/g, '') + '\')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:64px;">'
+            + '<div style="width:52px;height:52px;border-radius:10px;border:2px solid ' + (b.blueTickAdmin ? '#2563eb' : '#e2e8f0') + ';overflow:hidden;background:' + color + ';position:relative;">' + logoInner + (isPremium ? '<div style="position:absolute;top:0;right:0;width:14px;height:14px;background:#f59e0b;border-radius:0 0 0 8px;display:flex;align-items:center;justify-content:center;font-size:8px;">⭐</div>' : '') + '</div>'
+            + '<span style="font-size:10px;font-weight:700;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:1px;">' + b.name + blueTick + '</span>'
             + '</div>';
         }).join('');
         // Auto-slide following brands strip
@@ -8078,15 +8082,11 @@
     if (!window._bzBrandStack) window._bzBrandStack = [];
 
     window._bzOpenManageBrand = function() {
-      // Open sell-product.html — brand management section
-      var spLink = document.querySelector('a[href*="sell-product"]');
-      if (spLink) {
-        spLink.click();
-      } else {
-        // Try direct navigation
-        var base = window.location.href.split('#')[0].replace('index.html', '');
-        window.location.href = base + 'sell-product.html#myBrand';
-      }
+      // Open sell-product.html and navigate to brand section
+      var base = window.location.href.split('#')[0].replace('index.html', '');
+      // Use sessionStorage flag so sell-product.html auto-opens brand section
+      try { sessionStorage.setItem('bz_seller_goto', 'brand'); } catch(e) {}
+      window.location.href = base + 'sell-product.html#brand';
     };
 
     window._bzBrandBack = function() {
@@ -8097,6 +8097,9 @@
       } else {
         // Go back to the page that opened the brand profile
         var retPage = window._brandProfileReturnPage || 'homePage';
+        // Clear current brand tracking
+        window._currentBrandId = null;
+        window._currentBrandName = null;
         // Restore URL
         window.history.replaceState(null, '', window.location.pathname);
         showPage(retPage);
@@ -8104,17 +8107,19 @@
     };
 
     function showBrandProfile(brandId, brandName) {
-      window._currentBrandId = brandId;
       // Push current state to stack for back navigation
       var activePage = document.querySelector('.page.active');
       var currentPageId = activePage ? activePage.id : 'homePage';
-      // If already on brand profile, push the previous brand to stack
-      if (currentPageId === 'brandProfilePage' && window._currentBrandId) {
+      // If already on brand profile, push the PREVIOUS brand (not the new one) to stack
+      if (currentPageId === 'brandProfilePage' && window._currentBrandId && window._currentBrandId !== brandId) {
+        if (!window._bzBrandStack) window._bzBrandStack = [];
         window._bzBrandStack.push({ brandId: window._currentBrandId, brandName: window._currentBrandName || '' });
-      } else {
+      } else if (currentPageId !== 'brandProfilePage') {
         window._bzBrandStack = []; // Reset stack when entering from non-brand page
         window._brandProfileReturnPage = currentPageId;
       }
+      // Now update the current brand
+      window._currentBrandId = brandId;
       window._currentBrandName = brandName;
       // Update URL so share link goes to this brand
       var _bzBrandUrl = window.location.origin + window.location.pathname.replace('index.html','') + '#brand/' + brandId;
@@ -8485,21 +8490,50 @@
               ? '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">'
                 + followingBrands.map(function(fb){
                     var _fbColors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626'];
-                    var fbColor = fb.themeColor || fb.color || _fbColors[(fb.name||'').charCodeAt(0)%5] || '#2563eb';
+                    // Use actual brand logo and data from __bzBrandsCache
+                    var _cached = (window.__bzBrandsCache || []).find(function(c){ return c.id === (fb.id||''); });
+                    if (_cached) {
+                      fb.logo = fb.logo || _cached.logo || '';
+                      fb.blueTickAdmin = fb.blueTickAdmin || !!_cached.blueTickAdmin;
+                      fb.verificationLevel = fb.verificationLevel || _cached.verificationLevel || 'normal';
+                    }
+                    var fbColor = fb.themeColor || fb.brandColor || _fbColors[(fb.name||'').charCodeAt(0)%5] || '#2563eb';
                     var fbLogo = fb.logo || fb.logoUrl || fb.icon || fb.brandIcon || fb.brandLogo || '';
                     var fbName = fb.name || 'Brand';
                     var fbVerified = !!(fb.blueTickAdmin || fb.verified || fb.isVerified);
+                    var fbIsPremium = (fb.verificationLevel === 'premium');
                     var fbInitials = fbName.slice(0,2).toUpperCase();
+                    // Clean logo block — no nested quotes in onerror (use a div instead)
                     var fbLogoHtml = fbLogo
-                      ? '<div style=\"width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;border:2px solid #f1f5f9;\"><img src=\"'+fbLogo+'\" style=\"width:100%;height:100%;object-fit:cover;\" onerror=\"this.parentNode.innerHTML=&quot;<div style=&apos;width:44px;height:44px;border-radius:12px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;&apos;>'+fbInitials+'</div>&quot;\"></div>'
-                      : '<div style=\"width:44px;height:44px;border-radius:12px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;\">'+fbInitials+'</div>';
+                      ? ('<div style="width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;border:2px solid '+(fbVerified?'#2563eb':'#f1f5f9')+';">'
+                          +'<img src="'+fbLogo+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentNode.style.background=\''+fbColor+'\';this.parentNode.innerHTML=\'<span style=\\\"font-size:15px;font-weight:800;color:#fff;\\\">'+fbInitials+'</span>\'">'
+                        +'</div>')
+                      : '<div style="width:44px;height:44px;border-radius:12px;background:'+fbColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;border:2px solid '+(fbVerified?'#2563eb':'transparent')+';">'+fbInitials+'</div>';
+                    // Blue tick SVG (safe, no nested quotes)
                     var fbBlueTick = fbVerified
-                      ? '<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" style=\"margin-left:3px;flex-shrink:0;\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"#2563eb\"/><path d=\"M8 12l3 3 5-5\" stroke=\"#fff\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>'
-                      : '';
-                    var _fbId = fb.id || '';
+                      ? '<svg width="13" height="13" viewBox="0 0 24 24" style="margin-left:3px;flex-shrink:0;"><circle cx="12" cy="12" r="11" fill="#2563eb"/><path d="M8 12l3 3 5-5" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                      : (fbIsPremium ? '<span style="font-size:9px;background:#f59e0b;color:#fff;padding:1px 4px;border-radius:4px;margin-left:3px;">PRO</span>' : '');
+                    var _fbId = (fb.id || '').replace(/'/g,'').replace(/"/g,'');
                     var _fbNameSafe = fbName.replace(/'/g,'').replace(/"/g,'');
-                    return '<div onclick=\"(function(){showBrandProfile(\''+_fbId+'\',\''+_fbNameSafe+'\');})()\" style=\"background:#fff;border-radius:14px;border:1px solid #f1f5f9;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:box-shadow .2s;\" onmouseenter=\"this.style.boxShadow=\'0 4px 16px rgba(37,99,235,.15)\';\" onmouseleave=\"this.style.boxShadow=\'0 1px 4px rgba(0,0,0,.06);\'\">'                      + fbLogoHtml
-                      +'<div style=\"flex:1;min-width:0;\">'                        +'<div style=\"font-size:13px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;\">'+fbName+fbBlueTick+'</div>'                        +(fb.category?'<div style=\"font-size:10px;color:#94a3b8;margin-top:2px;\">'+fb.category+'</div>':'')                      +'</div>'                      +'<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"2.5\"><path d=\"M9 18l6-6-6-6\"/></svg>'                    +'</div>';
+                    // Build the card element via DOM to avoid onclick escaping issues
+                    var _card = document.createElement('div');
+                    _card.style.cssText = 'background:#fff;border-radius:14px;border:1px solid #f1f5f9;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:box-shadow .2s;';
+                    _card.innerHTML = fbLogoHtml
+                      + '<div style="flex:1;min-width:0;">'
+                        + '<div style="font-size:13px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;">'+fbName+fbBlueTick+'</div>'
+                        + (fb.category ? '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">'+fb.category+'</div>' : '')
+                      + '</div>'
+                      + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>';
+                    _card.addEventListener('mouseenter', function(){ this.style.boxShadow='0 4px 16px rgba(37,99,235,.15)'; });
+                    _card.addEventListener('mouseleave', function(){ this.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'; });
+                    _card.addEventListener('click', function(){ window.showBrandProfile(_fbId, _fbNameSafe); });
+                    // Return placeholder; we'll attach cards after innerHTML set
+                    var _ph = '<div class="_fb_ph_' + _fbId + '"></div>';
+                    setTimeout(function(){
+                      var ph = document.querySelector('._fb_ph_' + _fbId);
+                      if (ph) ph.parentNode.replaceChild(_card, ph);
+                    }, 0);
+                    return _ph;
                   }).join('')
                 +'</div>'
               : '<div style="text-align:center;padding:40px 20px;">'

@@ -905,9 +905,21 @@
 
                 // Auto-approve brands check on every dashboard load
                 checkAndAutoApproveBrands(user.uid).catch(function(){});
-                
+
+                // Check if redirected from main store with a goto flag
+                var _gotoPage = null;
+                try {
+                    _gotoPage = sessionStorage.getItem('bz_seller_goto');
+                    if (_gotoPage) sessionStorage.removeItem('bz_seller_goto');
+                } catch(e) {}
+                // Also check URL hash (e.g. sell-product.html#brand)
+                if (!_gotoPage && window.location.hash) {
+                    var _hashPage = window.location.hash.replace('#','').trim();
+                    if (_hashPage === 'brand' || _hashPage === 'myBrand') _gotoPage = 'brand';
+                }
+
                 if (typeof navigateTo === 'function') {
-                    navigateTo('dashboard');
+                    navigateTo(_gotoPage || 'dashboard');
                 }
                 
             } catch (err) {
