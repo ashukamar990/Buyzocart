@@ -7955,15 +7955,15 @@
         : '';
 
       var el = document.createElement('div');
-      el.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:14px;cursor:pointer;transition:border-color .18s,box-shadow .18s;';
+      el.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:12px;cursor:pointer;transition:border-color .18s,box-shadow .18s;';
       el.innerHTML =
-        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">'
-          + '<div style="width:56px;height:56px;border-radius:12px;background:' + color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">' + logoInner + '</div>'
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+          + '<div style="width:42px;height:42px;border-radius:10px;background:' + color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">' + logoInner + '</div>'
           + '<div style="flex:1;min-width:0;">'
-            + '<div style="font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:2px;">' + b.name + (b.blueTickAdmin ? _BT : '') + '</div>'
+            + '<div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:2px;">' + b.name + (b.blueTickAdmin ? _BT : '') + '</div>'
           + '</div>'
         + '</div>'
-        + '<div style="font-size:12px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;">'
+        + '<div style="font-size:11px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;">'
           + '<span>📦 ' + (b.products ? b.products.length : 0) + '</span>'
           + (b.followers ? '<span>❤️ ' + b.followers + '</span>' : '')
           + (b.rating ? '<span>⭐ ' + b.rating + '</span>' : '')
@@ -8345,7 +8345,7 @@
 
         // ── STICKY TOP BAR ──
         '<div id="bpTopBar" style="background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:30;box-shadow:0 1px 6px rgba(0,0,0,.06);">'
-          +'<div style="max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
+          +'<div style="max-width:900px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
             +'<button onclick="window._bzBrandBack()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>'
             +'<span style="font-weight:800;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
             +'<button onclick="window._bpTab(\'Followers\')" title="Followers" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">&#128101;</button>'
@@ -8353,7 +8353,7 @@
         +'</div>'
 
         // ── HERO BANNER ──
-        +'<div style="position:relative;max-width:1100px;margin:0 auto;">'
+        +'<div style="position:relative;max-width:900px;margin:0 auto;">'
           +'<div style="height:190px;'+bannerBg+'position:relative;overflow:hidden;">'
             + bannerOverlay
             +(!bannerUrl?'<div style="position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.1);"></div><div style="position:absolute;right:40px;bottom:-60px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08);"></div>':'')
@@ -8364,7 +8364,7 @@
         +'</div>'
 
         // ── BRAND IDENTITY ──
-        +'<div style="max-width:1100px;margin:0 auto;background:#fff;padding:46px 18px 16px;border-bottom:1px solid #f1f5f9;">'
+        +'<div style="max-width:900px;margin:0 auto;background:#fff;padding:46px 18px 16px;border-bottom:1px solid #f1f5f9;">'
           +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;">'
             +'<div style="flex:1;min-width:0;">'
               +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -8380,7 +8380,7 @@
         +'</div>'
 
         // ── STATS ROW ──
-        +'<div style="max-width:1100px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
+        +'<div style="max-width:900px;margin:0 auto;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;">'
           +'<div style="display:flex;gap:8px;">'
             + statCard('<span id="brandFollowerCount" style="cursor:pointer;" onclick="window._bpTab(\'Followers\')">' + fmtNum(followers) + '</span>', 'Followers', themeColor)
             + statCard(fmtNum(brandProds.length), 'Products', '#0f172a')
@@ -8390,17 +8390,17 @@
         +'</div>'
 
         // ── ACTION BUTTONS ── (Follow + Shop Now + Share)
-        +'<div style="max-width:1100px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
+        +'<div style="max-width:900px;margin:0 auto;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">'
           + followBtn
           +'<button onclick="window.showBrandProducts(\''+brandId+'\',\''+safeName+'\')" style="flex:1;padding:11px 0;border-radius:24px;border:1.5px solid #e2e8f0;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;background:#fff;color:#0f172a;transition:all .2s;" onmouseenter="this.style.background=\'#f8fafc\'" onmouseleave="this.style.background=\'#fff\'">Shop Now</button>'
           + shareBtn
         +'</div>'
 
         // ── OFFERS ──
-        +(offers?'<div style="max-width:1100px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">\uD83C\uDF81</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
+        +(offers?'<div style="max-width:900px;margin:0 auto;padding:0 14px 12px;background:#f8fafc;"><div style="background:linear-gradient(135deg,'+themeColor+'18,'+themeColor+'08);border:1px dashed '+themeColor+'55;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">\uD83C\uDF81</div><div><div style="font-size:11px;color:'+themeColor+';font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Special Offer</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px;">'+offers+'</div></div><button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+offers+'\');typeof showToast===\'function\'&&showToast(\'Copied!\',\'success\')" style="margin-left:auto;background:'+themeColor+';color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button></div></div>':'')
 
                 // Search bar removed
-        +'<div id="bpTabsBar" style="max-width:1100px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
+        +'<div id="bpTabsBar" style="max-width:900px;margin:0 auto;background:#fff;border-bottom:2px solid #f1f5f9;position:sticky;top:61px;z-index:20;">'
           +'<div style="display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;">'
             +['Products','Trending','Followers','Following','Reviews','About'].map(function(t,i){
               return '<button onclick="window._bpTab(\''+t+'\')" id="bpTab'+t+'" style="flex-shrink:0;padding:12px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;color:'+(i===0?themeColor:'#94a3b8')+';border-bottom:'+(i===0?'2.5px solid '+themeColor:'2.5px solid transparent')+';transition:all .2s;white-space:nowrap;">'+t+'</button>';
@@ -8409,7 +8409,7 @@
         +'</div>'
 
         // ── TAB CONTENTS ──
-        +'<div style="max-width:1100px;margin:0 auto;">'
+        +'<div style="max-width:900px;margin:0 auto;">'
 
           // Products tab
           +'<div id="bpTabContentProducts" style="padding:16px;">'
@@ -8569,7 +8569,7 @@
 
         // ── STICKY FOLLOW BAR (mobile, shown when scrolled past buttons) ──
         +'<div id="bpStickyFollow" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#fff;border-top:1px solid #f1f5f9;z-index:40;box-shadow:0 -4px 16px rgba(0,0,0,.08);">'
-          +'<div style="max-width:1100px;margin:0 auto;display:flex;gap:10px;align-items:center;">'
+          +'<div style="max-width:900px;margin:0 auto;display:flex;gap:10px;align-items:center;">'
             +'<div style="width:36px;height:36px;border-radius:10px;background:'+themeColor+';display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">'+(logo?'<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover;">':'<span style="font-size:14px;font-weight:800;color:#fff;">'+initials+'</span>')+'</div>'
             +'<span style="font-weight:800;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+name+'</span>'
             +'<button id="bpStickyFollowBtn" onclick="window.toggleBrandFollow(\''+brandId+'\',\''+safeName+'\',this)" style="padding:9px 22px;border-radius:24px;border:none;cursor:pointer;font-size:13px;font-weight:800;font-family:inherit;'+(isFollowing?'background:#f1f5f9;color:#64748b;':'background:'+themeColor+';color:#fff;')+'">'+(isFollowing?'✓ Following':'+ Follow')+'</button>'
