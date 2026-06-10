@@ -266,6 +266,19 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return "";
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#39;"
+        }[m];
+      });
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -781,7 +794,7 @@
           <div style="position:relative;height:80px;background-image:url('${getProductImage(product)}');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f8fafc;">
             ${_isFirst ? '<div style=\'position:absolute;top:4px;right:4px;background:#2563eb;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;\'>✓</div>' : ''}
           </div>
-          <div style="padding:4px 5px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${product.name || product.title || ''}</div>
+          <div style="padding:4px 5px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(product.name || product.title || '')}</div>
           <div style="padding:0 5px 5px;font-size:11px;color:var(--accent);font-weight:700;">${formatPrice(product.price)}</div>
           ${ratingVal > 0 ? `<div style="padding:0 5px 4px;font-size:10px;color:#f59e0b;">★ ${ratingVal.toFixed(1)}</div>` : ''}
         `;
@@ -938,8 +951,8 @@
         item.className = 'recent-search-item';
         item.style.cssText = 'cursor:pointer;';
         item.innerHTML = `
-          <span class="recent-search-text" style="cursor:pointer;pointer-events:auto;">${search}</span>
-          <button class="recent-search-remove" data-search="${search}">×</button>
+          <span class="recent-search-text" style="cursor:pointer;pointer-events:auto;">${escapeHTML(search)}</span>
+          <button class="recent-search-remove" data-search="${escapeHTML(search)}">×</button>
         `;
         // Make ENTIRE row clickable (not just the text span)
         item.addEventListener('click', (e) => {
@@ -1473,10 +1486,10 @@
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
-      const productName = product.name || product.title || 'Product Name';
+      const productName = escapeHTML(product.name || product.title || 'Product Name');
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
-      const productBadge = product.badge || product.tag || '';
+      const productBadge = escapeHTML(product.badge || product.tag || '');
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
       let badgeHtml = '';
@@ -1493,7 +1506,7 @@
       const _cardBrandLogo = product.brandLogo || product.brandIcon || '';
       const _cardBrandVerified = !!(product.blueTickAdmin);
       const _BT_CARD = _cardBrandVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;background:#2563eb;border-radius:50%;margin-left:2px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"7\" height=\"7\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></span>') : '';
-      const _brandOverlay = product.brand ? `<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;pointer-events:none;" title="View Brand"><div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="display:flex;align-items:center;gap:5px;cursor:pointer;pointer-events:auto;">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div></div>` : '';
+      const _brandOverlay = product.brand ? `<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;pointer-events:none;" title="View Brand"><div class="card-brand-link" data-brand-id="${_cardBrandId}" data-brand-name="${escapeHTML(product.brand)}" style="display:flex;align-items:center;gap:5px;cursor:pointer;pointer-events:auto;">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${escapeHTML(product.brand)}</span>${_BT_CARD}</div></div>` : '';
       const _cardImages = getProductImages(product);
       card.innerHTML = `
         <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
@@ -1544,6 +1557,13 @@
         e.stopPropagation();
         shareProduct(product);
       });
+      const brandLink = card.querySelector('.card-brand-link');
+      if (brandLink) {
+        brandLink.onclick = function(e) {
+          e.stopPropagation();
+          showBrandProfile(this.dataset.brandId, this.dataset.brandName);
+        };
+      }
       return card;
     }
 
@@ -1765,7 +1785,13 @@
         var bData = (window._brandsData||{})[bBrandId] || {};
         var _isVerified = bData.blueTickAdmin;
         var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="9" height="9"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>') : '';
-        brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
+        brandBadgeEl.innerHTML = '<div class="brand-badge-inner" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+escapeHTML(freshProduct.brand)+blueTick+'</div>';
+        var inner = brandBadgeEl.querySelector('.brand-badge-inner');
+        if (inner) {
+          inner.onclick = function() {
+            showBrandProfile(bBrandId, freshProduct.brand);
+          };
+        }
         brandBadgeEl.style.display = 'block';
       } else {
         brandBadgeEl.innerHTML = '';
@@ -3038,15 +3064,15 @@
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${escapeHTML((review.userName||'?')[0]).toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${escapeHTML(review.userName || 'Customer')}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
