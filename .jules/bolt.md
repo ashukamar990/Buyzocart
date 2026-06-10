@@ -22,3 +22,7 @@
 ## 2026-04-30 - Address System Optimization
 **Learning:** Centralizing address logic into a set of utility functions and using Map-like lookups for duplicate detection ensures (1)$ to (N)$ efficiency in local data management.
 **Action:** Use centralized utility functions for CRUD operations on localStorage to maintain state consistency across multiple SPA pages.
+
+## 2024-05-15 - Rating Lookup Optimization (O(P*R) to O(P+R))
+**Learning:** Redundant array filtering in rendering loops (calculating average ratings for every product card) creates a significant CPU bottleneck as reviews grow. Pre-calculating a lookup map in a single pass reduces rendering time exponentially.
+**Action:** Always use lookup maps (Objects or Maps) for join-like operations in frontend rendering loops instead of nested `.filter()` or `.find()` calls.

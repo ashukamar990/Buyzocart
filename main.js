@@ -294,28 +294,31 @@
 
     function getProductImage(product, idx = 0) {
       if (!product) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+      let url = "";
       if (Array.isArray(product.images) && product.images.length > 0) {
-        if (idx < product.images.length) return product.images[idx];
-        return product.images[0];
-      }
-      const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
-      for (const field of possibleImageFields) {
-        if (product[field]) {
-          if (typeof product[field] === 'string') {
-            return product[field];
-          }
-          if (Array.isArray(product[field]) && product[field].length > 0) {
-            return product[field][0];
+        url = idx < product.images.length ? product.images[idx] : product.images[0];
+      } else {
+        const possibleImageFields = ['image', 'img', 'imageUrl', 'photo', 'thumbnail', 'picture', 'url', 'mainImage', 'productImage'];
+        for (const field of possibleImageFields) {
+          if (product[field]) {
+            if (typeof product[field] === 'string') { url = product[field]; break; }
+            if (Array.isArray(product[field]) && product[field].length > 0) { url = product[field][0]; break; }
           }
         }
       }
-      if (typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
-        return product;
+      if (!url && typeof product === 'string' && (product.startsWith('http') || product.startsWith('/') || product.startsWith('data:'))) {
+        url = product;
       }
-      if (product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
-        return product.value;
+      if (!url && product.value && typeof product.value === 'string' && product.value.startsWith('http')) {
+        url = product.value;
       }
-      return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+      if (!url) return "https://via.placeholder.com/300x300/f3f4f6/64748b?text=No+Image";
+
+      // PERFORMANCE: Auto-optimize Unsplash URLs for faster delivery
+      if (url.includes('images.unsplash.com') && !url.includes('w=')) {
+        url += (url.includes('?') ? '&' : '?') + 'w=600&q=80';
+      }
+      return url;
     }
 
     function getProductImages(product) {
@@ -523,7 +526,7 @@
     }
 
     // ── Score a single product against query terms ──
-    function _scoreProduct(p, terms, originalQuery) {
+    function _scoreProduct(p, terms, originalQuery, ratingMap = null) {
       const name   = (p.name || p.title || '').toLowerCase();
       const short  = (p.shortTitle || '').toLowerCase();
       const cat    = (p.category || '').toLowerCase();
@@ -553,7 +556,7 @@
       // Boost: trending, high rating
       if (p.trending || p.isTrending) score += 15;
       if (p.bestseller || p.isBestseller) score += 10;
-      const rating = calculateProductRating(p.id);
+      const rating = calculateProductRating(p.id, ratingMap);
       if (rating >= 4) score += 8;
       if (rating >= 4.5) score += 5;
 
@@ -572,6 +575,9 @@
           .filter(t => t && t.length > 1)
       ));
 
+      // PERFORMANCE: O(R) pre-calculation of product ratings.
+      const ratingMap = getRatingMap(reviews);
+
       // Score all products
       const scored = [];
       products.forEach(p => {
@@ -581,7 +587,7 @@
           scored.push({ product: p, score: 1000 });
           return;
         }
-        const score = _scoreProduct(p, terms, raw);
+        const score = _scoreProduct(p, terms, raw, ratingMap);
         if (score > 20) scored.push({ product: p, score });
       });
 
@@ -589,7 +595,7 @@
       scored.sort((a, b) => {
         const diff = b.score - a.score;
         if (Math.abs(diff) > 5) return diff;
-        return calculateProductRating(b.product.id) - calculateProductRating(a.product.id);
+        return calculateProductRating(b.product.id, ratingMap) - calculateProductRating(a.product.id, ratingMap);
       });
 
       let results = scored.map(s => s.product);
@@ -711,6 +717,9 @@
         if (_directProduct) _isUrlQuery = true;
       }
 
+      // PERFORMANCE: O(R) pre-calculation of product ratings.
+      const ratingMap = getRatingMap(reviews);
+
       const results = searchProducts(query);
 
       // Show typo correction notice
@@ -736,7 +745,7 @@
         }
         topThree = [_directProduct].concat(_simProds).slice(0, 8);
       } else {
-        topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+        topThree = [...results].sort((a,b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap)).slice(0, 8);
       }
       suggestionsContainer.innerHTML = '';
 
@@ -776,7 +785,7 @@
         const card = document.createElement('div');
         const _isFirst = _cardIdx === 0 && _directProduct && product.id === _directProduct.id;
         card.style.cssText = 'flex:0 0 90px;cursor:pointer;border-radius:10px;overflow:hidden;border:' + (_isFirst ? '2px solid #2563eb' : '1px solid var(--border)') + ';background:var(--surface);box-shadow:' + (_isFirst ? '0 2px 10px rgba(37,99,235,.18)' : '0 1px 4px rgba(0,0,0,.06)') + ';transition:box-shadow .15s;position:relative;';
-        const ratingVal = calculateProductRating(product.id);
+        const ratingVal = calculateProductRating(product.id, ratingMap);
         card.innerHTML = `
           <div style="position:relative;height:80px;background-image:url('${getProductImage(product)}');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f8fafc;">
             ${_isFirst ? '<div style=\'position:absolute;top:4px;right:4px;background:#2563eb;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;\'>✓</div>' : ''}
@@ -1452,14 +1461,31 @@
 
     let reviews = [];
 
-    function calculateProductRating(productId) {
+    /**
+     * PERFORMANCE: O(R) pre-calculation of product ratings.
+     * Generates a lookup map to allow O(1) rating access during rendering.
+     */
+    function getRatingMap(reviewsArray) {
+      const counts = {}, sums = {};
+      (reviewsArray || []).forEach(r => {
+        if (!r.productId) return;
+        sums[r.productId] = (sums[r.productId] || 0) + (r.rating || 0);
+        counts[r.productId] = (counts[r.productId] || 0) + 1;
+      });
+      const map = {};
+      for (const id in sums) map[id] = sums[id] / counts[id];
+      return map;
+    }
+
+    function calculateProductRating(productId, ratingMap = null) {
+      if (ratingMap && ratingMap[productId] !== undefined) return ratingMap[productId];
       const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, ratingMap = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -1472,7 +1498,7 @@
       })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = calculateProductRating(productId, ratingMap);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -1496,7 +1522,8 @@
       const _brandOverlay = product.brand ? `<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 100%);padding:8px 8px 7px;display:flex;align-items:center;gap:5px;pointer-events:none;" title="View Brand"><div onclick="event.stopPropagation();showBrandProfile('${_cardBrandId}','${_cardBrandName}');" style="display:flex;align-items:center;gap:5px;cursor:pointer;pointer-events:auto;">${_cardBrandLogo ? `<img src="${_cardBrandLogo}" style="width:18px;height:18px;border-radius:4px;object-fit:cover;border:1px solid rgba(255,255,255,.4);flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 40px);">${product.brand}</span>${_BT_CARD}</div></div>` : '';
       const _cardImages = getProductImages(product);
       card.innerHTML = `
-        <div class="product-card-image" style="background-image: url('${productImage}');position:relative;">
+        <div class="product-card-image" style="position:relative;">
+          <img src="${productImage}" loading="lazy" decoding="async" alt="${productName}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s ease;">
           ${badgeHtml}
           ${_brandOverlay}
         </div>
@@ -4034,9 +4061,8 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+    function getProductScore(product, ratingMap = null) {
+      const rating = calculateProductRating(product.id, ratingMap);
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
@@ -4045,16 +4071,12 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      (productsToRender || []).forEach(p => {
-        if (!p) return;
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b) - getProductScore(a));
+
+      // PERFORMANCE: O(R) pre-calculation of product ratings.
+      // Eliminates O(P*R) bottleneck during rendering.
+      const ratingMap = getRatingMap(reviews);
+
+      const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap));
       // ONLY homeProductGrid gets first-20 limit — all other grids show everything
       const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
       // PERFORMANCE: chunk rendering for productGrid & searchResultsGrid to prevent hang
@@ -4072,14 +4094,14 @@
       if (needsChunking) {
         const firstChunk = toRender.slice(0, CHUNK_SIZE);
         const fragment = document.createDocumentFragment();
-        firstChunk.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        firstChunk.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap)); });
         container.appendChild(fragment);
         let chunkStart = CHUNK_SIZE;
         function renderNextChunk() {
           if (chunkStart >= toRender.length) return;
           const chunk = toRender.slice(chunkStart, chunkStart + CHUNK_SIZE);
           const frag = document.createDocumentFragment();
-          chunk.forEach(product => { if (product) frag.appendChild(createProductCard(product)); });
+          chunk.forEach(product => { if (product) frag.appendChild(createProductCard(product, ratingMap)); });
           container.appendChild(frag);
           chunkStart += CHUNK_SIZE;
           if (chunkStart < toRender.length) {
@@ -4097,7 +4119,7 @@
         }
       } else {
         const fragment = document.createDocumentFragment();
-        toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap)); });
         container.appendChild(fragment);
       }
       if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
@@ -7151,11 +7173,14 @@
     if (noResults) noResults.style.display = 'none';
     if (countEl) countEl.textContent = `${results.length} product${results.length !== 1 ? 's' : ''} found for "${query}"`;
 
+    // PERFORMANCE: O(R) pre-calculation of product ratings.
+    const ratingMap = getRatingMap(reviews);
+
     results.forEach(product => {
       // Use the existing createProductCard if available
       let card;
       if (typeof createProductCard === 'function') {
-        card = createProductCard(product);
+        card = createProductCard(product, ratingMap);
       } else {
         card = document.createElement('div');
         card.className = 'product-card';
@@ -8315,11 +8340,14 @@
           return s;
         }
 
+        // PERFORMANCE: O(R) pre-calculation of product ratings.
+        const ratingMap = getRatingMap(reviews);
+
         // Product card for brand grid
         function bpProductCard(p) {
           var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
           var img = (p.images&&p.images[0]) || p.image || p.thumbnail || '';
-          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
+          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id, ratingMap) : (p.rating||0);
           var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
           return '<div onclick="showProductDetail(\''+p.id+'\')" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
             +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
