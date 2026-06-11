@@ -905,21 +905,9 @@
 
                 // Auto-approve brands check on every dashboard load
                 checkAndAutoApproveBrands(user.uid).catch(function(){});
-
-                // Check if redirected from main store with a goto flag
-                var _gotoPage = null;
-                try {
-                    _gotoPage = sessionStorage.getItem('bz_seller_goto');
-                    if (_gotoPage) sessionStorage.removeItem('bz_seller_goto');
-                } catch(e) {}
-                // Also check URL hash (e.g. sell-product.html#brand)
-                if (!_gotoPage && window.location.hash) {
-                    var _hashPage = window.location.hash.replace('#','').trim();
-                    if (_hashPage === 'brand' || _hashPage === 'myBrand') _gotoPage = 'brand';
-                }
-
+                
                 if (typeof navigateTo === 'function') {
-                    navigateTo(_gotoPage || 'dashboard');
+                    navigateTo('dashboard');
                 }
                 
             } catch (err) {
@@ -3128,6 +3116,26 @@
                         +'<button onclick="navigateTo(\'products\')" style="flex:1;padding:11px;border-radius:10px;background:var(--primary);color:#fff;border:none;cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;"><i class="fas fa-plus"></i> Add Product</button>'
                         +'<button onclick="_editBrandProfileModal()" style="flex:1;padding:11px;border-radius:10px;background:#f1f5f9;color:#0f172a;border:none;cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;"><i class="fas fa-pen"></i> Edit Brand</button>'
                     +'</div>'
+
+                    // ── OFFER SECTION ──
+                    +(brand.offer
+                        ? '<div style="margin-top:14px;background:linear-gradient(135deg,#fff8e6,#fef3c7);border:1.5px dashed #f59e0b;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;">'
+                            +'<div style="font-size:1.5rem;flex-shrink:0;">🎁</div>'
+                            +'<div style="flex:1;min-width:0;">'
+                                +'<div style="font-size:10px;font-weight:800;color:#f59e0b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Active Offer</div>'
+                                +'<div style="font-size:13px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+brand.offer+'</div>'
+                            +'</div>'
+                            +'<button onclick="_editBrandProfileModal()" style="flex-shrink:0;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Edit</button>'
+                        +'</div>'
+                        : '<div style="margin-top:14px;border:1.5px dashed #e2e8f0;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;background:#fafafa;cursor:pointer;" onclick="_editBrandProfileModal()">'
+                            +'<div style="font-size:1.4rem;flex-shrink:0;opacity:.5;">🎁</div>'
+                            +'<div>'
+                                +'<div style="font-size:13px;font-weight:700;color:#64748b;">Add a Special Offer</div>'
+                                +'<div style="font-size:11px;color:#94a3b8;margin-top:1px;">e.g. Use code SAVE10 for 10% off</div>'
+                            +'</div>'
+                            +'<div style="margin-left:auto;color:var(--primary);font-size:11px;font-weight:700;">+ Add</div>'
+                        +'</div>'
+                    )
                 +'</div>'
 
                 // ── SELLER + BRAND IDs ──
@@ -3155,16 +3163,21 @@
                 +'<div class="card">'
                     +'<div class="card-header"><h3 class="card-title">🛍️ Brand Products ('+myProds.length+')</h3><button class="btn btn-primary btn-sm" onclick="navigateTo(\'products\')">View All</button></div>'
                     +'<div class="card-body">'
-                        +(myProds.length ? myProds.slice(0,5).map(function(p){
-                            var img=(p.images&&p.images[0])||'https://placehold.co/44';
-                            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">'
-                                +'<div style="display:flex;align-items:center;gap:12px;">'
-                                    +'<img src="'+img+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;" onerror="this.src=\'https://placehold.co/44\'">'
-                                    +'<div><div style="font-weight:700;font-size:13px;">'+(p.title||'Product')+'</div><div style="font-size:11px;color:#64748b;">'+formatCurrency(p.price)+' · '+(p.productCode||'N/A')+'</div></div>'
+                        +(myProds.length ? myProds.slice(0,6).map(function(p){
+                            var img=(p.images&&p.images[0])||'https://placehold.co/36';
+                            var disc = p.mrp && p.price && p.mrp > p.price ? Math.round((p.mrp-p.price)/p.mrp*100) : 0;
+                            return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;">'
+                                +'<img src="'+img+'" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;" onerror="this.src=\'https://placehold.co/36\'">'
+                                +'<div style="flex:1;min-width:0;">'
+                                    +'<div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(p.title||'Product')+'</div>'
+                                    +'<div style="font-size:11px;color:#64748b;display:flex;align-items:center;gap:6px;margin-top:1px;">'
+                                        +formatCurrency(p.price)
+                                        +(disc?'<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">-'+disc+'%</span>':'')
+                                    +'</div>'
                                 +'</div>'
-                                +'<span class="badge '+(p.status==='inactive'?'badge-danger':'badge-success')+'">'+(p.status||'active')+'</span>'
+                                +'<span class="badge '+(p.status==='inactive'?'badge-danger':'badge-success')+'" style="font-size:10px;flex-shrink:0;">'+(p.status||'active')+'</span>'
                             +'</div>';
-                        }).join('') : '<p style="color:#94a3b8;text-align:center;padding:20px;">No products yet. <a onclick="navigateTo(\'products\')" style="color:var(--primary);cursor:pointer;">Add one</a></p>')
+                        }).join('') : '<p style="color:#94a3b8;text-align:center;padding:20px;font-size:13px;">No products yet. <a onclick="navigateTo(\'products\')" style="color:var(--primary);cursor:pointer;">Add one</a></p>')
                     +'</div>'
                 +'</div>'
 
@@ -3189,6 +3202,13 @@
                         +'<button onclick="document.getElementById(\'_ebModal\').remove()" style="width:32px;height:32px;border-radius:50%;border:none;background:#f1f5f9;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;color:#64748b;transition:all .2s;" onmouseover="this.style.background=\'#fee2e2\';this.style.color=\'#ef4444\';" onmouseout="this.style.background=\'#f1f5f9\';this.style.color=\'#64748b\';">&times;</button>'
                     +'</div>'
                     +'<div style="padding:20px;">'
+
+                    // Offer field — NEW
+                    +'<div style="margin-bottom:18px;">'
+                        +'<label style="display:block;margin-bottom:7px;font-size:0.82rem;font-weight:700;color:#374151;">🎁 Special Offer / Promo Code</label>'
+                        +'<input class="form-control" id="ebOffer" value="'+(_myBrandData.offer||'')+'" placeholder="e.g. Use code SAVE10 for 10% off all products" style="font-size:13px;">'
+                        +'<div style="font-size:11px;color:#94a3b8;margin-top:5px;">This offer will be shown on your brand profile to customers. Leave blank to remove.</div>'
+                    +'</div>'
 
                     // Description
                     +'<div style="margin-bottom:18px;">'
@@ -3257,18 +3277,20 @@
 
         async function saveBrandEdits() {
             if (!_myBrandData) return;
+            var offer  = ((document.getElementById('ebOffer')  ? document.getElementById('ebOffer').value  : '') || '').trim();
             var desc   = ((document.getElementById('ebDesc')   ? document.getElementById('ebDesc').value   : '') || '').trim();
             var logo   = ((document.getElementById('ebLogo')   ? document.getElementById('ebLogo').value   : '') || '').trim();
             var banner = ((document.getElementById('ebBanner') ? document.getElementById('ebBanner').value : '') || '').trim();
             var saveBtn = document.getElementById('ebSaveBtn');
             if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Saving...'; }
             try {
-                var updates = { description: desc, updatedAt: Date.now() };
+                var updates = { description: desc, offer: offer, updatedAt: Date.now() };
                 if (logo)   updates.logo   = logo;
                 if (banner) updates.banner = banner;
                 await window._update(window._ref(window._db, 'brands/' + _myBrandData.id), updates);
                 // Update local cache
                 _myBrandData.description = desc;
+                _myBrandData.offer = offer;
                 if (logo)   _myBrandData.logo   = logo;
                 if (banner) _myBrandData.banner = banner;
                 showToast('Brand profile updated! ✅', 'success');
