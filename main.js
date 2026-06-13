@@ -3246,6 +3246,24 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay')?.textContent;
+      if (!orderId) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(orderId).then(() => {
+          showToast('Order ID copied!', 'success');
+        });
+      } else {
+        const temp = document.createElement('textarea');
+        temp.value = orderId;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast('Order ID copied!', 'success');
+      }
+    }
+
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
     // PROBLEM: onValue() lagaya tha orders pe → user ke saare orders
     //          ki continuous TCP connection (persistent watcher)
@@ -5773,6 +5791,7 @@
       document.getElementById('toPayment')?.addEventListener('click', toPayment);
       document.getElementById('payBack')?.addEventListener('click', () => showPage('userPage'));
       document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
