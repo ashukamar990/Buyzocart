@@ -22,3 +22,6 @@
 ## 2026-04-30 - Address System Optimization
 **Learning:** Centralizing address logic into a set of utility functions and using Map-like lookups for duplicate detection ensures (1)$ to (N)$ efficiency in local data management.
 **Action:** Use centralized utility functions for CRUD operations on localStorage to maintain state consistency across multiple SPA pages.
+## 2026-05-01 - Rating Lookup Optimization
+**Learning:** Inefficient O(P*R) rating calculations during search and rendering were causing significant UI jank. Pre-calculating a rating map in O(R) time allows for O(1) lookups at every call site.
+**Action:** Use a Map-based lookup (e.g., getRatingMap) for any repeated filtering operations on large datasets to ensure O(P+R) complexity instead of nested O(P*R).
