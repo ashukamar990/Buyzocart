@@ -5667,6 +5667,15 @@
         });
         searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
       }
+      const headerSearchInput = document.getElementById('headerSearchInput');
+      if (headerSearchInput) {
+        headerSearchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            openSearchPanel();
+          }
+        });
+      }
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
       if (searchResultsInput) {
@@ -5746,7 +5755,17 @@
       document.getElementById('loginTab')?.addEventListener('click', () => switchAuthTab('login'));
       document.getElementById('signupTab')?.addEventListener('click', () => switchAuthTab('signup'));
       document.getElementById('switchToLogin')?.addEventListener('click', () => switchAuthTab('login'));
+      ['loginEmail', 'loginPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); handleLogin(); }
+        });
+      });
       document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
+      ['signupName', 'signupEmail', 'signupPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); handleSignup(); }
+        });
+      });
       document.getElementById('signupBtn')?.addEventListener('click', handleSignup);
       document.getElementById('googleLoginBtn')?.addEventListener('click', handleGoogleLogin);
       document.getElementById('googleSignupBtn')?.addEventListener('click', handleGoogleLogin);
@@ -5757,6 +5776,9 @@
       document.getElementById('backToLogin')?.addEventListener('click', () => {
         document.getElementById('forgotPasswordForm').classList.remove('active');
         document.getElementById('loginForm').classList.add('active');
+      });
+      document.getElementById('forgotPasswordEmail')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleResetPassword(); }
       });
       document.getElementById('resetPasswordBtn')?.addEventListener('click', handleResetPassword);
       document.getElementById('mobileLogoutBtn')?.addEventListener('click', showLogoutConfirmation);
@@ -5790,6 +5812,9 @@
       if (minThumb && maxThumb && priceSliderTrack) {
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
+      document.getElementById('newsletterEmail')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleNewsletterSubscription(); }
+      });
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
