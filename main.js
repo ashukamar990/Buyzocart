@@ -266,6 +266,22 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function sanitizeURL(url) {
+      if (!url) return '';
+      const whitelist = /^(https?:\/\/|data:image\/|\/|#)/i;
+      return whitelist.test(url) ? url : '';
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -1473,10 +1489,10 @@
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
-      const productName = product.name || product.title || 'Product Name';
+      const productName = escapeHTML(product.name || product.title || 'Product Name');
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
-      const productBadge = product.badge || product.tag || '';
+      const productBadge = escapeHTML(product.badge || product.tag || '');
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
       let badgeHtml = '';
@@ -1765,7 +1781,10 @@
         var bData = (window._brandsData||{})[bBrandId] || {};
         var _isVerified = bData.blueTickAdmin;
         var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="9" height="9"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>') : '';
-        brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
+        const safeBrandName = escapeHTML(freshProduct.brand);
+        brandBadgeEl.innerHTML = `<div style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ ${safeBrandName}${blueTick}</div>`;
+        const innerDiv = brandBadgeEl.querySelector('div');
+        if (innerDiv) innerDiv.onclick = () => showBrandProfile(bBrandId, freshProduct.brand);
         brandBadgeEl.style.display = 'block';
       } else {
         brandBadgeEl.innerHTML = '';
@@ -3027,26 +3046,33 @@
 
         let mediaHtml = '';
         if (review.fileUrl && review.fileType === 'image') {
-          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
+          const safeFileUrl = escapeHTML(sanitizeURL(review.fileUrl));
+          mediaHtml = `<div class="review-file-preview"><img src="${safeFileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${safeFileUrl}','_blank')"></div>`;
         } else if (review.fileUrl && review.fileType === 'video') {
-          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
+          const safeFileUrl = escapeHTML(sanitizeURL(review.fileUrl));
+          mediaHtml = `<div class="review-file-preview"><video controls src="${safeFileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
         if (review.youtubeUrl) {
           const ytId = extractYouTubeId(review.youtubeUrl);
-          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+          const safeYoutubeUrl = escapeHTML(sanitizeURL(review.youtubeUrl));
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${safeYoutubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
         }
+
+        const safeUserName = escapeHTML(review.userName || 'Customer');
+        const safeUserPhoto = escapeHTML(sanitizeURL(review.userPhoto));
+        const safeReviewText = escapeHTML(review.text || '');
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${safeUserPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(safeUserName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${safeUserName}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${safeReviewText}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
