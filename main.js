@@ -5667,6 +5667,28 @@
         });
         searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
       }
+
+      // ── Keyboard support for forms ──────────────────────────────
+      const _formMap = [
+        { ids: ['newsletterEmail'], handler: handleNewsletterSubscription },
+        { ids: ['loginEmail', 'loginPassword'], handler: handleLogin },
+        { ids: ['signupName', 'signupEmail', 'signupPassword'], handler: handleSignup },
+        { ids: ['forgotPasswordEmail'], handler: handleResetPassword }
+      ];
+      _formMap.forEach(f => {
+        f.ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('keydown', function(e) {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                f.handler();
+              }
+            });
+          }
+        });
+      });
+
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
       if (searchResultsInput) {
