@@ -5747,7 +5747,13 @@
       document.getElementById('signupTab')?.addEventListener('click', () => switchAuthTab('signup'));
       document.getElementById('switchToLogin')?.addEventListener('click', () => switchAuthTab('login'));
       document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
+      ['loginEmail','loginPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', e => { if(e.key === 'Enter') handleLogin(); });
+      });
       document.getElementById('signupBtn')?.addEventListener('click', handleSignup);
+      ['signupName','signupEmail','signupPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', e => { if(e.key === 'Enter') handleSignup(); });
+      });
       document.getElementById('googleLoginBtn')?.addEventListener('click', handleGoogleLogin);
       document.getElementById('googleSignupBtn')?.addEventListener('click', handleGoogleLogin);
       document.getElementById('forgotPasswordLink')?.addEventListener('click', () => {
@@ -5791,6 +5797,7 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      document.getElementById('newsletterEmail')?.addEventListener('keydown', e => { if(e.key === 'Enter') handleNewsletterSubscription(); });
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);

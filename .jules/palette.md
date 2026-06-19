@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2024-06-19 - Manual Form Submission Support
+**Learning:** Authentication and newsletter inputs in this application are implemented as standalone elements without semantic <form> wrapping, resulting in a lack of native 'Enter' key submission support.
+**Action:** Always check for 'Enter' key support in interactive forms and implement manual 'keydown' listeners if semantic forms are missing to ensure accessibility and UX consistency.
