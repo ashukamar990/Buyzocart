@@ -1965,21 +1965,9 @@
     };
 
     window.bzCopyHighlights = function() {
-      var text = window._bzHighlightsCopyText || '';
-      if (!text) return;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() {
-          if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
-        });
-      } else {
-        var el = document.createElement('textarea');
-        el.value = text;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
-      }
+      const text = window._bzHighlightsCopyText || '';
+      const btn = document.getElementById('copyHighlightsBtn');
+      if (text && btn) bzCopyWithFeedback(text, btn);
     };
 
     window.bzMoreInfo = function() {
@@ -3239,11 +3227,62 @@
       if (viewAllBtn) viewAllBtn.addEventListener('click', showAllRatings);
     }
 
+    function bzCopyWithFeedback(text, btn) {
+      if (!text || !btn || btn._bzCopying) return;
+      btn._bzCopying = true;
+      const originalText = btn.textContent;
+      const originalBg = btn.style.background;
+
+      const setSuccess = () => {
+        btn.textContent = 'Copied! ✓';
+        btn.style.background = '#22c55e';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = originalBg;
+          delete btn._bzCopying;
+        }, 2000);
+      };
+
+      const fallbackCopy = () => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          if (document.execCommand('copy')) {
+            setSuccess();
+          } else {
+            if (typeof showToast === 'function') showToast('Failed to copy', 'error');
+            delete btn._bzCopying;
+          }
+        } catch (err) {
+          if (typeof showToast === 'function') showToast('Failed to copy', 'error');
+          delete btn._bzCopying;
+        }
+        document.body.removeChild(textArea);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(setSuccess).catch(() => fallbackCopy());
+      } else {
+        fallbackCopy();
+      }
+    }
+
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const btn = document.getElementById('copyShareLink');
+      if (shareLink && btn) bzCopyWithFeedback(shareLink.value, btn);
+    }
+
+    function copyOrderId() {
+      const orderIdEl = document.getElementById('orderIdDisplay');
+      const btn = document.getElementById('copyOrderIdBtn');
+      if (orderIdEl && btn) bzCopyWithFeedback(orderIdEl.textContent, btn);
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5802,6 +5841,7 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       // Use onclick (not addEventListener) so editAddress can safely override without double-fire
       var _saveUserInfoBtn = document.getElementById('saveUserInfo');
       if (_saveUserInfoBtn) _saveUserInfoBtn.onclick = saveUserInfoAndAddress;
