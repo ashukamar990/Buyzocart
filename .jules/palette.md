@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-06-26 - Keyboard-First Interactive Elements
+**Learning:** Using `div` or `span` for interactive elements (like menu icons or items) requires explicit ARIA roles, tabindex, and manual keydown listeners for 'Enter' and 'Space' to ensure they are accessible to keyboard-only and screen reader users.
+**Action:** Always prefer semantic `<button>` or `<a>` tags. If non-semantic elements must be used, ensure `role="button"`, `tabindex="0"`, and keydown event delegation are implemented.
