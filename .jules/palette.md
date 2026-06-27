@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2025-05-14 - Non-semantic Trigger Accessibility
+**Learning:** The application frequently uses `div` elements as interactive triggers (e.g., mobile menu, social links). These are ignored by screen readers and keyboard-only users unless explicitly given `role="button"`, `tabindex="0"`, and `keydown` listeners.
+**Action:** Always check for `onclick` handlers on non-button elements and ensure they have appropriate ARIA roles and keyboard activation support.

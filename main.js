@@ -5729,8 +5729,26 @@
     }
 
     function setupEventListeners() {
-      document.getElementById('menuIcon')?.addEventListener('click', openMenu);
-      document.getElementById('menuClose')?.addEventListener('click', closeMenu);
+      const menuIcon = document.getElementById('menuIcon');
+      if (menuIcon) {
+        menuIcon.addEventListener('click', openMenu);
+        menuIcon.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openMenu();
+          }
+        });
+      }
+      const menuClose = document.getElementById('menuClose');
+      if (menuClose) {
+        menuClose.addEventListener('click', closeMenu);
+        menuClose.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            closeMenu();
+          }
+        });
+      }
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       ['themeToggle','themeToggleBtn','darkModeToggle','darkModeBtn','nightModeBtn'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', toggleTheme);
@@ -5760,6 +5778,16 @@
       });
       document.getElementById('resetPasswordBtn')?.addEventListener('click', handleResetPassword);
       document.getElementById('mobileLogoutBtn')?.addEventListener('click', showLogoutConfirmation);
+
+      // Keyboard accessibility for menu items
+      document.querySelectorAll('.menu-item, .social-menu-item').forEach(item => {
+        item.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            item.click();
+          }
+        });
+      });
       document.getElementById('alertCancelBtn')?.addEventListener('click', () => document.getElementById('alertModal').classList.remove('active'));
       // Use onclick (not addEventListener) so other modals can safely override it
       var _alertConfirmBtn = document.getElementById('alertConfirmBtn');
