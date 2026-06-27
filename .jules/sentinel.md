@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2025-01-24 - [Sanitization Utilities and Review Hardening]
+**Vulnerability:** XSS in review rendering through unescaped user text and insecure inline `onclick` handlers on dynamic URLs.
+**Learning:** Escaping text with `escapeHTML` is necessary but insufficient if the same data is used in a URL context. Pseudo-protocols like `javascript:` can execute code even if the string is escaped for HTML content.
+**Prevention:** Implement a global `sanitizeURL()` that enforces a protocol whitelist (http/https/data/relative) and strips control characters. Decouple dynamic data from event handlers using `data-*` attributes and centralized event delegation.
