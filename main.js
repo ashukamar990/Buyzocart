@@ -5730,7 +5730,16 @@
 
     function setupEventListeners() {
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
-      document.getElementById('menuClose')?.addEventListener('click', closeMenu);
+      const menuClose = document.getElementById('menuClose');
+      if (menuClose) {
+        menuClose.addEventListener('click', closeMenu);
+        menuClose.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            closeMenu();
+          }
+        });
+      }
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       ['themeToggle','themeToggleBtn','darkModeToggle','darkModeBtn','nightModeBtn'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', toggleTheme);
@@ -5791,6 +5800,16 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      ['loginEmail', 'loginPassword', 'signupName', 'signupEmail', 'signupPassword', 'newsletterEmail'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (['loginEmail', 'loginPassword'].includes(id)) handleLogin();
+            else if (['signupName', 'signupEmail', 'signupPassword'].includes(id)) handleSignup();
+            else if (id === 'newsletterEmail') handleNewsletterSubscription();
+          }
+        });
+      });
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
