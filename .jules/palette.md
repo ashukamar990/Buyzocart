@@ -13,3 +13,6 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+## 2026-06-29 - Functional Boundary Feedback (Quantity Selector)
+**Learning:** Providing immediate functional (disabling buttons) and visual (opacity/cursor) feedback at interaction boundaries prevents user error and reduces reliance on temporary toast notifications.
+**Action:** Always implement `disabled` states and corresponding CSS for input controls with defined limits.
