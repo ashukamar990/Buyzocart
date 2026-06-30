@@ -366,7 +366,7 @@
 
     (function() {
       try {
-        const cfg = window.BZ_CONFIG?.emailjs;
+        const cfg = window.BZ_CONFIG?.get('emailjs');
         if (cfg?.publicKey && cfg.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
           emailjs.init(cfg.publicKey);
         }
@@ -375,7 +375,7 @@
 
     function bzSendEmail(templateId, params) {
       try {
-        const cfg = window.BZ_CONFIG?.emailjs;
+        const cfg = window.BZ_CONFIG?.get('emailjs');
         if (!cfg?.serviceId || !cfg?.publicKey || cfg.publicKey === 'YOUR_EMAILJS_PUBLIC_KEY') return;
         if (!templateId || templateId === 'YOUR_LOGIN_TEMPLATE_ID' || templateId === 'YOUR_ORDER_TEMPLATE_ID') return;
         emailjs.send(cfg.serviceId, templateId, params).catch(e => console.warn('EmailJS:', e));
@@ -5027,10 +5027,11 @@
       }
       meta.hasLoggedIn = true;
       localStorage.setItem(NOTIF_META_KEY, JSON.stringify(meta));
-      const cfg = window.BZ_CONFIG?.emailjs;
+      const cfg = window.BZ_CONFIG?.get('emailjs');
+      const store = window.BZ_CONFIG?.get('store');
       bzSendEmail(cfg?.loginTemplateId, {
         to_email: email,
-        store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
+        store_name: store?.name || 'Buyzo Cart',
         login_time: new Date().toLocaleString('en-IN'),
         device: navigator.userAgent.slice(0,60)
       });
@@ -5038,26 +5039,28 @@
 
     function sendWelcomeEmail(email, name) {
       addNotif({type:'system', title:'Welcome to Buyzo Cart! 🎉', message:'Hi '+(name||'there')+'! Account created. Enjoy shopping!', badge:'Welcome'});
-      const cfg = window.BZ_CONFIG?.emailjs;
+      const cfg = window.BZ_CONFIG?.get('emailjs');
+      const store = window.BZ_CONFIG?.get('store');
       bzSendEmail(cfg?.loginTemplateId, {
         to_email: email,
         to_name: name || 'Customer',
-        store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
-        message: 'Welcome to ' + (window.BZ_CONFIG?.store?.name||'Buyzo Cart') + '! Aapka account successfully create ho gaya hai.'
+        store_name: store?.name || 'Buyzo Cart',
+        message: 'Welcome to ' + (store?.name||'Buyzo Cart') + '! Aapka account successfully create ho gaya hai.'
       });
     }
 
     function sendOrderNotification(email, orderId, productName, total) {
       addNotif({type:'order', title:'Order Placed! 🛍️', message:(productName||'')+(orderId?' — Order '+orderId:'')+(total?' | ₹'+total:''), badge:'Order Confirmed'});
-      const cfg = window.BZ_CONFIG?.emailjs;
+      const cfg = window.BZ_CONFIG?.get('emailjs');
+      const store = window.BZ_CONFIG?.get('store');
       bzSendEmail(cfg?.orderTemplateId, {
         to_email: email,
         order_id: orderId,
         product_name: productName || 'Product',
         total_amount: '₹' + total,
-        store_name: window.BZ_CONFIG?.store?.name || 'Buyzo Cart',
+        store_name: store?.name || 'Buyzo Cart',
         order_date: new Date().toLocaleDateString('en-IN'),
-        store_email: window.BZ_CONFIG?.store?.email || ''
+        store_email: store?.email || ''
       });
     }
 
@@ -6244,6 +6247,9 @@
 
     // categoryPage + orderTrackPage in showPage switch
     function initApp() {
+      if (window.BZ_CONFIG && !window.BZ_CONFIG.isUnlocked()) {
+        window.BZ_CONFIG.unlock("BuyzoSecure2024#");
+      }
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       recentSearches = cacheManager.get(CACHE_KEYS.RECENT_SEARCHES) || [];

@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2024-06-30 - [Centralized Secure Config Integration]
+**Vulnerability:** Hardcoded Firebase API keys and secrets in multiple HTML files (index, account, sell-product).
+**Learning:** Hardcoded credentials in HTML files bypass centralized security controls and are harder to rotate. The existing `config.js` was present but unused in several pages, leading to a fragmented security posture.
+**Prevention:** Always use the centralized `BZ_CONFIG` system for sensitive credentials. Ensure all pages requiring Firebase or other external services include `config.js` and unlock the configuration using the standard project password before initialization.
