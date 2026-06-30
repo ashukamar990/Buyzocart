@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2024-05-01 - Interactive Copy Feedback & Button Accessibility
+**Learning:** Users lack immediate confirmation when clicking "Copy" buttons if only a toast appears. Adding in-place button text changes (e.g., "Copy" -> "Copied!") provides much stronger visual feedback. Also, using `div` elements as buttons requires explicit keyboard listeners for 'Enter' and 'Space' as `onclick` does not trigger automatically for non-semantic elements.
+**Action:** Always provide in-place feedback for copy actions and ensure any non-semantic interactive element has role="button", tabindex="0", and keydown listeners.
