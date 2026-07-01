@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2024-05-23 - Interactive Clipboard Feedback
+**Learning:** Users often feel uncertain when clicking 'copy' buttons without immediate visual confirmation. Providing button-level text changes (e.g., "COPY" -> "COPIED!") alongside toasts provides a more robust and delightful feedback loop.
+**Action:** Always implement temporary button text changes for clipboard actions and ensure these buttons have descriptive `aria-label` and `title` attributes for screen readers and mouse users.
