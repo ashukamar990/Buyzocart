@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2025-05-14 - Quantity Selector Accessibility & State Feedback
+**Learning:** Icon-only buttons without ARIA labels are invisible to screen readers, and lacking visual feedback for state limits (like quantity boundaries) creates a confusing "dead" interaction.
+**Action:** Always pair icon-only buttons with descriptive `aria-label` and implement explicit `:disabled` styles for boundary conditions to provide clear interaction feedback.
