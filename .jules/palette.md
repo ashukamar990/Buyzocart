@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-07-03 - Keyboard Accessibility for Custom UI Components
+**Learning:** Generic elements (like `div` or `span`) used as interactive components must explicitly include `role="button"` and `tabindex="0"` to be discoverable and operable by keyboard users. Unlike native `<button>` or `<a>` elements, they do not automatically respond to 'Enter' or 'Space' keys, necessitating manual `keydown` event listeners.
+**Action:** When encountering non-semantic interactive elements, always supplement them with appropriate ARIA roles, tab indexing, and keyboard event handlers.
