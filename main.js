@@ -274,6 +274,26 @@
       };
     }
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+
+    function sanitizeURL(url) {
+      if (!url) return '';
+      const safeRegex = /^(?:https?:\/\/|data:image\/|\/|\.\/|\.\.\/)/i;
+      if (!safeRegex.test(url)) return '';
+      return url.replace(/[<>"'()]/g, '');
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -3027,26 +3047,26 @@
 
         let mediaHtml = '';
         if (review.fileUrl && review.fileType === 'image') {
-          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
+          mediaHtml = `<div class="review-file-preview"><img src="${sanitizeURL(review.fileUrl)}" alt="Review photo" class="review-img-trigger" data-url="${sanitizeURL(review.fileUrl)}" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;"></div>`;
         } else if (review.fileUrl && review.fileType === 'video') {
-          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
+          mediaHtml = `<div class="review-file-preview"><video controls src="${sanitizeURL(review.fileUrl)}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
         if (review.youtubeUrl) {
           const ytId = extractYouTubeId(review.youtubeUrl);
-          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${sanitizeURL(review.youtubeUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
         }
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${sanitizeURL(review.userPhoto)}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${escapeHTML(review.userName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${escapeHTML(review.userName || 'Customer')}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${escapeHTML(review.text)}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
@@ -5779,6 +5799,15 @@
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
       document.getElementById('resetPriceFilter')?.addEventListener('click', resetPriceFilter);
+
+      // Centralized delegated click listener for review images (XSS-safe)
+      document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('.review-img-trigger');
+        if (trigger) {
+          const url = trigger.getAttribute('data-url');
+          if (url) window.open(url, '_blank');
+        }
+      });
       document.getElementById('applySearchPriceFilter')?.addEventListener('click', applySearchPriceFilter);
       document.getElementById('resetSearchPriceFilter')?.addEventListener('click', resetSearchPriceFilter);
       const minThumb = document.getElementById('priceMinThumb');
