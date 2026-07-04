@@ -274,6 +274,26 @@
       };
     }
 
+    function escapeHTML(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function sanitizeURL(url) {
+      if (!url) return "";
+      const s = url.trim();
+      if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+      if (/^(https?|data:image)/i.test(s)) {
+        return s.replace(/[<>"'()]/g, "");
+      }
+      return "about:blank";
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -3025,28 +3045,34 @@
         const isVerified = review.isVerifiedPurchase ? '<span class="review-verified-badge">✓ Verified Purchase</span>' : '';
         const isPending = review.status === 'pending' ? '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">⏳ Pending Approval</span>' : '';
 
+        const safeUserName = escapeHTML(review.userName || 'Customer');
+        const safeReviewText = escapeHTML(review.text || "");
+        const safeUserPhoto = sanitizeURL(review.userPhoto);
+        const safeFileUrl = sanitizeURL(review.fileUrl);
+        const safeYoutubeUrl = sanitizeURL(review.youtubeUrl);
+
         let mediaHtml = '';
-        if (review.fileUrl && review.fileType === 'image') {
-          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
-        } else if (review.fileUrl && review.fileType === 'video') {
-          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
+        if (safeFileUrl && review.fileType === 'image') {
+          mediaHtml = `<div class="review-file-preview"><img src="${safeFileUrl}" alt="Review photo" loading="lazy" class="review-img-trigger" data-url="${safeFileUrl}" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;"></div>`;
+        } else if (safeFileUrl && review.fileType === 'video') {
+          mediaHtml = `<div class="review-file-preview"><video controls src="${safeFileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
-        if (review.youtubeUrl) {
-          const ytId = extractYouTubeId(review.youtubeUrl);
-          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+        if (safeYoutubeUrl && safeYoutubeUrl !== "about:blank") {
+          const ytId = extractYouTubeId(safeYoutubeUrl);
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${safeYoutubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
         }
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${safeUserPhoto && safeUserPhoto !== "about:blank" ? `<img src="${safeUserPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(safeUserName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${safeUserName}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${safeReviewText}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
@@ -5820,6 +5846,16 @@
       }
       document.querySelectorAll('input[name="pay"]').forEach(radio => radio.addEventListener('change', updatePaymentSummary));
       setupFileUpload();
+
+      // Delegated click listener for dynamic elements
+      document.addEventListener('click', (e) => {
+        const reviewImg = e.target.closest('.review-img-trigger');
+        if (reviewImg) {
+          const url = sanitizeURL(reviewImg.dataset.url);
+          if (url && url !== 'about:blank') window.open(url, '_blank');
+        }
+      });
+
       function _resolveProductHash(hash) {
         if (hash.startsWith('p/')) return _slugToId(hash.substring(2));
         if (hash.includes('productDetailPage?product=')) return hash.split('=')[1];
