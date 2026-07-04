@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-07-04 - Reactive Quantity Selector States
+**Learning:** In a commerce flow, disabling increment/decrement buttons at logical limits (e.g., 1 min, 3 max) provides immediate functional feedback that prevents "dead clicks" and user confusion.
+**Action:** Always synchronize button 'disabled' states with the current input value in selector components and ensure icon-only buttons have descriptive ARIA labels.
