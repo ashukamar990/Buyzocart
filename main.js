@@ -5729,6 +5729,17 @@
     }
 
     function setupEventListeners() {
+      // Global accessibility: delegating Enter/Space to elements with role="button"
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          var target = e.target;
+          if (target && target.getAttribute('role') === 'button') {
+            e.preventDefault();
+            target.click();
+          }
+        }
+      });
+
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
