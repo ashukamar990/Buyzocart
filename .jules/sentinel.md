@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2025-01-24 - [Centralized Event Delegation for Dynamic Content]
+**Vulnerability:** XSS via entity decoding in inline event handlers.
+**Learning:** Even when characters like `"` are escaped to `&quot;`, browsers decode these entities inside HTML attributes before executing JavaScript. This allows an attacker to break out of string literals in inline `onclick` handlers if they can control the input.
+**Prevention:** Always favor centralized event delegation in `setupEventListeners` using `data-*` attributes instead of inline `onclick` handlers for dynamically rendered elements. Use a whitelist-based `sanitizeURL` for any attribute that accepts a URL.
