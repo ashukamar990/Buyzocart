@@ -5729,6 +5729,18 @@
     }
 
     function setupEventListeners() {
+      // ── KEYBOARD ACCESSIBILITY: role="button" delegation ──────
+      // Trigger click when Enter or Space is pressed on non-native buttons
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const roleBtn = e.target.closest('[role="button"]');
+          if (roleBtn && !roleBtn.tagName.match(/^(BUTTON|A|INPUT|TEXTAREA|SELECT)$/)) {
+            if (e.key === ' ') e.preventDefault(); // prevent scroll
+            roleBtn.click();
+          }
+        }
+      });
+
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
