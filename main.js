@@ -2648,6 +2648,7 @@
         if (sizeSection) sizeSection.style.display = 'none';
       }
       document.getElementById('qtySelect').value = 1;
+      updateQtyBtnStates();
       initOrderPageGallery();
       showPage('orderPage');
     }
@@ -2952,10 +2953,21 @@
       if (chargeNote) chargeNote.style.display = paymentMethod === 'prepaid' ? 'block' : 'none';
     }
 
+    function updateQtyBtnStates() {
+      const qtyInput = document.getElementById('qtySelect');
+      if (!qtyInput) return;
+      const val = parseInt(qtyInput.value) || 1;
+      const minusBtn = document.querySelector('.qty-minus');
+      const plusBtn = document.querySelector('.qty-plus');
+      if (minusBtn) minusBtn.disabled = (val <= 1);
+      if (plusBtn) plusBtn.disabled = (val >= 3);
+    }
+
     function decreaseQuantity() {
       const qtyInput = document.getElementById('qtySelect');
       let value = parseInt(qtyInput.value);
       if (value > 1) qtyInput.value = value - 1;
+      updateQtyBtnStates();
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
     }
 
@@ -2964,6 +2976,7 @@
       let value = parseInt(qtyInput.value);
       if (value < 3) qtyInput.value = value + 1;
       else showToast('Maximum 3 units per order', 'error');
+      updateQtyBtnStates();
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
     }
 
