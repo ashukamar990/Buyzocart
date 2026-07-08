@@ -5730,7 +5730,13 @@
 
     function setupEventListeners() {
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
+      document.getElementById('menuIcon')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(); }
+      });
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
+      document.getElementById('menuClose')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeMenu(); }
+      });
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
       ['themeToggle','themeToggleBtn','darkModeToggle','darkModeBtn','nightModeBtn'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', toggleTheme);
@@ -5791,6 +5797,9 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      document.getElementById('newsletterEmail')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); handleNewsletterSubscription(); }
+      });
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
