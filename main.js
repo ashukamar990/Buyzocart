@@ -1511,13 +1511,13 @@
             ${product.originalPrice ? `<div class="product-card-original-price">${formatPrice(product.originalPrice)}</div>` : ''}
           </div>
           <div class="product-card-actions">
-            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist">
+            <button class="action-btn wishlist-btn ${isWishlisted ? 'active' : ''}" data-product-id="${productId}" title="Wishlist" aria-label="Add to wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'red' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
             <div style="flex:1"></div>
-            <button class="action-btn share-btn" data-product-id="${productId}" title="Share">
+            <button class="action-btn share-btn" data-product-id="${productId}" title="Share" aria-label="Share product">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -1964,22 +1964,51 @@
       if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
     };
 
-    window.bzCopyHighlights = function() {
-      var text = window._bzHighlightsCopyText || '';
+    /**
+     * Copy text to clipboard with visual button feedback
+     * @param {string} text - Text to copy
+     * @param {string} btnId - ID of the button for feedback
+     * @param {string} successText - Temporary text to show on button
+     * @param {string} toastMsg - Message for toast notification
+     */
+    function bzCopyToClipboard(text, btnId, successText, toastMsg) {
       if (!text) return;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() {
-          if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
-        });
-      } else {
-        var el = document.createElement('textarea');
+      const btn = document.getElementById(btnId);
+      const originalText = btn ? btn.textContent : '';
+
+      const onSuccess = function() {
+        if (typeof showToast === 'function') showToast(toastMsg, 'success');
+        if (btn && successText) {
+          btn.textContent = successText;
+          setTimeout(() => { btn.textContent = originalText; }, 2000);
+        }
+      };
+
+      const fallbackCopy = function() {
+        const el = document.createElement('textarea');
         el.value = text;
+        el.style.position = 'fixed'; // Avoid scrolling
+        el.style.opacity = '0';
         document.body.appendChild(el);
         el.select();
-        document.execCommand('copy');
+        try {
+          document.execCommand('copy');
+          onSuccess();
+        } catch (err) {
+          console.warn('Fallback copy failed', err);
+        }
         document.body.removeChild(el);
-        if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(fallbackCopy);
+      } else {
+        fallbackCopy();
       }
+    }
+
+    window.bzCopyHighlights = function() {
+      bzCopyToClipboard(window._bzHighlightsCopyText || '', 'copyHighlightsBtn', 'COPIED!', 'Highlights copied!');
     };
 
     window.bzMoreInfo = function() {
@@ -3241,9 +3270,7 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      bzCopyToClipboard(shareLink ? shareLink.value : '', 'copyShareLink', 'Copied!', 'Link copied to clipboard');
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5729,6 +5756,19 @@
     }
 
     function setupEventListeners() {
+      // Accessibility: Handle keyboard interaction (Enter/Space) for non-native buttons
+      ['menuIcon', 'menuClose'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              el.click();
+            }
+          });
+        }
+      });
+
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
