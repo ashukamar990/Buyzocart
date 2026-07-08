@@ -22,3 +22,7 @@
 ## 2026-04-30 - Address System Optimization
 **Learning:** Centralizing address logic into a set of utility functions and using Map-like lookups for duplicate detection ensures (1)$ to (N)$ efficiency in local data management.
 **Action:** Use centralized utility functions for CRUD operations on localStorage to maintain state consistency across multiple SPA pages.
+
+## 2024-05-23 - Product Rating Performance Optimization
+**Learning:** Repeatedly filtering a large `reviews` array ($O(R)$) inside a loop over products ($O(P)$) creates a massive $O(P \times R)$ bottleneck in search, filtering, and rendering.
+**Action:** Use a centralized `bzGetRatingMap()` utility to pre-calculate averages in $O(R)$ and provide $O(1)$ lookups, reducing overall complexity to $O(P+R)$.
