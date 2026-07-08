@@ -364,6 +364,54 @@
       }, 3000);
     }
 
+    /**
+     * Centralized clipboard utility with visual feedback
+     */
+    window.bzCopyToClipboard = function(text, btnOrId, successText = 'Copied!', toastMsg = '') {
+      if (!text) return;
+      const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
+      const originalText = btn ? (btn.innerText || btn.textContent) : '';
+
+      function handleSuccess() {
+        if (toastMsg && typeof showToast === 'function') showToast(toastMsg, 'success');
+        if (btn) {
+          if (btn.tagName === 'BUTTON') btn.innerText = successText;
+          else btn.textContent = successText;
+          btn.classList.add('copy-success');
+          setTimeout(() => {
+            if (btn.tagName === 'BUTTON') btn.innerText = originalText;
+            else btn.textContent = originalText;
+            btn.classList.remove('copy-success');
+          }, 2000);
+        }
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(handleSuccess).catch(err => {
+          console.error('Clipboard error:', err);
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+
+      function fallbackCopy(str) {
+        const el = document.createElement('textarea');
+        el.value = str;
+        el.style.position = 'fixed';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        el.select();
+        try {
+          document.execCommand('copy');
+          handleSuccess();
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
+        document.body.removeChild(el);
+      }
+    };
+
     (function() {
       try {
         const cfg = window.BZ_CONFIG?.emailjs;
@@ -1966,19 +2014,8 @@
 
     window.bzCopyHighlights = function() {
       var text = window._bzHighlightsCopyText || '';
-      if (!text) return;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() {
-          if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
-        });
-      } else {
-        var el = document.createElement('textarea');
-        el.value = text;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        if (typeof showToast === 'function') showToast('Highlights copied!', 'success');
+      if (text && typeof window.bzCopyToClipboard === 'function') {
+        window.bzCopyToClipboard(text, 'copyHighlightsBtn', 'COPIED!', 'Highlights copied!');
       }
     };
 
@@ -3241,9 +3278,9 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      if (shareLink && typeof window.bzCopyToClipboard === 'function') {
+        window.bzCopyToClipboard(shareLink.value, 'copyShareLink', 'Copied!', 'Link copied to clipboard');
+      }
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -6443,12 +6480,10 @@
       }
     }
 
-    function copyOfferCode(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        showToast('Offer code "' + code + '" copied!', 'success');
-      }).catch(() => {
-        showToast('Code: ' + code, 'success');
-      });
+    function copyOfferCode(code, btn) {
+      if (typeof window.bzCopyToClipboard === 'function') {
+        window.bzCopyToClipboard(code, btn, 'COPIED!', 'Offer code "' + code + '" copied!');
+      }
     }
 
     function loadOffersFromDB() {
@@ -6477,8 +6512,8 @@
             <p class="offer-desc">${offer.description || offer.message || ''}</p>
             ${code ? `<div class="offer-code-box">
               <span class="offer-code-label">Use Code:</span>
-              <span class="offer-code" onclick="copyOfferCode('${code}')">${code}</span>
-              <button class="offer-copy-btn" onclick="copyOfferCode('${code}')">📋 Copy</button>
+              <span class="offer-code" onclick="copyOfferCode('${code}', this)" title="Click to copy code">${code}</span>
+              <button class="offer-copy-btn" onclick="copyOfferCode('${code}', this)" aria-label="Copy offer code ${code}" title="Copy code to clipboard">📋 Copy</button>
             </div>` : ''}
             ${offer.savings ? `<div class="offer-savings">${offer.savings}</div>` : ''}
             <button class="offer-shop-btn" onclick="showPage('productsPage');">Shop Now →</button>
