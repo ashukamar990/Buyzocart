@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-30 - Add Copy Order ID button to success page
+**Learning:** Adding a copy button for critical information (like Order IDs) on success pages significantly improves UX by reducing the friction of manually selecting and copying text, especially on mobile where text selection can be finicky. Providing immediate "Copied!" feedback on the button itself (instead of just a toast) gives the user direct confirmation in their center of focus.
+**Action:** Always consider adding a "Copy" helper next to important identifiers or codes that users might need to save for later reference. Use inline visual feedback (e.g., text change on the button) to confirm the action immediately.
