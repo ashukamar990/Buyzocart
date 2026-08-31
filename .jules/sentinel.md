@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2025-06-20 - [Defense in Depth for URL-based XSS]
+**Vulnerability:** XSS via `javascript:` protocols in `src` or `href` attributes.
+**Learning:** `escapeHTML` prevents tag injection but does not block malicious protocols like `javascript:`.
+**Prevention:** Implement a `sanitizeURL` utility using a protocol whitelist (e.g., `http:`, `https:`, `mailto:`, `tel:`, `data:image/`) and apply it to all user-provided or external URLs before binding them to sensitive attributes.
