@@ -5706,6 +5706,24 @@
           }
         });
       }
+
+      // 🎨 Palette: Keyboard support for forms and search triggers
+      ['headerSearchInput', 'newsletterEmail', 'loginEmail', 'loginPassword',
+       'signupName', 'signupEmail', 'signupPassword', 'forgotPasswordEmail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (id === 'headerSearchInput') openSearchPanel();
+              else if (id === 'newsletterEmail') handleNewsletterSubscription();
+              else if (id.startsWith('login')) handleLogin();
+              else if (id.startsWith('signup')) handleSignup();
+              else if (id === 'forgotPasswordEmail') handleResetPassword();
+            }
+          });
+        }
+      });
     }
 
     function setupFileUpload() {
