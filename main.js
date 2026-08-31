@@ -5775,6 +5775,16 @@
       document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay')?.textContent;
+        if (orderId && navigator.clipboard) {
+          navigator.clipboard.writeText(orderId).then(() => {
+            showToast('Order ID copied!', 'success');
+          }).catch(() => {
+            showToast('Failed to copy Order ID', 'error');
+          });
+        }
+      });
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
       document.querySelector('.qty-plus')?.addEventListener('click', increaseQuantity);
       document.getElementById('applyPriceFilter')?.addEventListener('click', applyPriceFilter);
