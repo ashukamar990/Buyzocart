@@ -523,7 +523,7 @@
     }
 
     // ── Score a single product against query terms ──
-    function _scoreProduct(p, terms, originalQuery) {
+    function _scoreProduct(p, terms, originalQuery, ratingMap) {
       const name   = (p.name || p.title || '').toLowerCase();
       const short  = (p.shortTitle || '').toLowerCase();
       const cat    = (p.category || '').toLowerCase();
@@ -553,7 +553,7 @@
       // Boost: trending, high rating
       if (p.trending || p.isTrending) score += 15;
       if (p.bestseller || p.isBestseller) score += 10;
-      const rating = calculateProductRating(p.id);
+      const rating = ratingMap ? (ratingMap[p.id] || 0) : calculateProductRating(p.id);
       if (rating >= 4) score += 8;
       if (rating >= 4.5) score += 5;
 
@@ -574,6 +574,7 @@
 
       // Score all products
       const scored = [];
+      const ratingMap = getRatingMap(reviews);
       products.forEach(p => {
         const pid = p.id || p.productId || '';
         // Exact ID match — instant top
@@ -581,7 +582,7 @@
           scored.push({ product: p, score: 1000 });
           return;
         }
-        const score = _scoreProduct(p, terms, raw);
+        const score = _scoreProduct(p, terms, raw, ratingMap);
         if (score > 20) scored.push({ product: p, score });
       });
 
@@ -589,7 +590,7 @@
       scored.sort((a, b) => {
         const diff = b.score - a.score;
         if (Math.abs(diff) > 5) return diff;
-        return calculateProductRating(b.product.id) - calculateProductRating(a.product.id);
+        return (ratingMap[b.product.id] || 0) - (ratingMap[a.product.id] || 0);
       });
 
       let results = scored.map(s => s.product);
@@ -736,7 +737,8 @@
         }
         topThree = [_directProduct].concat(_simProds).slice(0, 8);
       } else {
-        topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+        const ratingMap = getRatingMap(reviews);
+        topThree = [...results].sort((a,b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap)).slice(0, 8);
       }
       suggestionsContainer.innerHTML = '';
 
@@ -1452,14 +1454,33 @@
 
     let reviews = [];
 
-    function calculateProductRating(productId) {
+    /**
+     * O(R) utility to pre-calculate average ratings for all products.
+     * Prevents O(P*R) bottlenecks in rendering and sorting loops.
+     */
+    function getRatingMap(reviewsArray) {
+      const map = {};
+      const counts = {};
+      (reviewsArray || []).forEach(r => {
+        if (!r.productId || r.rating === undefined) return;
+        map[r.productId] = (map[r.productId] || 0) + r.rating;
+        counts[r.productId] = (counts[r.productId] || 0) + 1;
+      });
+      Object.keys(map).forEach(pid => {
+        map[pid] = map[pid] / counts[pid];
+      });
+      return map;
+    }
+
+    function calculateProductRating(productId, ratingMap) {
+      if (ratingMap) return ratingMap[productId] || 0;
       const productReviews = reviews.filter(r => r.productId === productId);
       if (productReviews.length === 0) return 0;
       const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, ratingMap) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -1472,7 +1493,7 @@
       })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      const rating = calculateProductRating(productId, ratingMap);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -3774,14 +3795,7 @@
         // Products save category by NAME — this is the primary match
         return pc === catName || pc === catId.toLowerCase() || pci === catId.toLowerCase() || pci === catName;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       showPage('productsPage');
       document.querySelectorAll('.category-pill').forEach(function(pill) {
@@ -3811,14 +3825,7 @@
         const price = parsePrice(product.price);
         return price >= minPrice && price <= maxPrice;
       });
-      const ratingMap = {};
-      filteredProducts.forEach(p => {
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
+      const ratingMap = getRatingMap(reviews);
       filteredProducts.sort((a, b) => (ratingMap[b.id] || 0) - (ratingMap[a.id] || 0));
       renderProducts(filteredProducts, 'productGrid');
       updateProductsCount(true);
@@ -4034,9 +4041,8 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+    function getProductScore(product, ratingMap) {
+      const rating = ratingMap ? (ratingMap[product.id] || 0) : calculateProductRating(product.id);
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
@@ -4045,16 +4051,8 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      (productsToRender || []).forEach(p => {
-        if (!p) return;
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
-      });
-      const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b) - getProductScore(a));
+      const ratingMap = getRatingMap(reviews);
+      const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b, ratingMap) - getProductScore(a, ratingMap));
       // ONLY homeProductGrid gets first-20 limit — all other grids show everything
       const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
       // PERFORMANCE: chunk rendering for productGrid & searchResultsGrid to prevent hang
@@ -4072,14 +4070,14 @@
       if (needsChunking) {
         const firstChunk = toRender.slice(0, CHUNK_SIZE);
         const fragment = document.createDocumentFragment();
-        firstChunk.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        firstChunk.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap)); });
         container.appendChild(fragment);
         let chunkStart = CHUNK_SIZE;
         function renderNextChunk() {
           if (chunkStart >= toRender.length) return;
           const chunk = toRender.slice(chunkStart, chunkStart + CHUNK_SIZE);
           const frag = document.createDocumentFragment();
-          chunk.forEach(product => { if (product) frag.appendChild(createProductCard(product)); });
+          chunk.forEach(product => { if (product) frag.appendChild(createProductCard(product, ratingMap)); });
           container.appendChild(frag);
           chunkStart += CHUNK_SIZE;
           if (chunkStart < toRender.length) {
@@ -4097,7 +4095,7 @@
         }
       } else {
         const fragment = document.createDocumentFragment();
-        toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product, ratingMap)); });
         container.appendChild(fragment);
       }
       if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
@@ -8248,6 +8246,8 @@
         var trending = brandProds.slice().sort(function(a,b){ return ((b.views||0)+(b.orders||0)*3)-((a.views||0)+(a.orders||0)*3); }).slice(0,6);
         var latest   = brandProds.slice().sort(function(a,b){ return ((b.addedAt||b.createdAt||0)-(a.addedAt||a.createdAt||0)); }).slice(0,6);
 
+        var ratingMap      = getRatingMap([...reviews, ...brandReviews]);
+
         // Blue tick SVG
         var BT = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;flex-shrink:0;" title="Verified Brand"><path d="M50,5C53,5 55,8 58,8C61,8 63,5 66,6C69,7 70,11 73,12C76,13 79,11 81,13C83,15 82,19 84,21C86,23 90,23 91,26C92,29 90,32 91,35C92,38 95,40 95,43C95,46 92,48 91,51C90,54 92,57 91,60C90,63 86,64 85,67C84,70 85,74 83,76C81,78 78,77 75,79C72,81 71,84 68,85C65,86 62,84 59,85C56,86 54,89 50,89C46,89 44,86 41,85C38,84 35,86 32,85C29,84 28,81 25,79C22,77 19,78 17,76C15,74 16,70 15,67C14,64 10,63 9,60C8,57 10,54 9,51C8,48 5,46 5,43C5,40 8,38 9,35C10,32 8,29 9,26C10,23 14,23 16,21C18,19 17,15 19,13C21,11 24,13 27,12C30,11 31,7 34,6C37,5 39,8 42,8C45,8 47,5 50,5Z" fill="#1DA1F2"/><polyline points="31,50 44,63 69,36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         var BTSMALL = BT.replace('width="18" height="18"','width="12" height="12"');
@@ -8319,7 +8319,7 @@
         function bpProductCard(p) {
           var price = typeof formatPrice==='function' ? formatPrice(p.price||0) : '₹'+(p.price||0);
           var img = (p.images&&p.images[0]) || p.image || p.thumbnail || '';
-          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id) : (p.rating||0);
+          var pRating = typeof calculateProductRating==='function' ? calculateProductRating(p.id, ratingMap) : (p.rating||0);
           var wlActive = typeof wishlist!=='undefined' && wishlist.includes(p.id);
           return '<div onclick="showProductDetail(\''+p.id+'\')" style="background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 1px 6px rgba(0,0,0,.06)\'">'
             +'<div style="position:relative;padding-top:100%;background:#f8fafc;overflow:hidden;">'
@@ -8576,7 +8576,7 @@
           +'</div>'
         +'</div>';
 
-        // ── Render real products using renderProducts ──
+        // Optimized rendering
         if (brandProds.length && typeof renderProducts === 'function') {
           setTimeout(function() {
             renderProducts(brandProds, 'bpProductGrid');
