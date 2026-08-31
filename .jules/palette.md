@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2024-06-10 - Standardized Clipboard Interactions
+**Learning:** Centralizing clipboard operations into a single utility helper improves code reusability and ensures consistent visual feedback (e.g., "✅ Copied!") across different features like sharing links or copying order IDs.
+**Action:** Always use a centralized helper for clipboard actions that includes visual state changes on the trigger button to prevent redundant operations and provide immediate confirmation.

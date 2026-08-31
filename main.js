@@ -274,6 +274,59 @@
       };
     }
 
+    /**
+     * Centralized clipboard utility with visual feedback
+     * @param {string} text - Text to copy
+     * @param {HTMLElement} btn - Button element that triggered the action
+     * @param {string} successMsg - Message to show in toast
+     */
+    function bzCopyText(text, btn, successMsg = 'Copied!') {
+      if (!text || !btn || btn.hasAttribute('data-copying')) return;
+
+      const originalHtml = btn.innerHTML;
+      btn.setAttribute('data-copying', 'true');
+
+      const finalize = (success) => {
+        if (success) {
+          btn.innerHTML = '✅ Copied!';
+          if (typeof showToast === 'function') showToast(successMsg, 'success');
+        }
+        setTimeout(() => {
+          btn.innerHTML = originalHtml;
+          btn.removeAttribute('data-copying');
+        }, 2000);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => finalize(true))
+          .catch(() => {
+            // Fallback to textarea method if clipboard API fails
+            fallbackCopy(text);
+          });
+      } else {
+        fallbackCopy(text);
+      }
+
+      function fallbackCopy(str) {
+        try {
+          const el = document.createElement('textarea');
+          el.value = str;
+          el.setAttribute('readonly', '');
+          el.style.position = 'absolute';
+          el.style.left = '-9999px';
+          document.body.appendChild(el);
+          el.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(el);
+          finalize(successful);
+        } catch (err) {
+          btn.removeAttribute('data-copying');
+          btn.innerHTML = originalHtml;
+        }
+      }
+    }
+
     function parsePrice(p) {
       if (typeof p === "number") return p;
       if (typeof p === "string") {
@@ -3240,10 +3293,11 @@
     }
 
     function copyShareLink() {
-      const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const shareLink = document.getElementById('productShareLink')?.value;
+      const btn = document.getElementById('copyShareLink');
+      if (shareLink && btn) {
+        bzCopyText(shareLink, btn, 'Link copied to clipboard!');
+      }
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5802,6 +5856,12 @@
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', function() {
+        const orderId = document.getElementById('orderIdDisplay')?.textContent;
+        if (orderId) {
+          bzCopyText(orderId, this, 'Order ID copied to clipboard!');
+        }
+      });
       // Use onclick (not addEventListener) so editAddress can safely override without double-fire
       var _saveUserInfoBtn = document.getElementById('saveUserInfo');
       if (_saveUserInfoBtn) _saveUserInfoBtn.onclick = saveUserInfoAndAddress;
