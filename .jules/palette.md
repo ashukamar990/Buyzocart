@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2025-05-15 - Keyboard and Screen Reader Accessibility Polish
+**Learning:** In applications where forms are manually managed without semantic <form> tags, standard UX patterns like 'Enter' to submit and keyboard closing of modals/menus are often omitted, breaking the experience for power users and those with accessibility needs.
+**Action:** Systematically audit all interaction points for missing 'Enter' key listeners and ensure all icon-only buttons or interactive <div>s have appropriate ARIA labels, roles, and tabindexes.
