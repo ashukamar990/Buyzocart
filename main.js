@@ -3241,9 +3241,48 @@
 
     function copyShareLink() {
       const shareLink = document.getElementById('productShareLink');
-      shareLink.select();
-      document.execCommand('copy');
-      showToast('Link copied to clipboard', 'success');
+      const text = shareLink.value;
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Link copied to clipboard', 'success');
+        }).catch(() => {
+          // Fallback if clipboard API fails
+          shareLink.select();
+          document.execCommand('copy');
+          showToast('Link copied to clipboard', 'success');
+        });
+      } else {
+        shareLink.select();
+        document.execCommand('copy');
+        showToast('Link copied to clipboard', 'success');
+      }
+    }
+
+    function copyOrderId() {
+      const orderIdEl = document.getElementById('orderIdDisplay');
+      if (!orderIdEl) return;
+      const text = orderIdEl.textContent.trim();
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Order ID copied!', 'success');
+        }).catch(() => {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          showToast('Order ID copied!', 'success');
+        });
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('Order ID copied!', 'success');
+      }
     }
 
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
@@ -5773,6 +5812,7 @@
       document.getElementById('toPayment')?.addEventListener('click', toPayment);
       document.getElementById('payBack')?.addEventListener('click', () => showPage('userPage'));
       document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
