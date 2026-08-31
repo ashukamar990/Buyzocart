@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-15 - Boundary Enforcement for Quantity Selectors
+**Learning:** Preventing invalid user input through proactive boundary enforcement (disabling buttons) is superior to reactive feedback (toasts) as it reduces cognitive load and prevents "error-state" frustration. Standardizing these inputs with ARIA labels and semantic types ensures accessibility for screen readers while maintaining a consistent visual language.
+**Action:** Always pair numerical inputs with state-aware control buttons and use CSS ':disabled' states to provide immediate visual cues for interface limits.
