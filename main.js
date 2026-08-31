@@ -3246,6 +3246,32 @@
       showToast('Link copied to clipboard', 'success');
     }
 
+    function copyOrderId() {
+      const orderId = document.getElementById('orderIdDisplay')?.textContent;
+      if (!orderId) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(orderId)
+          .then(() => showToast('Order ID copied to clipboard', 'success'))
+          .catch(() => {
+            const el = document.createElement('textarea');
+            el.value = orderId;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Order ID copied', 'success');
+          });
+      } else {
+        const el = document.createElement('textarea');
+        el.value = orderId;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast('Order ID copied', 'success');
+      }
+    }
+
     // ── OPTIMIZATION: setupOrdersRealtimeListener ────────────────
     // PROBLEM: onValue() lagaya tha orders pe → user ke saare orders
     //          ki continuous TCP connection (persistent watcher)
@@ -5667,6 +5693,26 @@
         });
         searchInput.addEventListener('input', function(e) { handleSearchPanelInput(e); });
       }
+
+      // Newsletter and Authentication forms "Enter" key support
+      const formKeyMap = {
+        'newsletterEmail': handleNewsletterSubscription,
+        'loginEmail': handleLogin,
+        'loginPassword': handleLogin,
+        'signupName': handleSignup,
+        'signupEmail': handleSignup,
+        'signupPassword': handleSignup,
+        'forgotPasswordEmail': handleResetPassword
+      };
+
+      Object.keys(formKeyMap).forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            formKeyMap[id]();
+          }
+        });
+      });
       const searchResultsInput = document.getElementById('searchResultsInput');
       const searchResultsBtn = document.getElementById('searchResultsBtn');
       if (searchResultsInput) {
@@ -5773,6 +5819,7 @@
       document.getElementById('toPayment')?.addEventListener('click', toPayment);
       document.getElementById('payBack')?.addEventListener('click', () => showPage('userPage'));
       document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
+      document.getElementById('copyOrderIdBtn')?.addEventListener('click', copyOrderId);
       document.getElementById('goHome')?.addEventListener('click', () => showPage('homePage'));
       document.getElementById('viewOrders')?.addEventListener('click', () => checkAuthAndShowPage('myOrdersPage'));
       document.querySelector('.qty-minus')?.addEventListener('click', decreaseQuantity);
