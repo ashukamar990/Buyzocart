@@ -523,7 +523,7 @@
     }
 
     // ── Score a single product against query terms ──
-    function _scoreProduct(p, terms, originalQuery) {
+    function _scoreProduct(p, terms, originalQuery, forcedRating = null) {
       const name   = (p.name || p.title || '').toLowerCase();
       const short  = (p.shortTitle || '').toLowerCase();
       const cat    = (p.category || '').toLowerCase();
@@ -553,7 +553,8 @@
       // Boost: trending, high rating
       if (p.trending || p.isTrending) score += 15;
       if (p.bestseller || p.isBestseller) score += 10;
-      const rating = calculateProductRating(p.id);
+      // PERFORMANCE: Skip O(R) calculation if pre-calculated rating is provided
+      const rating = (forcedRating !== null) ? forcedRating : calculateProductRating(p.id);
       if (rating >= 4) score += 8;
       if (rating >= 4.5) score += 5;
 
@@ -561,9 +562,11 @@
     }
 
     // ── Main search function ──
-    function searchProducts(query) {
+    function searchProducts(query, forcedRatingMap = null) {
       if (!query || !query.trim()) return [];
       const raw   = query.trim();
+      // PERFORMANCE: Use provided rating map or pre-calculate ratings for all products
+      const ratingMap = forcedRatingMap || bzGetRatingMap();
       // Normalize: correct typos + synonyms
       const norm  = _normalizeQuery(raw);
       // Split into individual terms for multi-word queries
@@ -581,7 +584,7 @@
           scored.push({ product: p, score: 1000 });
           return;
         }
-        const score = _scoreProduct(p, terms, raw);
+        const score = _scoreProduct(p, terms, raw, ratingMap[p.id] || 0);
         if (score > 20) scored.push({ product: p, score });
       });
 
@@ -589,7 +592,7 @@
       scored.sort((a, b) => {
         const diff = b.score - a.score;
         if (Math.abs(diff) > 5) return diff;
-        return calculateProductRating(b.product.id) - calculateProductRating(a.product.id);
+        return (ratingMap[b.product.id] || 0) - (ratingMap[a.product.id] || 0);
       });
 
       let results = scored.map(s => s.product);
@@ -711,7 +714,9 @@
         if (_directProduct) _isUrlQuery = true;
       }
 
-      const results = searchProducts(query);
+      // PERFORMANCE: Pre-calculate ratings once and pass to searchProducts to avoid redundant O(R) calls
+      const ratingMap = bzGetRatingMap();
+      const results = searchProducts(query, ratingMap);
 
       // Show typo correction notice
       const normalized = _normalizeQuery(query);
@@ -736,7 +741,9 @@
         }
         topThree = [_directProduct].concat(_simProds).slice(0, 8);
       } else {
-        topThree = [...results].sort((a,b) => getProductScore(b) - getProductScore(a)).slice(0, 8);
+        topThree = [...results].sort((a,b) => {
+          return getProductScore(b, ratingMap[b.id] || 0) - getProductScore(a, ratingMap[a.id] || 0);
+        }).slice(0, 8);
       }
       suggestionsContainer.innerHTML = '';
 
@@ -776,7 +783,7 @@
         const card = document.createElement('div');
         const _isFirst = _cardIdx === 0 && _directProduct && product.id === _directProduct.id;
         card.style.cssText = 'flex:0 0 90px;cursor:pointer;border-radius:10px;overflow:hidden;border:' + (_isFirst ? '2px solid #2563eb' : '1px solid var(--border)') + ';background:var(--surface);box-shadow:' + (_isFirst ? '0 2px 10px rgba(37,99,235,.18)' : '0 1px 4px rgba(0,0,0,.06)') + ';transition:box-shadow .15s;position:relative;';
-        const ratingVal = calculateProductRating(product.id);
+        const ratingVal = ratingMap[product.id] || 0;
         card.innerHTML = `
           <div style="position:relative;height:80px;background-image:url('${getProductImage(product)}');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f8fafc;">
             ${_isFirst ? '<div style=\'position:absolute;top:4px;right:4px;background:#2563eb;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;\'>✓</div>' : ''}
@@ -1459,7 +1466,25 @@
       return sum / productReviews.length;
     }
 
-    function createProductCard(product) {
+    /**
+     * Pre-calculates average ratings for all products in O(R) time.
+     * Returns a Map for O(1) lookups during bulk rendering.
+     */
+    function bzGetRatingMap() {
+      const map = {};
+      const counts = {};
+      (reviews || []).forEach(r => {
+        if (!r.productId) return;
+        map[r.productId] = (map[r.productId] || 0) + (r.rating || 0);
+        counts[r.productId] = (counts[r.productId] || 0) + 1;
+      });
+      Object.keys(map).forEach(pid => {
+        map[pid] = map[pid] / (counts[pid] || 1);
+      });
+      return map;
+    }
+
+    function createProductCard(product, forcedRating = null) {
       if (!product) {
         console.error('Attempted to create product card with null product');
         return document.createElement('div');
@@ -1472,7 +1497,8 @@
       })();
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
-      const rating = calculateProductRating(productId);
+      // PERFORMANCE: Skip O(R) calculation if pre-calculated rating is provided
+      const rating = (forcedRating !== null) ? forcedRating : calculateProductRating(productId);
       const productName = product.name || product.title || 'Product Name';
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
@@ -4034,9 +4060,9 @@
     }
 
     // ── Product score for smart sorting (orders × weight + rating × weight) ──
-    function getProductScore(product) {
-      const rs = reviews.filter(r => r.productId === product.id);
-      const rating = rs.length ? rs.reduce((a, r) => a + r.rating, 0) / rs.length : 0;
+    function getProductScore(product, forcedRating = null) {
+      // PERFORMANCE: Skip O(R) calculation if pre-calculated rating is provided
+      const rating = (forcedRating !== null) ? forcedRating : calculateProductRating(product.id);
       const orderCount = (window._productStats && window._productStats[product.id]?.orderCount)
         || product.orderCount || 0;
       return (orderCount * 0.6) + (rating * 0.8);
@@ -4045,16 +4071,11 @@
     function renderProducts(productsToRender, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      const ratingMap = {};
-      (productsToRender || []).forEach(p => {
-        if (!p) return;
-        const productReviews = reviews.filter(r => r.productId === p.id);
-        if (productReviews.length) {
-          const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
-          ratingMap[p.id] = sum / productReviews.length;
-        } else ratingMap[p.id] = 0;
+      // PERFORMANCE: Pre-calculate ratings in O(R) instead of O(P*R)
+      const ratingMap = bzGetRatingMap();
+      const sorted = [...(productsToRender || [])].sort((a, b) => {
+        return getProductScore(b, ratingMap[b.id] || 0) - getProductScore(a, ratingMap[a.id] || 0);
       });
-      const sorted = [...(productsToRender || [])].sort((a, b) => getProductScore(b) - getProductScore(a));
       // ONLY homeProductGrid gets first-20 limit — all other grids show everything
       const toRender = (containerId === 'homeProductGrid') ? sorted.slice(0, 20) : sorted;
       // PERFORMANCE: chunk rendering for productGrid & searchResultsGrid to prevent hang
@@ -4072,14 +4093,18 @@
       if (needsChunking) {
         const firstChunk = toRender.slice(0, CHUNK_SIZE);
         const fragment = document.createDocumentFragment();
-        firstChunk.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        firstChunk.forEach(product => {
+          if (product) fragment.appendChild(createProductCard(product, ratingMap[product.id] || 0));
+        });
         container.appendChild(fragment);
         let chunkStart = CHUNK_SIZE;
         function renderNextChunk() {
           if (chunkStart >= toRender.length) return;
           const chunk = toRender.slice(chunkStart, chunkStart + CHUNK_SIZE);
           const frag = document.createDocumentFragment();
-          chunk.forEach(product => { if (product) frag.appendChild(createProductCard(product)); });
+          chunk.forEach(product => {
+            if (product) frag.appendChild(createProductCard(product, ratingMap[product.id] || 0));
+          });
           container.appendChild(frag);
           chunkStart += CHUNK_SIZE;
           if (chunkStart < toRender.length) {
@@ -4097,7 +4122,9 @@
         }
       } else {
         const fragment = document.createDocumentFragment();
-        toRender.forEach(product => { if (product) fragment.appendChild(createProductCard(product)); });
+        toRender.forEach(product => {
+          if (product) fragment.appendChild(createProductCard(product, ratingMap[product.id] || 0));
+        });
         container.appendChild(fragment);
       }
       if (containerId === 'homeProductGrid' && typeof window.bzPopulateHomeGrids === 'function') {
