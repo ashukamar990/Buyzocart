@@ -266,6 +266,19 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str || typeof str !== 'string') return str;
+      return str.replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[m];
+      });
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -905,7 +918,7 @@
         viewAll.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;';
         viewAll.innerHTML =
           `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-           <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${q}"</span>`;
+           <span style="font-size:14px;color:#2563eb;font-weight:700;">View all ${results.length} results for "${escapeHTML(q)}"</span>`;
         viewAll.addEventListener('click', () => { performSearch(q); closeSearchPanel(); });
         suggestionsContainer.appendChild(viewAll);
       }
@@ -1473,10 +1486,10 @@
       card.setAttribute('data-product-id', productId);
       const isWishlisted = isInWishlist(productId);
       const rating = calculateProductRating(productId);
-      const productName = product.name || product.title || 'Product Name';
+      const productName = escapeHTML(product.name || product.title || 'Product Name');
       const productPrice = formatPrice(product.price);
       const productImage = getProductImage(product);
-      const productBadge = product.badge || product.tag || '';
+      const productBadge = escapeHTML(product.badge || product.tag || '');
       const isTrending = product.isTrending || product.trending || false;
       const isFeatured = product.isFeatured || product.featured || false;
       let badgeHtml = '';
@@ -7180,9 +7193,9 @@
       if (catName) {
         const metaRow = document.createElement('div');
         metaRow.className = 'search-result-meta';
-        metaRow.innerHTML = `<span class="search-category-tag">🏷️ ${catName}</span>`;
+        metaRow.innerHTML = `<span class="search-category-tag">🏷️ ${escapeHTML(catName)}</span>`;
         if (product.condition && product.condition !== 'new') {
-          metaRow.innerHTML += `<span class="search-condition-tag">${product.condition}</span>`;
+          metaRow.innerHTML += `<span class="search-condition-tag">${escapeHTML(product.condition)}</span>`;
         }
         // Insert before title
         if (titleEl) {
