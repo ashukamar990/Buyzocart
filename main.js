@@ -266,6 +266,15 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return "";
+      return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -1765,7 +1774,12 @@
         var bData = (window._brandsData||{})[bBrandId] || {};
         var _isVerified = bData.blueTickAdmin;
         var blueTick = _isVerified ? (window.__BZ_BLUE_TICK || '<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;background:#2563eb;border-radius:50%;margin-left:3px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" width="9" height="9"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>') : '';
-        brandBadgeEl.innerHTML = '<div onclick="showBrandProfile(\''+bBrandId+'\',\''+freshProduct.brand.replace(/'/g,'')+'\');" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;">🏷️ '+freshProduct.brand+blueTick+'</div>';
+        brandBadgeEl.innerHTML = '';
+        var badgeInner = document.createElement('div');
+        badgeInner.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;margin:6px 0 8px;cursor:pointer;border:1px solid #bfdbfe;';
+        badgeInner.innerHTML = '🏷️ ' + escapeHTML(freshProduct.brand) + blueTick;
+        badgeInner.onclick = function() { showBrandProfile(bBrandId, freshProduct.brand); };
+        brandBadgeEl.appendChild(badgeInner);
         brandBadgeEl.style.display = 'block';
       } else {
         brandBadgeEl.innerHTML = '';
