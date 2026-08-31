@@ -5791,6 +5791,12 @@
         setupPriceSlider(minThumb, maxThumb, priceSliderTrack, priceSliderRange, minPriceInput, maxPriceInput);
       }
       document.getElementById('subscribeBtn')?.addEventListener('click', handleNewsletterSubscription);
+      document.getElementById('newsletterEmail')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNewsletterSubscription();
+        }
+      });
       document.getElementById('detailOrderBtn')?.addEventListener('click', orderProductFromDetail);
       document.getElementById('detailWishlistBtn')?.addEventListener('click', toggleWishlistFromDetail);
       document.querySelector('.detail-carousel-control.prev')?.addEventListener('click', prevDetailImage);
@@ -5801,7 +5807,47 @@
         });
       });
       document.getElementById('submitReview')?.addEventListener('click', submitProductReview);
+      ['loginEmail', 'loginPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleLogin();
+          }
+        });
+      });
       document.getElementById('copyShareLink')?.addEventListener('click', copyShareLink);
+      ['signupName', 'signupEmail', 'signupPassword'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSignup();
+          }
+        });
+      });
+      const menuIcon = document.getElementById('menuIcon');
+      menuIcon?.addEventListener('click', openMenu);
+      menuIcon?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openMenu();
+        }
+      });
+      const menuClose = document.getElementById('menuClose');
+      menuClose?.addEventListener('click', closeMenu);
+      menuClose?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          closeMenu();
+        }
+      });
+      document.querySelectorAll('.menu-item, .social-menu-item').forEach(item => {
+        item.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            item.click();
+          }
+        });
+      });
       // Use onclick (not addEventListener) so editAddress can safely override without double-fire
       var _saveUserInfoBtn = document.getElementById('saveUserInfo');
       if (_saveUserInfoBtn) _saveUserInfoBtn.onclick = saveUserInfoAndAddress;
