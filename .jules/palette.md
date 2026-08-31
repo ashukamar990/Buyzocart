@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-05-15 - Semantic Interactive Elements for Ratings
+**Learning:** Using generic tags like <span> or <div> for interactive components (e.g., rating stars, close icons) breaks keyboard navigation and screen reader support. Converting them to semantic <button> elements provides native focus management and accessibility.
+**Action:** Always prefer <button type="button"> for interactive UI elements and ensure they have descriptive aria-labels and appropriate state attributes like aria-pressed.
