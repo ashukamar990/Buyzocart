@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2025-01-24 - [XSS Protection in Review Rendering]
+**Vulnerability:** Persistent Cross-Site Scripting (XSS) in product review rendering via `review.userName`, `review.text`, and media URLs.
+**Learning:** Even when using some security patterns elsewhere, new features like review sections can introduce XSS if user-provided content is directly injected into `innerHTML`.
+**Prevention:** Always escape user-provided text content using `escapeHTML()`. For attributes like `src` and `href`, validate the URL protocol using `sanitizeURL()` to block `javascript:` and other dangerous pseudo-protocols. Avoid inline `onclick` handlers for dynamic URLs, as browsers decode HTML entities before execution, potentially bypassing escaping.
