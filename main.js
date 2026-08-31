@@ -2648,6 +2648,7 @@
         if (sizeSection) sizeSection.style.display = 'none';
       }
       document.getElementById('qtySelect').value = 1;
+      updateQtyBtnStates();
       initOrderPageGallery();
       showPage('orderPage');
     }
@@ -2957,6 +2958,7 @@
       let value = parseInt(qtyInput.value);
       if (value > 1) qtyInput.value = value - 1;
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
+      updateQtyBtnStates();
     }
 
     function increaseQuantity() {
@@ -2965,6 +2967,19 @@
       if (value < 3) qtyInput.value = value + 1;
       else showToast('Maximum 3 units per order', 'error');
       if (document.getElementById('paymentPage')?.classList.contains('active')) updatePaymentSummary();
+      updateQtyBtnStates();
+    }
+
+    function updateQtyBtnStates() {
+      const qtyInput = document.getElementById('qtySelect');
+      if (!qtyInput) return;
+      const value = parseInt(qtyInput.value);
+      const container = qtyInput.closest('.quantity-control');
+      if (!container) return;
+      const minusBtn = container.querySelector('.qty-minus');
+      const plusBtn = container.querySelector('.qty-plus');
+      if (minusBtn) minusBtn.disabled = (value <= 1);
+      if (plusBtn) plusBtn.disabled = (value >= 3);
     }
 
     function setRating(rating) {

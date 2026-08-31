@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2024-05-15 - Generic Button Accessibility
+**Learning:** Using `div` or other non-interactive elements as buttons requires `role="button"` and `tabindex="0"` in addition to `aria-label` to be truly accessible to keyboard and screen reader users.
+**Action:** Always check for generic elements acting as triggers and add appropriate ARIA roles and tab indices.
