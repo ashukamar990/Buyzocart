@@ -13,3 +13,7 @@
 ## 2026-04-30 - Amazon-Style Address Management
 **Learning:** Providing a grid of 'small box' cards for address selection improves mobile usability compared to long lists or dropdowns.
 **Action:** Implement grid-based card layouts for management interfaces to maximize screen real estate and improve touch targets.
+
+## 2026-06-16 - Standardizing Keyboard Form Submission
+**Learning:** In applications using custom form handling (without semantic `<form>` tags), users expect the 'Enter' key to behave as a submit trigger. Centralizing these listeners in a shared utility (like `setupSearchInput` or a dedicated `setupFormListeners`) prevents repetitive code and ensures a consistent UX across different modals and pages.
+**Action:** Always check for missing 'Enter' key support in interactive modals and forms that rely on manual button clicks. Use a mapping strategy (Input ID -> Handler) to keep the implementation clean and scalable.
