@@ -14,3 +14,8 @@
 **Vulnerability:** Cross-Site Scripting (XSS) via `innerHTML` and inline `onclick` handlers.
 **Learning:** Standard HTML escaping (`&lt;`, etc.) is effective for content within tags but insufficient for JavaScript event attributes because browsers decode HTML entities *before* execution.
 **Prevention:** Use `escapeHTML()` for tag content. For event handlers, replace inline `onclick` with `addEventListener` and use `data-` attributes for passing IDs or other dynamic data. Use `e.target.closest()` in event delegation to handle clicks on nested elements (like SVG icons).
+
+## 2024-05-23 - [Hardcoded Firebase Secrets]
+**Vulnerability:** Critical Firebase configuration objects containing API keys and project IDs were hardcoded in multiple HTML entry points.
+**Learning:** Developers often hardcode secrets for "ease of setup" during initial development, forgetting to transition to secure configuration systems as the project matures. The presence of a secure alternative (`BZ_CONFIG` with XOR) suggests a fragmented security implementation where old habits co-existed with new security protocols.
+**Prevention:** Implement a "Security-First" CI/CD linting rule that flags standard cloud provider configuration patterns (like `apiKey`, `projectId`) in non-config files. Centralize all sensitive configurations into a single, encrypted, or environment-driven provider immediately at the start of a project.
