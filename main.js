@@ -266,6 +266,30 @@
     }
     const sliderController = new GlobalSliderController();
 
+    function escapeHTML(str) {
+      if (!str) return '';
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return String(str).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function sanitizeURL(url) {
+      if (!url) return 'about:blank';
+      try {
+        const u = String(url).trim();
+        if (u.startsWith('/') || u.startsWith('#')) return u;
+        if (/^(https?|blob):/i.test(u) || /^data:image\/(png|jpeg|jpg|webp|gif)/i.test(u)) {
+          return u;
+        }
+      } catch (e) {}
+      return 'about:blank';
+    }
+
     function debounce(func, wait) {
       let timeout;
       return function(...args) {
@@ -3025,32 +3049,38 @@
         const isVerified = review.isVerifiedPurchase ? '<span class="review-verified-badge">✓ Verified Purchase</span>' : '';
         const isPending = review.status === 'pending' ? '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">⏳ Pending Approval</span>' : '';
 
+        const safeUserName = escapeHTML(review.userName || 'Customer');
+        const safeText = escapeHTML(review.text || '');
+        const safeUserPhoto = sanitizeURL(review.userPhoto);
+        const safeFileUrl = sanitizeURL(review.fileUrl);
+
         let mediaHtml = '';
         if (review.fileUrl && review.fileType === 'image') {
-          mediaHtml = `<div class="review-file-preview"><img src="${review.fileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="window.open('${review.fileUrl}','_blank')"></div>`;
+          mediaHtml = `<div class="review-file-preview"><img src="${safeFileUrl}" class="review-img-trigger" data-url="${safeFileUrl}" alt="Review photo" loading="lazy" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;cursor:pointer;"></div>`;
         } else if (review.fileUrl && review.fileType === 'video') {
-          mediaHtml = `<div class="review-file-preview"><video controls src="${review.fileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
+          mediaHtml = `<div class="review-file-preview"><video controls src="${safeFileUrl}" style="max-width:100%;max-height:180px;border-radius:8px;"></video></div>`;
         }
         if (review.youtubeUrl) {
           const ytId = extractYouTubeId(review.youtubeUrl);
-          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${review.youtubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
+          const safeYoutubeUrl = sanitizeURL(review.youtubeUrl);
+          if (ytId) mediaHtml += `<div style="margin-top:8px;"><a href="${safeYoutubeUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">▶ Watch Video Review</a></div>`;
         }
 
         reviewItem.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${review.userPhoto ? `<img src="${review.userPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(review.userName||'?')[0].toUpperCase()}</div>`}
+            ${review.userPhoto ? `<img src="${safeUserPhoto}" loading="lazy" width="28" height="28" style="border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">` : `<div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#64748b;flex-shrink:0;">${(safeUserName||'?')[0].toUpperCase()}</div>`}
             <div style="flex:1;min-width:0;">
-              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${review.userName || 'Customer'}</span>
+              <span class="reviewer-name" style="font-weight:600;font-size:14px;">${safeUserName}</span>
               ${isVerified} ${isPending}
             </div>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${date}</div>
           <div class="review-rating" style="color:#f59e0b;font-size:16px;margin-bottom:6px;">${stars}</div>
-          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${review.text}</div>
+          <div class="review-text" style="font-size:14px;line-height:1.5;margin-bottom:8px;">${safeText}</div>
           ${mediaHtml}
           ${currentUser && review.userId === currentUser.uid ?
             `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border,#e2e8f0);">
-              <button class="review-delete-btn" data-review-id="${review.id}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
+              <button class="review-delete-btn" data-review-id="${escapeHTML(review.id)}" style="background:none;border:1px solid #fca5a5;color:#ef4444;font-size:12px;cursor:pointer;padding:5px 14px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;">🗑 Delete my review</button>
             </div>` : ''}
         `;
         const deleteBtn = reviewItem.querySelector('.review-delete-btn');
@@ -5729,6 +5759,12 @@
     }
 
     function setupEventListeners() {
+      document.addEventListener('click', function(e) {
+        const reviewImg = e.target.closest('.review-img-trigger');
+        if (reviewImg && reviewImg.dataset.url) {
+          window.open(reviewImg.dataset.url, '_blank');
+        }
+      });
       document.getElementById('menuIcon')?.addEventListener('click', openMenu);
       document.getElementById('menuClose')?.addEventListener('click', closeMenu);
       document.getElementById('menuOverlay')?.addEventListener('click', closeMenu);
