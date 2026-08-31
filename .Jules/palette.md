@@ -1,0 +1,3 @@
+## 2024-06-14 - [Semantic Buttons and Keyboard Support]
+**Learning:** Using non-semantic elements like `div` for interactive controls (menus, brand links) creates significant accessibility barriers, as they are not focusable by default and lack proper roles. Additionally, missing "Enter" key support on forms breaks common user expectations for keyboard-driven navigation.
+**Action:** Always prefer `<button>` or `<a>` for interactive elements. If a design requires a `div`, use a `<button>` with CSS resets to maintain the visual style while gaining accessibility. Ensure all form-like inputs have `keydown` listeners for the "Enter" key to improve task completion speed.
